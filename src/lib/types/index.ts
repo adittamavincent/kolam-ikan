@@ -1,0 +1,49 @@
+import { Database, Json } from "./database.types";
+
+// Table Types
+export type Persona = Database["public"]["Tables"]["personas"]["Row"];
+export type PersonaInsert = Database["public"]["Tables"]["personas"]["Insert"];
+export type PersonaUpdate = Database["public"]["Tables"]["personas"]["Update"];
+
+export type Domain = Database["public"]["Tables"]["domains"]["Row"];
+export type DomainInsert = Database["public"]["Tables"]["domains"]["Insert"];
+export type DomainUpdate = Database["public"]["Tables"]["domains"]["Update"];
+
+export type Cabinet = Database["public"]["Tables"]["cabinets"]["Row"];
+export type Stream = Database["public"]["Tables"]["streams"]["Row"];
+export type Entry = Database["public"]["Tables"]["entries"]["Row"];
+export type Section = Database["public"]["Tables"]["sections"]["Row"];
+export type Canvas = Database["public"]["Tables"]["canvases"]["Row"];
+export type CanvasVersion =
+  Database["public"]["Tables"]["canvas_versions"]["Row"];
+
+// Enums
+export type PersonaType = "HUMAN" | "AI";
+
+// BlockNote Types
+export interface BlockNoteBlock {
+  id: string;
+  type: string;
+  props?: Record<string, Json>;
+  content?: BlockNoteContent[];
+  children?: BlockNoteBlock[];
+}
+
+export interface BlockNoteContent {
+  type: "text" | "link";
+  text: string;
+  styles?: Record<string, boolean>;
+}
+
+// Extended Types with Relations
+export interface StreamWithCanvas extends Stream {
+  canvas?: Canvas;
+}
+
+export interface EntryWithSections extends Entry {
+  sections: SectionWithPersona[];
+}
+
+export interface SectionWithPersona extends Section {
+  persona?: Persona;
+}

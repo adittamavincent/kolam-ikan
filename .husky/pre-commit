@@ -1,0 +1,11 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Generate types if migrations changed
+if git diff --cached --name-only | grep -q "supabase/migrations"; then
+  echo "Migrations detected. Generating types..."
+  npm run db:types
+  git add src/lib/types/database.types.ts
+fi
+
+npm run lint-staged

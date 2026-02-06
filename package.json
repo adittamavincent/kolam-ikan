@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint-staged": "lint-staged",
     "db:types": "supabase gen types typescript --local > src/lib/types/database.types.ts",
     "db:reset": "supabase db reset",
-    "db:migrate": "supabase migration up"
+    "db:migrate": "supabase migration up",
+    "prepare": "husky"
   },
   "dependencies": {
     "@blocknote/core": "^0.46.2",
@@ -42,5 +44,10 @@
     "lint-staged": "^16.2.7",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ]
   }
 }

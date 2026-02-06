@@ -12,8 +12,8 @@
     "db:reset": "supabase db reset",
     "db:migrate": "supabase migration up",
     "prepare": "husky",
-    "seed": "tsx supabase/seed/seed.ts",
-    "seed:validate": "tsx supabase/seed/validate.ts",
+    "seed": "tsx -r dotenv/config supabase/seed/seed.ts",
+    "seed:validate": "tsx -r dotenv/config supabase/seed/validate.ts",
     "seed:reset": "supabase db reset && npm run seed"
   },
   "dependencies": {
@@ -40,12 +40,14 @@
     "@types/node": "^20.19.32",
     "@types/react": "^19.2.13",
     "@types/react-dom": "^19.2.3",
+    "dotenv": "^16.4.5",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "tailwindcss": "^4.1.18",
+    "tsx": "^4.7.1",
     "typescript": "^5"
   },
   "lint-staged": {

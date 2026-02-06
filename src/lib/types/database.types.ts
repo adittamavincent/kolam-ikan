@@ -406,6 +406,7 @@ export type Database = {
         Args: { payload: Json; target_id: string; target_table: string }
         Returns: undefined
       }
+      exec_sql: { Args: { sql: string }; Returns: undefined }
       jsonb_to_text: { Args: { jsonb_data: Json }; Returns: string }
       revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }

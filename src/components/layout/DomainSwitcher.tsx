@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { Home, Plus, RefreshCw, AlertCircle } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
+import { useSidebar } from '@/lib/hooks/useSidebar';
 
 interface DomainSwitcherProps {
   userId: string;
@@ -18,10 +19,11 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const [hoveredDomain, setHoveredDomain] = useState<string | null>(null);
+  const { hide: hideSidebar } = useSidebar();
 
   // Listen for auth state changes and refetch domains
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log('[DomainSwitcher] Auth state changed, refetching domains:', event);
         queryClient.invalidateQueries({ queryKey: ['domains', userId] });
@@ -61,7 +63,10 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
     <div className="flex w-16 flex-col items-center border-r border-gray-200 bg-white py-4">
       {/* Home Button */}
       <button
-        onClick={() => router.push('/')}
+        onClick={() => {
+          hideSidebar();
+          router.push('/');
+        }}
         className="mb-6 flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
         title="Home"
       >

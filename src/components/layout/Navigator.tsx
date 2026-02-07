@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronRight, ChevronDown, Folder, FileText, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 interface NavigatorProps {
   userId?: string;
@@ -15,8 +15,10 @@ export function Navigator({}: NavigatorProps) {
   const params = useParams();
   const supabase = createClient();
   const domainId = params?.domain as string | undefined;
+  const activeStreamId = params?.stream as string | undefined;
 
-  const [expandedCabinets, setExpandedCabinets] = useState<Set<string>>(new Set());
+  // Track manually toggled cabinets
+  const [manuallyToggledCabinets, setManuallyToggledCabinets] = useState<Set<string>>(new Set());
 
   // Fetch cabinets for current domain
   const { data: cabinets } = useQuery({
@@ -54,8 +56,23 @@ export function Navigator({}: NavigatorProps) {
     enabled: !!domainId,
   });
 
+  // Derive final expanded state: manual toggles + auto-expand for active stream's cabinet
+  const expandedCabinets = useMemo(() => {
+    const expanded = new Set(manuallyToggledCabinets);
+    
+    // Auto-expand cabinet containing the active stream
+    if (activeStreamId && streams) {
+      const activeStream = streams.find((s) => s.id === activeStreamId);
+      if (activeStream?.cabinet_id) {
+        expanded.add(activeStream.cabinet_id);
+      }
+    }
+    
+    return expanded;
+  }, [manuallyToggledCabinets, activeStreamId, streams]);
+
   const toggleCabinet = (cabinetId: string) => {
-    setExpandedCabinets((prev) => {
+    setManuallyToggledCabinets((prev) => {
       const next = new Set(prev);
       if (next.has(cabinetId)) {
         next.delete(cabinetId);
@@ -69,18 +86,18 @@ export function Navigator({}: NavigatorProps) {
   // Build tree structure
   const rootCabinets = cabinets?.filter((c) => !c.parent_id) || [];
 
-  const activeStreamId = params?.stream as string | undefined;
-
+  // When there's no domain selected, show a minimal placeholder.
+  // The parent layout controls whether this component is rendered at all.
   if (!domainId) {
     return (
-      <div className="flex w-64 flex-col border-r border-gray-200 bg-white p-4">
+      <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white p-4">
         <p className="text-sm text-gray-500">Select a domain to begin</p>
       </div>
     );
   }
 
   return (
-    <div className="flex w-64 flex-col border-r border-gray-200 bg-white">
+    <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white">
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
         <h2 className="text-sm font-semibold text-gray-900">Navigator</h2>

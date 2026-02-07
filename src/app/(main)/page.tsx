@@ -1,9 +1,658 @@
-export default function HomePage() {
+'use client';
+
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+import { Domain } from '@/lib/types';
+import { useRouter } from 'next/navigation';
+import { formatDistanceToNow } from 'date-fns';
+import {
+  Globe,
+  FolderOpen,
+  FileText,
+  Layers,
+  ArrowRight,
+  Plus,
+  Clock,
+  Sparkles,
+  TrendingUp,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
+import { DynamicIcon } from '@/components/shared/DynamicIcon';
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface RecentStream {
+  id: string;
+  name: string;
+  description: string | null;
+  updated_at: string | null;
+  created_at: string | null;
+  cabinet_id: string;
+  cabinet: { id: string; name: string; domain_id: string; domain: { id: string; name: string; icon: string } | null } | null;
+}
+
+interface RecentEntry {
+  id: string;
+  created_at: string | null;
+  updated_at: string | null;
+  stream: { id: string; name: string; cabinet: { domain: { id: string; name: string; icon: string } | null } | null } | null;
+  sections: { id: string; persona_name_snapshot: string | null; search_text: string | null }[];
+}
+
+interface DomainWithCounts extends Domain {
+  cabinetCount: number;
+  streamCount: number;
+  entryCount: number;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Skeleton helpers                                                   */
+/* ------------------------------------------------------------------ */
+
+function StatCardSkeleton() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Welcome to Kolam Ikan</h1>
-        <p className="mt-2 text-gray-500">Select a domain to get started</p>
+    <div className="animate-pulse rounded-2xl border border-gray-100 bg-white p-5">
+      <div className="mb-3 h-10 w-10 rounded-xl bg-gray-100" />
+      <div className="mb-2 h-7 w-16 rounded bg-gray-100" />
+      <div className="h-4 w-24 rounded bg-gray-100" />
+    </div>
+  );
+}
+
+function DomainCardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-2xl border border-gray-100 bg-white p-5">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="h-11 w-11 rounded-xl bg-gray-100" />
+        <div>
+          <div className="mb-2 h-5 w-28 rounded bg-gray-100" />
+          <div className="h-3 w-40 rounded bg-gray-100" />
+        </div>
+      </div>
+      <div className="flex gap-4">
+        <div className="h-4 w-16 rounded bg-gray-100" />
+        <div className="h-4 w-16 rounded bg-gray-100" />
+        <div className="h-4 w-16 rounded bg-gray-100" />
+      </div>
+    </div>
+  );
+}
+
+function ActivityItemSkeleton() {
+  return (
+    <div className="animate-pulse flex items-start gap-3 rounded-xl border border-gray-50 bg-white p-4">
+      <div className="h-9 w-9 rounded-lg bg-gray-100" />
+      <div className="flex-1">
+        <div className="mb-2 h-4 w-3/4 rounded bg-gray-100" />
+        <div className="h-3 w-1/2 rounded bg-gray-100" />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function StatCard({
+  icon: Icon,
+  value,
+  label,
+  color,
+}: {
+  icon: React.ElementType;
+  value: number;
+  label: string;
+  color: string;
+}) {
+  const colorMap: Record<string, { bg: string; text: string; iconBg: string }> = {
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600', iconBg: 'bg-blue-100' },
+    purple: { bg: 'bg-purple-50', text: 'text-purple-600', iconBg: 'bg-purple-100' },
+    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', iconBg: 'bg-emerald-100' },
+    amber: { bg: 'bg-amber-50', text: 'text-amber-600', iconBg: 'bg-amber-100' },
+  };
+  const c = colorMap[color] ?? colorMap.blue;
+
+  return (
+    <div className="group rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      <div className={`mb-3 inline-flex rounded-xl ${c.iconBg} p-2.5`}>
+        <Icon className={`h-5 w-5 ${c.text}`} />
+      </div>
+      <p className="text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-0.5 text-sm text-gray-500">{label}</p>
+    </div>
+  );
+}
+
+function DomainCard({
+  domain,
+  onClick,
+}: {
+  domain: DomainWithCounts;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex w-full flex-col rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+    >
+      <div className="mb-4 flex items-center gap-3">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-50 text-2xl group-hover:bg-primary-100 transition-colors">
+          <DynamicIcon name={domain.icon} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-sm font-semibold text-gray-900 group-hover:text-primary-700 transition-colors">
+            {domain.name}
+          </h3>
+          {domain.description && (
+            <p className="truncate text-xs text-gray-500">{domain.description}</p>
+          )}
+        </div>
+        <ArrowRight className="h-4 w-4 text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-primary-500" />
+      </div>
+      <div className="flex gap-4 text-xs text-gray-400">
+        <span className="flex items-center gap-1">
+          <FolderOpen className="h-3.5 w-3.5" />
+          {domain.cabinetCount} {domain.cabinetCount === 1 ? 'cabinet' : 'cabinets'}
+        </span>
+        <span className="flex items-center gap-1">
+          <Layers className="h-3.5 w-3.5" />
+          {domain.streamCount} {domain.streamCount === 1 ? 'stream' : 'streams'}
+        </span>
+        <span className="flex items-center gap-1">
+          <FileText className="h-3.5 w-3.5" />
+          {domain.entryCount} {domain.entryCount === 1 ? 'entry' : 'entries'}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function RecentActivityItem({
+  icon,
+  title,
+  subtitle,
+  time,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  time: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-start gap-3 rounded-xl border border-gray-50 bg-white p-4 text-left transition-all hover:border-gray-200 hover:shadow-sm"
+    >
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-lg">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-900">{title}</p>
+        <p className="truncate text-xs text-gray-500">{subtitle}</p>
+      </div>
+      <span className="shrink-0 text-xs text-gray-400">{time}</span>
+    </button>
+  );
+}
+
+function QuickAction({
+  icon: Icon,
+  label,
+  description,
+  onClick,
+}: {
+  icon: React.ElementType;
+  label: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition-all hover:border-primary-200 hover:shadow-md"
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-50 transition-colors group-hover:bg-primary-100">
+        <Icon className="h-5 w-5 text-primary-600" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-900">{label}</p>
+        <p className="text-xs text-gray-500">{description}</p>
+      </div>
+    </button>
+  );
+}
+
+function ErrorBanner({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <AlertCircle className="h-5 w-5 shrink-0" />
+      <span className="flex-1">{message}</span>
+      <button
+        onClick={onRetry}
+        className="inline-flex items-center gap-1 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm transition hover:bg-red-50"
+      >
+        <RefreshCw className="h-3.5 w-3.5" />
+        Retry
+      </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main page                                                          */
+/* ------------------------------------------------------------------ */
+
+export default function HomePage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const supabase = createClient();
+
+  const userId = user?.id;
+
+  // ---- Fetch domains with counts ----
+  const {
+    data: domainsWithCounts,
+    isLoading: domainsLoading,
+    error: domainsError,
+    refetch: refetchDomains,
+  } = useQuery({
+    queryKey: ['home-domains', userId],
+    queryFn: async () => {
+      const { data: domains, error } = await supabase
+        .from('domains')
+        .select('*')
+        .eq('user_id', userId!)
+        .is('deleted_at', null)
+        .order('sort_order', { ascending: true });
+      if (error) throw error;
+
+      // Fetch counts for each domain
+      const enriched: DomainWithCounts[] = await Promise.all(
+        (domains as Domain[]).map(async (domain) => {
+          const { count: cabinetCount } = await supabase
+            .from('cabinets')
+            .select('*', { count: 'exact', head: true })
+            .eq('domain_id', domain.id)
+            .is('deleted_at', null);
+
+          const { data: domainCabinets } = await supabase
+            .from('cabinets')
+            .select('id')
+            .eq('domain_id', domain.id)
+            .is('deleted_at', null);
+
+          const cabinetIds = domainCabinets?.map((c) => c.id) ?? [];
+          let streamCount = 0;
+          let entryCount = 0;
+
+          if (cabinetIds.length > 0) {
+            const { count: sc } = await supabase
+              .from('streams')
+              .select('*', { count: 'exact', head: true })
+              .in('cabinet_id', cabinetIds)
+              .is('deleted_at', null);
+            streamCount = sc ?? 0;
+
+            const { data: domainStreams } = await supabase
+              .from('streams')
+              .select('id')
+              .in('cabinet_id', cabinetIds)
+              .is('deleted_at', null);
+
+            const streamIds = domainStreams?.map((s) => s.id) ?? [];
+            if (streamIds.length > 0) {
+              const { count: ec } = await supabase
+                .from('entries')
+                .select('*', { count: 'exact', head: true })
+                .in('stream_id', streamIds)
+                .is('deleted_at', null);
+              entryCount = ec ?? 0;
+            }
+          }
+
+          return {
+            ...domain,
+            cabinetCount: cabinetCount ?? 0,
+            streamCount,
+            entryCount,
+          };
+        }),
+      );
+
+      return enriched;
+    },
+    enabled: !!userId,
+    staleTime: 60_000,
+  });
+
+  // ---- Fetch recent streams ----
+  const {
+    data: recentStreams,
+    isLoading: streamsLoading,
+    error: streamsError,
+    refetch: refetchStreams,
+  } = useQuery({
+    queryKey: ['home-recent-streams', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('streams')
+        .select(`
+          id, name, description, updated_at, created_at, cabinet_id,
+          cabinet:cabinets (
+            id, name, domain_id,
+            domain:domains (id, name, icon)
+          )
+        `)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return (data ?? []) as unknown as RecentStream[];
+    },
+    enabled: !!userId,
+    staleTime: 60_000,
+  });
+
+  // ---- Fetch recent entries ----
+  const {
+    data: recentEntries,
+    isLoading: entriesLoading,
+    error: entriesError,
+    refetch: refetchEntries,
+  } = useQuery({
+    queryKey: ['home-recent-entries', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('entries')
+        .select(`
+          id, created_at, updated_at,
+          stream:streams (
+            id, name,
+            cabinet:cabinets (
+              domain:domains (id, name, icon)
+            )
+          ),
+          sections (id, persona_name_snapshot, search_text)
+        `)
+        .is('deleted_at', null)
+        .order('updated_at', { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return (data ?? []) as unknown as RecentEntry[];
+    },
+    enabled: !!userId,
+    staleTime: 60_000,
+  });
+
+  // ---- Derived stats ----
+  const totalDomains = domainsWithCounts?.length ?? 0;
+  const totalCabinets = domainsWithCounts?.reduce((s, d) => s + d.cabinetCount, 0) ?? 0;
+  const totalStreams = domainsWithCounts?.reduce((s, d) => s + d.streamCount, 0) ?? 0;
+  const totalEntries = domainsWithCounts?.reduce((s, d) => s + d.entryCount, 0) ?? 0;
+
+  const isLoading = authLoading || domainsLoading;
+
+  // ---- Greeting ----
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const displayName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'there';
+
+  // ---- Helpers ----
+  function timeAgo(dateStr: string | null) {
+    if (!dateStr) return '';
+    try {
+      return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
+    } catch {
+      return '';
+    }
+  }
+
+  function getEntryPreview(entry: RecentEntry) {
+    const firstSection = entry.sections?.[0];
+    if (firstSection?.search_text) {
+      return firstSection.search_text.slice(0, 80) + (firstSection.search_text.length > 80 ? '...' : '');
+    }
+    if (firstSection?.persona_name_snapshot) {
+      return `Section by ${firstSection.persona_name_snapshot}`;
+    }
+    return 'Empty entry';
+  }
+
+  return (
+    <div className="flex flex-1 overflow-y-auto bg-linear-to-br from-gray-50 via-white to-primary-50/30">
+      <div className="mx-auto w-full max-w-5xl px-6 py-8 md:px-10 md:py-10">
+        {/* ---- Welcome Section ---- */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 text-primary-600 mb-1">
+            <Sparkles className="h-4 w-4" />
+            <span className="text-xs font-semibold uppercase tracking-wider">Dashboard</span>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
+            {greeting}, <span className="text-primary-600">{displayName}</span>
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Here&apos;s an overview of your workspace. Pick up where you left off.
+          </p>
+        </div>
+
+        {/* ---- Error Banners ---- */}
+        {domainsError && (
+          <div className="mb-6">
+            <ErrorBanner
+              message="Failed to load domains. Please try again."
+              onRetry={() => refetchDomains()}
+            />
+          </div>
+        )}
+
+        {/* ---- Stat Cards ---- */}
+        <section className="mb-8">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {isLoading ? (
+              <>
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+              </>
+            ) : (
+              <>
+                <StatCard icon={Globe} value={totalDomains} label="Domains" color="blue" />
+                <StatCard icon={FolderOpen} value={totalCabinets} label="Cabinets" color="purple" />
+                <StatCard icon={Layers} value={totalStreams} label="Streams" color="emerald" />
+                <StatCard icon={FileText} value={totalEntries} label="Entries" color="amber" />
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* ---- Quick Actions ---- */}
+        {!isLoading && totalDomains > 0 && (
+          <section className="mb-8">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <TrendingUp className="h-4 w-4 text-gray-400" />
+              Quick Actions
+            </h2>
+            <div className="grid gap-3 md:grid-cols-3">
+              <QuickAction
+                icon={Globe}
+                label="Browse Domains"
+                description="Explore your knowledge domains"
+                onClick={() => {
+                  const first = domainsWithCounts?.[0];
+                  if (first) router.push(`/${first.id}`);
+                }}
+              />
+              <QuickAction
+                icon={Plus}
+                label="New Entry"
+                description="Start writing in a stream"
+                onClick={() => {
+                  const first = domainsWithCounts?.[0];
+                  if (first) router.push(`/${first.id}`);
+                }}
+              />
+              <QuickAction
+                icon={Sparkles}
+                label="Recent Activity"
+                description="Continue where you left off"
+                onClick={() => {
+                  const first = recentStreams?.[0];
+                  if (first?.cabinet?.domain_id) {
+                    router.push(`/${first.cabinet.domain_id}/${first.id}`);
+                  } else if (domainsWithCounts?.[0]) {
+                    router.push(`/${domainsWithCounts[0].id}`);
+                  }
+                }}
+              />
+            </div>
+          </section>
+        )}
+
+        <div className="grid gap-8 lg:grid-cols-5">
+          {/* ---- Domains Overview (left 3 cols) ---- */}
+          <section className="lg:col-span-3">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <Globe className="h-4 w-4 text-gray-400" />
+              Your Domains
+            </h2>
+            {isLoading ? (
+              <div className="grid gap-3">
+                <DomainCardSkeleton />
+                <DomainCardSkeleton />
+                <DomainCardSkeleton />
+              </div>
+            ) : totalDomains === 0 ? (
+              <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-10 text-center">
+                <Globe className="mx-auto h-10 w-10 text-gray-300" />
+                <h3 className="mt-3 text-sm font-semibold text-gray-900">No domains yet</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Create your first domain to start organizing your knowledge.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {domainsWithCounts!.map((domain) => (
+                  <DomainCard
+                    key={domain.id}
+                    domain={domain}
+                    onClick={() => router.push(`/${domain.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* ---- Recent Activity (right 2 cols) ---- */}
+          <section className="lg:col-span-2">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <Clock className="h-4 w-4 text-gray-400" />
+              Recent Activity
+            </h2>
+
+            {(streamsError || entriesError) && (
+              <div className="mb-3">
+                <ErrorBanner
+                  message="Failed to load recent activity."
+                  onRetry={() => {
+                    refetchStreams();
+                    refetchEntries();
+                  }}
+                />
+              </div>
+            )}
+
+            {streamsLoading || entriesLoading ? (
+              <div className="space-y-2">
+                <ActivityItemSkeleton />
+                <ActivityItemSkeleton />
+                <ActivityItemSkeleton />
+                <ActivityItemSkeleton />
+              </div>
+            ) : (recentStreams?.length === 0 && recentEntries?.length === 0) ? (
+              <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-white p-8 text-center">
+                <Clock className="mx-auto h-8 w-8 text-gray-300" />
+                <h3 className="mt-3 text-sm font-semibold text-gray-900">No activity yet</h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Your recent streams and entries will show up here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Recent streams */}
+                {recentStreams?.slice(0, 3).map((stream) => {
+                  const domainIcon = stream.cabinet?.domain?.icon ?? '📁';
+                  const domainName = stream.cabinet?.domain?.name ?? 'Unknown';
+                  const domainId = stream.cabinet?.domain_id;
+                  return (
+                    <RecentActivityItem
+                      key={`stream-${stream.id}`}
+                      icon={<DynamicIcon name={domainIcon} />}
+                      title={stream.name}
+                      subtitle={`${domainName} — ${stream.cabinet?.name ?? ''}`}
+                      time={timeAgo(stream.updated_at)}
+                      onClick={() => {
+                        if (domainId) router.push(`/${domainId}/${stream.id}`);
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Divider */}
+                {(recentStreams?.length ?? 0) > 0 && (recentEntries?.length ?? 0) > 0 && (
+                  <div className="flex items-center gap-2 py-1">
+                    <div className="h-px flex-1 bg-gray-100" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-gray-300">
+                      Entries
+                    </span>
+                    <div className="h-px flex-1 bg-gray-100" />
+                  </div>
+                )}
+
+                {/* Recent entries */}
+                {recentEntries?.slice(0, 4).map((entry) => {
+                  const domainIcon = entry.stream?.cabinet?.domain?.icon ?? '📄';
+                  const streamName = entry.stream?.name ?? 'Unknown stream';
+                  const domainId = entry.stream?.cabinet?.domain?.id;
+                  const streamId = entry.stream?.id;
+                  return (
+                    <RecentActivityItem
+                      key={`entry-${entry.id}`}
+                      icon={<DynamicIcon name={domainIcon} />}
+                      title={getEntryPreview(entry)}
+                      subtitle={streamName}
+                      time={timeAgo(entry.updated_at ?? entry.created_at)}
+                      onClick={() => {
+                        if (domainId && streamId) router.push(`/${domainId}/${streamId}`);
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* ---- Footer tip ---- */}
+        <div className="mt-10 rounded-xl bg-primary-50/60 px-5 py-4 text-center">
+          <p className="text-xs text-primary-700">
+            <span className="font-semibold">Tip:</span> Use the sidebar to quickly switch between domains, or click any card above to jump in.
+          </p>
+        </div>
       </div>
     </div>
   );

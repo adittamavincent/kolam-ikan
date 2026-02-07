@@ -1,204 +1,582 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { isDevelopmentHost, setDevAuthCookie } from "@/lib/utils/authStorage";
+import { Loader2, AlertCircle, ChevronRight, FlaskConical, Lock, Mail, CheckCircle, User } from "lucide-react";
+import Link from "next/link";
+
+type AuthMode = "signin" | "signup";
+
+interface FieldError {
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  fullName?: string;
+}
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [buttonRenderIssue, setButtonRenderIssue] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<FieldError>({});
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set<string>());
+  const [successMessage, setSuccessMessage] = useState("");
+  
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const { status, loading: authLoading } = useAuth();
-  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const validationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Handle post-login redirection
   useEffect(() => {
     if (!authLoading && status === "signed_in") {
-      router.push("/");
+      const next = searchParams.get("next") || "/";
+      router.push(next);
       router.refresh();
     }
-  }, [authLoading, router, status]);
+  }, [authLoading, router, status, searchParams]);
 
+  // Cleanup on unmount
   useEffect(() => {
-    const checkButtonVisibility = () => {
-      const button = submitButtonRef.current;
-      if (!button) {
-        setButtonRenderIssue(true);
-        console.error("Login button not found in DOM.");
-        return;
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-
-      const styles = window.getComputedStyle(button);
-      const hidden =
-        styles.display === "none" ||
-        styles.visibility === "hidden" ||
-        styles.opacity === "0";
-
-      if (hidden) {
-        setButtonRenderIssue(true);
-        console.error("Login button hidden by styles.", {
-          display: styles.display,
-          visibility: styles.visibility,
-          opacity: styles.opacity,
-        });
-      } else {
-        setButtonRenderIssue(false);
+      if (validationTimerRef.current) {
+        clearTimeout(validationTimerRef.current);
       }
     };
+  }, []);
 
-    const timer = window.setTimeout(checkButtonVisibility, 0);
-    return () => window.clearTimeout(timer);
-  }, [email, password, loading]);
+  // Field validation
+  const validateField = useCallback((field: string, value: string): string | undefined => {
+    switch (field) {
+      case "email":
+        if (!value) return "Email is required";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          return "Please enter a valid email address";
+        }
+        return undefined;
+      case "password":
+        if (!value) return "Password is required";
+        if (mode === "signup" && value.length < 8) {
+          return "Password must be at least 8 characters";
+        }
+        if (mode === "signup" && !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
+          return "Password must contain uppercase, lowercase, and number";
+        }
+        return undefined;
+      case "confirmPassword":
+        if (mode === "signup") {
+          if (!value) return "Please confirm your password";
+          if (value !== password) return "Passwords do not match";
+        }
+        return undefined;
+      case "fullName":
+        if (mode === "signup" && !value) return "Full name is required";
+        if (mode === "signup" && value.length < 2) return "Full name must be at least 2 characters";
+        return undefined;
+      default:
+        return undefined;
+    }
+  }, [mode, password]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Debounced validation
+  const validateFieldDebounced = useCallback((field: string, value: string) => {
+    if (validationTimerRef.current) {
+      clearTimeout(validationTimerRef.current);
+    }
+
+    validationTimerRef.current = setTimeout(() => {
+      if (touchedFields.has(field)) {
+        const error = validateField(field, value);
+        setFieldErrors(prev => ({
+          ...prev,
+          [field]: error
+        }));
+      }
+    }, 300);
+  }, [touchedFields, validateField]);
+
+  const handleFieldBlur = (field: string, value: string) => {
+    setTouchedFields(prev => new Set(prev).add(field));
+    const error = validateField(field, value);
+    setFieldErrors(prev => ({
+      ...prev,
+      [field]: error
+    }));
+  };
+
+  const handleLogin = async (e?: React.FormEvent, providedEmail?: string, providedPassword?: string) => {
+    e?.preventDefault();
+    
+    // Use provided values (from quick login) or current state
+    const emailToUse = providedEmail ?? email;
+    const passwordToUse = providedPassword ?? password;
+    
+    // Mark all fields as touched
+    setTouchedFields(new Set(["email", "password"]));
+    
+    // Validate all fields
+    const emailError = validateField("email", emailToUse);
+    const passwordError = validateField("password", passwordToUse);
+    
+    if (emailError || passwordError) {
+      setFieldErrors({ email: emailError, password: passwordError });
+      return;
+    }
+
+    // Cancel any pending requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
     setLoading(true);
     setError("");
+    setSuccessMessage("");
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: emailToUse,
+        password: passwordToUse,
+      });
+
+      if (authError) {
+        setLoading(false);
+        
+        // Specific error handling for better UX
+        if (authError.message.includes("Invalid login credentials")) {
+          setError("Incorrect email or password. Please try again or sign up if you don't have an account.");
+        } else if (authError.message.includes("Email not confirmed")) {
+          setError("Please verify your email address before signing in. Check your inbox for the confirmation link.");
+        } else if (authError.message.includes("User not found")) {
+          setError("No account found with this email address. Please sign up first.");
+        } else {
+          setError(authError.message);
+        }
+      } else {
+        // Success - set cookie and wait for auth state to update
+        if (isDevelopmentHost()) {
+          setDevAuthCookie();
+        }
+        setSuccessMessage("Login successful! Redirecting...");
+        // Auth state change listener will handle redirect
+      }
+    } catch (err: unknown) {
+      setLoading(false);
+      if (err instanceof Error && err.name === "AbortError") {
+        return; // Request was cancelled
+      }
+      setError("A network error occurred. Please check your connection and try again.");
+    }
+  };
+
+  const handleSignup = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    // Mark all fields as touched
+    setTouchedFields(new Set(["email", "password", "confirmPassword", "fullName"]));
+    
+    // Validate all fields
+    const emailError = validateField("email", email);
+    const passwordError = validateField("password", password);
+    const confirmPasswordError = validateField("confirmPassword", confirmPassword);
+    const fullNameError = validateField("fullName", fullName);
+    
+    if (emailError || passwordError || confirmPasswordError || fullNameError) {
+      setFieldErrors({ 
+        email: emailError, 
+        password: passwordError,
+        confirmPassword: confirmPasswordError,
+        fullName: fullNameError
+      });
+      return;
+    }
+
+    // Cancel any pending requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    abortControllerRef.current = new AbortController();
+    setLoading(true);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      const { error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
       });
 
-      if (error) {
-        setError(error.message);
+      if (authError) {
         setLoading(false);
-      } else {
-        if (isDevelopmentHost()) {
-          setDevAuthCookie();
+        
+        if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
+          setError("An account with this email already exists. Please sign in instead.");
+        } else if (authError.message.includes("Password should be")) {
+          setError("Password does not meet security requirements. Please use a stronger password.");
+        } else {
+          setError(authError.message);
         }
-        router.push("/");
-        router.refresh();
+      } else {
+        setLoading(false);
+        setSuccessMessage("Account created successfully! Please check your email to verify your account.");
+        
+        // Clear password fields for security
+        setPassword("");
+        setConfirmPassword("");
       }
-    } catch {
-      setError("Unable to sign in. Check your network connection and try again.");
+    } catch (err: unknown) {
       setLoading(false);
+      if (err instanceof Error && err.name === "AbortError") {
+        return;
+      }
+      setError("A network error occurred. Please check your connection and try again.");
     }
   };
 
-  // Quick test user login
-  const loginAsTestUser = async () => {
-    const testEmail = "test@kolamikan.local";
-    const testPassword = "KolamTest2026!";
-    
-    setEmail(testEmail);
-    setPassword(testPassword);
-    setLoading(true);
+  const toggleMode = () => {
+    setMode(mode === "signin" ? "signup" : "signin");
     setError("");
-
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: testEmail,
-        password: testPassword,
-      });
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-      } else {
-        if (isDevelopmentHost()) {
-          setDevAuthCookie();
-        }
-        router.push("/");
-        router.refresh();
-      }
-    } catch {
-      setError("Unable to sign in. Check your network connection and try again.");
-      setLoading(false);
-    }
+    setSuccessMessage("");
+    setFieldErrors({});
+    setTouchedFields(new Set());
   };
+
+  // Development Helpers (Completely stripped in production)
+  const testAccounts = [
+    { label: "Default Test User", email: "test@kolamikan.local", pass: "KolamTest2026!", role: "User" },
+    { label: "Admin Account", email: "admin@kolamikan.local", pass: "KolamTest2026!", role: "Admin" },
+    { label: "Empty Account", email: "new@kolamikan.local", pass: "KolamTest2026!", role: "Demo" },
+  ];
+
+  const quickLogin = async (acc: typeof testAccounts[0]) => {
+    setMode("signin");
+    setEmail(acc.email);
+    setPassword(acc.pass);
+    // Clear any existing errors and touched fields
+    setFieldErrors({});
+    setTouchedFields(new Set());
+    setError("");
+    setSuccessMessage("");
+    // Execute login with the credentials directly (not relying on state updates)
+    await handleLogin(undefined, acc.email, acc.pass);
+  };
+
+  const isDev = process.env.NODE_ENV === 'development';
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
-        <div>
-          <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4 font-sans">
+      <div className="w-full max-w-md space-y-8">
+        {/* Branding */}
+        <div className="text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 shadow-lg shadow-primary-200">
+            <span className="text-3xl font-bold text-white">K</span>
+          </div>
+          <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-slate-900">
             Kolam Ikan
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Your Personal Thinking Environment
+          <p className="mt-2 text-sm text-slate-500">
+            {mode === "signin" 
+              ? "Log in to your thinking environment" 
+              : "Create your thinking environment"
+            }
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
-
-          <div className="space-y-4 rounded-md shadow-sm">
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="relative block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-                placeholder="Email address"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="relative block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-                placeholder="Password"
-              />
-            </div>
+        {/* Main Auth Card */}
+        <div className="rounded-2xl bg-white p-8 shadow-xl shadow-slate-200/60 border border-slate-100">
+          {/* Mode Toggle */}
+          <div className="mb-6 flex rounded-lg bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => mode === "signup" && toggleMode()}
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+                mode === "signin"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => mode === "signin" && toggleMode()}
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+                mode === "signup"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Sign Up
+            </button>
           </div>
 
-          <div>
-            <button
-              ref={submitButtonRef}
-              type="submit"
-              disabled={loading}
-              className="group relative inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50"
-              data-testid="login-submit"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-            {buttonRenderIssue && (
+          <form className="space-y-6" onSubmit={mode === "signin" ? handleLogin : handleSignup}>
+            {error && (
+              <div className="flex items-start gap-3 rounded-lg bg-red-50 p-4 text-sm text-red-800 border border-red-100 animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="h-5 w-5 shrink-0 text-red-600" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            {successMessage && (
+              <div className="flex items-start gap-3 rounded-lg bg-green-50 p-4 text-sm text-green-800 border border-green-100 animate-in fade-in slide-in-from-top-1">
+                <CheckCircle className="h-5 w-5 shrink-0 text-green-600" />
+                <p>{successMessage}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {mode === "signup" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="fullName">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      id="fullName"
+                      name="fullName"
+                      type="text"
+                      autoComplete="name"
+                      required
+                      value={fullName}
+                      onChange={(e) => {
+                        setFullName(e.target.value);
+                        validateFieldDebounced("fullName", e.target.value);
+                      }}
+                      onBlur={(e) => handleFieldBlur("fullName", e.target.value)}
+                      className={`block w-full rounded-lg border ${
+                        fieldErrors.fullName && touchedFields.has("fullName")
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                          : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
+                      } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  {fieldErrors.fullName && touchedFields.has("fullName") && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="email">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      validateFieldDebounced("email", e.target.value);
+                    }}
+                    onBlur={(e) => handleFieldBlur("email", e.target.value)}
+                    className={`block w-full rounded-lg border ${
+                      fieldErrors.email && touchedFields.has("email")
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                        : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
+                    } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                    placeholder="name@example.com"
+                  />
+                </div>
+                {fieldErrors.email && touchedFields.has("email") && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-slate-700" htmlFor="password">
+                    Password
+                  </label>
+                  {mode === "signin" && (
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs font-semibold text-primary-600 hover:text-primary-500"
+                    >
+                      Forgot password?
+                    </Link>
+                  )}
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    required
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      validateFieldDebounced("password", e.target.value);
+                      if (mode === "signup" && confirmPassword) {
+                        validateFieldDebounced("confirmPassword", confirmPassword);
+                      }
+                    }}
+                    onBlur={(e) => handleFieldBlur("password", e.target.value)}
+                    className={`block w-full rounded-lg border ${
+                      fieldErrors.password && touchedFields.has("password")
+                        ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                        : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
+                    } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                    placeholder="••••••••"
+                  />
+                </div>
+                {fieldErrors.password && touchedFields.has("password") && (
+                  <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+                )}
+                {mode === "signup" && !fieldErrors.password && (
+                  <p className="mt-1 text-xs text-slate-500">
+                    At least 8 characters with uppercase, lowercase, and number
+                  </p>
+                )}
+              </div>
+
+              {mode === "signup" && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor="confirmPassword">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      autoComplete="new-password"
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => {
+                        setConfirmPassword(e.target.value);
+                        validateFieldDebounced("confirmPassword", e.target.value);
+                      }}
+                      onBlur={(e) => handleFieldBlur("confirmPassword", e.target.value)}
+                      className={`block w-full rounded-lg border ${
+                        fieldErrors.confirmPassword && touchedFields.has("confirmPassword")
+                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                          : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
+                      } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  {fieldErrors.confirmPassword && touchedFields.has("confirmPassword") && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.confirmPassword}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {mode === "signin" && (
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                />
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-600">
+                  Keep me logged in
+                </label>
+              </div>
+            )}
+
+            <div>
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-3 inline-flex w-full justify-center rounded-md border border-primary-600 px-3 py-2 text-sm font-semibold text-primary-600"
+                className="group relative flex w-full justify-center rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-slate-800 focus:outline-none focus:ring-4 focus:ring-slate-900/10 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
-                {loading ? "Signing in..." : "Sign in"}
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : mode === "signin" ? (
+                  "Sign in to Kolam"
+                ) : (
+                  "Create Account"
+                )}
               </button>
-            )}
-          </div>
+            </div>
+          </form>
 
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={loginAsTestUser}
-              className="text-sm text-primary-600 hover:text-primary-500"
-            >
-              Use test account
-            </button>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-slate-500">
+              {mode === "signin" ? (
+                <>
+                  Don&apos;t have an account?{" "}
+                  <button
+                    onClick={toggleMode}
+                    className="font-bold text-primary-600 hover:text-primary-500"
+                  >
+                    Sign up
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{" "}
+                  <button
+                    onClick={toggleMode}
+                    className="font-bold text-primary-600 hover:text-primary-500"
+                  >
+                    Sign in
+                  </button>
+                </>
+              )}
+            </p>
           </div>
-        </form>
+        </div>
+
+        {/* Development Speed-Login Dashboard */}
+        {isDev && (
+          <div className="rounded-xl border-2 border-dashed border-amber-200 bg-amber-50/50 p-6 animate-in fade-in duration-1000">
+            <div className="mb-4 flex items-center gap-2 text-amber-800">
+              <FlaskConical className="h-5 w-5" />
+              <h3 className="text-sm font-bold uppercase tracking-wider">Dev Toolbox: Speed Login</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {testAccounts.map((acc) => (
+                <button
+                  key={acc.email}
+                  onClick={() => quickLogin(acc)}
+                  disabled={loading}
+                  className="flex items-center justify-between rounded-lg border border-amber-200 bg-white p-3 text-left transition-all hover:border-amber-400 hover:shadow-md group"
+                >
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">{acc.label}</div>
+                    <div className="text-[10px] text-slate-500 uppercase font-medium">{acc.role}</div>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

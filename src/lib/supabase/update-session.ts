@@ -2,6 +2,13 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const DEV_AUTH_COOKIE = "kolam-dev-auth";
+const REMEMBER_ME_COOKIE = "kolam-remember-me";
+
+function getRememberMeFromRequest(request: NextRequest): boolean {
+  const cookie = request.cookies.get(REMEMBER_ME_COOKIE);
+  // Default to true if not set
+  return cookie?.value === "false" ? false : true;
+}
 
 function isDevelopmentRequest(request: NextRequest) {
   const host = request.headers.get("host") ?? "";
@@ -54,6 +61,9 @@ export async function updateSession(request: NextRequest) {
     clearAuthCookies(request, response);
   }
 
+  const rememberMe = getRememberMeFromRequest(request);
+  const cookieMaxAge = rememberMe ? 60 * 60 * 24 * 30 : undefined; // 30 days or session
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -66,7 +76,6 @@ export async function updateSession(request: NextRequest) {
           request.cookies.set({
             name,
             value,
-            ...options,
           });
           response = NextResponse.next({
             request: {
@@ -77,13 +86,14 @@ export async function updateSession(request: NextRequest) {
             name,
             value,
             ...options,
+            maxAge: options.maxAge ?? cookieMaxAge,
+            secure: process.env.NODE_ENV === 'production',
           });
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({
             name,
             value: "",
-            ...options,
           });
           response = NextResponse.next({
             request: {
@@ -94,6 +104,7 @@ export async function updateSession(request: NextRequest) {
             name,
             value: "",
             ...options,
+            secure: process.env.NODE_ENV === 'production',
           });
         },
       },

@@ -4,9 +4,11 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { isDevelopmentHost, setDevAuthCookie } from "@/lib/utils/authStorage";
-import { Loader2, AlertCircle, ChevronRight, FlaskConical, Lock, Mail, CheckCircle, User } from "lucide-react";
+import { isDevelopmentHost, setDevAuthCookie, setRememberMe, getRememberMe } from "@/lib/utils/authStorage";
+import { Loader2, AlertCircle, ChevronRight, FlaskConical, Lock, Mail, CheckCircle, User, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+
+import { loginAction } from "./actions";
 
 type AuthMode = "signin" | "signup";
 
@@ -23,12 +25,16 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMeState] = useState(() => getRememberMe());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
   const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set<string>());
   const [successMessage, setSuccessMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const passwordVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confirmPasswordVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,6 +52,31 @@ export default function LoginPage() {
     }
   }, [authLoading, router, status, searchParams]);
 
+  // Auto-hide password after 3 seconds
+  useEffect(() => {
+    if (showPassword) {
+      if (passwordVisibilityTimerRef.current) clearTimeout(passwordVisibilityTimerRef.current);
+      passwordVisibilityTimerRef.current = setTimeout(() => {
+        setShowPassword(false);
+      }, 3000);
+    }
+    return () => {
+      if (passwordVisibilityTimerRef.current) clearTimeout(passwordVisibilityTimerRef.current);
+    };
+  }, [showPassword]);
+
+  useEffect(() => {
+    if (showConfirmPassword) {
+      if (confirmPasswordVisibilityTimerRef.current) clearTimeout(confirmPasswordVisibilityTimerRef.current);
+      confirmPasswordVisibilityTimerRef.current = setTimeout(() => {
+        setShowConfirmPassword(false);
+      }, 3000);
+    }
+    return () => {
+      if (confirmPasswordVisibilityTimerRef.current) clearTimeout(confirmPasswordVisibilityTimerRef.current);
+    };
+  }, [showConfirmPassword]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -54,6 +85,12 @@ export default function LoginPage() {
       }
       if (validationTimerRef.current) {
         clearTimeout(validationTimerRef.current);
+      }
+      if (passwordVisibilityTimerRef.current) {
+        clearTimeout(passwordVisibilityTimerRef.current);
+      }
+      if (confirmPasswordVisibilityTimerRef.current) {
+        clearTimeout(confirmPasswordVisibilityTimerRef.current);
       }
     };
   }, []);
@@ -147,31 +184,38 @@ export default function LoginPage() {
     setSuccessMessage("");
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: emailToUse,
-        password: passwordToUse,
-      });
+      // Store the rememberMe preference BEFORE authentication
+      setRememberMe(rememberMe);
+      
+      // Use Server Action for secure HttpOnly cookie setting
+      const result = await loginAction(emailToUse, passwordToUse);
 
-      if (authError) {
+      if (result.error) {
         setLoading(false);
+        const errorMessage = result.error;
         
         // Specific error handling for better UX
-        if (authError.message.includes("Invalid login credentials")) {
+        if (errorMessage.includes("Invalid login credentials")) {
           setError("Incorrect email or password. Please try again or sign up if you don't have an account.");
-        } else if (authError.message.includes("Email not confirmed")) {
+        } else if (errorMessage.includes("Email not confirmed")) {
           setError("Please verify your email address before signing in. Check your inbox for the confirmation link.");
-        } else if (authError.message.includes("User not found")) {
+        } else if (errorMessage.includes("User not found")) {
           setError("No account found with this email address. Please sign up first.");
         } else {
-          setError(authError.message);
+          setError(errorMessage);
         }
       } else {
-        // Success - set cookie and wait for auth state to update
+        // Success - set dev auth cookie if needed
         if (isDevelopmentHost()) {
           setDevAuthCookie();
         }
         setSuccessMessage("Login successful! Redirecting...");
-        // Auth state change listener will handle redirect
+        // Reset password visibility for security
+        setShowPassword(false);
+        // Force a router refresh to update server components/middleware state
+        router.refresh();
+        // Redirect is handled by the useEffect watching auth status or we can do it here
+        // The useAuth hook might take a moment to sync, but router.refresh() should help
       }
     } catch (err: unknown) {
       setLoading(false);
@@ -242,6 +286,9 @@ export default function LoginPage() {
         // Clear password fields for security
         setPassword("");
         setConfirmPassword("");
+        // Reset password visibility for security
+        setShowPassword(false);
+        setShowConfirmPassword(false);
       }
     } catch (err: unknown) {
       setLoading(false);
@@ -258,6 +305,9 @@ export default function LoginPage() {
     setSuccessMessage("");
     setFieldErrors({});
     setTouchedFields(new Set());
+    // Reset password visibility for security
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   };
 
   // Development Helpers (Completely stripped in production)
@@ -428,7 +478,7 @@ export default function LoginPage() {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete={mode === "signin" ? "current-password" : "new-password"}
                     required
                     value={password}
@@ -444,9 +494,21 @@ export default function LoginPage() {
                       fieldErrors.password && touchedFields.has("password")
                         ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
                         : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
-                    } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                    } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                     placeholder="••••••••"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus:text-slate-600"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
                 {fieldErrors.password && touchedFields.has("password") && (
                   <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
@@ -468,7 +530,7 @@ export default function LoginPage() {
                     <input
                       id="confirmPassword"
                       name="confirmPassword"
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       autoComplete="new-password"
                       required
                       value={confirmPassword}
@@ -481,9 +543,21 @@ export default function LoginPage() {
                         fieldErrors.confirmPassword && touchedFields.has("confirmPassword")
                           ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
                           : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
-                      } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                      } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                       placeholder="••••••••"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus:text-slate-600"
+                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
                   {fieldErrors.confirmPassword && touchedFields.has("confirmPassword") && (
                     <p className="mt-1 text-xs text-red-600">{fieldErrors.confirmPassword}</p>
@@ -499,7 +573,7 @@ export default function LoginPage() {
                   name="remember-me"
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  onChange={(e) => setRememberMeState(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-600">

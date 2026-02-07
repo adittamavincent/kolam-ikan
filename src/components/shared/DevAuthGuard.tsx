@@ -7,6 +7,7 @@ import {
   clearDevAuthCookie,
   getDevSessionFlag,
   isDevelopmentHost,
+  getRememberMe,
 } from '@/lib/utils/authStorage';
 
 export function DevAuthGuard() {
@@ -18,6 +19,14 @@ export function DevAuthGuard() {
     const flagKey = getDevSessionFlag();
     const alreadyCleared = window.sessionStorage.getItem(flagKey) === '1';
     if (alreadyCleared) {
+      return;
+    }
+
+    // If the user has "Remember Me" enabled, do not clear the session
+    // even if it's a new browser session (tab/window).
+    const rememberMe = getRememberMe();
+    if (rememberMe) {
+      window.sessionStorage.setItem(flagKey, '1');
       return;
     }
 

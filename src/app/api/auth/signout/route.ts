@@ -29,6 +29,7 @@ export async function POST() {
         value: "",
         maxAge: 0,
         path: "/",
+        secure: process.env.NODE_ENV === 'production',
       });
     }
   }

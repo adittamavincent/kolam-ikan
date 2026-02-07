@@ -13,7 +13,7 @@ interface LogPaneProps {
 
 export function LogPane({ streamId }: LogPaneProps) {
   const { logWidth } = useLayout();
-  const { entries, isLoading } = useEntries(streamId);
+  const { entries, isLoading, error } = useEntries(streamId);
 
   if (logWidth === 0) return null;
 
@@ -31,6 +31,13 @@ export function LogPane({ streamId }: LogPaneProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {/* Entry Creator */}
           <EntryCreator streamId={streamId} />
+
+          {/* Error State */}
+          {error && (
+            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+              Error loading entries. Please try refreshing.
+            </div>
+          )}
 
           {/* Entries List */}
           {isLoading ? (

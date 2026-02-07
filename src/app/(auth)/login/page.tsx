@@ -35,7 +35,7 @@ export default function LoginPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const passwordVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const confirmPasswordVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -46,6 +46,12 @@ export default function LoginPage() {
   // Handle post-login redirection
   useEffect(() => {
     if (!authLoading && status === "signed_in") {
+      // Ensure dev cookie is set before redirecting to avoid loops where
+      // middleware redirects back to login because the cookie is missing.
+      if (isDevelopmentHost()) {
+        setDevAuthCookie();
+      }
+
       const next = searchParams.get("next") || "/";
       router.push(next);
       router.refresh();
@@ -156,18 +162,18 @@ export default function LoginPage() {
 
   const handleLogin = async (e?: React.FormEvent, providedEmail?: string, providedPassword?: string) => {
     e?.preventDefault();
-    
+
     // Use provided values (from quick login) or current state
     const emailToUse = providedEmail ?? email;
     const passwordToUse = providedPassword ?? password;
-    
+
     // Mark all fields as touched
     setTouchedFields(new Set(["email", "password"]));
-    
+
     // Validate all fields
     const emailError = validateField("email", emailToUse);
     const passwordError = validateField("password", passwordToUse);
-    
+
     if (emailError || passwordError) {
       setFieldErrors({ email: emailError, password: passwordError });
       return;
@@ -186,14 +192,14 @@ export default function LoginPage() {
     try {
       // Store the rememberMe preference BEFORE authentication
       setRememberMe(rememberMe);
-      
+
       // Use Server Action for secure HttpOnly cookie setting
       const result = await loginAction(emailToUse, passwordToUse);
 
       if (result.error) {
         setLoading(false);
         const errorMessage = result.error;
-        
+
         // Specific error handling for better UX
         if (errorMessage.includes("Invalid login credentials")) {
           setError("Incorrect email or password. Please try again or sign up if you don't have an account.");
@@ -209,13 +215,29 @@ export default function LoginPage() {
         if (isDevelopmentHost()) {
           setDevAuthCookie();
         }
+
+        // Force session update on client side immediately
+        const { error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error("Session refresh failed:", sessionError);
+        }
+
         setSuccessMessage("Login successful! Redirecting...");
         // Reset password visibility for security
         setShowPassword(false);
-        // Force a router refresh to update server components/middleware state
-        router.refresh();
-        // Redirect is handled by the useEffect watching auth status or we can do it here
-        // The useAuth hook might take a moment to sync, but router.refresh() should help
+
+        // Get destination from search params
+        const next = searchParams.get("next") || "/";
+
+        // Small delay to ensure cookies are properly propagated
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Navigate directly instead of relying on useEffect
+        // Use replace to prevent back-button redirect loop issues
+        router.replace(next);
+
+        // Keep loading state true during navigation to prevent UI flicker
+        // setLoading will be reset when component unmounts
       }
     } catch (err: unknown) {
       setLoading(false);
@@ -228,19 +250,19 @@ export default function LoginPage() {
 
   const handleSignup = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    
+
     // Mark all fields as touched
     setTouchedFields(new Set(["email", "password", "confirmPassword", "fullName"]));
-    
+
     // Validate all fields
     const emailError = validateField("email", email);
     const passwordError = validateField("password", password);
     const confirmPasswordError = validateField("confirmPassword", confirmPassword);
     const fullNameError = validateField("fullName", fullName);
-    
+
     if (emailError || passwordError || confirmPasswordError || fullNameError) {
-      setFieldErrors({ 
-        email: emailError, 
+      setFieldErrors({
+        email: emailError,
         password: passwordError,
         confirmPassword: confirmPasswordError,
         fullName: fullNameError
@@ -271,7 +293,7 @@ export default function LoginPage() {
 
       if (authError) {
         setLoading(false);
-        
+
         if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
           setError("An account with this email already exists. Please sign in instead.");
         } else if (authError.message.includes("Password should be")) {
@@ -282,7 +304,7 @@ export default function LoginPage() {
       } else {
         setLoading(false);
         setSuccessMessage("Account created successfully! Please check your email to verify your account.");
-        
+
         // Clear password fields for security
         setPassword("");
         setConfirmPassword("");
@@ -344,8 +366,8 @@ export default function LoginPage() {
             Kolam Ikan
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            {mode === "signin" 
-              ? "Log in to your thinking environment" 
+            {mode === "signin"
+              ? "Log in to your thinking environment"
               : "Create your thinking environment"
             }
           </p>
@@ -358,22 +380,20 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                mode === "signin"
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${mode === "signin"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
-              }`}
+                }`}
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => mode === "signin" && toggleMode()}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
-                mode === "signup"
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${mode === "signup"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
-              }`}
+                }`}
             >
               Sign Up
             </button>
@@ -414,11 +434,10 @@ export default function LoginPage() {
                         validateFieldDebounced("fullName", e.target.value);
                       }}
                       onBlur={(e) => handleFieldBlur("fullName", e.target.value)}
-                      className={`block w-full rounded-lg border ${
-                        fieldErrors.fullName && touchedFields.has("fullName")
+                      className={`block w-full rounded-lg border ${fieldErrors.fullName && touchedFields.has("fullName")
                           ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
                           : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
-                      } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                        } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                       placeholder="John Doe"
                     />
                   </div>
@@ -446,11 +465,10 @@ export default function LoginPage() {
                       validateFieldDebounced("email", e.target.value);
                     }}
                     onBlur={(e) => handleFieldBlur("email", e.target.value)}
-                    className={`block w-full rounded-lg border ${
-                      fieldErrors.email && touchedFields.has("email")
+                    className={`block w-full rounded-lg border ${fieldErrors.email && touchedFields.has("email")
                         ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
                         : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
-                    } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                      } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                     placeholder="name@example.com"
                   />
                 </div>
@@ -490,11 +508,10 @@ export default function LoginPage() {
                       }
                     }}
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
-                    className={`block w-full rounded-lg border ${
-                      fieldErrors.password && touchedFields.has("password")
+                    className={`block w-full rounded-lg border ${fieldErrors.password && touchedFields.has("password")
                         ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
                         : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
-                    } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                      } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                     placeholder="••••••••"
                   />
                   <button
@@ -539,11 +556,10 @@ export default function LoginPage() {
                         validateFieldDebounced("confirmPassword", e.target.value);
                       }}
                       onBlur={(e) => handleFieldBlur("confirmPassword", e.target.value)}
-                      className={`block w-full rounded-lg border ${
-                        fieldErrors.confirmPassword && touchedFields.has("confirmPassword")
+                      className={`block w-full rounded-lg border ${fieldErrors.confirmPassword && touchedFields.has("confirmPassword")
                           ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
                           : "border-slate-200 focus:border-primary-500 focus:ring-primary-500/10"
-                      } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                        } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                       placeholder="••••••••"
                     />
                     <button

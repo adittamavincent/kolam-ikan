@@ -48,13 +48,23 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const hasDevAuth = request.cookies.get(DEV_AUTH_COOKIE)?.value === "1";
 
+  // Check if user has valid Supabase session cookies (auth in progress)
+  const hasSupabaseAuth = request.cookies.getAll().some(
+    cookie => cookie.name.startsWith('sb-') && cookie.value
+  );
+
   if (isDev && !hasDevAuth && !shouldBypassDevGuard(pathname)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.search = "";
-    const redirectResponse = NextResponse.redirect(redirectUrl);
-    clearAuthCookies(request, redirectResponse);
-    return redirectResponse;
+    // If user has Supabase session cookies but no dev cookie yet,
+    // allow the request to proceed - the login page will set the dev cookie
+    if (!hasSupabaseAuth) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      redirectUrl.search = "";
+      const redirectResponse = NextResponse.redirect(redirectUrl);
+      clearAuthCookies(request, redirectResponse);
+      return redirectResponse;
+    }
+    // User has Supabase auth - don't redirect, let the page sync the dev cookie
   }
 
   if (isDev && !hasDevAuth) {

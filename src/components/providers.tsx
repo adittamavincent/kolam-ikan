@@ -20,7 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           mutations: {
             retry: 1,
             onError: (error) => {
-              console.error('Mutation error:', error);
+              console.error('[QueryClient] Mutation error:', error);
               // TODO: Add toast notification
             },
           },

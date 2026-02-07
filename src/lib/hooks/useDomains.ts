@@ -9,6 +9,7 @@ export function useDomains(userId: string) {
   const query = useQuery({
     queryKey: ['domains', userId],
     queryFn: async () => {
+      console.log('[useDomains] Fetching domains for user:', userId);
       const { data, error } = await supabase
         .from('domains')
         .select('*')
@@ -16,9 +17,15 @@ export function useDomains(userId: string) {
         .is('deleted_at', null)
         .order('sort_order', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useDomains] Failed to fetch domains:', error);
+        throw error;
+      }
+      console.log('[useDomains] Fetched domains:', data?.length ?? 0);
       return data as Domain[];
     },
+    refetchOnMount: 'always', // Always refetch to ensure fresh data after auth
+    enabled: !!userId,
   });
 
   const createDomain = useMutation({
@@ -136,7 +143,9 @@ export function useDomains(userId: string) {
   return {
     domains: query.data,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     error: query.error,
+    refetch: query.refetch,
     createDomain,
     updateDomain,
     deleteDomain,

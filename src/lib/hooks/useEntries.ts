@@ -9,6 +9,7 @@ export function useEntries(streamId: string) {
   const query = useQuery({
     queryKey: ['entries', streamId],
     queryFn: async () => {
+      const start = performance.now();
       const { data, error } = await supabase
         .from('entries')
         .select(`
@@ -20,9 +21,17 @@ export function useEntries(streamId: string) {
         `)
         .eq('stream_id', streamId)
         .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50); // Limit to 50 entries for performance
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching entries:', error);
+        throw error;
+      }
+      
+      const end = performance.now();
+      console.log(`Fetched ${data.length} entries in ${Math.round(end - start)}ms`);
+      
       return data as EntryWithSections[];
     },
     enabled: !!streamId,
@@ -47,6 +56,7 @@ export function useEntries(streamId: string) {
   return {
     entries: query.data,
     isLoading: query.isLoading,
+    error: query.error,
     createEntry,
   };
 }

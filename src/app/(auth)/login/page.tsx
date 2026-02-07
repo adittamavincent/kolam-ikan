@@ -33,9 +33,26 @@ export default function LoginPage() {
 
   // Quick test user login
   const loginAsTestUser = async () => {
-    setEmail("test@kolamikan.local");
-    setPassword("KolamTest2026!");
-    // Will trigger form submission
+    const testEmail = "test@kolamikan.local";
+    const testPassword = "KolamTest2026!";
+    
+    setEmail(testEmail);
+    setPassword(testPassword);
+    setLoading(true);
+    setError("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: testEmail,
+      password: testPassword,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      router.push("/");
+      router.refresh();
+    }
   };
 
   return (

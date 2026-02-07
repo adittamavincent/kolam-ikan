@@ -1,7 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
+import * as dotenv from "dotenv";
 import { Database } from "../../src/lib/types/database.types";
+
+// Load env vars from .env.local
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,9 +41,28 @@ async function runSeedScript(filename: string) {
 async function seed() {
   console.log("🌱 Starting seed process...\n");
 
+  // 1. Reset Database
+  await runSeedScript("00_reset.sql");
+
+  // 2. Create Test User via Auth Admin API
+  console.log("🌱 Creating test user...");
+  const { error: userError } = await supabase.auth.admin.createUser({
+    email: "test@kolamikan.local",
+    password: "KolamTest2026!",
+    email_confirm: true,
+    user_metadata: { full_name: "Test User", is_seed_user: true },
+    id: "00000000-0000-0000-0000-000000000001",
+  });
+
+  if (userError) {
+    console.warn("⚠️  Test user creation warning (might already exist):", userError.message);
+  } else {
+    console.log("✅ Test user created successfully");
+  }
+
+  // 3. Run remaining seed scripts
   const scripts = [
-    "00_reset.sql",
-    "01_test_user.sql",
+    // "01_test_user.sql", // Skipped
     "02_personas.sql",
     "03_domains.sql",
     "04_cabinets.sql",

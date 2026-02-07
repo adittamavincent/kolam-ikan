@@ -1,12 +1,13 @@
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { ClientMainLayout } from '@/components/layout/ClientMainLayout';
+import { KeyboardShortcutsProvider } from '@/components/shared/KeyboardShortcutsProvider';
 
 export default async function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // FIX: Add 'await' here
   const supabase = await createClient();
 
   const {
@@ -14,8 +15,14 @@ export default async function MainLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect('/login');
   }
 
-  return <>{children}</>;
+  return (
+    <KeyboardShortcutsProvider>
+      <ClientMainLayout userId={user.id}>
+        {children}
+      </ClientMainLayout>
+    </KeyboardShortcutsProvider>
+  );
 }

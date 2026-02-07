@@ -10,10 +10,25 @@ export type DomainInsert = Database["public"]["Tables"]["domains"]["Insert"];
 export type DomainUpdate = Database["public"]["Tables"]["domains"]["Update"];
 
 export type Cabinet = Database["public"]["Tables"]["cabinets"]["Row"];
+export type CabinetInsert = Database["public"]["Tables"]["cabinets"]["Insert"];
+export type CabinetUpdate = Database["public"]["Tables"]["cabinets"]["Update"];
+
 export type Stream = Database["public"]["Tables"]["streams"]["Row"];
+export type StreamInsert = Database["public"]["Tables"]["streams"]["Insert"];
+export type StreamUpdate = Database["public"]["Tables"]["streams"]["Update"];
+
 export type Entry = Database["public"]["Tables"]["entries"]["Row"];
+export type EntryInsert = Database["public"]["Tables"]["entries"]["Insert"];
+export type EntryUpdate = Database["public"]["Tables"]["entries"]["Update"];
+
 export type Section = Database["public"]["Tables"]["sections"]["Row"];
+export type SectionInsert = Database["public"]["Tables"]["sections"]["Insert"];
+export type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
+
 export type Canvas = Database["public"]["Tables"]["canvases"]["Row"];
+export type CanvasInsert = Database["public"]["Tables"]["canvases"]["Insert"];
+export type CanvasUpdate = Database["public"]["Tables"]["canvases"]["Update"];
+
 export type CanvasVersion =
   Database["public"]["Tables"]["canvas_versions"]["Row"];
 

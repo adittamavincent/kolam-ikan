@@ -1,6 +1,9 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Enable PGCrypto for auth hashing
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- Enable Full Text Search extension
 CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
@@ -14,11 +17,14 @@ BEGIN
   WITH RECURSIVE nodes(node) AS (
     SELECT jsonb_data
     UNION ALL
-    -- expand arrays
-    SELECT jsonb_array_elements(node) FROM nodes WHERE jsonb_typeof(node) = 'array'
-    UNION ALL
-    -- expand object values
-    SELECT value FROM nodes, jsonb_each(node) WHERE jsonb_typeof(node) = 'object'
+    SELECT
+        child
+    FROM nodes,
+    LATERAL (
+        SELECT value AS child FROM jsonb_each(node) WHERE jsonb_typeof(node) = 'object'
+        UNION ALL
+        SELECT value AS child FROM jsonb_array_elements(node) WHERE jsonb_typeof(node) = 'array'
+    ) AS children
   ),
   texts AS (
     SELECT (node->>'text') AS txt FROM nodes WHERE node ? 'text' AND (node->>'text') IS NOT NULL

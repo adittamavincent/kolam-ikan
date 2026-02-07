@@ -4,7 +4,7 @@ import { useLayout } from '@/lib/hooks/useLayout';
 import { PanelLeft, PanelRight, Columns } from 'lucide-react';
 
 export function LayoutControls() {
-  const { mode, setMode, logWidth, canvasWidth } = useLayout();
+  const { setMode, logWidth, canvasWidth } = useLayout();
 
   // Helper to check active state based on width
   const isLogMaximized = logWidth === 100 && canvasWidth === 0;

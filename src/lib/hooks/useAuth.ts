@@ -1,30 +1,156 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Session, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import {
+  AuthStatus,
+  clearAuthClientStorage,
+  clearDevAuthCookie,
+  getAuthStorageKey,
+  readStoredAuthState,
+  writeStoredAuthState,
+} from "@/lib/utils/authStorage";
+
+const EXPIRY_POLL_INTERVAL_MS = 30000;
 
 export function useAuth() {
+  const initialStored = readStoredAuthState();
   const [user, setUser] = useState<User | null>(null);
+  const [status, setStatus] = useState<AuthStatus>(
+    initialStored?.status ?? "signed_out",
+  );
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const expiryRef = useRef<number | null>(initialStored?.expiresAt ?? null);
   const supabase = createClient();
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+  const handleSessionUpdate = useCallback((session: Session | null) => {
+    setError(null);
+    const nextStatus: AuthStatus = session?.user ? "signed_in" : "signed_out";
+    const nextState = {
+      status: nextStatus,
+      updatedAt: Date.now(),
+      userId: session?.user?.id,
+      email: session?.user?.email ?? undefined,
+      expiresAt: session?.expires_at ? session.expires_at * 1000 : undefined,
+    };
+
+    setUser(session?.user ?? null);
+    setStatus(nextStatus);
+    setLoading(false);
+    expiryRef.current = nextState.expiresAt ?? null;
+    writeStoredAuthState(nextState);
+  }, []);
+
+  const validateSession = useCallback(async () => {
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      setError("Unable to refresh session. Check your network and try again.");
       setLoading(false);
+      return;
+    }
+
+    if (!data.session) {
+      handleSessionUpdate(null);
+      return;
+    }
+
+    handleSessionUpdate(data.session);
+  }, [handleSessionUpdate, supabase]);
+
+  const signOut = useCallback(async () => {
+    setError(null);
+    let success = true;
+
+    try {
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
+      if (signOutError) {
+        success = false;
+        setError(signOutError.message);
+      }
+    } catch (signOutError) {
+      success = false;
+      console.error("Sign out failed.", signOutError);
+      setError("Unable to sign out. Check your network and try again.");
+    }
+
+    try {
+      await fetch("/api/auth/signout", { method: "POST" });
+    } catch (requestError) {
+      success = false;
+      console.error("Failed to clear auth cookies.", requestError);
+    }
+
+    clearAuthClientStorage();
+    clearDevAuthCookie();
+    handleSessionUpdate(null);
+    return success;
+  }, [handleSessionUpdate, supabase]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (cancelled) return;
+      if (sessionError) {
+        setError("Unable to refresh session. Check your network and try again.");
+        setLoading(false);
+        return;
+      }
+      handleSessionUpdate(data.session);
     });
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      handleSessionUpdate(session);
     });
 
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [handleSessionUpdate, supabase]);
 
-  return { user, loading };
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (!expiryRef.current) {
+        return;
+      }
+
+      if (Date.now() >= expiryRef.current) {
+        void validateSession();
+      }
+    }, EXPIRY_POLL_INTERVAL_MS);
+
+    return () => window.clearInterval(intervalId);
+  }, [validateSession]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== getAuthStorageKey()) {
+        return;
+      }
+
+      const stored = readStoredAuthState();
+      if (!stored) {
+        return;
+      }
+
+      if (stored.status === "signed_out") {
+        handleSessionUpdate(null);
+        return;
+      }
+
+      if (stored.status === "signed_in" && !user) {
+        void validateSession();
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [handleSessionUpdate, user, validateSession]);
+
+  return { user, status, loading, error, signOut };
 }

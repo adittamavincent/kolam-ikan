@@ -1,33 +1,84 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { isDevelopmentHost, setDevAuthCookie } from "@/lib/utils/authStorage";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [buttonRenderIssue, setButtonRenderIssue] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+  const { status, loading: authLoading } = useAuth();
+  const submitButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!authLoading && status === "signed_in") {
+      router.push("/");
+      router.refresh();
+    }
+  }, [authLoading, router, status]);
+
+  useEffect(() => {
+    const checkButtonVisibility = () => {
+      const button = submitButtonRef.current;
+      if (!button) {
+        setButtonRenderIssue(true);
+        console.error("Login button not found in DOM.");
+        return;
+      }
+
+      const styles = window.getComputedStyle(button);
+      const hidden =
+        styles.display === "none" ||
+        styles.visibility === "hidden" ||
+        styles.opacity === "0";
+
+      if (hidden) {
+        setButtonRenderIssue(true);
+        console.error("Login button hidden by styles.", {
+          display: styles.display,
+          visibility: styles.visibility,
+          opacity: styles.opacity,
+        });
+      } else {
+        setButtonRenderIssue(false);
+      }
+    };
+
+    const timer = window.setTimeout(checkButtonVisibility, 0);
+    return () => window.clearTimeout(timer);
+  }, [email, password, loading]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+      } else {
+        if (isDevelopmentHost()) {
+          setDevAuthCookie();
+        }
+        router.push("/");
+        router.refresh();
+      }
+    } catch {
+      setError("Unable to sign in. Check your network connection and try again.");
       setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
     }
   };
 
@@ -41,17 +92,25 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: testEmail,
-      password: testPassword,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: testEmail,
+        password: testPassword,
+      });
 
-    if (error) {
-      setError(error.message);
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+      } else {
+        if (isDevelopmentHost()) {
+          setDevAuthCookie();
+        }
+        router.push("/");
+        router.refresh();
+      }
+    } catch {
+      setError("Unable to sign in. Check your network connection and try again.");
       setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
     }
   };
 
@@ -111,12 +170,23 @@ export default function LoginPage() {
 
           <div>
             <button
+              ref={submitButtonRef}
               type="submit"
               disabled={loading}
-              className="group relative flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50"
+              className="group relative inline-flex w-full justify-center rounded-md bg-primary-600 px-3 py-2 text-sm font-semibold text-white hover:bg-primary-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 disabled:opacity-50"
+              data-testid="login-submit"
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>
+            {buttonRenderIssue && (
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-3 inline-flex w-full justify-center rounded-md border border-primary-600 px-3 py-2 text-sm font-semibold text-primary-600"
+              >
+                {loading ? "Signing in..." : "Sign in"}
+              </button>
+            )}
           </div>
 
           <div className="text-center">

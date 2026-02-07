@@ -17,6 +17,22 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const { canvasWidth } = useLayout();
   const { canvas, updateCanvas, isLoading } = useCanvas(streamId);
 
+  const isVisible = canvasWidth > 0;
+
+  // Calculate smooth animation - slides in from right with decompression
+  const containerStyle = {
+    width: `${canvasWidth}%`,
+    minWidth: canvasWidth === 0 ? '0px' : 'auto',
+    opacity: isVisible ? 1 : 0,
+    transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+  };
+
+  const contentStyle = {
+    transform: isVisible ? 'translateX(0) scaleX(1)' : 'translateX(100%) scaleX(0.95)',
+    transformOrigin: 'left center',
+    transition: 'transform 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+  };
+
   const debouncedUpdate = useMemo(
     () =>
       debounce((id: string, blocks: PartialBlock[]) => {
@@ -34,14 +50,14 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     [canvas, debouncedUpdate]
   );
 
-  if (canvasWidth === 0) return null;
-
   return (
     <div
-      className="bg-white transition-all duration-300 ease-in-out"
-      style={{ width: `${canvasWidth}%` }}
+      className={`bg-white relative overflow-hidden z-20 ${
+        isVisible ? '' : 'pointer-events-none'
+      }`}
+      style={containerStyle}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col" style={contentStyle}>
         <div className="flex items-center justify-between border-b border-gray-200 p-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">The Canvas</h2>

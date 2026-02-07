@@ -15,14 +15,30 @@ export function LogPane({ streamId }: LogPaneProps) {
   const { logWidth } = useLayout();
   const { entries, isLoading, error } = useEntries(streamId);
 
-  if (logWidth === 0) return null;
+  const isVisible = logWidth > 0;
+
+  // Calculate smooth animation - slides in from left with decompression
+  const containerStyle = {
+    width: `${logWidth}%`,
+    minWidth: logWidth === 0 ? '0px' : 'auto',
+    opacity: isVisible ? 1 : 0,
+    transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+  };
+
+  const contentStyle = {
+    transform: isVisible ? 'translateX(0) scaleX(1)' : 'translateX(-100%) scaleX(0.95)',
+    transformOrigin: 'right center',
+    transition: 'transform 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+  };
 
   return (
     <div
-      className="border-r border-gray-200 bg-white transition-all duration-300 ease-in-out"
-      style={{ width: `${logWidth}%` }}
+      className={`border-r border-gray-200 bg-white relative overflow-hidden z-30 ${
+        isVisible ? '' : 'pointer-events-none'
+      }`}
+      style={containerStyle}
     >
-      <div className="flex h-full flex-col">
+      <div className="flex h-full flex-col" style={contentStyle}>
         <div className="border-b border-gray-200 p-4">
           <h2 className="text-lg font-semibold text-gray-900">The Log</h2>
           <p className="text-sm text-gray-500">Stream: {streamId}</p>

@@ -4,7 +4,7 @@ type CreationKind = 'cabinet' | 'stream';
 
 interface CreationTargetResult {
   parentCabinetId: string | null;
-  targetCabinetId?: string;
+  targetCabinetId?: string | null;
   error?: string;
 }
 
@@ -24,7 +24,9 @@ export function getVisibleActiveNodeId(
   const parentMap = new Map<string, string>();
   
   // Stream -> Cabinet
-  streams.forEach(s => parentMap.set(s.id, s.cabinet_id));
+  streams.forEach(s => {
+    if (s.cabinet_id) parentMap.set(s.id, s.cabinet_id);
+  });
   
   // Cabinet -> Parent Cabinet
   cabinets.forEach(c => {
@@ -91,16 +93,41 @@ export function resolveCreationTarget(params: {
     return { parentCabinetId: parentFromStream };
   }
 
-  if (buttonCabinetId) {
-    return { parentCabinetId: buttonCabinetId, targetCabinetId: buttonCabinetId };
+  // For streams:
+  // If a specific location is requested (button click), use it.
+  if (buttonCabinetId !== undefined) {
+    return { parentCabinetId: buttonCabinetId, targetCabinetId: buttonCabinetId ?? null };
   }
 
-  const targetFromStream = streams?.find((stream) => stream.id === activeStreamId)?.cabinet_id;
-  if (targetFromStream) {
-    return { parentCabinetId: targetFromStream, targetCabinetId: targetFromStream };
+  // Otherwise, try to infer from active stream
+  const activeStream = streams?.find((stream) => stream.id === activeStreamId);
+  if (activeStream) {
+    // Use the active stream's cabinet (or null for root)
+    return { 
+      parentCabinetId: activeStream.cabinet_id, 
+      targetCabinetId: activeStream.cabinet_id 
+    };
   }
 
-  return { parentCabinetId: null, error: 'Select a cabinet before creating a stream.' };
+  // Default to root if no context
+  return { parentCabinetId: null, targetCabinetId: null };
+}
+
+export function isCreationAllowed(
+  target: CreationTargetResult, 
+  settings: { root_restriction?: string } | undefined
+): boolean {
+  // If there's an error in target resolution, it's not allowed
+  if (target.error) return false;
+
+  const isCabinetOnly = settings?.root_restriction === 'cabinet-only';
+
+  // If we are targeting root (targetCabinetId is null/undefined) and restriction is enabled
+  if (isCabinetOnly && !target.targetCabinetId) {
+    return false;
+  }
+
+  return true;
 }
 
 export function applyOptimisticCabinetCreation(

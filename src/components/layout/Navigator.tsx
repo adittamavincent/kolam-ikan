@@ -12,6 +12,7 @@ import {
   getNextSortOrder,
   getVisibleActiveNodeId,
   resolveCreationTarget,
+  isCreationAllowed,
 } from '@/lib/utils/navigation';
 
 type CreationItem = {
@@ -51,8 +52,8 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
     }
   };
 
-  const paddingLeft = type === 'cabinet' 
-    ? `${depth * 12 + 8}px` 
+  const paddingLeft = type === 'cabinet'
+    ? `${depth * 12 + 8}px`
     : `${(depth) * 12 + 4}px`; // Note: Streams passed depth+1 usually, so here if we pass depth+1 for streams it works.
 
   return (
@@ -62,12 +63,12 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
         style={{ paddingLeft }}
       >
         {type === 'cabinet' ? (
-           <>
+          <>
             <div className="w-4 shrink-0" /> {/* Spacer for chevron */}
             <Folder className="h-4 w-4 shrink-0 text-gray-400" />
-           </>
+          </>
         ) : (
-           <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+          <FileText className="h-4 w-4 shrink-0 text-gray-400" />
         )}
         <input
           ref={inputRef}
@@ -76,8 +77,8 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
           onChange={(e) => setName(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={() => {
-             if (name.trim()) onConfirm(name.trim());
-             else onCancel();
+            if (name.trim()) onConfirm(name.trim());
+            else onCancel();
           }}
           className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-blue-500 rounded-sm"
           onClick={(e) => e.stopPropagation()}
@@ -116,6 +117,75 @@ interface CabinetNodeProps {
   handleCreationCancel: () => void;
 }
 
+interface StreamNodeProps {
+  stream: Stream;
+  depth: number;
+  activeNode: { id: string; type: "cabinet" | "stream" } | null;
+  editingItemId: string | null;
+  editingName: string;
+  editInputRef: React.RefObject<HTMLInputElement | null>;
+  setEditingName: (name: string) => void;
+  handleKeyDown: (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => void;
+  handleRename: (id: string, newName: string, type: 'cabinet' | 'stream') => void;
+  handleItemClick: (id: string, type: 'cabinet' | 'stream', name: string, isActive: boolean) => void;
+}
+
+const StreamNode = ({
+  stream,
+  depth,
+  activeNode,
+  editingItemId,
+  editingName,
+  editInputRef,
+  setEditingName,
+  handleKeyDown,
+  handleRename,
+  handleItemClick,
+}: StreamNodeProps) => {
+  const isStreamActive = activeNode?.type === 'stream' && activeNode.id === stream.id;
+  const isStreamEditing = editingItemId === stream.id;
+
+  return (
+    <div className="group relative flex items-center">
+      <div
+        className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
+            ${isStreamActive
+            ? 'bg-primary-50 text-primary-700 font-semibold shadow-sm ring-1 ring-primary-100'
+            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+          }`}
+        style={{ paddingLeft: `${depth * 12 + 4}px` }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!isStreamEditing) {
+            handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
+          }
+        }}
+      >
+        <FileText
+          className={`h-4 w-4 shrink-0 transition-colors ${isStreamActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+            }`}
+        />
+
+        {isStreamEditing ? (
+          <input
+            ref={editInputRef}
+            type="text"
+            value={editingName}
+            onChange={(e) => setEditingName(e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, stream.id, 'stream')}
+            onBlur={() => handleRename(stream.id, editingName, 'stream')}
+            className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-primary-500 rounded-sm"
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+          />
+        ) : (
+          <span className="truncate flex-1 select-none">{stream.name}</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const CabinetNode = ({
   cabinet,
   depth = 0,
@@ -151,11 +221,10 @@ const CabinetNode = ({
     <div className="mb-0.5">
       <div
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
-            ${
-              isActive
-                ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 font-medium'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
+            ${isActive
+            ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 font-medium'
+            : 'text-gray-700 hover:bg-gray-100'
+          }`}
         style={{ paddingLeft: `${depth * 12 + 8}px` }}
         onClick={(e) => {
           e.stopPropagation();
@@ -232,52 +301,21 @@ const CabinetNode = ({
           )}
 
           {/* Render Streams */}
-          {cabinetStreams.map((stream) => {
-            const isStreamActive = activeNode?.type === 'stream' && activeNode.id === stream.id;
-            const isStreamEditing = editingItemId === stream.id;
-
-            return (
-              <div key={stream.id} className="group relative flex items-center">
-                <div
-                  className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
-                      ${
-                        isStreamActive
-                          ? 'bg-primary-50 text-primary-700 font-semibold shadow-sm ring-1 ring-primary-100'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                  style={{ paddingLeft: `${(depth + 1) * 12 + 4}px` }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!isStreamEditing) {
-                        handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
-                    }
-                  }}
-                >
-                  <FileText
-                    className={`h-4 w-4 shrink-0 transition-colors ${
-                      isStreamActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
-                    }`}
-                  />
-
-                  {isStreamEditing ? (
-                    <input
-                      ref={editInputRef}
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(e, stream.id, 'stream')}
-                      onBlur={() => handleRename(stream.id, editingName, 'stream')}
-                      className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-primary-500 rounded-sm"
-                      onClick={(e) => e.stopPropagation()}
-                      autoFocus
-                    />
-                  ) : (
-                    <span className="truncate flex-1 select-none">{stream.name}</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {cabinetStreams.map((stream) => (
+            <StreamNode
+              key={stream.id}
+              stream={stream}
+              depth={depth + 1}
+              activeNode={activeNode}
+              editingItemId={editingItemId}
+              editingName={editingName}
+              editInputRef={editInputRef}
+              setEditingName={setEditingName}
+              handleKeyDown={handleKeyDown}
+              handleRename={handleRename}
+              handleItemClick={handleItemClick}
+            />
+          ))}
 
           {creatingItem?.parentId === cabinet.id && creatingItem.type === 'stream' && (
             <CreationInput
@@ -343,13 +381,15 @@ export function Navigator({ }: NavigatorProps) {
         sort_order: sortOrder,
       });
     } else {
-      if (!creatingItem.parentId) return; // Streams must have a cabinet
-      const cabinetStreams = streams?.filter((s) => s.cabinet_id === creatingItem.parentId) || [];
+      // Stream creation
+      const parentId = creatingItem.parentId ?? null;
+      const cabinetStreams = streams?.filter((s) => s.cabinet_id === parentId) || [];
       if (cabinetStreams.some((s) => s.name === name)) return;
       const sortOrder = getNextSortOrder(cabinetStreams);
 
       createStreamMutation.mutate({
-        cabinet_id: creatingItem.parentId,
+        cabinet_id: parentId,
+        domain_id: domainId,
         name,
         sort_order: sortOrder,
       });
@@ -369,6 +409,23 @@ export function Navigator({ }: NavigatorProps) {
       editInputRef.current.select();
     }
   }, [editingItemId]);
+
+  // Fetch current domain details (for settings)
+  const { data: domain } = useQuery({
+    queryKey: ['domain', domainId],
+    queryFn: async () => {
+      if (!domainId) return null;
+      const { data, error } = await supabase
+        .from('domains')
+        .select('*')
+        .eq('id', domainId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!domainId,
+  });
 
   // Fetch cabinets for current domain
   const { data: cabinets } = useQuery({
@@ -396,7 +453,7 @@ export function Navigator({ }: NavigatorProps) {
       const { data, error } = await supabase
         .from('streams')
         .select('*, cabinet:cabinets(*)')
-        .eq('cabinets.domain_id', domainId)
+        .eq('domain_id', domainId)
         .is('deleted_at', null)
         .order('sort_order', { ascending: true });
 
@@ -405,6 +462,9 @@ export function Navigator({ }: NavigatorProps) {
     },
     enabled: !!domainId,
   });
+
+  const settings = domain?.settings as { root_restriction?: string } | undefined;
+  const isCabinetOnly = settings?.root_restriction === 'cabinet-only';
 
   // Auto-expand cabinet containing the active stream
   useLayoutEffect(() => {
@@ -420,7 +480,9 @@ export function Navigator({ }: NavigatorProps) {
             // We only auto-expand the immediate parent here for now.
             // If we want to auto-expand the whole path, we'd need to traverse up.
             // For now, let's stick to the previous behavior of expanding the immediate parent.
-            next.add(activeStream.cabinet_id);
+            if (activeStream.cabinet_id) {
+              next.add(activeStream.cabinet_id);
+            }
             return next;
           });
         }
@@ -560,7 +622,8 @@ export function Navigator({ }: NavigatorProps) {
       const optimisticStream: Stream = {
         id: `temp-${Date.now()}`,
         name: newStream.name,
-        cabinet_id: newStream.cabinet_id,
+        cabinet_id: newStream.cabinet_id ?? null,
+        domain_id: newStream.domain_id,
         sort_order: newStream.sort_order ?? 0,
         description: null,
         created_at: new Date().toISOString(),
@@ -602,17 +665,17 @@ export function Navigator({ }: NavigatorProps) {
   const cabinetTree = useMemo(() => {
     if (!cabinets) return { roots: [], getChildren: () => [] };
     const roots = cabinets.filter(c => !c.parent_id);
-    const getChildren = (parentId: string): Cabinet[] => 
+    const getChildren = (parentId: string): Cabinet[] =>
       cabinets.filter(c => c.parent_id === parentId);
-    
+
     // We'll use a recursive render function, so we just need roots and a way to look up children
     return { roots, getChildren };
   }, [cabinets]);
 
   // Determine the effective highlight node
-  const activeNode = useMemo(() => 
+  const activeNode = useMemo(() =>
     getVisibleActiveNodeId(activeStreamId, streams, cabinets, expandedCabinets),
-  [activeStreamId, streams, cabinets, expandedCabinets]);
+    [activeStreamId, streams, cabinets, expandedCabinets]);
 
   const handleRename = (id: string, newName: string, type: 'cabinet' | 'stream') => {
     const trimmedName = newName.trim();
@@ -688,14 +751,21 @@ export function Navigator({ }: NavigatorProps) {
 
     if (target.error) return;
 
-    if (!target.targetCabinetId) return;
+    if (!isCreationAllowed(target, settings)) {
+      // Ideally show a toast or error message here. 
+      // For now, we simply return to block creation.
+      console.warn('Root streams are disabled for this domain.');
+      return;
+    }
 
     const targetCabinetId = target.targetCabinetId;
 
-    if (!cabinets?.some((cabinet) => cabinet.id === targetCabinetId)) return;
+    if (targetCabinetId) {
+      if (!cabinets?.some((cabinet) => cabinet.id === targetCabinetId)) return;
+      setExpandedCabinets((prev) => new Set(prev).add(targetCabinetId));
+    }
 
-    setExpandedCabinets((prev) => new Set(prev).add(targetCabinetId));
-    setCreatingItem({ type: 'stream', parentId: targetCabinetId });
+    setCreatingItem({ type: 'stream', parentId: targetCabinetId ?? null });
   };
 
   // Click debouncing ref
@@ -703,8 +773,8 @@ export function Navigator({ }: NavigatorProps) {
 
   // Click handling logic
   const handleItemClick = (
-    id: string, 
-    type: 'cabinet' | 'stream', 
+    id: string,
+    type: 'cabinet' | 'stream',
     name: string,
     isActive: boolean
   ) => {
@@ -717,7 +787,7 @@ export function Navigator({ }: NavigatorProps) {
       // Standard double click is usually < 300ms. VS Code rename is usually triggered if > 500ms or so.
       // But here we want: Click -> Open. Click again (when active) -> Rename.
       // We should avoid triggering rename on double click (which might toggle expansion).
-      
+
       if (lastClick && lastClick.id === id && (now - lastClick.time > 500)) {
         setEditingItemId(id);
         setEditingName(name);
@@ -743,6 +813,9 @@ export function Navigator({ }: NavigatorProps) {
 
 
 
+  // Root streams
+  const rootStreams = streams?.filter((s) => !s.cabinet_id) || [];
+
   // When there's no domain selected, show a minimal placeholder.
   if (!domainId) {
     return (
@@ -762,9 +835,9 @@ export function Navigator({ }: NavigatorProps) {
       {/* Tree View */}
       <div className="flex-1 overflow-y-auto p-2">
         {cabinetTree.roots.map((cabinet) => (
-          <CabinetNode 
-            key={cabinet.id} 
-            cabinet={cabinet} 
+          <CabinetNode
+            key={cabinet.id}
+            cabinet={cabinet}
             cabinetTree={cabinetTree}
             streams={streams}
             expandedCabinets={expandedCabinets}
@@ -788,6 +861,22 @@ export function Navigator({ }: NavigatorProps) {
           />
         ))}
 
+        {rootStreams.map((stream) => (
+          <StreamNode
+            key={stream.id}
+            stream={stream}
+            depth={0}
+            activeNode={activeNode}
+            editingItemId={editingItemId}
+            editingName={editingName}
+            editInputRef={editInputRef}
+            setEditingName={setEditingName}
+            handleKeyDown={handleKeyDown}
+            handleRename={handleRename}
+            handleItemClick={handleItemClick}
+          />
+        ))}
+
         {creatingItem?.type === 'cabinet' && creatingItem.parentId === null && (
           <CreationInput
             type="cabinet"
@@ -797,14 +886,36 @@ export function Navigator({ }: NavigatorProps) {
           />
         )}
 
-        {/* New Cabinet Button */}
-        <button
-          onClick={() => handleCreateCabinet(null)}
-          className="mt-4 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>New Cabinet</span>
-        </button>
+        {creatingItem?.type === 'stream' && creatingItem.parentId === null && (
+          <CreationInput
+            type="stream"
+            depth={0}
+            onConfirm={handleCreationConfirm}
+            onCancel={handleCreationCancel}
+          />
+        )}
+
+        <div className="mt-4 flex flex-col gap-1">
+          {/* New Stream Button - Only if not restricted */}
+          {!isCabinetOnly && (
+            <button
+              onClick={() => handleCreateStream(null)}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Stream</span>
+            </button>
+          )}
+
+          {/* New Cabinet Button */}
+          <button
+            onClick={() => handleCreateCabinet(null)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            <span>New Cabinet</span>
+          </button>
+        </div>
       </div>
     </div>
   );

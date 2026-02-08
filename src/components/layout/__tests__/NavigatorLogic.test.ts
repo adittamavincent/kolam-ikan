@@ -6,6 +6,7 @@ import {
   getUniqueName,
   getVisibleActiveNodeId,
   resolveCreationTarget,
+  isCreationAllowed,
 } from '@/lib/utils/navigation';
 import { Cabinet, Stream } from '@/lib/types';
 
@@ -21,9 +22,10 @@ const createCabinet = (id: string, parentId: string | null = null): Cabinet => (
   deleted_at: null,
 });
 
-const createStream = (id: string, cabinetId: string): Stream => ({
+const createStream = (id: string, cabinetId: string | null): Stream => ({
   id,
   cabinet_id: cabinetId,
+  domain_id: 'domain-1',
   name: `Stream ${id}`,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -146,6 +148,19 @@ describe('resolveCreationTarget', () => {
     expect(result).toEqual({ parentCabinetId: 'c1', targetCabinetId: 'c1' });
   });
 
+  it('allows root stream creation when no cabinet is specified (mixed entities)', () => {
+    const result = resolveCreationTarget({
+      kind: 'stream',
+      buttonCabinetId: null,
+      activeStreamId: undefined,
+      streams: [],
+    });
+
+    // Should return null targetCabinetId (meaning root), no error
+    expect(result.error).toBeUndefined();
+    expect(result.targetCabinetId).toBeNull();
+  });
+
   it('falls back to active stream cabinet when no button context', () => {
     const result = resolveCreationTarget({
       kind: 'stream',
@@ -157,7 +172,7 @@ describe('resolveCreationTarget', () => {
     expect(result).toEqual({ parentCabinetId: 'c1', targetCabinetId: 'c1' });
   });
 
-  it('returns an error when stream creation has no target', () => {
+  it('defaults to root when stream creation has no target', () => {
     const result = resolveCreationTarget({
       kind: 'stream',
       buttonCabinetId: undefined,
@@ -165,7 +180,36 @@ describe('resolveCreationTarget', () => {
       streams: [],
     });
 
-    expect(result.error).toBeTruthy();
+    expect(result.error).toBeUndefined();
+    expect(result.targetCabinetId).toBeNull();
+  });
+});
+
+describe('isCreationAllowed', () => {
+  it('allows root stream creation when no restriction is set', () => {
+    const target = { parentCabinetId: null, targetCabinetId: null };
+    expect(isCreationAllowed(target, undefined)).toBe(true);
+    expect(isCreationAllowed(target, {})).toBe(true);
+  });
+
+  it('allows root stream creation when restriction is not cabinet-only', () => {
+    const target = { parentCabinetId: null, targetCabinetId: null };
+    expect(isCreationAllowed(target, { root_restriction: 'something-else' })).toBe(true);
+  });
+
+  it('disallows root stream creation when restriction is cabinet-only', () => {
+    const target = { parentCabinetId: null, targetCabinetId: null };
+    expect(isCreationAllowed(target, { root_restriction: 'cabinet-only' })).toBe(false);
+  });
+
+  it('allows nested stream creation even when restriction is cabinet-only', () => {
+    const target = { parentCabinetId: 'c1', targetCabinetId: 'c1' };
+    expect(isCreationAllowed(target, { root_restriction: 'cabinet-only' })).toBe(true);
+  });
+
+  it('returns false if target has error', () => {
+    const target = { parentCabinetId: null, error: 'some error' };
+    expect(isCreationAllowed(target, undefined)).toBe(false);
   });
 });
 

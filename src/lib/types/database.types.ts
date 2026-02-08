@@ -206,6 +206,7 @@ export type Database = {
           icon: string
           id: string
           name: string
+          settings: Json | null
           sort_order: number
           updated_at: string | null
           user_id: string
@@ -217,6 +218,7 @@ export type Database = {
           icon: string
           id?: string
           name: string
+          settings?: Json | null
           sort_order?: number
           updated_at?: string | null
           user_id: string
@@ -228,6 +230,7 @@ export type Database = {
           icon?: string
           id?: string
           name?: string
+          settings?: Json | null
           sort_order?: number
           updated_at?: string | null
           user_id?: string
@@ -358,30 +361,33 @@ export type Database = {
       }
       streams: {
         Row: {
-          cabinet_id: string
+          cabinet_id: string | null
           created_at: string | null
           deleted_at: string | null
           description: string | null
+          domain_id: string
           id: string
           name: string
           sort_order: number
           updated_at: string | null
         }
         Insert: {
-          cabinet_id: string
+          cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
+          domain_id: string
           id?: string
           name: string
           sort_order?: number
           updated_at?: string | null
         }
         Update: {
-          cabinet_id?: string
+          cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
           description?: string | null
+          domain_id?: string
           id?: string
           name?: string
           sort_order?: number
@@ -393,6 +399,13 @@ export type Database = {
             columns: ["cabinet_id"]
             isOneToOne: false
             referencedRelation: "cabinets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "streams_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
             referencedColumns: ["id"]
           },
         ]

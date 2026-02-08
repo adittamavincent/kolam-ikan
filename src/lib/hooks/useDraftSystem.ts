@@ -277,8 +277,25 @@ export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSys
   const commitDraft = useCallback(async () => {
     debouncedSave.cancel(); // Cancel pending saves
     
-    const content = contentRef.current;
+    let content = contentRef.current;
     if (!content || content.length === 0) return;
+    
+    // Remove trailing empty block if present
+    if (content.length > 0) {
+      const lastBlock = content[content.length - 1];
+      // Check if it's an empty paragraph
+      const isEmptyParagraph = 
+        lastBlock.type === 'paragraph' && 
+        (!lastBlock.content || (Array.isArray(lastBlock.content) && lastBlock.content.length === 0));
+      
+      if (isEmptyParagraph) {
+        // Create a shallow copy without the last block
+        content = content.slice(0, -1);
+      }
+    }
+
+    // If content is empty after trimming, don't commit
+    if (content.length === 0) return;
     
     // Force immediate save/update to is_draft = false
     try {

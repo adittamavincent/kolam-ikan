@@ -1,22 +1,160 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
+
+  /* -------------------------------------------------------------------------- */
+  /*  PRIMITIVES (Brand & Base Colors)                                         */
+  /* -------------------------------------------------------------------------- */
+  
+  /* Primary Brand Colors */
+  --color-primary-50: #f0f9ff;
+  --color-primary-100: #e0f2fe;
+  --color-primary-200: #bae6fd;
+  --color-primary-300: #7dd3fc;
+  --color-primary-400: #38bdf8;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
+  --color-primary-800: #075985;
+  --color-primary-900: #0c4a6e;
+  --color-primary-950: #082f49;
+
+  /* Domain Colors */
+  --color-programming: #3B82F6;
+  --color-internship: #8B5CF6;
+  --color-gym: #EF4444;
+  --color-scholarship: #10B981;
+  --color-hima: #F59E0B;
+
+  /* -------------------------------------------------------------------------- */
+  /*  SEMANTIC TOKENS (Theming System)                                         */
+  /* -------------------------------------------------------------------------- */
+
+  /* Surface Backgrounds */
+  --color-surface-default: var(--bg-surface-default);
+  --color-surface-subtle: var(--bg-surface-subtle);
+  --color-surface-elevated: var(--bg-surface-elevated);
+  --color-surface-overlay: var(--bg-surface-overlay);
+
+  /* Text & Content */
+  --color-text-default: var(--text-default);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-muted: var(--text-muted);
+  --color-text-inverse: var(--text-inverse);
+
+  /* Borders & Dividers */
+  --color-border-default: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
+  /* Action: Primary */
+  --color-action-primary-bg: var(--action-primary-bg);
+  --color-action-primary-hover: var(--action-primary-hover);
+  --color-action-primary-text: var(--action-primary-text);
+  --color-action-primary-disabled: var(--action-primary-disabled);
+
+  /* Action: Secondary */
+  --color-action-secondary-bg: var(--action-secondary-bg);
+  --color-action-secondary-hover: var(--action-secondary-hover);
+  --color-action-secondary-text: var(--action-secondary-text);
+  --color-action-secondary-border: var(--action-secondary-border);
+
+  /* Feedback / Status */
+  --color-status-error-bg: var(--status-error-bg);
+  --color-status-error-text: var(--status-error-text);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-success-text: var(--status-success-text);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  THEME VARIABLES (Light/Dark Implementation)                              */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  /* Base - Light Mode */
+  --background: #ffffff;
+  --foreground: #111827; /* gray-900 */
+
+  /* Surfaces */
+  --bg-surface-default: #ffffff;
+  --bg-surface-subtle: #f9fafb; /* gray-50 */
+  --bg-surface-elevated: #ffffff;
+  --bg-surface-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Text */
+  --text-default: #111827; /* gray-900 */
+  --text-subtle: #4b5563; /* gray-600 */
+  --text-muted: #9ca3af; /* gray-400 */
+  --text-inverse: #ffffff;
+
+  /* Borders */
+  --border-default: #e5e7eb; /* gray-200 */
+  --border-subtle: #f3f4f6; /* gray-100 */
+  --border-strong: #d1d5db; /* gray-300 */
+
+  /* Action: Primary (Blue) */
+  --action-primary-bg: #0369a1; /* primary-700 for better contrast (AA) */
+  --action-primary-hover: #075985; /* primary-800 */
+  --action-primary-text: #ffffff;
+  --action-primary-disabled: #93c5fd;
+
+  /* Action: Secondary (White/Gray) */
+  --action-secondary-bg: #ffffff;
+  --action-secondary-hover: #f9fafb; /* gray-50 */
+  --action-secondary-text: #374151; /* gray-700 */
+  --action-secondary-border: #d1d5db; /* gray-300 */
+
+  /* Status */
+  --status-error-bg: #fef2f2; /* red-50 */
+  --status-error-text: #b91c1c; /* red-700 for better contrast */
+  --status-success-bg: #f0fdf4; /* green-50 */
+  --status-success-text: #15803d; /* green-700 for consistency */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
+    /* Base - Dark Mode */
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    /* Surfaces */
+    --bg-surface-default: #0a0a0a;
+    --bg-surface-subtle: #171717; /* neutral-900 */
+    --bg-surface-elevated: #262626; /* neutral-800 */
+    --bg-surface-overlay: rgba(0, 0, 0, 0.7);
+
+    /* Text */
+    --text-default: #ededed;
+    --text-subtle: #a3a3a3; /* neutral-400 */
+    --text-muted: #525252; /* neutral-600 */
+    --text-inverse: #000000;
+
+    /* Borders */
+    --border-default: #262626; /* neutral-800 */
+    --border-subtle: #171717; /* neutral-900 */
+    --border-strong: #404040; /* neutral-700 */
+
+    /* Action: Primary */
+    --action-primary-bg: #38bdf8; /* primary-400 (lighter for dark mode) */
+    --action-primary-hover: #7dd3fc; /* primary-300 */
+    --action-primary-text: #082f49; /* primary-950 (dark text on light btn) */
+    
+    /* Action: Secondary */
+    --action-secondary-bg: #171717;
+    --action-secondary-hover: #262626;
+    --action-secondary-text: #e5e5e5;
+    --action-secondary-border: #404040;
+
+    /* Status */
+    --status-error-bg: #450a0a; /* red-950 */
+    --status-error-text: #f87171; /* red-400 */
+    --status-success-bg: #052e16; /* green-950 */
+    --status-success-text: #4ade80; /* green-400 */
   }
 }
 

@@ -114,9 +114,9 @@ export function EntryCreator({ streamId, personaId }: EntryCreatorProps) {
   }, [ghostId, content, debouncedSave]);
 
   return (
-    <div className="relative rounded-lg border border-gray-200 bg-white p-4">
+    <div className="relative rounded-lg border border-border-default bg-surface-default p-4">
       {isSaving && (
-        <div className="absolute right-4 top-4 flex items-center gap-2 text-sm text-gray-500">
+        <div className="absolute right-4 top-4 flex items-center gap-2 text-sm text-text-muted">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span>Saving...</span>
         </div>

@@ -15,8 +15,8 @@ export function InteractionSwitcher({
           onClick={() => onChange(mode)}
           className={`rounded px-4 py-2 ${
             value === mode
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-action-primary-bg text-action-primary-text'
+              : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
           }`}
         >
           {mode}

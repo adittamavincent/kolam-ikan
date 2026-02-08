@@ -45,27 +45,27 @@ export function ResponseParser({
   return (
     <div className="mt-4 space-y-4">
       <div>
-        <label className="mb-2 block text-sm font-medium text-gray-700">
+        <label className="mb-2 block text-sm font-medium text-text-default">
           Paste Response XML
         </label>
         <textarea
           value={pastedXML}
           onChange={(e) => setPastedXML(e.target.value)}
-          className="w-full rounded border border-gray-300 p-3"
+          className="w-full rounded border border-border-default bg-surface-subtle text-text-default p-3 focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
           rows={6}
           placeholder="<response>...</response>"
         />
       </div>
 
       {parseError && (
-        <div className="rounded bg-red-50 p-3 text-sm text-red-600">
+        <div className="rounded bg-status-error-bg p-3 text-sm text-status-error-text border border-status-error-border">
           Error: {parseError}
         </div>
       )}
 
       <button
         onClick={parseResponse}
-        className="rounded bg-primary-600 px-4 py-2 text-white hover:bg-primary-700"
+        className="rounded bg-action-primary-bg px-4 py-2 text-action-primary-text hover:bg-action-primary-hover transition-colors"
       >
         Parse & Apply
       </button>

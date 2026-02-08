@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronRight, ChevronDown, Folder, FileText, Plus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FileText } from 'lucide-react';
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { NavigatorCreateButton } from './NavigatorCreateButton';
 import { Cabinet, CabinetInsert, Stream, StreamInsert } from '@/lib/types';
@@ -92,7 +92,7 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
               <div className="h-4 w-4" />
             </div>
             <div className="flex items-center justify-center">
-              <Folder className="h-4 w-4 text-gray-400" />
+              <Folder className="h-4 w-4 text-text-muted" />
             </div>
           </div>
         ) : (
@@ -100,7 +100,7 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
             className="flex shrink-0 items-center justify-center"
             style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
           >
-            <FileText className="h-4 w-4 text-gray-400" />
+            <FileText className="h-4 w-4 text-text-muted" />
           </div>
         )}
         <input
@@ -113,7 +113,7 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
             if (name.trim()) onConfirm(name.trim());
             else onCancel();
           }}
-          className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-blue-500 rounded-sm"
+          className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg rounded-sm"
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -192,8 +192,8 @@ const StreamNode = ({
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
             ${isStreamActive
-            ? 'bg-primary-50 text-primary-700 font-semibold shadow-sm ring-1 ring-primary-100'
-            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            ? 'bg-action-primary-bg/10 text-action-primary-bg font-semibold shadow-sm ring-1 ring-action-primary-bg/20'
+            : 'text-text-subtle hover:bg-surface-subtle hover:text-text-default'
           }`}
         style={{ paddingLeft: `${getStreamPaddingRem(depth)}rem` }}
         onClick={(e) => {
@@ -218,7 +218,7 @@ const StreamNode = ({
           style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
         >
           <FileText
-            className={`h-4 w-4 transition-colors ${isStreamActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+            className={`h-4 w-4 transition-colors ${isStreamActive ? 'text-action-primary-bg' : 'text-text-muted group-hover:text-text-subtle'
               }`}
           />
         </div>
@@ -231,7 +231,7 @@ const StreamNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, stream.id, 'stream')}
             onBlur={() => handleRename(stream.id, editingName, 'stream')}
-            className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-primary-500 rounded-sm"
+            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg rounded-sm"
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit stream name"
@@ -283,8 +283,8 @@ const CabinetNode = ({
       <div
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
             ${isActive
-            ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 font-medium'
-            : 'text-gray-700 hover:bg-gray-100'
+            ? 'bg-action-primary-bg/10 text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium'
+            : 'text-text-subtle hover:bg-surface-subtle'
           }`}
         style={{ paddingLeft: `${getCabinetPaddingRem(depth)}rem` }}
         onClick={(e) => {
@@ -322,14 +322,14 @@ const CabinetNode = ({
                 e.stopPropagation();
                 toggleCabinet(cabinet.id);
               }}
-              className="text-gray-400 hover:text-gray-600 p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="text-text-muted hover:text-text-subtle p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-action-primary-bg"
               aria-label={isExpanded ? "Collapse cabinet" : "Expand cabinet"}
             >
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
           </div>
           <div className="flex items-center justify-center">
-            <Folder className={`h-4 w-4 ${isActive ? 'text-blue-500' : 'text-gray-400'}`} />
+            <Folder className={`h-4 w-4 ${isActive ? 'text-action-primary-bg' : 'text-text-muted'}`} />
           </div>
         </div>
 
@@ -341,7 +341,7 @@ const CabinetNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, cabinet.id, 'cabinet')}
             onBlur={() => handleRename(cabinet.id, editingName, 'cabinet')}
-            className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-blue-500 rounded-sm"
+            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg rounded-sm"
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit cabinet name"
@@ -354,7 +354,7 @@ const CabinetNode = ({
       {isExpanded && (
         <div className="relative" role="group">
           <div
-            className="pointer-events-none absolute inset-y-0 w-0 border-gray-100"
+            className="pointer-events-none absolute inset-y-0 w-0 border-border-subtle"
             style={{
               left: `${getBorderCenterRem(depth)}rem`,
               borderLeftWidth: '0.0625rem',
@@ -877,6 +877,7 @@ export function Navigator({ }: NavigatorProps) {
 
   // Long press handlers
   const handleMouseDown = (id: string, name: string, type: 'cabinet' | 'stream') => {
+    void type;
     longPressTimerRef.current = setTimeout(() => {
       setEditingItemId(id);
       setEditingName(name);
@@ -951,17 +952,17 @@ export function Navigator({ }: NavigatorProps) {
   // When there's no domain selected, show a minimal placeholder.
   if (!domainId) {
     return (
-      <div className="flex h-full w-full flex-col border-r border-gray-200 bg-white p-4">
-        <p className="text-sm text-gray-500">Select a domain to begin</p>
+      <div className="flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle p-4">
+        <p className="text-sm text-text-subtle">Select a domain to begin</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full w-full flex-col border-r border-gray-200 bg-white">
+    <div className="flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4">
-        <h2 className="text-sm font-semibold text-gray-900">Navigator</h2>
+      <div className="border-b border-border-subtle p-4">
+        <h2 className="text-sm font-semibold text-text-default">Navigator</h2>
       </div>
 
       {/* Tree View */}

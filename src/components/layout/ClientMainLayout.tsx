@@ -125,11 +125,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-surface-subtle">
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow-lg md:hidden"
+        className="fixed left-4 top-4 z-50 rounded-lg bg-surface-default p-2 shadow-lg md:hidden text-text-default"
       >
         {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
@@ -169,8 +169,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           
           {/* Resize Handle */}
           <div
-            className={`absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors z-50
-              ${isResizing ? 'bg-blue-600 w-1' : 'bg-transparent'}
+            className={`absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-action-primary-bg/50 active:bg-action-primary-bg transition-colors z-50
+              ${isResizing ? 'bg-action-primary-bg w-1' : 'bg-transparent'}
             `}
             onMouseDown={handleMouseDown}
           />
@@ -186,11 +186,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       {/* ====== MAIN CONTENT ====== */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-2 text-xs text-gray-600">
+        <div className="flex items-center justify-between border-b border-border-subtle bg-surface-subtle px-4 py-2 text-xs text-text-subtle">
           <div className="flex items-center gap-2">
             {loading ? 'Checking session...' : `Signed in as ${user?.email ?? userId}`}
             {isDevHost && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                 Dev: log out before closing tab
               </span>
             )}
@@ -199,13 +199,13 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             type="button"
             onClick={handleSignOut}
             disabled={loading || signingOut || status !== 'signed_in'}
-            className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-md border border-border-default px-2 py-1 text-xs font-medium text-text-default hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {signingOut ? 'Signing out...' : 'Sign out'}
           </button>
         </div>
         {error && (
-          <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+          <div className="border-b border-status-error-border bg-status-error-bg px-4 py-2 text-xs text-status-error-text">
             {error}
           </div>
         )}

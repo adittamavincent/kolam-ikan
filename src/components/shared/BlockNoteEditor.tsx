@@ -15,7 +15,7 @@ export interface BlockNoteEditorProps {
 const BaseEditor = dynamic(() => import('./BaseEditor'), { 
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center p-4 text-gray-400">
+    <div className="flex items-center justify-center p-4 text-text-muted">
       <Loader2 className="h-5 w-5 animate-spin" />
     </div>
   )

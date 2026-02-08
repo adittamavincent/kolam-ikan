@@ -52,18 +52,18 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
   return (
     <div
-      className={`bg-white relative overflow-hidden z-20 ${
+      className={`bg-surface-default relative overflow-hidden z-20 ${
         isVisible ? '' : 'pointer-events-none'
       }`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
-        <div className="flex items-center justify-between border-b border-gray-200 p-4">
+        <div className="flex items-center justify-between border-b border-border-default p-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">The Canvas</h2>
-            <p className="text-sm text-gray-500">Stream: {streamId}</p>
+            <h2 className="text-lg font-semibold text-text-default">The Canvas</h2>
+            <p className="text-sm text-text-subtle">Stream: {streamId}</p>
           </div>
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-text-muted" />}
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {canvas ? (
@@ -73,7 +73,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
               placeholder="Start writing on the canvas..."
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-400">
+            <div className="flex h-full items-center justify-center text-text-muted">
               {isLoading ? 'Loading canvas...' : 'No canvas found'}
             </div>
           )}

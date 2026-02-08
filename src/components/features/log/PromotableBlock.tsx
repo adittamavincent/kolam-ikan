@@ -44,8 +44,8 @@ export function PromotableBlock({
           disabled={wasPromoted}
           className={`absolute right-2 top-2 rounded p-1 transition-colors ${
             wasPromoted
-              ? 'bg-green-100 text-green-600'
-              : 'bg-white text-gray-600 shadow-sm hover:bg-gray-100'
+              ? 'bg-status-success-bg text-status-success-text'
+              : 'bg-surface-default text-text-muted shadow-sm hover:bg-surface-hover'
           }`}
           title={wasPromoted ? 'Promoted to Canvas' : 'Promote to Canvas'}
         >

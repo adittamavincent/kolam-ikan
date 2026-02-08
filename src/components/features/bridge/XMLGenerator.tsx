@@ -100,13 +100,13 @@ ${userInput}
 
   return (
     <div className="mt-4">
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <pre className="overflow-x-auto text-xs whitespace-pre-wrap">{generateXML()}</pre>
+      <div className="rounded-lg border border-border-default bg-surface-subtle p-4">
+        <pre className="overflow-x-auto text-xs whitespace-pre-wrap text-text-default">{generateXML()}</pre>
       </div>
 
       <button
         onClick={copyToClipboard}
-        className="mt-2 flex items-center gap-2 rounded bg-primary-600 px-4 py-2 text-white hover:bg-primary-700"
+        className="mt-2 flex items-center gap-2 rounded bg-action-primary-bg px-4 py-2 text-action-primary-text hover:bg-action-primary-hover transition-colors"
       >
         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         {copied ? 'Copied!' : 'Copy to Clipboard'}

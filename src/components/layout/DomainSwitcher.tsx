@@ -82,14 +82,14 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   const activeDomainId = params?.domain as string | undefined;
 
   return (
-    <div className="flex w-16 flex-col items-center border-r border-gray-200 bg-white py-4">
+    <div className="flex w-16 flex-col items-center border-r border-border-default bg-surface-default py-4">
       {/* Home Button */}
       <button
         onClick={() => {
           hideSidebar();
           router.push('/');
         }}
-        className="mb-6 flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+        className="mb-6 flex h-10 w-10 items-center justify-center rounded-lg text-text-subtle transition-colors hover:bg-surface-subtle hover:text-text-default"
         title="Home"
       >
         <Home className="h-5 w-5" />
@@ -99,14 +99,14 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
       <div className="flex flex-1 flex-col gap-3">
         {isLoading || isFetching ? (
           <div className="flex h-10 w-10 items-center justify-center">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-primary-600" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-default border-t-action-primary-bg" />
           </div>
         ) : error ? (
           <div className="flex flex-col items-center gap-2 px-1">
-            <AlertCircle className="h-5 w-5 text-red-500" />
+            <AlertCircle className="h-5 w-5 text-status-error-text" />
             <button
               onClick={() => refetch()}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
               title="Retry loading domains"
             >
               <RefreshCw className="h-4 w-4" />
@@ -122,8 +122,8 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
                 onMouseEnter={() => setHoveredDomain(domain.id)}
                 onMouseLeave={() => setHoveredDomain(null)}
                 className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isActive
-                  ? 'bg-primary-50 text-primary-600 ring-2 ring-primary-500 shadow-sm'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'bg-action-primary-bg/10 text-action-primary-bg ring-2 ring-action-primary-bg shadow-sm'
+                  : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'
                   }`}
                 title={domain.name}
               >
@@ -134,15 +134,15 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
 
                 {/* Active Indicator Bar */}
                 {isActive && (
-                  <div className="absolute -left-3 h-8 w-1 rounded-r-full bg-primary-500" />
+                  <div className="absolute -left-3 h-8 w-1 rounded-r-full bg-action-primary-bg" />
                 )}
 
                 {/* Tooltip */}
                 {hoveredDomain === domain.id && (
-                  <div className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg z-50 animate-fade-in">
+                  <div className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-text-default px-2.5 py-1.5 text-xs font-medium text-surface-default shadow-lg z-50 animate-fade-in">
                     {domain.name}
                     {/* Arrow */}
-                    <div className="absolute left-0 top-1/2 -ml-1 -mt-1 h-2 w-2 -rotate-45 bg-gray-900" />
+                    <div className="absolute left-0 top-1/2 -ml-1 -mt-1 h-2 w-2 -rotate-45 bg-text-default" />
                   </div>
                 )}
               </button>
@@ -154,7 +154,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
       {/* New Domain Button */}
       <button
         onClick={() => setIsCreateModalOpen(true)}
-        className="mt-auto flex h-10 w-10 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-primary-500 hover:text-primary-600"
+        className="mt-auto flex h-10 w-10 items-center justify-center rounded-lg border-2 border-dashed border-border-default text-text-muted transition-colors hover:border-action-primary-bg hover:text-action-primary-bg"
         title="New Domain"
       >
         <Plus className="h-5 w-5" />

@@ -22,7 +22,7 @@ export function StreamView({ streamId }: { streamId: string }) {
       {/* Bridge Trigger Button */}
       <button
         onClick={() => setIsBridgeOpen(true)}
-        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-white shadow-lg hover:bg-indigo-700 transition-colors"
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-action-primary-bg px-4 py-2 text-action-primary-text shadow-lg hover:opacity-90 transition-opacity"
       >
         <Sparkles className="h-4 w-4" />
         <span className="font-medium">Bridge</span>

@@ -14,7 +14,7 @@ export function TokenCounter({
   const estimatedTokens = (selectedEntries.length * 200) + (includeCanvas ? 1000 : 0);
 
   return (
-    <div className="mb-4 text-sm text-gray-500">
+    <div className="mb-4 text-sm text-text-muted">
       Estimated Tokens: {estimatedTokens}
     </div>
   );

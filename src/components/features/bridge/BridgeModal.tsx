@@ -25,12 +25,12 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+      <div className="fixed inset-0 bg-black/50" aria-hidden="true" />
 
       {/* Modal */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
-          <Dialog.Title className="text-2xl font-bold mb-4">The Bridge</Dialog.Title>
+        <Dialog.Panel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-lg bg-surface-default p-6 shadow-xl border border-border-default">
+          <Dialog.Title className="text-2xl font-bold mb-4 text-text-default">The Bridge</Dialog.Title>
 
           {/* Persona Selection */}
           <PersonaSelector value={selectedPersona} onChange={setSelectedPersona} />
@@ -56,12 +56,12 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
           {/* User Input */}
           <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Instruction</label>
+            <label className="mb-1 block text-sm font-medium text-text-default">Instruction</label>
             <textarea
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               placeholder="What would you like to accomplish?"
-              className="w-full rounded border border-gray-300 p-3"
+              className="w-full rounded border border-border-default bg-surface-subtle text-text-default p-3 focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
               rows={4}
             />
           </div>
@@ -82,7 +82,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
           <div className="mt-6 flex justify-end">
             <button
               onClick={onClose}
-              className="rounded bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300"
+              className="rounded bg-surface-subtle px-4 py-2 text-text-default hover:bg-surface-hover transition-colors"
             >
               Close
             </button>

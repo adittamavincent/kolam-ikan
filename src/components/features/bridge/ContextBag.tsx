@@ -16,10 +16,10 @@ export function ContextBag({
   onIncludeCanvasChange: (include: boolean) => void;
 }) {
   return (
-    <div className="mb-4 rounded border border-gray-200 p-4">
-      <h3 className="mb-2 font-medium">Context Bag</h3>
+    <div className="mb-4 rounded border border-border-default p-4">
+      <h3 className="mb-2 font-medium text-text-default">Context Bag</h3>
       <div className="space-y-2">
-        <label className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-text-default">
           <input
             type="checkbox"
             checked={includeCanvas}
@@ -28,7 +28,7 @@ export function ContextBag({
           Include Current Canvas
         </label>
         {/* TODO: List entries to select */}
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-text-muted">
           {selectedEntries.length} entries selected
         </p>
       </div>

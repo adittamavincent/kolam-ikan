@@ -97,7 +97,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -111,36 +111,36 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all border border-gray-100">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-subtle">
                 <div className="flex items-center justify-between mb-4">
                   <Dialog.Title
                     as="h3"
-                    className="text-lg font-medium leading-6 text-gray-900 flex items-center gap-2"
+                    className="text-lg font-medium leading-6 text-text-default flex items-center gap-2"
                   >
-                    <Globe className="h-5 w-5 text-primary-500" />
+                    <Globe className="h-5 w-5 text-action-primary-bg" />
                     Create New Domain
                   </Dialog.Title>
                   <button
                     onClick={onClose}
-                    className="rounded-full p-1 hover:bg-gray-100 transition-colors"
+                    className="rounded-full p-1 hover:bg-surface-subtle transition-colors"
                   >
-                    <X className="h-5 w-5 text-gray-400" />
+                    <X className="h-5 w-5 text-text-muted" />
                   </button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                   <div className="mt-2">
-                    <p className="text-sm text-gray-500 mb-4">
+                    <p className="text-sm text-text-muted mb-4">
                       Create a new workspace for your content.
                     </p>
                     
                     <div className="relative">
                       <input
                         type="text"
-                        className={`block w-full rounded-lg border px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 transition-all ${
+                        className={`block w-full rounded-lg border px-4 py-3 text-text-default placeholder-text-muted focus:outline-none focus:ring-2 transition-all ${
                           error 
-                            ? 'border-red-300 focus:border-red-500 focus:ring-red-200' 
-                            : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'
+                            ? 'border-status-error-text focus:border-status-error-text focus:ring-status-error-bg' 
+                            : 'border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/20'
                         }`}
                         placeholder="e.g., My Knowledge Base"
                         value={name}
@@ -159,7 +159,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                           key={suggestion}
                           type="button"
                           onClick={() => setName(suggestion)}
-                          className="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+                          className="px-3 py-1 text-xs font-medium text-text-subtle bg-surface-subtle rounded-full hover:bg-border-default transition-colors"
                         >
                           {suggestion}
                         </button>
@@ -167,7 +167,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                     </div>
 
                     {error && (
-                      <div className="mt-3 flex items-center gap-2 text-sm text-red-600 animate-fade-in">
+                      <div className="mt-3 flex items-center gap-2 text-sm text-status-error-text animate-fade-in">
                         <AlertCircle className="h-4 w-4" />
                         {error}
                       </div>
@@ -177,7 +177,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                   <div className="mt-6 flex justify-end gap-3">
                     <button
                       type="button"
-                      className="inline-flex justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-500 focus-visible:ring-offset-2 transition-colors"
+                      className="inline-flex justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium text-text-subtle hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-text-muted focus-visible:ring-offset-2 transition-colors"
                       onClick={onClose}
                       disabled={isSubmitting}
                     >
@@ -186,7 +186,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                     <button
                       type="submit"
                       disabled={!name.trim() || isSubmitting}
-                      className="inline-flex justify-center items-center gap-2 rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-primary-200"
+                      className="inline-flex justify-center items-center gap-2 rounded-lg border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-action-primary-bg/20"
                     >
                       {isSubmitting ? (
                         <>

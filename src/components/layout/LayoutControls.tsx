@@ -12,13 +12,13 @@ export function LayoutControls() {
   const isCanvasMaximized = logWidth === 0 && canvasWidth === 100;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
+    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-lg border border-border-default bg-surface-default p-2 shadow-lg">
       <button
         onClick={() => setMode('log-only')}
         className={`rounded p-2 transition-colors ${
           isLogMaximized
-            ? 'bg-primary-100 text-primary-700'
-            : 'text-gray-600 hover:bg-gray-100'
+            ? 'bg-action-primary-bg/10 text-action-primary-bg'
+            : 'text-text-muted hover:bg-surface-hover'
         }`}
         title="Maximize Log (⌘J)"
       >
@@ -29,8 +29,8 @@ export function LayoutControls() {
         onClick={() => setMode('balanced')}
         className={`rounded p-2 transition-colors ${
           isBalanced
-            ? 'bg-primary-100 text-primary-700'
-            : 'text-gray-600 hover:bg-gray-100'
+            ? 'bg-action-primary-bg/10 text-action-primary-bg'
+            : 'text-text-muted hover:bg-surface-hover'
         }`}
         title="Reset Layout (⌘K)"
       >
@@ -41,8 +41,8 @@ export function LayoutControls() {
         onClick={() => setMode('canvas-only')}
         className={`rounded p-2 transition-colors ${
           isCanvasMaximized
-            ? 'bg-primary-100 text-primary-700'
-            : 'text-gray-600 hover:bg-gray-100'
+            ? 'bg-action-primary-bg/10 text-action-primary-bg'
+            : 'text-text-muted hover:bg-surface-hover'
         }`}
         title="Maximize Canvas (⌘L)"
       >

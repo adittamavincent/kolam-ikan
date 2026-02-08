@@ -5,6 +5,7 @@ import '@blocknote/mantine/style.css';
 import { useCreateBlockNote } from '@blocknote/react';
 import { PartialBlock } from '@blocknote/core';
 import { useEffect } from 'react';
+import { useTheme } from '@/lib/hooks/useTheme';
 
 export interface BaseEditorProps {
   initialContent?: PartialBlock[];
@@ -18,6 +19,7 @@ export default function BaseEditor({
   onChange,
   editable = true,
 }: BaseEditorProps) {
+  const theme = useTheme();
   const editor = useCreateBlockNote({
     initialContent: initialContent && initialContent.length > 0 ? initialContent : undefined,
   });
@@ -33,7 +35,7 @@ export default function BaseEditor({
 
   return (
     <div className="blocknote-editor">
-      <BlockNoteView editor={editor} theme="light" editable={editable} />
+      <BlockNoteView editor={editor} theme={theme} editable={editable} />
     </div>
   );
 }

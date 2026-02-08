@@ -163,3 +163,41 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  TEXT OVERFLOW HANDLING FOR BLOCKNOTE EDITOR                             */
+/* -------------------------------------------------------------------------- */
+
+/* Ensure BlockNote editor content wraps properly for long strings */
+.blocknote-editor,
+.blocknote-editor * {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Handle specific BlockNote elements that might contain long text */
+.bn-block-content,
+.bn-inline-content,
+.ProseMirror,
+.ProseMirror p,
+.ProseMirror div,
+.ProseMirror pre {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Handle code blocks specifically to allow horizontal scrolling if needed */
+.ProseMirror pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Handle links, URLs, and other inline elements */
+.ProseMirror a,
+.ProseMirror code:not(pre code) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

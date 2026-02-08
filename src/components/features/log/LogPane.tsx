@@ -194,7 +194,7 @@ export function LogPane({ streamId }: LogPaneProps) {
           ) : (
             <div className="space-y-6">
               {entries?.map((entry) => (
-                <div key={entry.id} className="rounded-lg border border-border-subtle bg-surface-subtle p-4">
+                <div key={entry.id} className="rounded-lg border border-border-subtle bg-surface-subtle p-4 max-w-full">
                   <div className="mb-2 flex items-center justify-between text-xs text-text-muted">
                     <span>{entry.created_at ? new Date(entry.created_at).toLocaleString() : ''}</span>
                     <span>#{entry.id.slice(0, 8)}</span>
@@ -203,8 +203,8 @@ export function LogPane({ streamId }: LogPaneProps) {
                   {/* Render sections */}
                   <div className="space-y-4">
                     {entry.sections?.map((section) => (
-                      <div key={section.id} className="bg-surface-default rounded p-2 border border-border-subtle">
-                         <div className="mb-1 text-xs font-medium text-text-subtle">
+                      <div key={section.id} className="bg-surface-default rounded p-2 border border-border-subtle overflow-hidden break-words [word-break:break-word] [overflow-wrap:anywhere] max-w-full">
+                         <div className="mb-1 text-xs font-medium text-text-subtle break-words">
                            {section.persona?.name || 'User'}
                          </div>
                          <BlockNoteEditor

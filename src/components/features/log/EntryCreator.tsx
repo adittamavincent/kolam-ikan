@@ -92,7 +92,7 @@ export function EntryCreator({ streamId, personaId }: EntryCreatorProps) {
   }
 
   return (
-    <div className="relative rounded-lg border border-border-default bg-surface-default p-4">
+    <div className="relative rounded-lg border border-border-default bg-surface-default p-4 overflow-hidden">
       {/* Navigation Guard - warn if saving or error */}
       {(status === 'saving' || status === 'error') && <NavigationGuard />}
 

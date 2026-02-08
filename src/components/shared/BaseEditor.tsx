@@ -42,7 +42,7 @@ export default function BaseEditor({
   }, [editor, onChange]);
 
   return (
-    <div className="blocknote-editor">
+    <div className="blocknote-editor w-full max-w-full overflow-hidden break-words [overflow-wrap:anywhere] [word-break:break-word]">
       <BlockNoteView editor={editor} theme={theme} editable={editable} />
     </div>
   );

@@ -20,6 +20,24 @@ type CreationItem = {
   parentId: string | null;
 };
 
+const ALIGNMENT_COLUMN_REM = 1.5;
+const POSITION_GROUP_CENTER_REM = [
+  0.75,
+  2.25,
+  3.75,
+  5.25,
+  6.75,
+  8.25,
+  9.75,
+  11.25,
+];
+const getPositionGroupCenterRem = (groupIndex: number) =>
+  POSITION_GROUP_CENTER_REM[groupIndex - 1] ?? (groupIndex - 0.5) * ALIGNMENT_COLUMN_REM;
+const getCabinetPaddingRem = (depth: number) => depth * ALIGNMENT_COLUMN_REM;
+const getStreamPaddingRem = (depth: number) => (depth + 1) * ALIGNMENT_COLUMN_REM;
+const getBorderCenterRem = (depth: number) => getPositionGroupCenterRem(depth + 1);
+const getEmptyStatePaddingRem = (depth: number) => getStreamPaddingRem(depth + 1);
+
 interface CreationInputProps {
   type: 'cabinet' | 'stream';
   depth: number;
@@ -52,23 +70,37 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
     }
   };
 
-  const paddingLeft = type === 'cabinet'
-    ? `${depth * 12 + 8}px`
-    : `${(depth) * 12 + 4}px`; // Note: Streams passed depth+1 usually, so here if we pass depth+1 for streams it works.
+  const paddingLeftRem = type === 'cabinet'
+    ? getCabinetPaddingRem(depth)
+    : getStreamPaddingRem(depth);
 
   return (
     <div className="mb-0.5">
       <div
         className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-        style={{ paddingLeft }}
+        style={{ paddingLeft: `${paddingLeftRem}rem` }}
       >
         {type === 'cabinet' ? (
-          <>
-            <div className="w-4 shrink-0" /> {/* Spacer for chevron */}
-            <Folder className="h-4 w-4 shrink-0 text-gray-400" />
-          </>
+          <div
+            className="grid shrink-0"
+            style={{
+              gridTemplateColumns: `${ALIGNMENT_COLUMN_REM}rem ${ALIGNMENT_COLUMN_REM}rem`,
+            }}
+          >
+            <div className="flex items-center justify-center">
+              <div className="h-4 w-4" />
+            </div>
+            <div className="flex items-center justify-center">
+              <Folder className="h-4 w-4 text-gray-400" />
+            </div>
+          </div>
         ) : (
-          <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+          <div
+            className="flex shrink-0 items-center justify-center"
+            style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
+          >
+            <FileText className="h-4 w-4 text-gray-400" />
+          </div>
         )}
         <input
           ref={inputRef}
@@ -153,7 +185,7 @@ const StreamNode = ({
             ? 'bg-primary-50 text-primary-700 font-semibold shadow-sm ring-1 ring-primary-100'
             : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
           }`}
-        style={{ paddingLeft: `${depth * 12 + 4}px` }}
+        style={{ paddingLeft: `${getStreamPaddingRem(depth)}rem` }}
         onClick={(e) => {
           e.stopPropagation();
           if (!isStreamEditing) {
@@ -161,10 +193,15 @@ const StreamNode = ({
           }
         }}
       >
-        <FileText
-          className={`h-4 w-4 shrink-0 transition-colors ${isStreamActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
-            }`}
-        />
+        <div
+          className="flex shrink-0 items-center justify-center"
+          style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
+        >
+          <FileText
+            className={`h-4 w-4 transition-colors ${isStreamActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+              }`}
+          />
+        </div>
 
         {isStreamEditing ? (
           <input
@@ -225,23 +262,33 @@ const CabinetNode = ({
             ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 font-medium'
             : 'text-gray-700 hover:bg-gray-100'
           }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        style={{ paddingLeft: `${getCabinetPaddingRem(depth)}rem` }}
         onClick={(e) => {
           e.stopPropagation();
           handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
         }}
       >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleCabinet(cabinet.id);
+        <div
+          className="grid shrink-0"
+          style={{
+            gridTemplateColumns: `${ALIGNMENT_COLUMN_REM}rem ${ALIGNMENT_COLUMN_REM}rem`,
           }}
-          className="shrink-0 text-gray-400 hover:text-gray-600 p-0.5 rounded"
         >
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </button>
-
-        <Folder className={`h-4 w-4 shrink-0 ${isActive ? 'text-blue-500' : 'text-gray-400'}`} />
+          <div className="flex items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleCabinet(cabinet.id);
+              }}
+              className="text-gray-400 hover:text-gray-600 p-0.5 rounded"
+            >
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+          </div>
+          <div className="flex items-center justify-center">
+            <Folder className={`h-4 w-4 ${isActive ? 'text-blue-500' : 'text-gray-400'}`} />
+          </div>
+        </div>
 
         {isEditing ? (
           <input
@@ -261,7 +308,15 @@ const CabinetNode = ({
       </div>
 
       {isExpanded && (
-        <div className="border-l border-gray-100 ml-4">
+        <div className="relative">
+          <div
+            className="pointer-events-none absolute inset-y-0 w-0 border-gray-100"
+            style={{
+              left: `${getBorderCenterRem(depth)}rem`,
+              borderLeftWidth: '0.0625rem',
+              borderLeftStyle: 'solid',
+            }}
+          />
           {/* Render Sub-Cabinets */}
           {children.map((child) => (
             <CabinetNode
@@ -327,7 +382,7 @@ const CabinetNode = ({
           )}
 
           {/* Empty State / Actions */}
-          <div style={{ paddingLeft: `${(depth + 1) * 9}px` }}>
+          <div style={{ paddingLeft: `${getEmptyStatePaddingRem(depth)}rem` }}>
             <button
               onClick={() => handleCreateStream(cabinet.id)}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"

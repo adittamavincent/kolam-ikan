@@ -203,8 +203,8 @@ export function LogPane({ streamId }: LogPaneProps) {
                   {/* Render sections */}
                   <div className="space-y-4">
                     {entry.sections?.map((section) => (
-                      <div key={section.id} className="bg-surface-default rounded p-2 border border-border-subtle overflow-hidden break-words [word-break:break-word] [overflow-wrap:anywhere] max-w-full">
-                         <div className="mb-1 text-xs font-medium text-text-subtle break-words">
+                       <div key={section.id} className="bg-surface-default rounded p-2 border border-border-subtle overflow-hidden wrap-anywhere [word-break:break-word] max-w-full">
+                         <div className="mb-1 text-xs font-medium text-text-subtle wrap-break-word">
                            {section.persona?.name || 'User'}
                          </div>
                          <BlockNoteEditor

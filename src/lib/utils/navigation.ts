@@ -1,5 +1,13 @@
 import { Cabinet, Stream } from '@/lib/types';
 
+type CreationKind = 'cabinet' | 'stream';
+
+interface CreationTargetResult {
+  parentCabinetId: string | null;
+  targetCabinetId?: string;
+  error?: string;
+}
+
 // Helper to determine which item should be highlighted
 export function getVisibleActiveNodeId(
   activeStreamId: string | undefined,
@@ -48,4 +56,62 @@ export function getVisibleActiveNodeId(
   }
 
   return { id: currentId, type: currentType };
+}
+
+export function getUniqueName(baseName: string, existingNames: string[]): string {
+  if (!existingNames.includes(baseName)) return baseName;
+
+  let counter = 2;
+  while (existingNames.includes(`${baseName} ${counter}`)) {
+    counter += 1;
+  }
+
+  return `${baseName} ${counter}`;
+}
+
+export function getNextSortOrder(items: Array<{ sort_order: number }> | undefined): number {
+  if (!items || items.length === 0) return 0;
+  return Math.max(...items.map((item) => item.sort_order ?? 0)) + 1;
+}
+
+export function resolveCreationTarget(params: {
+  kind: CreationKind;
+  buttonCabinetId?: string | null;
+  activeStreamId?: string;
+  streams?: Stream[];
+}): CreationTargetResult {
+  const { kind, buttonCabinetId, activeStreamId, streams } = params;
+
+  if (kind === 'cabinet') {
+    if (buttonCabinetId !== undefined) {
+      return { parentCabinetId: buttonCabinetId ?? null };
+    }
+
+    const parentFromStream = streams?.find((stream) => stream.id === activeStreamId)?.cabinet_id ?? null;
+    return { parentCabinetId: parentFromStream };
+  }
+
+  if (buttonCabinetId) {
+    return { parentCabinetId: buttonCabinetId, targetCabinetId: buttonCabinetId };
+  }
+
+  const targetFromStream = streams?.find((stream) => stream.id === activeStreamId)?.cabinet_id;
+  if (targetFromStream) {
+    return { parentCabinetId: targetFromStream, targetCabinetId: targetFromStream };
+  }
+
+  return { parentCabinetId: null, error: 'Select a cabinet before creating a stream.' };
+}
+
+export function applyOptimisticCabinetCreation(
+  cabinets: Cabinet[] | undefined,
+  cabinet: Cabinet
+): Cabinet[] {
+  const next = [...(cabinets ?? []), cabinet];
+  return next.sort((a, b) => a.sort_order - b.sort_order);
+}
+
+export function applyOptimisticStreamCreation(streams: Stream[] | undefined, stream: Stream): Stream[] {
+  const next = [...(streams ?? []), stream];
+  return next.sort((a, b) => a.sort_order - b.sort_order);
 }

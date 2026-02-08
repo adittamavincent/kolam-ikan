@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { getVisibleActiveNodeId } from '@/lib/utils/navigation';
+import {
+  applyOptimisticCabinetCreation,
+  applyOptimisticStreamCreation,
+  getNextSortOrder,
+  getUniqueName,
+  getVisibleActiveNodeId,
+  resolveCreationTarget,
+} from '@/lib/utils/navigation';
 import { Cabinet, Stream } from '@/lib/types';
 
 // Mock data helpers
@@ -100,5 +107,100 @@ describe('getVisibleActiveNodeId', () => {
     expanded = new Set();
     result = getVisibleActiveNodeId('s2', streams, cabinets, expanded);
     expect(result).toEqual({ id: 'c3', type: 'cabinet' });
+  });
+});
+
+describe('resolveCreationTarget', () => {
+  const s1 = createStream('s1', 'c1');
+
+  it('returns root for cabinet creation at root button', () => {
+    const result = resolveCreationTarget({
+      kind: 'cabinet',
+      buttonCabinetId: null,
+      activeStreamId: 's1',
+      streams: [s1],
+    });
+
+    expect(result).toEqual({ parentCabinetId: null });
+  });
+
+  it('returns nested parent for cabinet creation inside a cabinet', () => {
+    const result = resolveCreationTarget({
+      kind: 'cabinet',
+      buttonCabinetId: 'c1',
+      activeStreamId: undefined,
+      streams: [s1],
+    });
+
+    expect(result).toEqual({ parentCabinetId: 'c1' });
+  });
+
+  it('returns target cabinet for stream creation in a cabinet', () => {
+    const result = resolveCreationTarget({
+      kind: 'stream',
+      buttonCabinetId: 'c1',
+      activeStreamId: undefined,
+      streams: [s1],
+    });
+
+    expect(result).toEqual({ parentCabinetId: 'c1', targetCabinetId: 'c1' });
+  });
+
+  it('falls back to active stream cabinet when no button context', () => {
+    const result = resolveCreationTarget({
+      kind: 'stream',
+      buttonCabinetId: undefined,
+      activeStreamId: 's1',
+      streams: [s1],
+    });
+
+    expect(result).toEqual({ parentCabinetId: 'c1', targetCabinetId: 'c1' });
+  });
+
+  it('returns an error when stream creation has no target', () => {
+    const result = resolveCreationTarget({
+      kind: 'stream',
+      buttonCabinetId: undefined,
+      activeStreamId: undefined,
+      streams: [],
+    });
+
+    expect(result.error).toBeTruthy();
+  });
+});
+
+describe('creation helpers', () => {
+  it('generates a unique name with a numeric suffix', () => {
+    const name = getUniqueName('New Cabinet', ['New Cabinet', 'New Cabinet 2']);
+    expect(name).toBe('New Cabinet 3');
+  });
+
+  it('returns next sort order for existing items', () => {
+    const next = getNextSortOrder([{ sort_order: 0 }, { sort_order: 3 }]);
+    expect(next).toBe(4);
+  });
+});
+
+describe('creation integration', () => {
+  it('adds a new cabinet at root for empty directories', () => {
+    const newCabinet = createCabinet('c-new');
+    const result = applyOptimisticCabinetCreation([], newCabinet);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('c-new');
+  });
+
+  it('adds a nested cabinet and keeps sort order', () => {
+    const c1 = createCabinet('c1');
+    const c2 = { ...createCabinet('c2', 'c1'), sort_order: 5 };
+    const c3 = { ...createCabinet('c3', 'c1'), sort_order: 2 };
+    const result = applyOptimisticCabinetCreation([c2, c3], c1);
+    expect(result.map((cabinet) => cabinet.sort_order)).toEqual([0, 2, 5]);
+  });
+
+  it('adds a stream under the correct cabinet', () => {
+    const stream = createStream('s-new', 'c1');
+    const result = applyOptimisticStreamCreation([], stream);
+    expect(result).toHaveLength(1);
+    expect(result[0].cabinet_id).toBe('c1');
   });
 });

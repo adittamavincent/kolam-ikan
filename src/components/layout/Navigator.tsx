@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronRight, ChevronDown, Folder, FileText, Plus } from 'lucide-react';
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { NavigatorCreateButton } from './NavigatorCreateButton';
 import { Cabinet, CabinetInsert, Stream, StreamInsert } from '@/lib/types';
 import {
   applyOptimisticCabinetCreation,
@@ -432,20 +433,15 @@ const CabinetNode = ({
 
           {/* Empty State / Actions */}
           <div style={{ paddingLeft: `${getEmptyStatePaddingRem(depth)}rem` }}>
-            <button
+            <NavigatorCreateButton
+              label="New Stream"
               onClick={() => handleCreateStream(cabinet.id)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="text-xs">New Stream</span>
-            </button>
-            <button
+            />
+            <NavigatorCreateButton
+              label="New Cabinet"
               onClick={() => handleCreateCabinet(cabinet.id)}
-              className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors"
-            >
-              <Folder className="h-3.5 w-3.5" />
-              <span className="text-xs">New Cabinet</span>
-            </button>
+              className="mt-1"
+            />
           </div>
         </div>
       )}
@@ -1040,23 +1036,17 @@ export function Navigator({ }: NavigatorProps) {
         <div className="mt-4 flex flex-col gap-1">
           {/* New Stream Button - Only if not restricted */}
           {!isCabinetOnly && (
-            <button
+            <NavigatorCreateButton
+              label="New Stream"
               onClick={() => handleCreateStream(null)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              <span>New Stream</span>
-            </button>
+            />
           )}
 
           {/* New Cabinet Button */}
-          <button
+          <NavigatorCreateButton
+            label="New Cabinet"
             onClick={() => handleCreateCabinet(null)}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>New Cabinet</span>
-          </button>
+          />
         </div>
       </div>
     </div>

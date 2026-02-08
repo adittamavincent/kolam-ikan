@@ -188,13 +188,15 @@ function RecentActivityItem({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-start gap-3 rounded-xl border border-gray-50 bg-white p-4 text-left transition-all hover:border-gray-200 hover:shadow-sm"
+      className="group flex w-full items-start gap-3 rounded-xl border border-gray-50 bg-white p-4 text-left transition-all hover:border-gray-200 hover:shadow-sm relative"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-lg">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-lg transition-colors group-hover:bg-primary-50">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-900">{title}</p>
+        <div className="flex items-center gap-2">
+          <p className="truncate text-sm font-medium text-gray-900">{title}</p>
+        </div>
         <p className="truncate text-xs text-gray-500">{subtitle}</p>
       </div>
       <span className="shrink-0 text-xs text-gray-400">{time}</span>

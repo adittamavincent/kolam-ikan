@@ -10,7 +10,7 @@ interface NavigatorProps {
   userId?: string;
 }
 
-export function Navigator({}: NavigatorProps) {
+export function Navigator({ }: NavigatorProps) {
   const router = useRouter();
   const params = useParams();
   const supabase = createClient();
@@ -59,7 +59,7 @@ export function Navigator({}: NavigatorProps) {
   // Derive final expanded state: manual toggles + auto-expand for active stream's cabinet
   const expandedCabinets = useMemo(() => {
     const expanded = new Set(manuallyToggledCabinets);
-    
+
     // Auto-expand cabinet containing the active stream
     if (activeStreamId && streams) {
       const activeStream = streams.find((s) => s.id === activeStreamId);
@@ -67,7 +67,7 @@ export function Navigator({}: NavigatorProps) {
         expanded.add(activeStream.cabinet_id);
       }
     }
-    
+
     return expanded;
   }, [manuallyToggledCabinets, activeStreamId, streams]);
 
@@ -87,7 +87,6 @@ export function Navigator({}: NavigatorProps) {
   const rootCabinets = cabinets?.filter((c) => !c.parent_id) || [];
 
   // When there's no domain selected, show a minimal placeholder.
-  // The parent layout controls whether this component is rendered at all.
   if (!domainId) {
     return (
       <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white p-4">
@@ -114,41 +113,47 @@ export function Navigator({}: NavigatorProps) {
               {/* Cabinet */}
               <button
                 onClick={() => toggleCabinet(cabinet.id)}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-150"
               >
                 {isExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
                 ) : (
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
                 )}
-                <Folder className="h-4 w-4 text-gray-500" />
-                <span className="truncate">{cabinet.name}</span>
+                <Folder className="h-4 w-4 text-gray-400" />
+                <span className="truncate font-medium">{cabinet.name}</span>
               </button>
 
               {/* Streams */}
               {isExpanded && (
-                <div className="ml-6 mt-1 space-y-1">
+                <div className="ml-4 mt-1 space-y-0.5 border-l border-gray-100 pl-2">
                   {cabinetStreams.map((stream) => {
                     const isActive = activeStreamId === stream.id;
+
                     return (
-                      <button
+                      <div
                         key={stream.id}
-                        onClick={() => router.push(`/${domainId}/${stream.id}`)}
-                        className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm ${
-                          isActive
-                            ? 'bg-primary-100 text-primary-900 font-medium'
-                            : 'text-gray-700 hover:bg-gray-100'
-                        }`}
+                        className="group relative flex items-center"
                       >
-                        <FileText className="h-4 w-4" />
-                        <span className="truncate">{stream.name}</span>
-                      </button>
+                        <button
+                          onClick={() => router.push(`/${domainId}/${stream.id}`)}
+                          className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 ${isActive
+                            ? 'bg-primary-50 text-primary-700 font-semibold shadow-sm ring-1 ring-primary-100'
+                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            }`}
+                        >
+                          <FileText className={`h-4 w-4 shrink-0 transition-colors ${isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-500'
+                            }`} />
+
+                          <span className="truncate">{stream.name}</span>
+                        </button>
+                      </div>
                     );
                   })}
 
                   {/* New Stream Button */}
-                  <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100">
-                    <Plus className="h-4 w-4" />
+                  <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-400 hover:bg-gray-50 hover:text-gray-600 transition-colors">
+                    <Plus className="h-3.5 w-3.5" />
                     <span>New Stream</span>
                   </button>
                 </div>
@@ -158,7 +163,7 @@ export function Navigator({}: NavigatorProps) {
         })}
 
         {/* New Cabinet Button */}
-        <button className="mt-2 flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100">
+        <button className="mt-4 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-100 transition-colors">
           <Plus className="h-4 w-4" />
           <span>New Cabinet</span>
         </button>

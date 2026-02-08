@@ -99,16 +99,28 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
                 onClick={() => router.push(`/${domain.id}`)}
                 onMouseEnter={() => setHoveredDomain(domain.id)}
                 onMouseLeave={() => setHoveredDomain(null)}
-                className={`relative flex h-10 w-10 items-center justify-center rounded-lg text-2xl transition-all ${isActive
-                  ? 'bg-primary-100 ring-2 ring-primary-500'
-                  : 'hover:bg-gray-100'
+                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isActive
+                  ? 'bg-primary-50 text-primary-600 ring-2 ring-primary-500 shadow-sm'
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 title={domain.name}
               >
-                <DynamicIcon name={domain.icon} className="h-6 w-6 text-gray-700" />
+                <DynamicIcon
+                  name={domain.icon}
+                  className={`h-5 w-5 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
+                />
+
+                {/* Active Indicator Bar */}
+                {isActive && (
+                  <div className="absolute -left-3 h-8 w-1 rounded-r-full bg-primary-500" />
+                )}
+
+                {/* Tooltip */}
                 {hoveredDomain === domain.id && (
-                  <div className="absolute left-full ml-2 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1 text-xs text-white z-50">
+                  <div className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg z-50 animate-fade-in">
                     {domain.name}
+                    {/* Arrow */}
+                    <div className="absolute left-0 top-1/2 -ml-1 -mt-1 h-2 w-2 -rotate-45 bg-gray-900" />
                   </div>
                 )}
               </button>

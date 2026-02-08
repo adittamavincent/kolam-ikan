@@ -2,11 +2,12 @@
 
 import { useLayout } from '@/lib/hooks/useLayout';
 import { useCanvas } from '@/lib/hooks/useCanvas';
+import { useCanvasScroll } from '@/lib/hooks/useCanvasScroll';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import debounce from 'lodash/debounce';
 import { Loader2 } from 'lucide-react';
-import { PartialBlock } from '@blocknote/core';
+import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
 import { Json } from '@/lib/types/database.types';
 
 interface CanvasPaneProps {
@@ -16,6 +17,8 @@ interface CanvasPaneProps {
 export function CanvasPane({ streamId }: CanvasPaneProps) {
   const { canvasWidth } = useLayout();
   const { canvas, updateCanvas, isLoading } = useCanvas(streamId);
+  const { targetBlockId, setTargetBlockId } = useCanvasScroll();
+  const [editor, setEditor] = useState<BlockNoteEditorType | null>(null);
 
   const isVisible = canvasWidth > 0;
 
@@ -50,6 +53,30 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     [canvas, debouncedUpdate]
   );
 
+  // Handle auto-scroll to target block
+  useEffect(() => {
+    if (targetBlockId && editor && canvas) {
+      // Small timeout to ensure content is rendered
+      const timer = setTimeout(() => {
+        // Try to find the block in the document
+        const block = editor.document.find((b) => b.id === targetBlockId);
+        
+        if (block) {
+          // Set selection to the block
+          editor.setTextCursorPosition(targetBlockId, 'end');
+          
+          // Scroll into view - getting the DOM element might be tricky with BlockNote's abstraction
+          // but focusing it usually brings it into view or we can use the selection
+          
+          // Clear the target
+          setTargetBlockId(null);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [targetBlockId, editor, canvas, setTargetBlockId]);
+
   return (
     <div
       className={`bg-surface-default relative overflow-hidden z-20 ${
@@ -70,6 +97,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
             <BlockNoteEditor
               initialContent={canvas.content_json as unknown as PartialBlock[]}
               onChange={handleContentChange}
+              onEditorReady={setEditor}
               placeholder="Start writing on the canvas..."
             />
           ) : (

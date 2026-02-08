@@ -9,6 +9,7 @@ import { Loader2, AlertCircle, ChevronRight, FlaskConical, Lock, Mail, CheckCirc
 import Link from "next/link";
 
 import { loginAction } from "./actions";
+import { setDevSessionFlag } from "@/lib/utils/authStorage";
 
 type AuthMode = "signin" | "signup";
 
@@ -19,7 +20,9 @@ interface FieldError {
   fullName?: string;
 }
 
-export default function LoginPage() {
+import { Suspense } from "react";
+
+function LoginForm() {
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,6 +53,7 @@ export default function LoginPage() {
       // middleware redirects back to login because the cookie is missing.
       if (isDevelopmentHost()) {
         setDevAuthCookie();
+         setDevSessionFlag();
       }
 
       const next = searchParams.get("next") || "/";
@@ -669,5 +673,17 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
+        <Loader2 className="h-8 w-8 animate-spin text-action-primary-bg" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

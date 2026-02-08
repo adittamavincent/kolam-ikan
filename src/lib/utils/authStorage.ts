@@ -69,6 +69,13 @@ export function getDevAuthCookieName() {
 
 export function getDevSessionFlag() {
   return DEV_SESSION_FLAG;
+  }
+
+  export function setDevSessionFlag() {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.sessionStorage.setItem(DEV_SESSION_FLAG, '1');
 }
 
 export function isDevelopmentHost() {

@@ -20,6 +20,7 @@ export function useEntries(streamId: string) {
           )
         `)
         .eq('stream_id', streamId)
+        .eq('is_draft', false)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(50); // Limit to 50 entries for performance

@@ -67,7 +67,7 @@ export async function updateSession(request: NextRequest) {
     // User has Supabase auth - don't redirect, let the page sync the dev cookie
   }
 
-  if (isDev && !hasDevAuth) {
+  if (isDev && !hasDevAuth && !hasSupabaseAuth) {
     clearAuthCookies(request, response);
   }
 

@@ -3,10 +3,12 @@ import { createClient } from '@/lib/supabase/client';
 import { BlockNoteBlock } from '@/lib/types';
 import { Json } from '@/lib/types/database.types';
 import { v4 as uuidv4 } from 'uuid';
+import { useCanvasScroll } from '@/lib/hooks/useCanvasScroll';
 
 export function useBlockPromotion(streamId: string) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { setTargetBlockId } = useCanvasScroll();
 
   const promoteBlock = useMutation({
     mutationFn: async ({
@@ -26,9 +28,10 @@ export function useBlockPromotion(streamId: string) {
       if (fetchError) throw fetchError;
 
       // Create promoted block with metadata
+      const promotedBlockId = uuidv4();
       const promotedBlock: BlockNoteBlock = {
         ...block,
-        id: uuidv4(),
+        id: promotedBlockId,
         props: {
           ...block.props,
           promoted_from_entry_id: entryId,
@@ -49,10 +52,12 @@ export function useBlockPromotion(streamId: string) {
 
       if (updateError) throw updateError;
 
-      return { promotedBlock, canvasId: canvas.id };
+      return { promotedBlock, canvasId: canvas.id, promotedBlockId };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['canvas', streamId] });
+      // Trigger auto-scroll to the new block
+      setTargetBlockId(data.promotedBlockId);
     },
   });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { PartialBlock } from '@blocknote/core';
+import { BlockNoteEditor as BlockNoteEditorType, PartialBlock } from '@blocknote/core';
 import { Loader2 } from 'lucide-react';
 
 export interface BlockNoteEditorProps {
@@ -9,6 +9,7 @@ export interface BlockNoteEditorProps {
   onChange?: (blocks: PartialBlock[]) => void;
   editable?: boolean;
   placeholder?: string;
+  onEditorReady?: (editor: BlockNoteEditorType) => void;
 }
 
 // Dynamically import the BaseEditor with SSR disabled to prevent window access errors

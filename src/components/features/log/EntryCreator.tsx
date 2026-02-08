@@ -1,132 +1,147 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
+import { useState, useMemo, useRef } from 'react';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
-import { PartialBlock } from '@blocknote/core';
-import debounce from 'lodash/debounce';
-import { Loader2 } from 'lucide-react';
-import { Json } from '@/lib/types/database.types';
+import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
+import { Loader2, User as UserIcon } from 'lucide-react';
+import { usePersonas } from '@/lib/hooks/usePersonas';
+import { useKeyboard } from '@/lib/hooks/useKeyboard';
+import { NavigationGuard } from './NavigationGuard';
+import { useDraftSystem } from '@/lib/hooks/useDraftSystem';
 
 interface EntryCreatorProps {
   streamId: string;
-  personaId?: string; // Optional if not yet implemented
+  personaId?: string; // Optional override
 }
 
 export function EntryCreator({ streamId, personaId }: EntryCreatorProps) {
-  const [ghostId, setGhostId] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [content, setContent] = useState<PartialBlock[]>([]);
-  const queryClient = useQueryClient();
-  const supabase = createClient();
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(personaId || null);
+  const editorRef = useRef<BlockNoteEditorType | null>(null);
+  
+  const { personas } = usePersonas();
 
-  const saveEntry = useMutation({
-    mutationFn: async (contentBlocks: PartialBlock[]) => {
-      // Create entry container
-      const { data: entry, error: entryError } = await supabase
-        .from('entries')
-        .insert({ stream_id: streamId })
-        .select()
-        .single();
+  // Compute default persona ID
+  const defaultPersonaId = useMemo(() => {
+    if (personas && personas.length > 0) {
+      const myself = personas.find(p => p.name === 'Myself');
+      return myself ? myself.id : personas[0].id;
+    }
+    return null;
+  }, [personas]);
 
-      if (entryError) throw entryError;
+  // Determine the effective persona ID
+  const activePersonaId = personaId || selectedPersonaId || defaultPersonaId;
+  const activePersona = personas?.find(p => p.id === activePersonaId);
 
-      // Create section with content
-      // Note: We MUST create a section even if personaId is missing, 
-      // otherwise the content is lost. The DB allows nullable persona_id.
-      const { error: sectionError } = await supabase.from('sections').insert({
-        entry_id: entry.id,
-        persona_id: personaId || null,
-        content_json: contentBlocks as unknown as Json, // Cast to Json
-        sort_order: 0,
-      });
-
-      if (sectionError) throw sectionError;
-
-      return entry;
-    },
-    onSuccess: () => {
-      // Clear ghost entry
-      setGhostId(null);
-      setContent([]);
-      setIsSaving(false);
-
-      // Invalidate entries query
-      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
-    },
-    onError: (error) => {
-      console.error('Failed to save entry:', error);
-      // Log detailed error for debugging
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      setIsSaving(false);
-    },
+  // Draft System Hook
+  const {
+    status,
+    saveDraft,
+    commitDraft,
+    initialLoadedContent,
+    isLoading,
+    activeEntryId
+  } = useDraftSystem({
+    streamId,
+    personaId: activePersonaId,
+    personaName: activePersona?.name
   });
 
-  // Debounced save function
-  const debouncedSave = useMemo(
-    () =>
-      debounce((contentBlocks: PartialBlock[]) => {
-        // Check if blocks have content
-        const hasContent = contentBlocks.length > 0 && contentBlocks.some((block) => {
-          // Check if block has text content or children
-          if (block.content && Array.isArray(block.content) && block.content.length > 0) {
-            // @ts-expect-error - dynamic type check
-            return block.content.some(c => c.text && c.text.trim().length > 0);
-          }
-          return false;
-        });
+  const isSaved = status === 'saved';
 
-        if (hasContent) {
-          saveEntry.mutate(contentBlocks);
-        } else {
-          // Clear ghost if empty
-          setGhostId(null);
-          setIsSaving(false);
-        }
-      }, 1500),
-    [saveEntry]
-  );
-
-  const handleContentChange = useCallback(
-    (blocks: PartialBlock[]) => {
-      setContent(blocks);
-
-      // Create ghost ID on first change
-      if (!ghostId) {
-        setGhostId('ghost-' + Date.now());
-        setIsSaving(true);
-      }
-
-      // Debounce save
-      debouncedSave(blocks);
+  // Keyboard shortcuts
+  useKeyboard([
+    {
+      key: 'n',
+      metaKey: true,
+      description: 'New Entry',
+      handler: (e) => {
+        e.preventDefault();
+        editorRef.current?.focus();
+      },
     },
-    [ghostId, debouncedSave]
-  );
+    {
+        key: 'Enter',
+        metaKey: true,
+        description: 'Commit Entry',
+        handler: (e) => {
+            e.preventDefault();
+            handleCommit();
+        }
+    }
+  ]);
 
-  // Force flush on unmount
-  useEffect(() => {
-    return () => {
-      if (ghostId && content.length > 0) {
-        debouncedSave.flush();
+  const handleCommit = async () => {
+      try {
+        await commitDraft();
+        // Clear editor
+        if (editorRef.current) {
+             editorRef.current.replaceBlocks(editorRef.current.document, [{ type: "paragraph", content: [] }]);
+        }
+      } catch (e) {
+          console.error("Failed to commit", e);
       }
-    };
-  }, [ghostId, content, debouncedSave]);
+  };
+
+  if (isLoading) {
+      return (
+        <div className="relative rounded-lg border border-border-default bg-surface-default p-4 min-h-[100px] flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
+        </div>
+      );
+  }
 
   return (
     <div className="relative rounded-lg border border-border-default bg-surface-default p-4">
-      {isSaving && (
-        <div className="absolute right-4 top-4 flex items-center gap-2 text-sm text-text-muted">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>Saving...</span>
-        </div>
-      )}
+      {/* Navigation Guard - warn if saving or error */}
+      {(status === 'saving' || status === 'error') && <NavigationGuard />}
 
-      <BlockNoteEditor
-        initialContent={content}
-        onChange={handleContentChange}
-        placeholder="Start typing to create a new entry..."
-      />
+      {/* Header Controls (Status + Persona) */}
+      <div className="absolute right-4 top-2 z-10 flex items-center gap-2">
+        
+        {personas && personas.length > 0 && (
+          <div className="relative flex items-center">
+            <select
+              value={selectedPersonaId || ''}
+              onChange={(e) => setSelectedPersonaId(e.target.value)}
+              className="appearance-none rounded-md border border-border-subtle bg-surface-subtle py-1 pl-2 pr-6 text-xs text-text-default hover:bg-surface-hover focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+            >
+              {personas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+            <UserIcon className="pointer-events-none absolute right-2 h-3 w-3 text-text-muted" />
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <BlockNoteEditor
+            initialContent={initialLoadedContent || undefined}
+            onChange={saveDraft}
+            placeholder={`What's on your mind, ${personas?.find(p => p.id === selectedPersonaId)?.name || '...'}?`}
+            onEditorReady={(editor) => { editorRef.current = editor; }}
+        />
+        
+        {/* Commit Button */}
+        {/* Show button if we have an active entry or content (status != idle usually implies content) */}
+        {(activeEntryId || status !== 'idle') && (
+            <div className="flex justify-end mt-2">
+                 <button
+                     onClick={handleCommit}
+                     className={`px-3 py-1 rounded text-xs flex items-center gap-1 transition-colors duration-500 ease-in-out ${
+                       isSaved
+                         ? 'bg-status-success-text text-status-success-bg hover:opacity-90'
+                         : 'bg-neutral-200 text-neutral-700 hover:bg-neutral-300 dark:bg-neutral-800 dark:text-neutral-300 dark:hover:bg-neutral-700'
+                     }`}
+                 >
+                     Commit (Cmd+Enter)
+                 </button>
+            </div>
+        )}
+      </div>
     </div>
   );
 }

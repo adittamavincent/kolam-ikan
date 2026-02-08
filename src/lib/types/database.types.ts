@@ -242,6 +242,7 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           id: string
+          is_draft: boolean
           stream_id: string
           updated_at: string | null
         }
@@ -249,6 +250,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
+          is_draft?: boolean
           stream_id: string
           updated_at?: string | null
         }
@@ -256,6 +258,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
+          is_draft?: boolean
           stream_id?: string
           updated_at?: string | null
         }
@@ -419,6 +422,26 @@ export type Database = {
         Args: { payload: Json; target_id: string; target_table: string }
         Returns: undefined
       }
+      create_entry_with_section:
+        | {
+            Args: {
+              p_content_json: Json
+              p_persona_id?: string
+              p_persona_name_snapshot?: string
+              p_stream_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_content_json: Json
+              p_is_draft?: boolean
+              p_persona_id?: string
+              p_persona_name_snapshot?: string
+              p_stream_id: string
+            }
+            Returns: Json
+          }
       exec_sql: { Args: { sql: string }; Returns: undefined }
       jsonb_to_text: { Args: { jsonb_data: Json }; Returns: string }
       revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }

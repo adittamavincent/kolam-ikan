@@ -8,6 +8,8 @@ import { Home, Plus, RefreshCw, AlertCircle } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { useSidebar } from '@/lib/hooks/useSidebar';
+import { CreateDomainModal } from './CreateDomainModal';
+import { useKeyboard } from '@/lib/hooks/useKeyboard';
 
 interface DomainSwitcherProps {
   userId: string;
@@ -19,7 +21,27 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const [hoveredDomain, setHoveredDomain] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const { hide: hideSidebar } = useSidebar();
+
+  // Keyboard shortcut to open create modal
+  useKeyboard([
+    {
+      key: '+',
+      handler: () => {
+        // Don't trigger if user is typing in an input
+        if (
+          document.activeElement?.tagName === 'INPUT' ||
+          document.activeElement?.tagName === 'TEXTAREA' ||
+          document.activeElement?.getAttribute('contenteditable') === 'true'
+        ) {
+          return;
+        }
+        setIsCreateModalOpen(true);
+      },
+      description: 'Create New Domain',
+    },
+  ]);
 
   // Listen for auth state changes and refetch domains
   useEffect(() => {
@@ -131,15 +153,18 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
 
       {/* New Domain Button */}
       <button
-        onClick={() => {
-          // TODO: Open create domain modal
-          console.log('Create new domain');
-        }}
+        onClick={() => setIsCreateModalOpen(true)}
         className="mt-auto flex h-10 w-10 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 text-gray-400 transition-colors hover:border-primary-500 hover:text-primary-600"
         title="New Domain"
       >
         <Plus className="h-5 w-5" />
       </button>
+
+      <CreateDomainModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        userId={userId}
+      />
     </div>
   );
 }

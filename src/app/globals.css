@@ -135,9 +135,9 @@
     --text-inverse: #000000;
 
     /* Borders */
-    --border-default: #262626; /* neutral-800 */
-    --border-subtle: #171717; /* neutral-900 */
-    --border-strong: #404040; /* neutral-700 */
+      --border-default: #3f3f3f; /* neutral-700 for visibility */
+      --border-subtle: #2a2a2a; /* slightly above surface-subtle */
+      --border-strong: #525252; /* neutral-600 */
 
     /* Action: Primary */
     --action-primary-bg: #38bdf8; /* primary-400 (lighter for dark mode) */

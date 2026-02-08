@@ -11,11 +11,6 @@ import { isDevelopmentHost } from '@/lib/utils/authStorage';
 
 const emptySubscribe = () => () => {};
 
-/** Width of the Navigator panel in px — keep in sync with Navigator's w-64 (256px) */
-const SIDEBAR_WIDTH = 256;
-/** Animation duration in ms — keep in sync with CSS transition */
-const ANIM_MS = 250;
-
 interface ClientMainLayoutProps {
   children: React.ReactNode;
   userId: string;
@@ -30,12 +25,65 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const { user, status, loading, error, signOut } = useAuth();
 
   // Sidebar state from Zustand store
-  const { visible: sidebarVisible, show: showSidebar, hide: hideSidebar, setVisible: setSidebarVisible } = useSidebar();
+  const { 
+    visible: sidebarVisible, 
+    show: showSidebar, 
+    hide: hideSidebar, 
+    setVisible: setSidebarVisible,
+    width: sidebarWidth,
+    setWidth: setSidebarWidth,
+    isResizing,
+    setIsResizing
+  } = useSidebar();
 
   // Track whether we want the slide-out animation vs. a hard cut
-  const [sidebarRendered, setSidebarRendered] = useState(sidebarVisible);
-  const [sidebarSliding, setSidebarSliding] = useState(sidebarVisible);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Resize logic
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Calculate new width based on mouse position
+      // Assuming sidebar is on the left, width is basically e.clientX - offset
+      // Since DomainSwitcher is on the left (fixed or relative), we need to account for its width if it's in the flow
+      // However, the resize handle is at the right edge of the sidebar.
+      // So the width of the sidebar is roughly e.clientX - (DomainSwitcher width)
+      
+      // Let's get the sidebar's left position to be accurate
+      if (sidebarRef.current) {
+        const sidebarRect = sidebarRef.current.getBoundingClientRect();
+        const newWidth = e.clientX - sidebarRect.left;
+        
+        // Clamp width
+        const clampedWidth = Math.min(Math.max(newWidth, 200), 500);
+        setSidebarWidth(clampedWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, setSidebarWidth, setIsResizing]);
 
   // Detect "home" route — the root path with no domain param
   const isHomeRoute = pathname === '/';
@@ -47,51 +95,16 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     prevPathRef.current = pathname;
 
     if (isHomeRoute) {
-      // Going TO home → hide sidebar
       if (prev !== '/') {
-        // Animate the hide
-        setSidebarSliding(false);
-        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = setTimeout(() => {
-          setSidebarRendered(false);
-          hideSidebar();
-        }, ANIM_MS);
+        hideSidebar();
       } else {
-        // Already on home (initial load) — ensure hidden immediately
-        setSidebarRendered(false);
-        setSidebarSliding(false);
         setSidebarVisible(false);
       }
     } else {
-      // Going TO a domain route → show sidebar
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      setSidebarRendered(true);
-      // Delay 1 frame so the element is in the DOM before triggering the CSS transition
-      requestAnimationFrame(() => {
-        setSidebarSliding(true);
-      });
       showSidebar();
     }
+  }, [pathname, isHomeRoute, showSidebar, hideSidebar, setSidebarVisible]);
 
-    return () => {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
-  // Sync external store changes (e.g. domain click triggers showSidebar)
-  useEffect(() => {
-    if (sidebarVisible && !sidebarRendered) {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      setSidebarRendered(true);
-      requestAnimationFrame(() => setSidebarSliding(true));
-    }
-    if (!sidebarVisible && sidebarRendered) {
-      setSidebarSliding(false);
-      hideTimerRef.current = setTimeout(() => setSidebarRendered(false), ANIM_MS);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sidebarVisible]);
 
   // ----- Auth redirect -----
   useEffect(() => {
@@ -139,21 +152,28 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       </div>
 
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}
-      {sidebarRendered && (
+      {sidebarVisible && (
         <div
-          className="hidden md:block overflow-hidden transition-[width,opacity] ease-in-out"
+          ref={sidebarRef}
+          className="hidden md:flex overflow-visible relative group"
           style={{
-            width: sidebarSliding ? SIDEBAR_WIDTH : 0,
-            opacity: sidebarSliding ? 1 : 0,
-            transitionDuration: `${ANIM_MS}ms`,
+            width: sidebarWidth,
           }}
         >
           <div
-            className="h-full"
-            style={{ width: SIDEBAR_WIDTH, minWidth: SIDEBAR_WIDTH }}
+            className="h-full overflow-hidden"
+            style={{ width: sidebarWidth, minWidth: sidebarWidth }}
           >
             <Navigator userId={userId} />
           </div>
+          
+          {/* Resize Handle */}
+          <div
+            className={`absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-blue-400 active:bg-blue-600 transition-colors z-50
+              ${isResizing ? 'bg-blue-600 w-1' : 'bg-transparent'}
+            `}
+            onMouseDown={handleMouseDown}
+          />
         </div>
       )}
 

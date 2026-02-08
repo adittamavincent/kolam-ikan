@@ -1,35 +1,43 @@
 'use client';
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 interface SidebarState {
   /** Whether the sidebar (Navigator) is visible */
   visible: boolean;
-  /** Whether the sidebar is mid-transition (used to prevent flashing) */
-  animating: boolean;
-  /** Show the sidebar with animation */
+  /** Width of the sidebar in pixels */
+  width: number;
+  /** Whether the sidebar is being resized */
+  isResizing: boolean;
+  /** Show the sidebar */
   show: () => void;
-  /** Hide the sidebar with animation */
+  /** Hide the sidebar */
   hide: () => void;
-  /** Directly set visibility without animation (for initial route-based state) */
+  /** Directly set visibility */
   setVisible: (visible: boolean) => void;
+  /** Set the sidebar width */
+  setWidth: (width: number) => void;
+  /** Set the resizing state */
+  setIsResizing: (isResizing: boolean) => void;
 }
 
-export const useSidebar = create<SidebarState>()((set) => ({
-  visible: false,
-  animating: false,
+export const useSidebar = create<SidebarState>()(
+  persist(
+    (set) => ({
+      visible: false,
+      width: 256,
+      isResizing: false,
 
-  show: () => {
-    set({ visible: true, animating: true });
-    // Clear animating flag after the CSS transition completes (250ms)
-    setTimeout(() => set({ animating: false }), 260);
-  },
-
-  hide: () => {
-    set({ animating: true });
-    // Keep visible during the out-animation, then hide
-    setTimeout(() => set({ visible: false, animating: false }), 260);
-  },
-
-  setVisible: (visible) => set({ visible, animating: false }),
-}));
+      show: () => set({ visible: true }),
+      hide: () => set({ visible: false }),
+      setVisible: (visible) => set({ visible }),
+      setWidth: (width) => set({ width }),
+      setIsResizing: (isResizing) => set({ isResizing }),
+    }),
+    {
+      name: 'sidebar-storage',
+      partialize: (state) => ({ width: state.width, visible: state.visible }), // Persist width and visibility
+    }
+  )
+);

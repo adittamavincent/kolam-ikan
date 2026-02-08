@@ -178,7 +178,7 @@ const StreamNode = ({
   const isStreamEditing = editingItemId === stream.id;
 
   return (
-    <div className="group relative flex items-center">
+    <div className="group relative flex items-center" role="treeitem" aria-selected={isStreamActive} aria-label={stream.name}>
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
             ${isStreamActive
@@ -191,6 +191,13 @@ const StreamNode = ({
           if (!isStreamEditing) {
             handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
           }
+        }}
+        tabIndex={0}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
+            }
         }}
       >
         <div
@@ -214,6 +221,7 @@ const StreamNode = ({
             className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-primary-500 rounded-sm"
             onClick={(e) => e.stopPropagation()}
             autoFocus
+            aria-label="Edit stream name"
           />
         ) : (
           <span className="truncate flex-1 select-none">{stream.name}</span>
@@ -255,7 +263,7 @@ const CabinetNode = ({
   const isEditing = editingItemId === cabinet.id;
 
   return (
-    <div className="mb-0.5">
+    <div className="mb-0.5" role="treeitem" aria-expanded={isExpanded} aria-selected={isActive}>
       <div
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
             ${isActive
@@ -266,6 +274,21 @@ const CabinetNode = ({
         onClick={(e) => {
           e.stopPropagation();
           handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
+        }}
+        tabIndex={0}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
+            }
+            if (e.key === 'ArrowRight' && !isExpanded) {
+                e.preventDefault();
+                toggleCabinet(cabinet.id);
+            }
+            if (e.key === 'ArrowLeft' && isExpanded) {
+                e.preventDefault();
+                toggleCabinet(cabinet.id);
+            }
         }}
       >
         <div
@@ -280,7 +303,8 @@ const CabinetNode = ({
                 e.stopPropagation();
                 toggleCabinet(cabinet.id);
               }}
-              className="text-gray-400 hover:text-gray-600 p-0.5 rounded"
+              className="text-gray-400 hover:text-gray-600 p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label={isExpanded ? "Collapse cabinet" : "Expand cabinet"}
             >
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             </button>
@@ -301,6 +325,7 @@ const CabinetNode = ({
             className="min-w-0 flex-1 bg-white px-1 py-0.5 outline-none ring-2 ring-blue-500 rounded-sm"
             onClick={(e) => e.stopPropagation()}
             autoFocus
+            aria-label="Edit cabinet name"
           />
         ) : (
           <span className="truncate flex-1 select-none">{cabinet.name}</span>
@@ -308,7 +333,7 @@ const CabinetNode = ({
       </div>
 
       {isExpanded && (
-        <div className="relative">
+        <div className="relative" role="group">
           <div
             className="pointer-events-none absolute inset-y-0 w-0 border-gray-100"
             style={{
@@ -874,21 +899,21 @@ export function Navigator({ }: NavigatorProps) {
   // When there's no domain selected, show a minimal placeholder.
   if (!domainId) {
     return (
-      <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white p-4">
+      <div className="flex h-full w-full flex-col border-r border-gray-200 bg-white p-4">
         <p className="text-sm text-gray-500">Select a domain to begin</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-gray-200 bg-white">
+    <div className="flex h-full w-full flex-col border-r border-gray-200 bg-white">
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
         <h2 className="text-sm font-semibold text-gray-900">Navigator</h2>
       </div>
 
       {/* Tree View */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2" role="tree">
         {cabinetTree.roots.map((cabinet) => (
           <CabinetNode
             key={cabinet.id}

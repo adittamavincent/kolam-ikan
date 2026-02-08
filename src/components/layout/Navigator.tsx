@@ -138,6 +138,9 @@ interface CabinetNodeProps {
   handleKeyDown: (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => void;
   handleRename: (id: string, newName: string, type: 'cabinet' | 'stream') => void;
   handleItemClick: (id: string, type: 'cabinet' | 'stream', name: string, isActive: boolean) => void;
+  handleMouseDown: (id: string, name: string, type: 'cabinet' | 'stream') => void;
+  handleMouseUp: () => void;
+  handleMouseLeave: () => void;
   toggleCabinet: (id: string) => void;
   router: ReturnType<typeof useRouter>;
   domainId: string;
@@ -160,6 +163,9 @@ interface StreamNodeProps {
   handleKeyDown: (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => void;
   handleRename: (id: string, newName: string, type: 'cabinet' | 'stream') => void;
   handleItemClick: (id: string, type: 'cabinet' | 'stream', name: string, isActive: boolean) => void;
+  handleMouseDown: (id: string, name: string, type: 'cabinet' | 'stream') => void;
+  handleMouseUp: () => void;
+  handleMouseLeave: () => void;
 }
 
 const StreamNode = ({
@@ -173,6 +179,9 @@ const StreamNode = ({
   handleKeyDown,
   handleRename,
   handleItemClick,
+  handleMouseDown,
+  handleMouseUp,
+  handleMouseLeave,
 }: StreamNodeProps) => {
   const isStreamActive = activeNode?.type === 'stream' && activeNode.id === stream.id;
   const isStreamEditing = editingItemId === stream.id;
@@ -192,6 +201,9 @@ const StreamNode = ({
             handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
           }
         }}
+        onMouseDown={() => handleMouseDown(stream.id, stream.name, 'stream')}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         tabIndex={0}
         onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -245,6 +257,9 @@ const CabinetNode = ({
   handleKeyDown,
   handleRename,
   handleItemClick,
+  handleMouseDown,
+  handleMouseUp,
+  handleMouseLeave,
   toggleCabinet,
   router,
   domainId,
@@ -275,6 +290,9 @@ const CabinetNode = ({
           e.stopPropagation();
           handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
         }}
+        onMouseDown={() => handleMouseDown(cabinet.id, cabinet.name, 'cabinet')}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         tabIndex={0}
         onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -359,6 +377,9 @@ const CabinetNode = ({
               handleKeyDown={handleKeyDown}
               handleRename={handleRename}
               handleItemClick={handleItemClick}
+              handleMouseDown={handleMouseDown}
+              handleMouseUp={handleMouseUp}
+              handleMouseLeave={handleMouseLeave}
               toggleCabinet={toggleCabinet}
               router={router}
               domainId={domainId}
@@ -394,6 +415,9 @@ const CabinetNode = ({
               handleKeyDown={handleKeyDown}
               handleRename={handleRename}
               handleItemClick={handleItemClick}
+              handleMouseDown={handleMouseDown}
+              handleMouseUp={handleMouseUp}
+              handleMouseLeave={handleMouseLeave}
             />
           ))}
 
@@ -850,6 +874,33 @@ export function Navigator({ }: NavigatorProps) {
 
   // Click debouncing ref
   const lastClickRef = useRef<{ id: string; time: number } | null>(null);
+  
+  // Long press refs
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const ignoreNextClickRef = useRef<boolean>(false);
+
+  // Long press handlers
+  const handleMouseDown = (id: string, name: string, type: 'cabinet' | 'stream') => {
+    longPressTimerRef.current = setTimeout(() => {
+      setEditingItemId(id);
+      setEditingName(name);
+      ignoreNextClickRef.current = true;
+    }, 600); // 600ms for long press
+  };
+
+  const handleMouseUp = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
 
   // Click handling logic
   const handleItemClick = (
@@ -858,34 +909,39 @@ export function Navigator({ }: NavigatorProps) {
     name: string,
     isActive: boolean
   ) => {
+    // If long press triggered rename, ignore this click
+    if (ignoreNextClickRef.current) {
+      ignoreNextClickRef.current = false;
+      return;
+    }
+
     const now = Date.now();
     const lastClick = lastClickRef.current;
 
-    // If clicking on an already active item
-    if (isActive) {
-      // Check if this is a "slow click" (not a double click, but a distinct second click)
-      // Standard double click is usually < 300ms. VS Code rename is usually triggered if > 500ms or so.
-      // But here we want: Click -> Open. Click again (when active) -> Rename.
-      // We should avoid triggering rename on double click (which might toggle expansion).
-
-      if (lastClick && lastClick.id === id && (now - lastClick.time > 500)) {
+    if (type === 'cabinet') {
+      // Cabinet logic (applied to ALL cabinets, highlighted or not):
+      // 1. Rapid successive clicks (< 500ms) -> Rename
+      // 2. Single click / Slow click -> Toggle Expand/Collapse
+      if (lastClick && lastClick.id === id && (now - lastClick.time < 500)) {
+        setEditingItemId(id);
+        setEditingName(name);
+        lastClickRef.current = null;
+        return;
+      } else {
+        toggleCabinet(id);
+      }
+    } else {
+      // Stream logic
+      // Highlighted streams: Slow click (> 500ms) -> Rename (Legacy behavior)
+      // All streams: Click -> Navigate
+      if (isActive && lastClick && lastClick.id === id && (now - lastClick.time > 500)) {
         setEditingItemId(id);
         setEditingName(name);
         lastClickRef.current = null; // Reset
         return;
       }
-    } else {
-      // Not active: activate/navigate
-      if (type === 'stream') {
-        router.push(`/${domainId}/${id}`);
-      } else {
-        // For cabinets, we toggle expand if clicking arrow, but here we are clicking the row.
-        // If we want "select" behavior for cabinets, we might just highlight it.
-        // Current logic: toggleCabinet is separate.
-        // Let's toggle cabinet on click if it's not active? Or just highlight?
-        // VS Code: Clicking a folder expands/collapses it.
-        toggleCabinet(id);
-      }
+      
+      router.push(`/${domainId}/${id}`);
     }
 
     lastClickRef.current = { id, time: now };
@@ -929,6 +985,9 @@ export function Navigator({ }: NavigatorProps) {
             handleKeyDown={handleKeyDown}
             handleRename={handleRename}
             handleItemClick={handleItemClick}
+            handleMouseDown={handleMouseDown}
+            handleMouseUp={handleMouseUp}
+            handleMouseLeave={handleMouseLeave}
             toggleCabinet={toggleCabinet}
             router={router}
             domainId={domainId || ''}
@@ -954,6 +1013,9 @@ export function Navigator({ }: NavigatorProps) {
             handleKeyDown={handleKeyDown}
             handleRename={handleRename}
             handleItemClick={handleItemClick}
+            handleMouseDown={handleMouseDown}
+            handleMouseUp={handleMouseUp}
+            handleMouseLeave={handleMouseLeave}
           />
         ))}
 

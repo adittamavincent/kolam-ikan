@@ -11,40 +11,69 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 
 interface UseDraftSystemProps {
   streamId: string;
-  personaId?: string | null;
-  personaName?: string | null;
+}
+
+interface SectionDraft {
+  sectionId: string | null;
+  personaId: string;
+  content: PartialBlock[];
+  updatedAt: number;
 }
 
 interface DraftState {
-  content: PartialBlock[];
   entryId: string | null;
-  sectionId: string | null;
+  sections: Record<string, SectionDraft>; // instanceId -> draft
   updatedAt: number;
 }
 
 const STORAGE_PREFIX = 'kolam_draft_';
 
-export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSystemProps) {
+export interface DraftContent {
+  personaId: string;
+  content: PartialBlock[];
+}
+
+export function useDraftSystem({ streamId }: UseDraftSystemProps) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
-  const [activeEntry, setActiveEntry] = useState<{ id: string; sectionId: string } | null>(null);
-  const [initialContent, setInitialContent] = useState<PartialBlock[] | null>(null);
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  
+  // Map of instanceId -> { personaId, content } (for initial load)
+  const [initialDrafts, setInitialDrafts] = useState<Record<string, DraftContent>>({});
   const [isLoading, setIsLoading] = useState(true);
   
   const queryClient = useQueryClient();
   const supabase = createClient();
   
-  // Refs for state access inside async/debounce
-  const activeEntryRef = useRef(activeEntry);
-  const contentRef = useRef<PartialBlock[]>([]);
-  const saveQueueRef = useRef<{ content: PartialBlock[], attempt: number } | null>(null);
-  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Refs
+  const activeEntryIdRef = useRef<string | null>(null);
+  // Map instanceId -> sectionId
+  const sectionIdsRef = useRef<Record<string, string>>({});
+  
+  // We need to track content per instance to save it
+  // instanceId -> content
+  const contentRefs = useRef<Record<string, PartialBlock[]>>({});
+  
+  // We need to track persona per instance
+  // instanceId -> personaId
+  const personaIdsRef = useRef<Record<string, string>>({});
+  
+  // Track which instances are currently active/visible
+  const activeInstancesRef = useRef<Set<string>>(new Set());
+  
   const isMountedRef = useRef(true);
+  const creationPromiseRef = useRef<Promise<string> | null>(null);
+  const sectionCreationPromisesRef = useRef<Record<string, Promise<string> | undefined>>({});
+  const pendingSavesRef = useRef<Set<Promise<void>>>(new Set());
+  
+  // Debouncers cache: instanceId -> debounced function
+  type DebouncedSaveFunc = ReturnType<typeof debounce>;
+  const debouncersRef = useRef<Record<string, DebouncedSaveFunc>>({});
 
   // Sync refs
   useEffect(() => {
-    activeEntryRef.current = activeEntry;
-  }, [activeEntry]);
+    activeEntryIdRef.current = activeEntryId;
+  }, [activeEntryId]);
 
   // Load draft on mount
   useEffect(() => {
@@ -61,7 +90,11 @@ export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSys
         
         if (localDraftStr) {
           try {
-            localDraft = JSON.parse(localDraftStr);
+            const parsed = JSON.parse(localDraftStr);
+            // Migration check: if it's the old format (personaId keys) or older
+            // We'll just ignore old formats for simplicity in this refactor
+            // or we could try to detect if keys are UUIDs vs persona IDs, but simpler to reset if schema changes significantly
+             localDraft = parsed;
           } catch (e) {
             console.error('Failed to parse local draft', e);
           }
@@ -76,6 +109,7 @@ export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSys
             sections (
               id,
               content_json,
+              persona_id,
               updated_at
             )
           `)
@@ -87,12 +121,12 @@ export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSys
         if (error) throw error;
 
         const dbDraft = dbDrafts?.[0];
-        const dbSection = dbDraft?.sections?.[0];
         
         // 3. Compare and Decide
-        let finalContent: PartialBlock[] = [];
-        let finalEntryId: string | null = null;
-        let finalSectionId: string | null = null;
+        const loadedDrafts: Record<string, DraftContent> = {};
+        const loadedSectionIds: Record<string, string> = {};
+        const loadedPersonaIds: Record<string, string> = {};
+        let loadedEntryId: string | null = null;
 
         const dbTime = dbDraft ? new Date(dbDraft.updated_at || 0).getTime() : 0;
         const localTime = localDraft ? localDraft.updatedAt : 0;
@@ -100,29 +134,55 @@ export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSys
         if (localDraft && localTime > dbTime) {
           // Local is newer
           console.log('Restoring from local storage');
-          finalContent = localDraft.content;
-          finalEntryId = localDraft.entryId;
-          finalSectionId = localDraft.sectionId;
-          setStatus('offline'); // Indicate it was loaded from offline source
-        } else if (dbDraft && dbSection) {
-          // DB is newer or no local
+          loadedEntryId = localDraft.entryId;
+          
+          Object.entries(localDraft.sections).forEach(([instanceId, draft]) => {
+             loadedDrafts[instanceId] = {
+               personaId: draft.personaId,
+               content: draft.content
+             };
+             if (draft.sectionId) loadedSectionIds[instanceId] = draft.sectionId;
+             loadedPersonaIds[instanceId] = draft.personaId;
+          });
+          
+          setStatus('offline');
+        } else if (dbDraft) {
+          // DB is newer
           console.log('Restoring from database');
-          finalContent = dbSection.content_json as unknown as PartialBlock[];
-          finalEntryId = dbDraft.id;
-          finalSectionId = dbSection.id;
+          loadedEntryId = dbDraft.id;
+          
+          dbDraft.sections.forEach(section => {
+             if (section.persona_id) {
+                 // Use section.id as instanceId for DB drafts
+                 const instanceId = section.id;
+                 loadedDrafts[instanceId] = {
+                   personaId: section.persona_id,
+                   content: section.content_json as unknown as PartialBlock[]
+                 };
+                 loadedSectionIds[instanceId] = section.id;
+                 loadedPersonaIds[instanceId] = section.persona_id;
+             }
+          });
+          
           setStatus('saved');
         }
 
-        if (finalEntryId && finalSectionId) {
-          setActiveEntry({ id: finalEntryId, sectionId: finalSectionId });
-          setInitialContent(finalContent);
-        } else {
-          setInitialContent([]);
+        if (loadedEntryId) {
+          setActiveEntryId(loadedEntryId);
+          sectionIdsRef.current = loadedSectionIds;
+          personaIdsRef.current = loadedPersonaIds;
+          setInitialDrafts(loadedDrafts);
+          
+          // Initialize content refs
+          const contentMap: Record<string, PartialBlock[]> = {};
+          Object.entries(loadedDrafts).forEach(([k, v]) => {
+            contentMap[k] = v.content;
+          });
+          contentRefs.current = contentMap;
         }
 
       } catch (err) {
         console.error('Error loading draft:', err);
-        setInitialContent([]);
       } finally {
         setIsLoading(false);
       }
@@ -130,214 +190,333 @@ export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSys
 
     loadDraft();
 
+    const debouncers = debouncersRef.current;
     return () => {
       isMountedRef.current = false;
-      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      // Cleanup debouncers
+      Object.values(debouncers).forEach((d) => d.cancel?.());
     };
   }, [streamId, supabase]);
 
-  // Save implementation with retry logic
-  const performSave = useCallback(async (content: PartialBlock[], attempt = 0) => {
-    if (!content || content.length === 0) return;
+  // Update Local Storage Helper
+  const updateLocalStorage = useCallback(() => {
+     const state: DraftState = {
+         entryId: activeEntryIdRef.current,
+         sections: {},
+         updatedAt: Date.now()
+     };
+     
+     // Populate sections from refs
+     Object.keys(contentRefs.current).forEach(instanceId => {
+         state.sections[instanceId] = {
+             sectionId: sectionIdsRef.current[instanceId] || null,
+             personaId: personaIdsRef.current[instanceId],
+             content: contentRefs.current[instanceId],
+             updatedAt: Date.now()
+         };
+     });
+     
+     localStorage.setItem(`${STORAGE_PREFIX}${streamId}`, JSON.stringify(state));
+  }, [streamId]);
+
+  // Save implementation
+  const performSave = useCallback(async (instanceId: string, personaId: string, content: PartialBlock[], personaName?: string) => {
     if (!streamId) return;
 
-    setStatus('saving');
+    const savePromise = (async () => {
+      setStatus('saving');
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      try {
+        // Handle empty content - delete section if it exists
+        if (!content || content.length === 0) {
+            const sectionId = sectionIdsRef.current[instanceId];
+            if (sectionId) {
+                await supabase.from('sections').delete().eq('id', sectionId);
+                delete sectionIdsRef.current[instanceId];
+            }
+            // Clean up refs for this instance since it has no content
+            contentRefs.current[instanceId] = [];
+            delete personaIdsRef.current[instanceId];
+            activeInstancesRef.current.delete(instanceId);
+            
+            updateLocalStorage();
+            setStatus('saved');
+            return;
+        }
 
-      // Validation
-      const validationResult = EntryContentSchema.safeParse(content);
-      if (!validationResult.success) throw new Error('Invalid content');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('User not authenticated');
 
-      let entryId = activeEntryRef.current?.id;
-      let sectionId = activeEntryRef.current?.sectionId;
+        // Validation
+        const validationResult = EntryContentSchema.safeParse(content);
+        if (!validationResult.success) throw new Error('Invalid content');
 
-      if (entryId && sectionId) {
-        // UPDATE
-        const { error } = await supabase
-          .from('sections')
-          .update({
-            content_json: content as unknown as Json,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', sectionId);
-          
-        if (error) throw error;
+        let entryId = activeEntryIdRef.current;
+        let sectionId = sectionIdsRef.current[instanceId];
+
+        if (!entryId) {
+            // Create Entry (and first section)
+            // Use lock to prevent race conditions
+            if (!creationPromiseRef.current) {
+                creationPromiseRef.current = (async () => {
+                    const { data, error } = await supabase.rpc('create_entry_with_section', {
+                      p_stream_id: streamId,
+                      p_content_json: content as unknown as Json,
+                      p_persona_id: personaId,
+                      p_persona_name_snapshot: personaName,
+                      p_is_draft: true
+                    });
+                    
+                    if (error) throw error;
+                    
+                    const newEntry = data as unknown as EntryWithSections;
+                    const newEntryId = newEntry.id;
+                    const newSectionId = newEntry.sections[0].id;
+                    
+                    return { newEntryId, newSectionId };
+                })().then(res => {
+                    activeEntryIdRef.current = res.newEntryId;
+                    sectionIdsRef.current[instanceId] = res.newSectionId; // Ensure creator's section ID is set
+                    if (isMountedRef.current) setActiveEntryId(res.newEntryId);
+                    return res.newEntryId; // Return ID
+                }).catch(e => {
+                    creationPromiseRef.current = null; // Reset on error
+                    throw e;
+                });
+            }
+            
+            // Wait for creation
+            entryId = await creationPromiseRef.current;
+        }
         
-        // Also update entry updated_at
+        // If we are here, entryId exists.
+        
+        // Check if we have a sectionId
+        sectionId = sectionIdsRef.current[instanceId];
+
+        // If no known section ID, check if one is being created
+        if (!sectionId && sectionCreationPromisesRef.current[instanceId]) {
+            sectionId = await sectionCreationPromisesRef.current[instanceId];
+            sectionIdsRef.current[instanceId] = sectionId;
+        }
+        
+        if (sectionId) {
+            // UPDATE existing section
+            const { error } = await supabase
+              .from('sections')
+              .update({
+                content_json: content as unknown as Json,
+                persona_id: personaId, // Allow updating personaId if changed
+                persona_name_snapshot: personaName,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', sectionId);
+              
+            if (error) throw error;
+        } else {
+            // INSERT new section
+            const createPromise = (async () => {
+                const { data, error } = await supabase
+                  .from('sections')
+                  .insert({
+                      entry_id: entryId,
+                      persona_id: personaId,
+                      persona_name_snapshot: personaName,
+                      content_json: content as unknown as Json,
+                      sort_order: 0 // logic for order?
+                  })
+                  .select('id')
+                  .single();
+                  
+                if (error) throw error;
+                return data.id;
+            })();
+
+            sectionCreationPromisesRef.current[instanceId] = createPromise;
+
+            try {
+                const newId = await createPromise;
+                sectionIdsRef.current[instanceId] = newId;
+            } finally {
+                delete sectionCreationPromisesRef.current[instanceId];
+            }
+        }
+        
+        // Update entry updated_at
         await supabase.from('entries').update({ updated_at: new Date().toISOString() }).eq('id', entryId);
 
-      } else {
-        // CREATE
-        const { data, error } = await supabase.rpc('create_entry_with_section', {
-          p_stream_id: streamId,
-          p_content_json: content as unknown as Json,
-          p_persona_id: personaId ?? undefined,
-          p_persona_name_snapshot: personaName ?? undefined,
-          p_is_draft: true
-        });
-
-        if (error) throw error;
-        
-        // Parse result to get IDs
-        const newEntry = data as unknown as EntryWithSections;
-        if (newEntry && newEntry.sections?.[0]) {
-          entryId = newEntry.id;
-          sectionId = newEntry.sections[0].id;
-          if (isMountedRef.current) {
-            setActiveEntry({ id: entryId, sectionId });
-          }
-        }
-      }
-
-      // Success
-      if (isMountedRef.current) {
-        setStatus('saved');
-        setLastSavedAt(new Date());
-        
-        // Clear local storage if sync successful? 
-        // Or keep it as backup? Keep it but update timestamp.
-        // Actually, we might want to keep it in case next save fails.
-        // But if we are in sync, we can rely on DB.
-        // Let's update the local storage with the new IDs if they were created.
-        const localKey = `${STORAGE_PREFIX}${streamId}`;
-        const newState: DraftState = {
-            content,
-            entryId: entryId ?? null,
-            sectionId: sectionId ?? null,
-            updatedAt: Date.now()
-        };
-        localStorage.setItem(localKey, JSON.stringify(newState));
-      }
-      
-      saveQueueRef.current = null;
-
-    } catch (error) {
-      console.error(`Save failed (attempt ${attempt}):`, error);
-      
-      // Calculate backoff
-      if (attempt < 5) { // Max 5 retries
-        const backoff = Math.min(1000 * Math.pow(2, attempt), 30000);
-        console.log(`Retrying in ${backoff}ms...`);
-        
+        // Success
         if (isMountedRef.current) {
-          setStatus('saving'); // Keep showing saving
-          saveQueueRef.current = { content, attempt: attempt + 1 };
-          
-          retryTimeoutRef.current = setTimeout(() => {
-            performSave(content, attempt + 1);
-          }, backoff);
+          setStatus('saved');
+          setLastSavedAt(new Date());
+          updateLocalStorage();
         }
-      } else {
-        if (isMountedRef.current) {
-          setStatus('error'); // Give up after max retries
-          // Ensure it's in local storage at least
-          const localKey = `${STORAGE_PREFIX}${streamId}`;
-          const currentState: DraftState = {
-              content,
-              entryId: activeEntryRef.current?.id ?? null,
-              sectionId: activeEntryRef.current?.sectionId ?? null,
-              updatedAt: Date.now()
-          };
-          localStorage.setItem(localKey, JSON.stringify(currentState));
-          setStatus('offline'); // Saved locally only
-        }
+
+      } catch (error) {
+        console.error(`Save failed for instance ${instanceId}:`, error);
+        setStatus('error');
       }
-    }
-  }, [streamId, personaId, personaName, supabase]);
+    })();
 
-  // Debounced Save Wrapper
-  const debouncedSave = useRef(
-    debounce((content: PartialBlock[]) => {
-      performSave(content, 0);
-    }, 1000) // 1s debounce
-  ).current;
+    // Track promise
+    pendingSavesRef.current.add(savePromise);
+    savePromise.finally(() => {
+        pendingSavesRef.current.delete(savePromise);
+    });
 
-  // Public save method called by component
-  const saveDraft = useCallback((content: PartialBlock[]) => {
-    contentRef.current = content;
-    
-    // 1. Immediate Local Save
-    const localKey = `${STORAGE_PREFIX}${streamId}`;
-    const draftState: DraftState = {
-      content,
-      entryId: activeEntryRef.current?.id ?? null,
-      sectionId: activeEntryRef.current?.sectionId ?? null,
-      updatedAt: Date.now()
-    };
-    localStorage.setItem(localKey, JSON.stringify(draftState));
-    
-    // 2. Queue DB Save
+    return savePromise;
+  }, [streamId, supabase, updateLocalStorage]);
+
+  // Get or create debouncer for an instance
+  const getDebouncer = useCallback((instanceId: string) => {
+      if (!debouncersRef.current[instanceId]) {
+          debouncersRef.current[instanceId] = debounce((personaId: string, content: PartialBlock[], personaName?: string) => {
+              performSave(instanceId, personaId, content, personaName);
+          }, 1000);
+      }
+      return debouncersRef.current[instanceId];
+  }, [performSave]);
+
+  // Public save method
+  const saveDraft = useCallback((instanceId: string, personaId: string, content: PartialBlock[], personaName?: string) => {
+    contentRefs.current[instanceId] = content;
+    personaIdsRef.current[instanceId] = personaId;
+    // Mark this instance as active
+    activeInstancesRef.current.add(instanceId);
+    updateLocalStorage(); // Sync to local immediately
     setStatus('saving');
-    debouncedSave(content);
-  }, [streamId, debouncedSave]);
+    
+    getDebouncer(instanceId)(personaId, content, personaName);
+  }, [updateLocalStorage, getDebouncer]);
+  
+  // Method to mark instances as active (called by UI)
+  const setActiveInstances = useCallback((instanceIds: string[]) => {
+    const newActiveSet = new Set(instanceIds);
+    
+    // Clean up refs for instances that are no longer active
+    const currentInstances = Array.from(activeInstancesRef.current);
+    currentInstances.forEach(instanceId => {
+      if (!newActiveSet.has(instanceId)) {
+        // Instance is no longer active, clean up its refs
+        delete contentRefs.current[instanceId];
+        delete personaIdsRef.current[instanceId];
+        delete sectionIdsRef.current[instanceId];
+        
+        // Cancel any pending debounced saves
+        if (debouncersRef.current[instanceId]) {
+          debouncersRef.current[instanceId].cancel();
+          delete debouncersRef.current[instanceId];
+        }
+      }
+    });
+    
+    activeInstancesRef.current = newActiveSet;
+  }, []);
+
+  const getDraftContent = useCallback((instanceId: string) => {
+      return contentRefs.current[instanceId] || initialDrafts[instanceId]?.content || [];
+  }, [initialDrafts]);
 
   const commitDraft = useCallback(async () => {
-    debouncedSave.cancel(); // Cancel pending saves
+    // Cancel all pending debounced calls (flushing them might be better if we want to save latest?)
+    // Actually flush executes them.
+    Object.values(debouncersRef.current).forEach((d) => d.flush());
     
-    let content = contentRef.current;
-    if (!content || content.length === 0) return;
+    // Wait for all pending saves to complete
+    if (pendingSavesRef.current.size > 0) {
+        await Promise.all(Array.from(pendingSavesRef.current));
+    }
     
-    // Remove trailing empty block if present
-    if (content.length > 0) {
-      const lastBlock = content[content.length - 1];
-      // Check if it's an empty paragraph
-      const isEmptyParagraph = 
-        lastBlock.type === 'paragraph' && 
-        (!lastBlock.content || (Array.isArray(lastBlock.content) && lastBlock.content.length === 0));
-      
-      if (isEmptyParagraph) {
-        // Create a shallow copy without the last block
-        content = content.slice(0, -1);
-      }
+    // Wait for creation if any
+    if (creationPromiseRef.current) {
+        await creationPromiseRef.current;
     }
 
-    // If content is empty after trimming, don't commit
-    if (content.length === 0) return;
+    // Get active instances with content
+    // IMPORTANT: Only check instances that are explicitly in activeInstancesRef
+    // to prevent stale instances from being committed
+    const activeInstancesWithContent = Array.from(activeInstancesRef.current).filter(
+      instanceId => {
+        const content = contentRefs.current[instanceId];
+        const hasContent = content && content.length > 0;
+        const hasPersona = personaIdsRef.current[instanceId];
+        return hasContent && hasPersona;
+      }
+    );
     
-    // Force immediate save/update to is_draft = false
+    // Check if we have anything to commit
+    if (activeInstancesWithContent.length === 0) {
+      console.warn("No active instances with content to commit");
+      return;
+    }
+
     try {
-        // If we have an active entry, update it to not be draft
-        if (activeEntryRef.current) {
+        if (activeEntryIdRef.current) {
+            const entryId = activeEntryIdRef.current;
+            
+            // Get all section IDs for active instances
+            const activeSectionIds = activeInstancesWithContent
+              .map(id => sectionIdsRef.current[id])
+              .filter((id): id is string => !!id);
+            
+            // Delete any sections that are NOT in the active list
+            const { data: allSections } = await supabase
+              .from('sections')
+              .select('id')
+              .eq('entry_id', entryId);
+            
+            if (allSections) {
+              const sectionsToDelete = allSections
+                .map(s => s.id)
+                .filter(id => !activeSectionIds.includes(id));
+              
+              if (sectionsToDelete.length > 0) {
+                await supabase
+                  .from('sections')
+                  .delete()
+                  .in('id', sectionsToDelete);
+              }
+            }
+            
+            // Validate that we have at least one section to commit
+            if (activeSectionIds.length === 0) {
+              console.warn("No sections to commit");
+              return;
+            }
+            
+            // Update entry to not draft
             const { error } = await supabase
                 .from('entries')
                 .update({ is_draft: false })
-                .eq('id', activeEntryRef.current.id);
+                .eq('id', entryId);
             
             if (error) throw error;
-            
-            // Also ensure content is latest
-             const { error: sectionError } = await supabase
-                .from('sections')
-                .update({
-                    content_json: content as unknown as Json,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', activeEntryRef.current.sectionId);
-             
-             if (sectionError) throw sectionError;
-
         } else {
-            // Create new committed entry
-             const { error } = await supabase.rpc('create_entry_with_section', {
-                p_stream_id: streamId,
-                p_content_json: content as unknown as Json,
-                p_persona_id: personaId ?? undefined,
-                p_persona_name_snapshot: personaName ?? undefined,
-                p_is_draft: false
-            });
-            if (error) throw error;
+            // Should be handled by waiting for creationPromiseRef above
+            console.warn("Attempted to commit but no entry ID found");
         }
 
-        // Cleanup
+        // Cleanup all refs and state
         localStorage.removeItem(`${STORAGE_PREFIX}${streamId}`);
-        setActiveEntry(null);
-        setInitialContent([]); // Clear content
+        setActiveEntryId(null);
+        setInitialDrafts({});
+        
+        // Clean up all refs
+        sectionIdsRef.current = {};
+        contentRefs.current = {};
+        personaIdsRef.current = {};
+        activeInstancesRef.current.clear();
+        
+        // Cancel and clear all debouncers
+        Object.values(debouncersRef.current).forEach(d => d.cancel());
+        debouncersRef.current = {};
+        
+        // Clear creation promises
+        creationPromiseRef.current = null;
+        sectionCreationPromisesRef.current = {};
+        
         setStatus('idle');
         
-        // Invalidate queries
         queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
 
     } catch (error) {
@@ -345,15 +524,17 @@ export function useDraftSystem({ streamId, personaId, personaName }: UseDraftSys
         setStatus('error');
         throw error;
     }
-  }, [streamId, personaId, personaName, supabase, queryClient, debouncedSave]);
+  }, [streamId, supabase, queryClient]);
 
   return {
     status,
     lastSavedAt,
     saveDraft,
     commitDraft,
-    initialLoadedContent: initialContent,
+    initialDrafts,
+    getDraftContent,
     isLoading,
-    activeEntryId: activeEntry?.id,
+    activeEntryId,
+    setActiveInstances,
   };
 }

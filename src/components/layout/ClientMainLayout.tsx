@@ -3,11 +3,13 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { Menu as MenuIcon, X, ChevronDown, LogOut, Settings } from 'lucide-react';
+import { Menu as MenuIcon, X, ChevronDown, LogOut, Settings, PanelLeft, PanelRight, Columns } from 'lucide-react';
+import { StreamHeaderTitle } from '@/components/features/stream/StreamHeaderTitle';
 import { DomainSwitcher } from '@/components/layout/DomainSwitcher';
 import { Navigator } from '@/components/layout/Navigator';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSidebar } from '@/lib/hooks/useSidebar';
+import { useLayout } from '@/lib/hooks/useLayout';
 import { isDevelopmentHost } from '@/lib/utils/authStorage';
 import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems, Transition, TransitionChild } from '@headlessui/react';
 
@@ -38,6 +40,16 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     isResizing,
     setIsResizing
   } = useSidebar();
+
+  const { setMode, logWidth, canvasWidth } = useLayout();
+  const isLogMaximized = logWidth === 100 && canvasWidth === 0;
+  const isBalanced = logWidth === 50 && canvasWidth === 50;
+  const isCanvasMaximized = logWidth === 0 && canvasWidth === 100;
+  
+  // Show layout controls only on stream pages (domain/stream)
+  const parts = pathname?.split('/').filter(Boolean) || [];
+  const showLayoutControls = parts.length === 2;
+  const streamId = showLayoutControls ? parts[1] : undefined;
 
   // Track whether we want the slide-out animation vs. a hard cut
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -198,15 +210,51 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       {/* ====== MAIN CONTENT ====== */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-4 py-3 shadow-sm">
+        <div className="relative flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-4 py-3 shadow-sm">
           <div className="flex items-center gap-3">
-            <div className="text-sm font-semibold text-text-default">Kolam Ikan</div>
-            {isDevHost && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                Dev: log out before closing tab
-              </span>
-            )}
+            <StreamHeaderTitle streamId={streamId} />
           </div>
+          
+          {showLayoutControls && (
+            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-md bg-surface-subtle p-0.5">
+              <button
+                onClick={() => setMode('log-only')}
+                className={`rounded p-1 transition-colors ${
+                  isLogMaximized
+                    ? 'bg-surface-default text-text-default shadow-sm'
+                    : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
+                }`}
+                title="Maximize Log (⌘J)"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </button>
+
+              <button
+                onClick={() => setMode('balanced')}
+                className={`rounded p-1 transition-colors ${
+                  isBalanced
+                    ? 'bg-surface-default text-text-default shadow-sm'
+                    : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
+                }`}
+                title="Reset Layout (⌘K)"
+              >
+                <Columns className="h-4 w-4" />
+              </button>
+
+              <button
+                onClick={() => setMode('canvas-only')}
+                className={`rounded p-1 transition-colors ${
+                  isCanvasMaximized
+                    ? 'bg-surface-default text-text-default shadow-sm'
+                    : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
+                }`}
+                title="Maximize Canvas (⌘L)"
+              >
+                <PanelRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
           <Menu as="div" className="relative">
             <MenuButton className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-default px-2 py-1.5 text-left text-xs text-text-default shadow-sm transition hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
               {avatarUrl ? (

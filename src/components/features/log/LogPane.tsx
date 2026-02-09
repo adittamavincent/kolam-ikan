@@ -1,18 +1,16 @@
 'use client';
 
-import { useState, useRef, Fragment, useEffect } from 'react';
+import { useState, Fragment, useEffect } from 'react';
 import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
 import { LogSection } from './LogSection';
 import { useStream } from '@/lib/hooks/useStream';
-import { useUpdateStream } from '@/lib/hooks/useUpdateStream';
-import { Pencil, Filter, ArrowUpDown, Search, Users, Download, Calendar, ChevronLeft, Info, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Filter, ArrowUpDown, Search, Users, Download, Calendar, Info, AlertTriangle, AlertCircle } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { PersonaManager } from '../persona/PersonaManager';
 import { exportEntriesToMarkdown, downloadMarkdown } from '@/lib/utils/export';
-import { useLayout } from '@/lib/hooks/useLayout';
 
 interface LogPaneProps {
   streamId: string;
@@ -24,7 +22,6 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterPersonaId, setFilterPersonaId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const { toggleLogCollapse } = useLayout();
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -47,44 +44,10 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
   });
 
   const { stream } = useStream(streamId);
-  const updateStreamMutation = useUpdateStream(streamId);
   const { personas } = usePersonas();
   
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingName, setEditingName] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
   const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
-
-  const handleEdit = () => {
-    setEditingName(stream?.name || '');
-    setIsEditing(true);
-    setTimeout(() => inputRef.current?.focus(), 0);
-  };
-
-  const handleSave = () => {
-    const trimmed = editingName.trim();
-    if (!trimmed) {
-      setEditingName(stream?.name || '');
-      setIsEditing(false);
-      return;
-    }
-    
-    if (trimmed !== stream?.name) {
-       // Optimistic check (simplified)
-       updateStreamMutation.mutate(trimmed);
-    }
-    setIsEditing(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      setEditingName(stream?.name || '');
-      setIsEditing(false);
-    }
-  };
 
   const handleExport = async () => {
     try {
@@ -145,20 +108,9 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
       <div className="flex h-full flex-col" style={contentStyle}>
         {/* Header Area */}
         <div className="border-b border-border-subtle bg-surface-default shrink-0">
-          <div className="px-3 pb-2 pt-3">
+          <div className="px-2 py-1.5">
             <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-text-default">The Log</h2>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={toggleLogCollapse}
-                  className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
-                  title="Collapse log"
-                  aria-label="Collapse log"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${
@@ -186,28 +138,6 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
                 </button>
               </div>
             </div>
-
-            {isEditing ? (
-              <input
-                ref={inputRef}
-                type="text"
-                value={editingName}
-                onChange={(e) => setEditingName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={handleSave}
-                className="mt-1 w-full border-b border-action-primary-bg bg-transparent pb-0.5 text-sm text-text-default outline-none"
-              />
-            ) : (
-              <p
-                className="group mt-1 flex items-center gap-2 truncate text-xs text-text-subtle transition-colors hover:text-text-default"
-                onClick={handleEdit}
-              >
-                <span className="truncate">{stream ? stream.name : `Stream: ${streamId}`}</span>
-                <span className="opacity-0 transition-opacity group-hover:opacity-100">
-                  <Pencil className="h-3 w-3" />
-                </span>
-              </p>
-            )}
           </div>
 
           {/* Toolbar */}

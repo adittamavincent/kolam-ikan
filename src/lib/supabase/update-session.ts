@@ -121,7 +121,30 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  // 3. Validate session against database
+  // If session is invalid (DB reset, deleted user) but we have cookies, force cleanup
+  if (error || !user) {
+    if (hasSupabaseAuth || hasDevAuth) {
+      console.warn(`[Auth] Invalid session detected for ${pathname}. Clearing cookies.`);
+      
+      // If we are already on a public page (like login), just clear cookies and proceed
+      if (shouldBypassDevGuard(pathname)) {
+        clearAuthCookies(request, response);
+        return response;
+      }
+      
+      // Otherwise redirect to login with cleanup
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("reason", "session_expired");
+      
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      clearAuthCookies(request, redirectResponse);
+      return redirectResponse;
+    }
+  }
 
   return response;
 }

@@ -43,22 +43,6 @@ export function useAuth() {
     writeStoredAuthState(nextState);
   }, []);
 
-  const validateSession = useCallback(async () => {
-    const { data, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) {
-      setError("Unable to refresh session. Check your network and try again.");
-      setLoading(false);
-      return;
-    }
-
-    if (!data.session) {
-      handleSessionUpdate(null);
-      return;
-    }
-
-    handleSessionUpdate(data.session);
-  }, [handleSessionUpdate, supabase]);
-
   const signOut = useCallback(async () => {
     setError(null);
     let success = true;
@@ -87,6 +71,35 @@ export function useAuth() {
     handleSessionUpdate(null);
     return success;
   }, [handleSessionUpdate, supabase]);
+
+  const validateSession = useCallback(async () => {
+    const { data, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      // If the session is invalid (e.g. DB reset), force sign out
+      if (sessionError.message.includes("Invalid Refresh Token") || 
+          sessionError.message.includes("Refresh Token Not Found")) {
+        console.warn("[Auth] Session invalid, forcing sign out:", sessionError.message);
+        await signOut();
+        return;
+      }
+      
+      setError("Unable to refresh session. Check your network and try again.");
+      setLoading(false);
+      return;
+    }
+
+    if (!data.session) {
+      // Ensure local state is cleared if no session exists
+      if (status === 'signed_in') {
+        await signOut();
+      } else {
+        handleSessionUpdate(null);
+      }
+      return;
+    }
+
+    handleSessionUpdate(data.session);
+  }, [handleSessionUpdate, supabase, signOut, status]);
 
   useEffect(() => {
     let cancelled = false;

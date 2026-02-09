@@ -5,16 +5,18 @@ import { CanvasPane } from '@/components/features/canvas/CanvasPane';
 import { LayoutControls } from '@/components/layout/LayoutControls';
 import { BridgeModal } from '@/components/features/bridge/BridgeModal';
 import { useRealtimeEntries } from '@/lib/hooks/useRealtimeEntries';
+import { useLayout } from '@/lib/hooks/useLayout';
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
+  const { logWidth } = useLayout();
   useRealtimeEntries(streamId);
 
   return (
     <div className="flex flex-1 relative h-full">
-      <LogPane streamId={streamId} />
+      <LogPane streamId={streamId} logWidth={logWidth} />
       <CanvasPane streamId={streamId} />
       
       <LayoutControls />

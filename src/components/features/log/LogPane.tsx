@@ -1,99 +1,63 @@
 'use client';
 
-import { useLayout } from '@/lib/hooks/useLayout';
+import { useState, useRef, Fragment, useEffect } from 'react';
 import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
-import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
-import { Loader2, Pencil } from 'lucide-react';
-import { PartialBlock } from '@blocknote/core';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { useParams } from 'next/navigation';
-import { useState, useRef, useEffect } from 'react';
-import { Stream } from '@/lib/types';
+import { LogSection } from './LogSection';
+import { useStream } from '@/lib/hooks/useStream';
+import { useUpdateStream } from '@/lib/hooks/useUpdateStream';
+import { Pencil, Filter, ArrowUpDown, Search, Users, Download, Calendar } from 'lucide-react';
+import { usePersonas } from '@/lib/hooks/usePersonas';
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
+import { DynamicIcon } from '@/components/shared/DynamicIcon';
+import { PersonaManager } from '../persona/PersonaManager';
+import { exportEntriesToMarkdown, downloadMarkdown } from '@/lib/utils/export';
 
 interface LogPaneProps {
   streamId: string;
+  logWidth: number;
 }
 
-export function LogPane({ streamId }: LogPaneProps) {
-  const { logWidth } = useLayout();
-  const { entries, isLoading, error } = useEntries(streamId);
-  const params = useParams();
-  const domainId = params?.domain as string | undefined;
-  const supabase = createClient();
-  const queryClient = useQueryClient();
+export function LogPane({ streamId, logWidth }: LogPaneProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filterPersonaId, setFilterPersonaId] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
+  const { 
+    entries, 
+    isLoading: isEntriesLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchAllEntriesForExport
+  } = useEntries(streamId, {
+    search: debouncedSearch,
+    personaId: filterPersonaId,
+    sortOrder
+  });
+
+  const { stream } = useStream(streamId);
+  const updateStreamMutation = useUpdateStream(streamId);
+  const { personas } = usePersonas();
+  
   const [isEditing, setIsEditing] = useState(false);
   const [editingName, setEditingName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Fetch streams to get the current stream name (sharing cache with Navigator)
-  const { data: streams } = useQuery({
-    queryKey: ['streams', domainId],
-    queryFn: async () => {
-      if (!domainId) return [];
-      const { data, error } = await supabase
-        .from('streams')
-        .select('*, cabinet:cabinets(*)')
-        .eq('cabinets.domain_id', domainId)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
-
-      if (error) throw error;
-      return data as Stream[];
-    },
-    enabled: !!domainId,
-  });
-
-  const stream = streams?.find((s) => s.id === streamId);
-
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
+  const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
 
   const handleEdit = () => {
-    setEditingName(stream?.name ?? '');
+    setEditingName(stream?.name || '');
     setIsEditing(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
-
-  const updateStreamMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const { data, error } = await supabase
-        .from('streams')
-        .update({ name, updated_at: new Date().toISOString() })
-        .eq('id', streamId)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data as Stream;
-    },
-    onMutate: async (name) => {
-      if (!domainId) return;
-      await queryClient.cancelQueries({ queryKey: ['streams', domainId] });
-      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', domainId]);
-
-      queryClient.setQueryData<Stream[]>(['streams', domainId], (old) =>
-        old?.map((s) => (s.id === streamId ? { ...s, name } : s))
-      );
-
-      return { previousStreams };
-    },
-    onError: (error, _, context) => {
-      if (context?.previousStreams && domainId) {
-        queryClient.setQueryData(['streams', domainId], context.previousStreams);
-      }
-    },
-    onSettled: () => {
-      if (domainId) {
-        queryClient.invalidateQueries({ queryKey: ['streams', domainId] });
-      }
-    },
-  });
 
   const handleSave = () => {
     const trimmed = editingName.trim();
@@ -104,14 +68,7 @@ export function LogPane({ streamId }: LogPaneProps) {
     }
     
     if (trimmed !== stream?.name) {
-       // Check for duplicates
-       const siblings = streams?.filter(s => s.cabinet_id === stream?.cabinet_id && s.id !== streamId) || [];
-       if (siblings.some(s => s.name === trimmed)) {
-          // Revert if duplicate
-          setEditingName(stream?.name || '');
-          setIsEditing(false);
-          return;
-       }
+       // Optimistic check (simplified)
        updateStreamMutation.mutate(trimmed);
     }
     setIsEditing(false);
@@ -126,9 +83,20 @@ export function LogPane({ streamId }: LogPaneProps) {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const allEntries = await fetchAllEntriesForExport();
+      if (!allEntries || !allEntries.length) return;
+      const markdown = exportEntriesToMarkdown(allEntries);
+      const filename = `${stream?.name || 'log'}-${new Date().toISOString().split('T')[0]}.md`;
+      downloadMarkdown(markdown, filename);
+    } catch (e) {
+      console.error('Export failed:', e);
+    }
+  };
+
   const isVisible = logWidth > 0;
 
-  // Calculate smooth animation - slides in from left with decompression
   const containerStyle = {
     width: `${logWidth}%`,
     minWidth: logWidth === 0 ? '0px' : 'auto',
@@ -144,88 +112,194 @@ export function LogPane({ streamId }: LogPaneProps) {
 
   return (
     <div
-      className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 ${
+      className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 flex flex-col ${
         isVisible ? '' : 'pointer-events-none'
       }`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
-        <div className="border-b border-border-subtle p-4">
-          <h2 className="text-lg font-semibold text-text-default">The Log</h2>
-          {isEditing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              value={editingName}
-              onChange={(e) => setEditingName(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={handleSave}
-              className="text-sm text-text-default w-full outline-none border-b border-action-primary-bg pb-0.5 mt-1 bg-transparent"
-            />
-          ) : (
-            <p 
-              className="text-sm text-text-subtle cursor-pointer hover:text-text-default mt-1 flex items-center gap-2 group"
-              onClick={handleEdit}
+        {/* Header Area */}
+        <div className="border-b border-border-subtle bg-surface-default shrink-0">
+          <div className="p-4 pb-2">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold text-text-default">The Log</h2>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={handleExport}
+                  className="p-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-md transition-colors"
+                  title="Export to Markdown"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+                <button 
+                  onClick={() => setIsPersonaManagerOpen(true)}
+                  className="p-1.5 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-md transition-colors"
+                  title="Manage Personas"
+                >
+                  <Users className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onBlur={handleSave}
+                className="text-sm text-text-default w-full outline-none border-b border-action-primary-bg pb-0.5 bg-transparent"
+              />
+            ) : (
+              <p 
+                className="text-sm text-text-subtle cursor-pointer hover:text-text-default flex items-center gap-2 group truncate"
+                onClick={handleEdit}
+              >
+                {stream ? stream.name : `Stream: ${streamId}`}
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Pencil className="h-3 w-3" />
+                </span>
+              </p>
+            )}
+          </div>
+
+          {/* Toolbar */}
+          <div className="px-4 pb-3 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full rounded-md border border-border-default bg-surface-subtle pl-8 pr-2 py-1.5 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg transition-all"
+              />
+            </div>
+            
+            {/* Filter Menu */}
+            <Menu as="div" className="relative">
+              <MenuButton 
+                className={`p-1.5 rounded-md border transition-colors ${filterPersonaId ? 'bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg' : 'border-border-default text-text-muted hover:text-text-default hover:bg-surface-subtle'}`}
+                title="Filter by Author"
+              >
+                <Filter className="h-3.5 w-3.5" />
+              </MenuButton>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 scale-95"
+                enterTo="transform opacity-100 scale-100"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 scale-100"
+                leaveTo="transform opacity-0 scale-95"
+              >
+                <MenuItems className="absolute right-0 top-full z-50 mt-1 w-48 rounded-lg border border-border-default bg-surface-default shadow-lg ring-1 ring-black/5 focus:outline-none p-1">
+                   <MenuItem>
+                    {({ focus }) => (
+                      <button
+                        onClick={() => setFilterPersonaId(null)}
+                        className={`${
+                          focus ? 'bg-surface-subtle' : ''
+                        } flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
+                      >
+                        <span>All Authors</span>
+                        {!filterPersonaId && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
+                      </button>
+                    )}
+                  </MenuItem>
+                  {personas?.map((persona) => (
+                    <MenuItem key={persona.id}>
+                      {({ focus }) => (
+                        <button
+                          onClick={() => setFilterPersonaId(persona.id)}
+                          className={`${
+                            focus ? 'bg-surface-subtle' : ''
+                          } flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
+                        >
+                          <div className="flex items-center gap-2">
+                             <DynamicIcon name={persona.icon} className="h-3 w-3" />
+                             <span>{persona.name}</span>
+                          </div>
+                          {filterPersonaId === persona.id && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
+                        </button>
+                      )}
+                    </MenuItem>
+                  ))}
+                </MenuItems>
+              </Transition>
+            </Menu>
+
+            {/* Sort Button */}
+            <button
+              onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}
+              className="p-1.5 rounded-md border border-border-default text-text-muted hover:text-text-default hover:bg-surface-subtle transition-colors"
+              title={`Sort by: ${sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}`}
             >
-              {stream ? stream.name : `Stream: ${streamId}`}
-              <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <Pencil className="h-3 w-3" />
-              </span>
-            </p>
-          )}
+              <ArrowUpDown className={`h-3.5 w-3.5 transition-transform ${sortOrder === 'oldest' ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
         </div>
-        
+
+        {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* Entry Creator */}
           <EntryCreator streamId={streamId} />
+          
+          <div className="space-y-6">
+            {isEntriesLoading ? (
+              <div className="space-y-4 animate-pulse">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-32 rounded-xl bg-surface-subtle/50" />
+                ))}
+              </div>
+            ) : entries.length === 0 ? (
+              <div className="text-center py-10 text-text-muted text-sm">
+                No entries found.
+              </div>
+            ) : (
+              <>
+                {entries.map((entry) => (
+                  <div key={entry.id} className="relative group rounded-xl border border-border-subtle bg-surface-default shadow-sm overflow-hidden transition-all hover:shadow-md hover:border-border-default/50">
+                     {/* Entry Header */}
+                     <div className="flex items-center justify-between px-3 py-2 bg-surface-subtle/30 border-b border-border-subtle/30">
+                       <div className="flex items-center gap-2">
+                         <Calendar className="h-3 w-3 text-text-muted" />
+                         <span className="text-[10px] font-medium text-text-subtle font-mono">
+                           {new Date(entry.created_at || '').toLocaleString(undefined, { 
+                             month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
+                           })}
+                         </span>
+                       </div>
+                       {/* Could add Entry Actions here like 'Add Section' or 'Delete Entry' */}
+                     </div>
 
-          {/* Error State */}
-          {error && (
-            <div className="rounded-lg bg-status-error-bg p-4 text-sm text-status-error-text border border-status-error-border">
-              Error loading entries. Please try refreshing.
-            </div>
-          )}
-
-          {/* Entries List */}
-          {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {entries?.map((entry) => (
-                <div key={entry.id} className="rounded-lg border border-border-subtle bg-surface-subtle p-4 max-w-full">
-                  <div className="mb-2 flex items-center justify-between text-xs text-text-muted">
-                    <span>{entry.created_at ? new Date(entry.created_at).toLocaleString() : ''}</span>
-                    <span>#{entry.id.slice(0, 8)}</span>
+                     {/* Sections */}
+                     <div className="p-1 space-y-px">
+                      {entry.sections?.map((section) => (
+                        <LogSection key={section.id} section={section} />
+                      ))}
+                    </div>
                   </div>
-                  
-                  {/* Render sections */}
-                  <div className="space-y-4">
-                    {entry.sections?.map((section) => (
-                       <div key={section.id} className="bg-surface-default rounded p-2 border border-border-subtle overflow-hidden wrap-anywhere [word-break:break-word] max-w-full">
-                         <div className="mb-1 text-xs font-medium text-text-subtle wrap-break-word">
-                           {section.persona?.name || 'User'}
-                         </div>
-                         <BlockNoteEditor
-                           initialContent={section.content_json as unknown as PartialBlock[]}
-                           editable={false}
-                         />
-                      </div>
-                    ))}
+                ))}
+                
+                {hasNextPage && (
+                  <div className="flex justify-center pt-4 pb-2">
+                    <button
+                      onClick={() => fetchNextPage()}
+                      disabled={isFetchingNextPage}
+                      className="px-4 py-2 text-xs font-medium text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-subtle/80 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      {isFetchingNextPage ? 'Loading more...' : 'Load more entries'}
+                    </button>
                   </div>
-                </div>
-              ))}
-              
-              {entries?.length === 0 && (
-                <div className="text-center text-sm text-text-muted py-8">
-                  No entries yet. Start typing above!
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
+      
+      <PersonaManager isOpen={isPersonaManagerOpen} onClose={() => setIsPersonaManagerOpen(false)} />
     </div>
   );
 }

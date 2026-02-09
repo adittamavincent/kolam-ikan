@@ -6,7 +6,6 @@ import { useCanvasScroll } from '@/lib/hooks/useCanvasScroll';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import debounce from 'lodash/debounce';
-import { Loader2 } from 'lucide-react';
 import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
 import { Json } from '@/lib/types/database.types';
 

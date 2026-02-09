@@ -311,7 +311,8 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
       // Entry should be updated to not draft
       const fromCalls = mockSupabase.from.mock.calls;
       const entryUpdateCall = fromCalls.find(
-        (call: [string]) => call[0] === 'entries'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (call: any[]) => call[0] === 'entries'
       );
       expect(entryUpdateCall).toBeDefined();
     });

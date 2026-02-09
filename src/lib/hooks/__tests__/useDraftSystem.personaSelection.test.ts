@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom/vitest';
 import { useDraftSystem } from '../useDraftSystem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
@@ -89,7 +90,8 @@ describe('useDraftSystem - Persona Selection Logic', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     const instanceId = 'instance-1';
-    const content = [{ type: 'paragraph', content: 'Test content' }];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = [{ type: 'paragraph', content: 'Test content' }] as any;
 
     // Setup RPC mock to create entry with section
     mockSupabase.rpc = vi.fn().mockResolvedValue({
@@ -154,7 +156,8 @@ describe('useDraftSystem - Persona Selection Logic', () => {
 
     const instance1 = 'instance-1';
     const instance2 = 'instance-2';
-    const content = [{ type: 'paragraph', content: 'Test' }];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = [{ type: 'paragraph', content: 'Test' }] as any;
 
     // Setup RPC mock
     mockSupabase.rpc = vi.fn().mockResolvedValue({
@@ -257,7 +260,8 @@ describe('useDraftSystem - Persona Selection Logic', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     const instanceId = 'instance-1';
-    const content = [{ type: 'paragraph', content: 'Test' }];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = [{ type: 'paragraph', content: 'Test' }] as any;
 
     // Setup RPC mock
     mockSupabase.rpc = vi.fn().mockResolvedValue({
@@ -325,7 +329,8 @@ describe('useDraftSystem - Persona Selection Logic', () => {
 
     // Setup scenario: 2 sections exist in DB, but only 1 is active
     const instance1 = 'instance-1';
-    const content = [{ type: 'paragraph', content: 'Active content' }];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = [{ type: 'paragraph', content: 'Active content' }] as any;
 
     mockSupabase.rpc = vi.fn().mockResolvedValue({
       data: {
@@ -423,7 +428,8 @@ describe('useDraftSystem - Persona Selection Logic', () => {
 
     const instance1 = 'instance-1';
     const instance2 = 'instance-2';
-    const content = [{ type: 'paragraph', content: 'Test' }];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = [{ type: 'paragraph', content: 'Test' }] as any;
 
     // Setup RPC mock
     mockSupabase.rpc = vi.fn().mockResolvedValue({
@@ -520,7 +526,8 @@ describe('useDraftSystem - Persona Selection Logic', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     const instanceId = 'instance-1';
-    const content = [{ type: 'paragraph', content: 'Test' }];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const content = [{ type: 'paragraph', content: 'Test' }] as any;
 
     mockSupabase.rpc = vi.fn().mockResolvedValue({
       data: {

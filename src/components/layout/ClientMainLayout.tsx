@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Menu as MenuIcon, X, ChevronDown, LogOut, Settings, PanelLeft, PanelRight, Columns } from 'lucide-react';
@@ -10,10 +10,7 @@ import { Navigator } from '@/components/layout/Navigator';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSidebar } from '@/lib/hooks/useSidebar';
 import { useLayout } from '@/lib/hooks/useLayout';
-import { isDevelopmentHost } from '@/lib/utils/authStorage';
 import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems, Transition, TransitionChild } from '@headlessui/react';
-
-const emptySubscribe = () => () => {};
 
 interface ClientMainLayoutProps {
   children: React.ReactNode;
@@ -24,7 +21,6 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const isDevHost = useSyncExternalStore(emptySubscribe, isDevelopmentHost, () => false);
   const router = useRouter();
   const pathname = usePathname();
   const { user, status, loading, error, signOut } = useAuth();

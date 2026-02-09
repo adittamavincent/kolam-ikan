@@ -996,6 +996,7 @@ export function Navigator({ }: NavigatorProps) {
 
   const handleContextMenu = (event: React.MouseEvent, id: string, type: NavItemType) => {
     event.preventDefault();
+    event.stopPropagation();
     setContextMenu({ id, type, x: event.clientX, y: event.clientY });
   };
 
@@ -1427,7 +1428,10 @@ export function Navigator({ }: NavigatorProps) {
         <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
           <div
             className="absolute w-48 rounded-lg border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5"
-            style={{ top: contextMenu.y, left: contextMenu.x }}
+            style={{ 
+              top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : contextMenu.y), 
+              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x) 
+            }}
             onClick={(event) => event.stopPropagation()}
             role="menu"
           >

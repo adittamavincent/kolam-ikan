@@ -7,11 +7,11 @@ import { BridgeModal } from '@/components/features/bridge/BridgeModal';
 import { useRealtimeEntries } from '@/lib/hooks/useRealtimeEntries';
 import { useLayout } from '@/lib/hooks/useLayout';
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, ChevronRight } from 'lucide-react';
 
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
-  const { logWidth } = useLayout();
+  const { logWidth, toggleLogCollapse } = useLayout();
   useRealtimeEntries(streamId);
 
   return (
@@ -20,6 +20,16 @@ export function StreamView({ streamId }: { streamId: string }) {
       <CanvasPane streamId={streamId} />
       
       <LayoutControls />
+
+      {logWidth === 0 && (
+        <button
+          onClick={toggleLogCollapse}
+          className="fixed left-4 top-20 z-40 flex items-center gap-2 rounded-full border border-border-default bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm transition hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+        >
+          <ChevronRight className="h-4 w-4 text-text-muted" />
+          Show Log
+        </button>
+      )}
 
       {/* Bridge Trigger Button */}
       <button

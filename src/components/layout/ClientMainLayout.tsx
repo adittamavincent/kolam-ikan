@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import Image from 'next/image';
+import { Menu as MenuIcon, X, ChevronDown, LogOut, Settings } from 'lucide-react';
 import { DomainSwitcher } from '@/components/layout/DomainSwitcher';
 import { Navigator } from '@/components/layout/Navigator';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSidebar } from '@/lib/hooks/useSidebar';
 import { isDevelopmentHost } from '@/lib/utils/authStorage';
+import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems, Transition, TransitionChild } from '@headlessui/react';
 
 const emptySubscribe = () => () => {};
 
@@ -19,6 +21,7 @@ interface ClientMainLayoutProps {
 export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const isDevHost = useSyncExternalStore(emptySubscribe, isDevelopmentHost, () => false);
   const router = useRouter();
   const pathname = usePathname();
@@ -124,6 +127,15 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     }
   };
 
+  const displayName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'Account';
+  const avatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null;
+  const nameParts = displayName.split(' ');
+  const initials = nameParts
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0]?.toUpperCase())
+    .join('') || 'U';
+
   return (
     <div className="flex h-screen overflow-hidden bg-surface-subtle">
       {/* ---- Mobile Menu Button ---- */}
@@ -131,7 +143,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         className="fixed left-4 top-4 z-50 rounded-lg bg-surface-default p-2 shadow-lg md:hidden text-text-default"
       >
-        {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {mobileMenuOpen ? <X className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
       </button>
 
       {/* ---- Mobile Overlay ---- */}
@@ -186,23 +198,80 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       {/* ====== MAIN CONTENT ====== */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border-subtle bg-surface-subtle px-4 py-2 text-xs text-text-subtle">
-          <div className="flex items-center gap-2">
-            {loading ? 'Checking session...' : `Signed in as ${user?.email ?? userId}`}
+        <div className="flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="text-sm font-semibold text-text-default">Kolam Ikan</div>
             {isDevHost && (
               <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                 Dev: log out before closing tab
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={loading || signingOut || status !== 'signed_in'}
-            className="rounded-md border border-border-default px-2 py-1 text-xs font-medium text-text-default hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {signingOut ? 'Signing out...' : 'Sign out'}
-          </button>
+          <Menu as="div" className="relative">
+            <MenuButton className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-default px-2 py-1.5 text-left text-xs text-text-default shadow-sm transition hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt={displayName}
+                  width={28}
+                  height={28}
+                  unoptimized
+                  className="h-7 w-7 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-action-primary-bg/10 text-[11px] font-semibold text-action-primary-bg">
+                  {initials}
+                </div>
+              )}
+              <div className="hidden min-w-0 flex-col items-start sm:flex">
+                <span className="truncate text-xs font-semibold text-text-default">{displayName}</span>
+                <span className="truncate text-[10px] text-text-muted">{user?.email ?? userId}</span>
+              </div>
+              <ChevronDown className="h-4 w-4 text-text-muted" />
+            </MenuButton>
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <MenuItems className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none">
+                <div className="px-3 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Signed in as</p>
+                  <p className="truncate text-xs font-medium text-text-default">{displayName}</p>
+                  <p className="truncate text-[10px] text-text-muted">{user?.email ?? userId}</p>
+                </div>
+                <div className="my-1 h-px bg-border-subtle" />
+                <MenuItem>
+                  {({ focus }) => (
+                    <button
+                      onClick={() => setProfileOpen(true)}
+                      className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default`}
+                    >
+                      <Settings className="h-4 w-4 text-text-muted" />
+                      Profile settings
+                    </button>
+                  )}
+                </MenuItem>
+                <MenuItem>
+                  {({ focus }) => (
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      disabled={loading || signingOut || status !== 'signed_in'}
+                      className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default disabled:opacity-50`}
+                    >
+                      <LogOut className="h-4 w-4 text-text-muted" />
+                      {signingOut ? 'Signing out...' : 'Sign out'}
+                    </button>
+                  )}
+                </MenuItem>
+              </MenuItems>
+            </Transition>
+          </Menu>
         </div>
         {error && (
           <div className="border-b border-status-error-border bg-status-error-bg px-4 py-2 text-xs text-status-error-text">
@@ -211,6 +280,59 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         )}
         <main className="flex flex-1 overflow-hidden">{children}</main>
       </div>
+
+      <Transition appear show={profileOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setProfileOpen(false)}>
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/40" />
+          </TransitionChild>
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <TransitionChild
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+                <DialogTitle className="text-sm font-semibold text-text-default">Profile settings</DialogTitle>
+                <div className="mt-3 space-y-2 text-xs text-text-subtle">
+                  <div className="flex items-center justify-between">
+                    <span>Name</span>
+                    <span className="text-text-default">{displayName}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Email</span>
+                    <span className="text-text-default">{user?.email ?? userId}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>User ID</span>
+                    <span className="truncate text-text-default">{userId}</span>
+                  </div>
+                </div>
+                <div className="mt-5 flex justify-end">
+                  <button
+                    onClick={() => setProfileOpen(false)}
+                    className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
+                  >
+                    Close
+                  </button>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }

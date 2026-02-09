@@ -3,10 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronRight, ChevronDown, Folder, FileText } from 'lucide-react';
-import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X } from 'lucide-react';
+import { Fragment, useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { NavigatorCreateButton } from './NavigatorCreateButton';
-import { Cabinet, CabinetInsert, Stream, StreamInsert } from '@/lib/types';
+import { Cabinet, CabinetInsert, CabinetUpdate, Stream, StreamInsert, StreamUpdate } from '@/lib/types';
 import {
   applyOptimisticCabinetCreation,
   applyOptimisticStreamCreation,
@@ -15,11 +15,49 @@ import {
   resolveCreationTarget,
   isCreationAllowed,
 } from '@/lib/utils/navigation';
+import { useKeyboard } from '@/lib/hooks/useKeyboard';
+import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
 
 type CreationItem = {
   type: 'cabinet' | 'stream';
   parentId: string | null;
 };
+
+type NavItemType = 'cabinet' | 'stream';
+
+type Disambiguation = {
+  index: number;
+  total: number;
+};
+
+function buildDisambiguationMap<T extends { id: string; name: string; sort_order: number }>(
+  items: T[] | undefined,
+  getParentId: (item: T) => string | null
+) {
+  const map = new Map<string, Disambiguation>();
+  if (!items?.length) return map;
+
+  const groups = new Map<string, T[]>();
+  items.forEach((item) => {
+    const key = `${getParentId(item) ?? 'root'}::${item.name}`;
+    const list = groups.get(key) ?? [];
+    list.push(item);
+    groups.set(key, list);
+  });
+
+  groups.forEach((group) => {
+    if (group.length < 2) return;
+    const sorted = [...group].sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      return a.id.localeCompare(b.id);
+    });
+    sorted.forEach((item, index) => {
+      map.set(item.id, { index: index + 1, total: sorted.length });
+    });
+  });
+
+  return map;
+}
 
 const ALIGNMENT_COLUMN_REM = 1.5;
 const POSITION_GROUP_CENTER_REM = [
@@ -130,6 +168,8 @@ interface CabinetNodeProps {
   depth?: number;
   cabinetTree: { roots: Cabinet[]; getChildren: (parentId: string) => Cabinet[] };
   streams: Stream[] | undefined;
+  cabinetDisambiguation: Map<string, Disambiguation>;
+  streamDisambiguation: Map<string, Disambiguation>;
   expandedCabinets: Set<string>;
   activeNode: { id: string; type: "cabinet" | "stream" } | null;
   editingItemId: string | null;
@@ -147,6 +187,8 @@ interface CabinetNodeProps {
   domainId: string;
   handleCreateStream: (id: string) => void;
   handleCreateCabinet: (id: string) => void;
+  handleContextMenu: (event: React.MouseEvent, id: string, type: NavItemType) => void;
+  isStreamNewlyCreated: (id: string) => boolean;
   setEditingItemId: (id: string | null) => void;
   creatingItem: CreationItem | null;
   handleCreationConfirm: (name: string) => void;
@@ -156,6 +198,8 @@ interface CabinetNodeProps {
 interface StreamNodeProps {
   stream: Stream;
   depth: number;
+  displayName: string;
+  disambiguation?: Disambiguation;
   activeNode: { id: string; type: "cabinet" | "stream" } | null;
   editingItemId: string | null;
   editingName: string;
@@ -167,11 +211,15 @@ interface StreamNodeProps {
   handleMouseDown: (id: string, name: string, type: 'cabinet' | 'stream') => void;
   handleMouseUp: () => void;
   handleMouseLeave: () => void;
+  handleContextMenu: (event: React.MouseEvent, id: string, type: NavItemType) => void;
+  isNewlyCreated: boolean;
 }
 
 const StreamNode = ({
   stream,
   depth,
+  displayName,
+  disambiguation,
   activeNode,
   editingItemId,
   editingName,
@@ -183,18 +231,24 @@ const StreamNode = ({
   handleMouseDown,
   handleMouseUp,
   handleMouseLeave,
+  handleContextMenu,
+  isNewlyCreated,
 }: StreamNodeProps) => {
   const isStreamActive = activeNode?.type === 'stream' && activeNode.id === stream.id;
   const isStreamEditing = editingItemId === stream.id;
+  const disambiguationLabel = disambiguation ? `#${disambiguation.index}` : null;
+  const ariaLabel = disambiguation
+    ? `${displayName} (${disambiguation.index} of ${disambiguation.total})`
+    : displayName;
 
   return (
-    <div className="group relative flex items-center" role="treeitem" aria-selected={isStreamActive} aria-label={stream.name}>
+    <div className="group relative flex items-center" role="treeitem" aria-selected={isStreamActive} aria-label={ariaLabel}>
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
             ${isStreamActive
             ? 'bg-action-primary-bg/10 text-action-primary-bg font-semibold shadow-sm ring-1 ring-action-primary-bg/20'
             : 'text-text-subtle hover:bg-surface-subtle hover:text-text-default'
-          }`}
+          } ${isNewlyCreated ? 'bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30 shadow-sm' : ''}`}
         style={{ paddingLeft: `${getStreamPaddingRem(depth)}rem` }}
         onClick={(e) => {
           e.stopPropagation();
@@ -205,6 +259,7 @@ const StreamNode = ({
         onMouseDown={() => handleMouseDown(stream.id, stream.name, 'stream')}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onContextMenu={(event) => handleContextMenu(event, stream.id, 'stream')}
         tabIndex={0}
         onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -237,7 +292,14 @@ const StreamNode = ({
             aria-label="Edit stream name"
           />
         ) : (
-          <span className="truncate flex-1 select-none">{stream.name}</span>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="truncate flex-1 select-none">{displayName}</span>
+            {disambiguationLabel && (
+              <span className="shrink-0 rounded-full border border-border-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                {disambiguationLabel}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -249,6 +311,8 @@ const CabinetNode = ({
   depth = 0,
   cabinetTree,
   streams,
+  cabinetDisambiguation,
+  streamDisambiguation,
   expandedCabinets,
   activeNode,
   editingItemId,
@@ -266,6 +330,8 @@ const CabinetNode = ({
   domainId,
   handleCreateStream,
   handleCreateCabinet,
+  handleContextMenu,
+  isStreamNewlyCreated,
   setEditingItemId,
   creatingItem,
   handleCreationConfirm,
@@ -277,9 +343,14 @@ const CabinetNode = ({
 
   const isActive = activeNode?.type === 'cabinet' && activeNode.id === cabinet.id;
   const isEditing = editingItemId === cabinet.id;
+  const disambiguation = cabinetDisambiguation.get(cabinet.id);
+  const disambiguationLabel = disambiguation ? `#${disambiguation.index}` : null;
+  const ariaLabel = disambiguation
+    ? `${cabinet.name} (${disambiguation.index} of ${disambiguation.total})`
+    : cabinet.name;
 
   return (
-    <div className="mb-0.5" role="treeitem" aria-expanded={isExpanded} aria-selected={isActive}>
+    <div className="mb-0.5" role="treeitem" aria-expanded={isExpanded} aria-selected={isActive} aria-label={ariaLabel}>
       <div
         className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
             ${isActive
@@ -294,6 +365,7 @@ const CabinetNode = ({
         onMouseDown={() => handleMouseDown(cabinet.id, cabinet.name, 'cabinet')}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onContextMenu={(event) => handleContextMenu(event, cabinet.id, 'cabinet')}
         tabIndex={0}
         onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -347,7 +419,14 @@ const CabinetNode = ({
             aria-label="Edit cabinet name"
           />
         ) : (
-          <span className="truncate flex-1 select-none">{cabinet.name}</span>
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="truncate flex-1 select-none">{cabinet.name}</span>
+            {disambiguationLabel && (
+              <span className="shrink-0 rounded-full border border-border-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                {disambiguationLabel}
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -369,6 +448,8 @@ const CabinetNode = ({
               depth={depth + 1}
               cabinetTree={cabinetTree}
               streams={streams}
+              cabinetDisambiguation={cabinetDisambiguation}
+              streamDisambiguation={streamDisambiguation}
               expandedCabinets={expandedCabinets}
               activeNode={activeNode}
               editingItemId={editingItemId}
@@ -386,6 +467,8 @@ const CabinetNode = ({
               domainId={domainId}
               handleCreateStream={handleCreateStream}
               handleCreateCabinet={handleCreateCabinet}
+              handleContextMenu={handleContextMenu}
+              isStreamNewlyCreated={isStreamNewlyCreated}
               setEditingItemId={setEditingItemId}
               creatingItem={creatingItem}
               handleCreationConfirm={handleCreationConfirm}
@@ -408,6 +491,8 @@ const CabinetNode = ({
               key={stream.id}
               stream={stream}
               depth={depth + 1}
+              displayName={stream.name}
+              disambiguation={streamDisambiguation.get(stream.id)}
               activeNode={activeNode}
               editingItemId={editingItemId}
               editingName={editingName}
@@ -419,6 +504,8 @@ const CabinetNode = ({
               handleMouseDown={handleMouseDown}
               handleMouseUp={handleMouseUp}
               handleMouseLeave={handleMouseLeave}
+              handleContextMenu={handleContextMenu}
+              isNewlyCreated={isStreamNewlyCreated(stream.id)}
             />
           ))}
 
@@ -465,13 +552,18 @@ export function Navigator({ }: NavigatorProps) {
   const [editingName, setEditingName] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
   const [creatingItem, setCreatingItem] = useState<CreationItem | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ id: string; type: NavItemType; x: number; y: number } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: NavItemType } | null>(null);
+  const [moveTarget, setMoveTarget] = useState<{ id: string; type: NavItemType } | null>(null);
+  const [moveDestination, setMoveDestination] = useState<string | null>(null);
+  const [propertiesTarget, setPropertiesTarget] = useState<{ id: string; type: NavItemType } | null>(null);
+  const [justCreatedStreamId, setJustCreatedStreamId] = useState<string | null>(null);
 
   const handleCreationConfirm = (name: string) => {
     if (!creatingItem || !domainId) return;
 
     if (creatingItem.type === 'cabinet') {
       const siblings = cabinets?.filter((c) => c.parent_id === creatingItem.parentId) || [];
-      if (siblings.some((c) => c.name === name)) return;
       const sortOrder = getNextSortOrder(siblings);
 
       createCabinetMutation.mutate({
@@ -481,10 +573,8 @@ export function Navigator({ }: NavigatorProps) {
         sort_order: sortOrder,
       });
     } else {
-      // Stream creation
       const parentId = creatingItem.parentId ?? null;
       const cabinetStreams = streams?.filter((s) => s.cabinet_id === parentId) || [];
-      if (cabinetStreams.some((s) => s.name === name)) return;
       const sortOrder = getNextSortOrder(cabinetStreams);
 
       createStreamMutation.mutate({
@@ -509,6 +599,30 @@ export function Navigator({ }: NavigatorProps) {
       editInputRef.current.select();
     }
   }, [editingItemId]);
+
+  useEffect(() => {
+    if (!justCreatedStreamId) return;
+    const timer = setTimeout(() => setJustCreatedStreamId(null), 2500);
+    return () => clearTimeout(timer);
+  }, [justCreatedStreamId]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handleClick = () => setContextMenu(null);
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContextMenu(null);
+    };
+    window.addEventListener('click', handleClick);
+    window.addEventListener('contextmenu', handleClick);
+    window.addEventListener('scroll', handleClick, true);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('click', handleClick);
+      window.removeEventListener('contextmenu', handleClick);
+      window.removeEventListener('scroll', handleClick, true);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [contextMenu]);
 
   // Fetch current domain details (for settings)
   const { data: domain } = useQuery({
@@ -591,10 +705,10 @@ export function Navigator({ }: NavigatorProps) {
   }, [activeStreamId, streams]);
 
   const updateCabinetMutation = useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: CabinetUpdate }) => {
       const { data, error } = await supabase
         .from('cabinets')
-        .update({ name, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();
@@ -602,13 +716,13 @@ export function Navigator({ }: NavigatorProps) {
       if (error) throw error;
       return data as Cabinet;
     },
-    onMutate: async ({ id, name }) => {
+    onMutate: async ({ id, updates }) => {
       if (!domainId) return;
       await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
       const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
 
       queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
-        old?.map((c) => (c.id === id ? { ...c, name } : c))
+        old?.map((c) => (c.id === id ? { ...c, ...updates } : c))
       );
 
       return { previousCabinets };
@@ -626,10 +740,10 @@ export function Navigator({ }: NavigatorProps) {
   });
 
   const updateStreamMutation = useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: StreamUpdate }) => {
       const { data, error } = await supabase
         .from('streams')
-        .update({ name, updated_at: new Date().toISOString() })
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();
@@ -637,13 +751,77 @@ export function Navigator({ }: NavigatorProps) {
       if (error) throw error;
       return data as Stream;
     },
-    onMutate: async ({ id, name }) => {
+    onMutate: async ({ id, updates }) => {
       if (!domainId) return;
       await queryClient.cancelQueries({ queryKey: ['streams', domainId] });
       const previousStreams = queryClient.getQueryData<Stream[]>(['streams', domainId]);
 
       queryClient.setQueryData<Stream[]>(['streams', domainId], (old) =>
-        old?.map((s) => (s.id === id ? { ...s, name } : s))
+        old?.map((s) => (s.id === id ? { ...s, ...updates } : s))
+      );
+
+      return { previousStreams };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousStreams && domainId) {
+        queryClient.setQueryData(['streams', domainId], context.previousStreams);
+      }
+    },
+    onSettled: () => {
+      if (domainId) {
+        queryClient.invalidateQueries({ queryKey: ['streams', domainId] });
+      }
+    },
+  });
+
+  const deleteCabinetMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('cabinets')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      if (!domainId) return;
+      await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
+      const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
+
+      queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
+        old?.filter((cabinet) => cabinet.id !== id)
+      );
+
+      return { previousCabinets };
+    },
+    onError: (error, _, context) => {
+      if (context?.previousCabinets && domainId) {
+        queryClient.setQueryData(['cabinets', domainId], context.previousCabinets);
+      }
+    },
+    onSettled: () => {
+      if (domainId) {
+        queryClient.invalidateQueries({ queryKey: ['cabinets', domainId] });
+      }
+    },
+  });
+
+  const deleteStreamMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('streams')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onMutate: async (id) => {
+      if (!domainId) return;
+      await queryClient.cancelQueries({ queryKey: ['streams', domainId] });
+      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', domainId]);
+
+      queryClient.setQueryData<Stream[]>(['streams', domainId], (old) =>
+        old?.filter((stream) => stream.id !== id)
       );
 
       return { previousStreams };
@@ -725,7 +903,7 @@ export function Navigator({ }: NavigatorProps) {
         cabinet_id: newStream.cabinet_id ?? null,
         domain_id: newStream.domain_id,
         sort_order: newStream.sort_order ?? 0,
-        description: null,
+        description: newStream.description ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,
@@ -735,7 +913,20 @@ export function Navigator({ }: NavigatorProps) {
         applyOptimisticStreamCreation(old, optimisticStream)
       );
 
+      setJustCreatedStreamId(optimisticStream.id);
+      if (optimisticStream.cabinet_id) {
+        setExpandedCabinets((prev) => new Set(prev).add(optimisticStream.cabinet_id as string));
+      }
+
       return { previousStreams, optimisticId: optimisticStream.id };
+    },
+    onSuccess: (data) => {
+      if (!domainId || !data) return;
+      setJustCreatedStreamId(data.id);
+      if (data.cabinet_id) {
+        setExpandedCabinets((prev) => new Set(prev).add(data.cabinet_id as string));
+      }
+      router.push(`/${domainId}/${data.id}`);
     },
     onError: (error, newStream, context) => {
       if (context?.previousStreams && domainId) {
@@ -772,10 +963,79 @@ export function Navigator({ }: NavigatorProps) {
     return { roots, getChildren };
   }, [cabinets]);
 
+  const cabinetDisambiguation = useMemo(
+    () => buildDisambiguationMap(cabinets, (cabinet) => cabinet.parent_id ?? null),
+    [cabinets]
+  );
+  const streamDisambiguation = useMemo(
+    () => buildDisambiguationMap(streams, (stream) => stream.cabinet_id ?? null),
+    [streams]
+  );
+  const cabinetChildrenMap = useMemo(() => {
+    const map = new Map<string, Cabinet[]>();
+    cabinets?.forEach((cabinet) => {
+      if (!cabinet.parent_id) return;
+      const list = map.get(cabinet.parent_id) ?? [];
+      list.push(cabinet);
+      map.set(cabinet.parent_id, list);
+    });
+    return map;
+  }, [cabinets]);
+
   // Determine the effective highlight node
   const activeNode = useMemo(() =>
     getVisibleActiveNodeId(activeStreamId, streams, cabinets, expandedCabinets),
     [activeStreamId, streams, cabinets, expandedCabinets]);
+
+  const isStreamNewlyCreated = (id: string) => id === justCreatedStreamId;
+
+  const getCabinetById = (id: string) => cabinets?.find((cabinet) => cabinet.id === id);
+  const getStreamById = (id: string) => streams?.find((stream) => stream.id === id);
+  const getItemById = (id: string, type: NavItemType) =>
+    type === 'cabinet' ? getCabinetById(id) : getStreamById(id);
+
+  const handleContextMenu = (event: React.MouseEvent, id: string, type: NavItemType) => {
+    event.preventDefault();
+    setContextMenu({ id, type, x: event.clientX, y: event.clientY });
+  };
+
+  useKeyboard([
+    {
+      key: 'delete',
+      handler: () => {
+        const active = document.activeElement;
+        if (
+          active?.tagName === 'INPUT' ||
+          active?.tagName === 'TEXTAREA' ||
+          active?.getAttribute('contenteditable') === 'true'
+        ) {
+          return;
+        }
+        if (!activeNode) return;
+        setDeleteTarget({ id: activeNode.id, type: activeNode.type });
+      },
+      description: 'Delete navigation item',
+    },
+    {
+      key: 'f2',
+      handler: () => {
+        const active = document.activeElement;
+        if (
+          active?.tagName === 'INPUT' ||
+          active?.tagName === 'TEXTAREA' ||
+          active?.getAttribute('contenteditable') === 'true'
+        ) {
+          return;
+        }
+        if (!activeNode) return;
+        const item = getItemById(activeNode.id, activeNode.type);
+        if (!item) return;
+        setEditingItemId(item.id);
+        setEditingName(item.name);
+      },
+      description: 'Rename navigation item',
+    },
+  ]);
 
   const handleRename = (id: string, newName: string, type: 'cabinet' | 'stream') => {
     const trimmedName = newName.trim();
@@ -787,24 +1047,12 @@ export function Navigator({ }: NavigatorProps) {
     if (type === 'cabinet') {
       const cabinet = cabinets?.find((c) => c.id === id);
       if (cabinet && cabinet.name !== trimmedName) {
-        const siblings = cabinets?.filter((c) => c.parent_id === cabinet.parent_id && c.id !== id) || [];
-        if (siblings.some((c) => c.name === trimmedName)) {
-          // Revert on duplicate
-          setEditingItemId(null);
-          return;
-        }
-        updateCabinetMutation.mutate({ id, name: trimmedName });
+        updateCabinetMutation.mutate({ id, updates: { name: trimmedName } });
       }
     } else {
       const stream = streams?.find((s) => s.id === id);
       if (stream && stream.name !== trimmedName) {
-        const siblings = streams?.filter((s) => s.cabinet_id === stream.cabinet_id && s.id !== id) || [];
-        if (siblings.some((s) => s.name === trimmedName)) {
-          // Revert on duplicate
-          setEditingItemId(null);
-          return;
-        }
-        updateStreamMutation.mutate({ id, name: trimmedName });
+        updateStreamMutation.mutate({ id, updates: { name: trimmedName } });
       }
     }
     setEditingItemId(null);
@@ -944,12 +1192,128 @@ export function Navigator({ }: NavigatorProps) {
     lastClickRef.current = { id, time: now };
   };
 
+  const getDescendantIds = (cabinetId: string) => {
+    const descendants = new Set<string>();
+    const stack = [...(cabinetChildrenMap.get(cabinetId) ?? [])];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (!current || descendants.has(current.id)) continue;
+      descendants.add(current.id);
+      const children = cabinetChildrenMap.get(current.id) ?? [];
+      stack.push(...children);
+    }
+    return descendants;
+  };
 
+  const openRename = (id: string, type: NavItemType) => {
+    const item = getItemById(id, type);
+    if (!item) return;
+    setEditingItemId(item.id);
+    setEditingName(item.name);
+  };
 
-  // Root streams
+  const closeMoveDialog = () => {
+    setMoveTarget(null);
+    setMoveDestination(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === 'cabinet') {
+      deleteCabinetMutation.mutate(deleteTarget.id);
+    } else {
+      deleteStreamMutation.mutate(deleteTarget.id);
+      if (activeStreamId === deleteTarget.id) {
+        router.push(`/${domainId}`);
+      }
+    }
+    setDeleteTarget(null);
+  };
+
+  const handleMoveConfirm = () => {
+    if (!moveTarget) return;
+    const normalizedTarget = moveDestination || null;
+    if (moveTarget.type === 'cabinet') {
+      updateCabinetMutation.mutate({ id: moveTarget.id, updates: { parent_id: normalizedTarget } });
+      if (normalizedTarget) {
+        setExpandedCabinets((prev) => new Set(prev).add(normalizedTarget));
+      }
+    } else {
+      if (isCabinetOnly && normalizedTarget === null) {
+        closeMoveDialog();
+        return;
+      }
+      updateStreamMutation.mutate({ id: moveTarget.id, updates: { cabinet_id: normalizedTarget } });
+      if (normalizedTarget) {
+        setExpandedCabinets((prev) => new Set(prev).add(normalizedTarget));
+      }
+    }
+    closeMoveDialog();
+  };
+
+  const handleDuplicate = (id: string, type: NavItemType) => {
+    if (!domainId) return;
+    if (type === 'cabinet') {
+      const cabinet = getCabinetById(id);
+      if (!cabinet) return;
+      const siblings = cabinets?.filter((c) => c.parent_id === cabinet.parent_id) || [];
+      const sortOrder = getNextSortOrder(siblings);
+      createCabinetMutation.mutate({
+        domain_id: domainId,
+        parent_id: cabinet.parent_id,
+        name: cabinet.name,
+        sort_order: sortOrder,
+      });
+    } else {
+      const stream = getStreamById(id);
+      if (!stream) return;
+      const siblings = streams?.filter((s) => s.cabinet_id === stream.cabinet_id) || [];
+      const sortOrder = getNextSortOrder(siblings);
+      createStreamMutation.mutate({
+        cabinet_id: stream.cabinet_id,
+        domain_id: domainId,
+        name: stream.name,
+        description: stream.description,
+        sort_order: sortOrder,
+      });
+    }
+  };
+
+  const handleContextAction = (action: 'rename' | 'delete' | 'duplicate' | 'move' | 'properties') => {
+    if (!contextMenu) return;
+    const { id, type } = contextMenu;
+    setContextMenu(null);
+    if (action === 'rename') {
+      openRename(id, type);
+    } else if (action === 'delete') {
+      setDeleteTarget({ id, type });
+    } else if (action === 'duplicate') {
+      handleDuplicate(id, type);
+    } else if (action === 'move') {
+      const item = getItemById(id, type);
+      const destination =
+        type === 'cabinet'
+          ? (item as Cabinet | undefined)?.parent_id ?? null
+          : (item as Stream | undefined)?.cabinet_id ?? null;
+      setMoveDestination(destination);
+      setMoveTarget({ id, type });
+    } else {
+      setPropertiesTarget({ id, type });
+    }
+  };
+
   const rootStreams = streams?.filter((s) => !s.cabinet_id) || [];
+  const deleteItem = deleteTarget ? getItemById(deleteTarget.id, deleteTarget.type) : null;
+  const moveItem = moveTarget ? getItemById(moveTarget.id, moveTarget.type) : null;
+  const propertiesItem = propertiesTarget ? getItemById(propertiesTarget.id, propertiesTarget.type) : null;
+  const moveExcluded = moveTarget?.type === 'cabinet' ? getDescendantIds(moveTarget.id) : new Set<string>();
+  const moveCabinetOptions =
+    moveTarget?.type === 'cabinet'
+      ? (cabinets ?? []).filter(
+          (cabinet) => cabinet.id !== moveTarget.id && !moveExcluded.has(cabinet.id)
+        )
+      : cabinets ?? [];
 
-  // When there's no domain selected, show a minimal placeholder.
   if (!domainId) {
     return (
       <div className="flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle p-4">
@@ -973,6 +1337,8 @@ export function Navigator({ }: NavigatorProps) {
             cabinet={cabinet}
             cabinetTree={cabinetTree}
             streams={streams}
+            cabinetDisambiguation={cabinetDisambiguation}
+            streamDisambiguation={streamDisambiguation}
             expandedCabinets={expandedCabinets}
             activeNode={activeNode}
             editingItemId={editingItemId}
@@ -990,6 +1356,8 @@ export function Navigator({ }: NavigatorProps) {
             domainId={domainId || ''}
             handleCreateStream={handleCreateStream}
             handleCreateCabinet={handleCreateCabinet}
+            handleContextMenu={handleContextMenu}
+            isStreamNewlyCreated={isStreamNewlyCreated}
             setEditingItemId={setEditingItemId}
             creatingItem={creatingItem}
             handleCreationConfirm={handleCreationConfirm}
@@ -1002,6 +1370,8 @@ export function Navigator({ }: NavigatorProps) {
             key={stream.id}
             stream={stream}
             depth={0}
+            displayName={stream.name}
+            disambiguation={streamDisambiguation.get(stream.id)}
             activeNode={activeNode}
             editingItemId={editingItemId}
             editingName={editingName}
@@ -1013,6 +1383,8 @@ export function Navigator({ }: NavigatorProps) {
             handleMouseDown={handleMouseDown}
             handleMouseUp={handleMouseUp}
             handleMouseLeave={handleMouseLeave}
+            handleContextMenu={handleContextMenu}
+            isNewlyCreated={isStreamNewlyCreated(stream.id)}
           />
         ))}
 
@@ -1050,6 +1422,282 @@ export function Navigator({ }: NavigatorProps) {
           />
         </div>
       </div>
+
+      {contextMenu && (
+        <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
+          <div
+            className="absolute w-48 rounded-lg border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5"
+            style={{ top: contextMenu.y, left: contextMenu.x }}
+            onClick={(event) => event.stopPropagation()}
+            role="menu"
+          >
+            <button
+              onClick={() => handleContextAction('rename')}
+              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+            >
+              <span className="flex items-center gap-2">
+                <Pencil className="h-4 w-4 text-text-muted" />
+                Rename
+              </span>
+              <span className="text-[10px] text-text-muted">F2</span>
+            </button>
+            <button
+              onClick={() => handleContextAction('duplicate')}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+            >
+              <Copy className="h-4 w-4 text-text-muted" />
+              Duplicate
+            </button>
+            <button
+              onClick={() => handleContextAction('move')}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+            >
+              <Move className="h-4 w-4 text-text-muted" />
+              Move
+            </button>
+            <button
+              onClick={() => handleContextAction('properties')}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+            >
+              <Info className="h-4 w-4 text-text-muted" />
+              Properties
+            </button>
+            <div className="my-1 h-px bg-border-subtle" />
+            <button
+              onClick={() => handleContextAction('delete')}
+              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+            >
+              <span className="flex items-center gap-2">
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </span>
+              <span className="text-[10px] text-rose-400">Del</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Transition appear show={!!deleteTarget} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setDeleteTarget(null)}>
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/40" />
+          </TransitionChild>
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <TransitionChild
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+                <div className="flex items-start justify-between">
+                  <DialogTitle className="text-sm font-semibold text-text-default">
+                    Delete {deleteTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
+                  </DialogTitle>
+                  <button
+                    onClick={() => setDeleteTarget(null)}
+                    className="rounded-md p-1 text-text-muted hover:bg-surface-subtle"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-text-subtle">
+                  This will remove <span className="font-semibold text-text-default">{deleteItem?.name ?? 'this item'}</span>.
+                </p>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={() => setDeleteTarget(null)}
+                    className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDeleteConfirm}
+                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </Dialog>
+      </Transition>
+
+      <Transition appear show={!!moveTarget} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={closeMoveDialog}>
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/40" />
+          </TransitionChild>
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <TransitionChild
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+                <div className="flex items-start justify-between">
+                  <DialogTitle className="text-sm font-semibold text-text-default">
+                    Move {moveTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
+                  </DialogTitle>
+                  <button
+                    onClick={closeMoveDialog}
+                    className="rounded-md p-1 text-text-muted hover:bg-surface-subtle"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-3 space-y-2 text-xs text-text-subtle">
+                  <div className="flex items-center justify-between">
+                    <span>Item</span>
+                    <span className="text-text-default">{moveItem?.name ?? '-'}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span>Destination</span>
+                    <select
+                      value={moveDestination ?? ''}
+                      onChange={(event) => setMoveDestination(event.target.value || null)}
+                      className="rounded-lg border border-border-default bg-surface-default px-2 py-1.5 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                    >
+                      <option value="" disabled={moveTarget?.type === 'stream' && isCabinetOnly}>
+                        Root level
+                      </option>
+                      {moveCabinetOptions.map((cabinet) => {
+                        const disambiguation = cabinetDisambiguation.get(cabinet.id);
+                        const suffix = disambiguation ? ` (#${disambiguation.index})` : '';
+                        return (
+                          <option key={cabinet.id} value={cabinet.id}>
+                            {cabinet.name}
+                            {suffix}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={closeMoveDialog}
+                    className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleMoveConfirm}
+                    disabled={
+                      moveTarget?.type === 'stream'
+                        ? (isCabinetOnly && (moveDestination ?? null) === null) ||
+                          (moveDestination ?? null) === (moveItem as Stream | undefined)?.cabinet_id
+                        : (moveDestination ?? null) === (moveItem as Cabinet | undefined)?.parent_id
+                    }
+                    className="rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Move
+                  </button>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </Dialog>
+      </Transition>
+
+      <Transition appear show={!!propertiesTarget} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setPropertiesTarget(null)}>
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/40" />
+          </TransitionChild>
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <TransitionChild
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+                <div className="flex items-start justify-between">
+                  <DialogTitle className="text-sm font-semibold text-text-default">Properties</DialogTitle>
+                  <button
+                    onClick={() => setPropertiesTarget(null)}
+                    className="rounded-md p-1 text-text-muted hover:bg-surface-subtle"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="mt-3 space-y-2 text-xs text-text-subtle">
+                  <div className="flex items-center justify-between">
+                    <span>Name</span>
+                    <span className="text-text-default">{propertiesItem?.name ?? '-'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Type</span>
+                    <span className="text-text-default">
+                      {propertiesTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Location</span>
+                    <span className="text-text-default">
+                      {propertiesTarget?.type === 'cabinet'
+                        ? (propertiesItem as Cabinet | undefined)?.parent_id
+                          ? getCabinetById((propertiesItem as Cabinet).parent_id as string)?.name ?? 'Unknown'
+                          : 'Root level'
+                        : (propertiesItem as Stream | undefined)?.cabinet_id
+                          ? getCabinetById((propertiesItem as Stream).cabinet_id as string)?.name ?? 'Unknown'
+                          : 'Root level'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>ID</span>
+                    <span className="truncate text-text-default">{propertiesItem?.id ?? '-'}</span>
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={() => setPropertiesTarget(null)}
+                    className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
+                  >
+                    Close
+                  </button>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 }

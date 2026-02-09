@@ -96,7 +96,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
       </button>
 
       {/* Domain Icons */}
-      <div className="flex flex-1 flex-col gap-3">
+      <div className="flex flex-1 flex-col items-center gap-3">
         {isLoading || isFetching ? (
           <div className="flex h-10 w-10 items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-border-default border-t-action-primary-bg" />
@@ -132,16 +132,13 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
                   className={`h-5 w-5 transition-transform duration-200 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}
                 />
 
-                {/* Active Indicator Bar */}
                 {isActive && (
                   <div className="absolute -left-3 h-8 w-1 rounded-r-full bg-action-primary-bg" />
                 )}
 
-                {/* Tooltip */}
                 {hoveredDomain === domain.id && (
                   <div className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-text-default px-2.5 py-1.5 text-xs font-medium text-surface-default shadow-lg z-50 animate-fade-in">
                     {domain.name}
-                    {/* Arrow */}
                     <div className="absolute left-0 top-1/2 -ml-1 -mt-1 h-2 w-2 -rotate-45 bg-text-default" />
                   </div>
                 )}
@@ -149,16 +146,18 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
             );
           })
         )}
-      </div>
 
-      {/* New Domain Button */}
-      <button
-        onClick={() => setIsCreateModalOpen(true)}
-        className="mt-auto flex h-10 w-10 items-center justify-center rounded-lg border-2 border-dashed border-border-default text-text-muted transition-colors hover:border-action-primary-bg hover:text-action-primary-bg"
-        title="New Domain"
-      >
-        <Plus className="h-5 w-5" />
-      </button>
+        <div className="mt-1 flex flex-col items-center">
+          <div className="h-3 w-px bg-border-subtle" />
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="mt-2 flex h-10 w-10 items-center justify-center rounded-lg border-2 border-dashed border-border-default text-text-muted transition-colors hover:border-action-primary-bg hover:text-action-primary-bg"
+            title="New Domain"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
 
       <CreateDomainModal
         isOpen={isCreateModalOpen}

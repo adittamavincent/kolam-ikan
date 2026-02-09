@@ -85,14 +85,17 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
-        <div className="flex items-center justify-between border-b border-border-default p-4">
+        <div className="flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-5 py-3 shadow-sm">
           <div>
-            <h2 className="text-lg font-semibold text-text-default">The Canvas</h2>
-            <p className="text-sm text-text-subtle">Stream: {streamId}</p>
+            <h2 className="text-base font-semibold text-text-default">The Canvas</h2>
           </div>
-          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-text-muted" />}
+          <div className="flex items-center gap-2 text-xs text-text-muted">
+            <span className="hidden sm:inline">Stream</span>
+            <span className="max-w-[180px] truncate font-medium text-text-subtle">{streamId}</span>
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-text-muted" />}
+          </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           {canvas ? (
             <BlockNoteEditor
               initialContent={canvas.content_json as unknown as PartialBlock[]}

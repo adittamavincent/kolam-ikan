@@ -171,7 +171,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
 
       <div className="flex flex-col">
         {recoveryAvailable && showRecoveryPrompt && (
-          <div className="border-b border-border-subtle/50 bg-surface-subtle px-4 py-2 text-[11px] text-text-default">
+          <div className="rounded-t-xl border-b border-border-subtle/50 bg-surface-subtle px-4 py-2 text-[11px] text-text-default">
             <div className="flex items-center justify-between gap-2">
               <span>Recovered unsaved work from a previous session.</span>
               <div className="flex gap-2">

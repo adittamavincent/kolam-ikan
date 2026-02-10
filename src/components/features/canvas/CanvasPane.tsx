@@ -9,7 +9,7 @@ import debounce from 'lodash/debounce';
 import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
 import { Json } from '@/lib/types/database.types';
 import { createClient } from '@/lib/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 
 interface CanvasPaneProps {
   streamId: string;
@@ -23,7 +23,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
   const [snapshotName, setSnapshotName] = useState('');
   const [showVersions, setShowVersions] = useState(false);
-  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
   const supabase = createClient();
 
   const isVisible = canvasWidth > 0;
@@ -73,24 +72,28 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     enabled: !!streamId,
   });
 
-  const handleSaveSnapshot = async () => {
-    if (!canvas) return;
-    setIsSavingSnapshot(true);
-    try {
+  const saveSnapshotMutation = useMutation({
+    mutationFn: async () => {
+      if (!canvas) return;
       const name = snapshotName.trim() || `Snapshot ${new Date().toLocaleString()}`;
       const { data: userData } = await supabase.auth.getUser();
-      await supabase.from('canvas_versions').insert({
+      const { error } = await supabase.from('canvas_versions').insert({
         canvas_id: canvas.id,
         stream_id: streamId,
         content_json: canvas.content_json as unknown as Json,
         name,
         created_by: userData.user?.id ?? null,
       });
+      if (error) throw error;
+    },
+    onSuccess: () => {
       setSnapshotName('');
       refetchVersions();
-    } finally {
-      setIsSavingSnapshot(false);
-    }
+    },
+  });
+
+  const handleSaveSnapshot = () => {
+    saveSnapshotMutation.mutate();
   };
 
   const handleRestoreVersion = async (versionId: string, content: Json) => {
@@ -161,10 +164,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                   />
                   <button
                     onClick={handleSaveSnapshot}
-                    disabled={isSavingSnapshot}
+                    disabled={saveSnapshotMutation.isPending}
                     className="rounded bg-action-primary-bg px-3 py-1 text-xs text-action-primary-text hover:bg-action-primary-hover disabled:opacity-50"
                   >
-                    {isSavingSnapshot ? 'Saving...' : 'Save Snapshot'}
+                    {saveSnapshotMutation.isPending ? 'Saving...' : 'Save Snapshot'}
                   </button>
                   <button
                     onClick={() => setShowVersions((prev) => !prev)}

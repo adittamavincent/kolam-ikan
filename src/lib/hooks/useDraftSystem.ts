@@ -467,6 +467,11 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     });
     
     activeInstancesRef.current = newActiveSet;
+    
+    // Safety check: if no active instances and no pending saves, reset status
+    if (newActiveSet.size === 0 && pendingSavesRef.current.size === 0) {
+      setStatus((prev) => prev === 'saving' ? 'idle' : prev);
+    }
   }, []);
 
   const getDraftContent = useCallback((instanceId: string) => {

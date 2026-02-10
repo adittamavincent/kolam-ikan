@@ -98,13 +98,6 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
   const handleCommit = async () => {
       try {
         await commitDraft();
-        // Clear editors
-        Object.values(editorRefs.current).forEach(editor => {
-             // Check if editor is still mounted/valid
-             if (editor && editor.document) {
-                 editor.replaceBlocks(editor.document, [{ type: "paragraph", content: [] }]);
-             }
-        });
         
         // Reset to empty state (no auto-default persona)
         setSections([]);

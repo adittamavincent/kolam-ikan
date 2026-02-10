@@ -29,10 +29,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const { user, status, loading, error, signOut } = useAuth();
 
   // Sidebar state from Zustand store
-  const { 
-    visible: sidebarVisible, 
-    show: showSidebar, 
-    hide: hideSidebar, 
+  const {
+    visible: sidebarVisible,
+    show: showSidebar,
+    hide: hideSidebar,
     setVisible: setSidebarVisible,
     width: sidebarWidth,
     setWidth: setSidebarWidth,
@@ -64,7 +64,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   >([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const supabase = createClient();
-  
+
   // Show layout controls only on stream pages (domain/stream)
   const parts = pathname?.split('/').filter(Boolean) || [];
   const showLayoutControls = parts.length === 2;
@@ -88,12 +88,12 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       // Since DomainSwitcher is on the left (fixed or relative), we need to account for its width if it's in the flow
       // However, the resize handle is at the right edge of the sidebar.
       // So the width of the sidebar is roughly e.clientX - (DomainSwitcher width)
-      
+
       // Let's get the sidebar's left position to be accurate
       if (sidebarRef.current) {
         const sidebarRect = sidebarRef.current.getBoundingClientRect();
         const newWidth = e.clientX - sidebarRect.left;
-        
+
         // Clamp width
         const clampedWidth = Math.min(Math.max(newWidth, 200), 500);
         setSidebarWidth(clampedWidth);
@@ -357,9 +357,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       {/* ====== RIBBON (DomainSwitcher) — always visible ====== */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 flex transform transition-transform md:relative md:translate-x-0 ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 flex transform transition-transform md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+          }`}
       >
         <DomainSwitcher userId={userId} />
       </div>
@@ -379,7 +378,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           >
             <Navigator userId={userId} />
           </div>
-          
+
           {/* Resize Handle */}
           <div
             className={`absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-action-primary-bg/50 active:bg-action-primary-bg transition-colors z-50
@@ -398,51 +397,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       )}
 
       {/* ====== MAIN CONTENT ====== */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="relative flex flex-1 flex-col overflow-hidden">
         <div className="relative flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-4 py-3">
           <div className="flex items-center gap-3">
             <StreamHeaderTitle streamId={streamId} />
           </div>
-          
-          {showLayoutControls && (
-            <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-md bg-surface-subtle p-0.5">
-              <button
-                onClick={() => setMode('log-only')}
-                className={`rounded p-1 transition-colors ${
-                  isLogMaximized
-                    ? 'bg-surface-default text-text-default'
-                    : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-                }`}
-                title="Maximize Log (⌘J)"
-              >
-                <PanelLeft className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={() => setMode('balanced')}
-                className={`rounded p-1 transition-colors ${
-                  isBalanced
-                    ? 'bg-surface-default text-text-default'
-                    : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-                }`}
-                title="Reset Layout (⌘K)"
-              >
-                <Columns className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={() => setMode('canvas-only')}
-                className={`rounded p-1 transition-colors ${
-                  isCanvasMaximized
-                    ? 'bg-surface-default text-text-default'
-                    : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-                }`}
-                title="Maximize Canvas (⌘L)"
-              >
-                <PanelRight className="h-4 w-4" />
-              </button>
-            </div>
-          )}
 
           <Menu as="div" className="relative">
             <MenuButton className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-default px-2 py-1.5 text-left text-xs text-text-default transition hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
@@ -516,6 +475,43 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           </div>
         )}
         <main className="flex flex-1 overflow-hidden">{children}</main>
+
+        {showLayoutControls && (
+          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-md border border-border-subtle bg-surface-default/90 p-1 shadow-sm backdrop-blur-sm z-30">
+            <button
+              onClick={() => setMode('log-only')}
+              className={`rounded p-1 transition-colors ${isLogMaximized
+                ? 'bg-surface-subtle text-text-default shadow-sm'
+                : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
+                }`}
+              title="Maximize Log (⌘J)"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => setMode('balanced')}
+              className={`rounded p-1 transition-colors ${isBalanced
+                ? 'bg-surface-subtle text-text-default shadow-sm'
+                : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
+                }`}
+              title="Reset Layout (⌘K)"
+            >
+              <Columns className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => setMode('canvas-only')}
+              className={`rounded p-1 transition-colors ${isCanvasMaximized
+                ? 'bg-surface-subtle text-text-default shadow-sm'
+                : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
+                }`}
+              title="Maximize Canvas (⌘L)"
+            >
+              <PanelRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
 
       <Transition appear show={searchOpen} as={Fragment}>

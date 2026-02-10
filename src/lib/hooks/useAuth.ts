@@ -46,24 +46,23 @@ export function useAuth() {
   const signOut = useCallback(async () => {
     setError(null);
     let success = true;
+    let errorSet = false;
 
     try {
-      const { error: signOutError } = await supabase.auth.signOut({ scope: "global" });
-      if (signOutError) {
-        success = false;
-        setError(signOutError.message);
-      }
-    } catch (signOutError) {
+      await fetch("/api/auth/signout", { method: "POST", keepalive: true });
+    } catch {
       success = false;
-      console.error("Sign out failed.", signOutError);
+      errorSet = true;
       setError("Unable to sign out. Check your network and try again.");
     }
 
     try {
-      await fetch("/api/auth/signout", { method: "POST" });
-    } catch (requestError) {
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
       success = false;
-      console.error("Failed to clear auth cookies.", requestError);
+      if (!errorSet) {
+        setError("Unable to sign out. Check your network and try again.");
+      }
     }
 
     clearAuthClientStorage();

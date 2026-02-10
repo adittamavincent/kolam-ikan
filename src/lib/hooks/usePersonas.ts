@@ -9,13 +9,14 @@ export function usePersonas() {
 
   const query = useQuery({
     queryKey: ['personas', user?.id],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('personas')
         .select('*')
         .or(`user_id.eq.${user?.id},is_system.eq.true`)
         .is('deleted_at', null)
-        .order('name', { ascending: true });
+        .order('name', { ascending: true })
+        .abortSignal(signal);
 
       if (error) throw error;
       return data as Persona[];

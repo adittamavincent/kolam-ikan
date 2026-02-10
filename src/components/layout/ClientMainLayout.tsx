@@ -20,6 +20,7 @@ interface ClientMainLayoutProps {
 export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const signingOutRef = useRef(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -119,19 +120,20 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
   // ----- Auth redirect -----
   useEffect(() => {
-    if (!loading && status === 'signed_out') {
+    if (!loading && status === 'signed_out' && !signingOutRef.current) {
       router.push('/login');
-      router.refresh();
     }
   }, [loading, router, status]);
 
   const handleSignOut = async () => {
+    signingOutRef.current = true;
     setSigningOut(true);
-    const ok = await signOut();
-    setSigningOut(false);
-
-    if (ok) {
-      window.location.assign('/login');
+    try {
+      await signOut();
+      router.replace('/login');
+    } finally {
+      signingOutRef.current = false;
+      setSigningOut(false);
     }
   };
 

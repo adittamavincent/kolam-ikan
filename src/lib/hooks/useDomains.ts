@@ -8,20 +8,18 @@ export function useDomains(userId: string) {
 
   const query = useQuery({
     queryKey: ['domains', userId],
-    queryFn: async () => {
-      console.log('[useDomains] Fetching domains for user:', userId);
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('domains')
         .select('*')
         .eq('user_id', userId)
         .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true })
+        .abortSignal(signal);
 
       if (error) {
-        console.error('[useDomains] Failed to fetch domains:', error);
         throw error;
       }
-      console.log('[useDomains] Fetched domains:', data?.length ?? 0);
       return data as Domain[];
     },
     refetchOnMount: 'always', // Always refetch to ensure fresh data after auth

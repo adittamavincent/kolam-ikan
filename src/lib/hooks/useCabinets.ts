@@ -8,13 +8,14 @@ export function useCabinets(domainId: string) {
 
   const query = useQuery({
     queryKey: ['cabinets', domainId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('cabinets')
         .select('*')
         .eq('domain_id', domainId)
         .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true })
+        .abortSignal(signal);
 
       if (error) throw error;
       return data as Cabinet[];

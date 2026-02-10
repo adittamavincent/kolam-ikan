@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Domain } from '@/lib/types';
 import { useState, useEffect } from 'react';
 import { Home, Plus, RefreshCw, AlertCircle } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { useSidebar } from '@/lib/hooks/useSidebar';
 import { CreateDomainModal } from './CreateDomainModal';
@@ -18,6 +18,7 @@ interface DomainSwitcherProps {
 export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
   const supabase = createClient();
   const queryClient = useQueryClient();
   const [hoveredDomain, setHoveredDomain] = useState<string | null>(null);
@@ -47,7 +48,6 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('[DomainSwitcher] Auth state changed, refetching domains:', event);
         queryClient.invalidateQueries({ queryKey: ['domains', userId] });
       }
     });
@@ -60,7 +60,6 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   const { data: domains, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['domains', userId],
     queryFn: async () => {
-      console.log('[DomainSwitcher] Fetching domains for user:', userId);
       const { data, error } = await supabase
         .from('domains')
         .select('*')
@@ -72,7 +71,6 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
         console.error('[DomainSwitcher] Failed to fetch domains:', error);
         throw error;
       }
-      console.log('[DomainSwitcher] Fetched domains:', data?.length ?? 0);
       return data as Domain[];
     },
     refetchOnMount: 'always', // Always refetch on mount to ensure fresh data
@@ -86,8 +84,10 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
       {/* Home Button */}
       <button
         onClick={() => {
-          hideSidebar();
-          router.push('/');
+          if (pathname !== '/') {
+            hideSidebar();
+            router.push('/');
+          }
         }}
         className="mb-6 flex h-10 w-10 items-center justify-center rounded-lg text-text-subtle transition-colors hover:bg-surface-subtle hover:text-text-default"
         title="Home"
@@ -115,10 +115,15 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
         ) : (
           domains?.map((domain) => {
             const isActive = activeDomainId === domain.id;
+            const targetPath = `/${domain.id}`;
             return (
               <button
                 key={domain.id}
-                onClick={() => router.push(`/${domain.id}`)}
+                onClick={() => {
+                  if (pathname !== targetPath) {
+                    router.push(targetPath);
+                  }
+                }}
                 onMouseEnter={() => setHoveredDomain(domain.id)}
                 onMouseLeave={() => setHoveredDomain(null)}
                 className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isActive

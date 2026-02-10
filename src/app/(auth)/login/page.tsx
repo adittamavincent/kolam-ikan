@@ -48,7 +48,7 @@ function LoginForm() {
 
   // Handle post-login redirection
   useEffect(() => {
-    if (!authLoading && status === "signed_in") {
+    if (!authLoading && !loading && status === "signed_in") {
       // Ensure dev cookie is set before redirecting to avoid loops where
       // middleware redirects back to login because the cookie is missing.
       if (isDevelopmentHost()) {
@@ -58,9 +58,8 @@ function LoginForm() {
 
       const next = searchParams.get("next") || "/";
       router.push(next);
-      router.refresh();
     }
-  }, [authLoading, router, status, searchParams]);
+  }, [authLoading, loading, router, status, searchParams]);
 
   // Auto-hide password after 3 seconds
   useEffect(() => {

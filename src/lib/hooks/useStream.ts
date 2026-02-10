@@ -7,11 +7,12 @@ export function useStream(streamId: string) {
 
   const { data: stream, isLoading, error } = useQuery({
     queryKey: ['stream', streamId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('streams')
         .select('*')
         .eq('id', streamId)
+        .abortSignal(signal)
         .single();
 
       if (error) throw error;

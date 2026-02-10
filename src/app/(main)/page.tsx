@@ -272,67 +272,46 @@ export default function HomePage() {
     refetch: refetchDomains,
   } = useQuery({
     queryKey: ['home-domains', userId],
-    queryFn: async () => {
-      const { data: domains, error } = await supabase
-        .from('domains')
-        .select('*')
-        .eq('user_id', userId!)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
-      if (error) throw error;
+    queryFn: async ({ signal }) => {
+      // Parallel fetch: domains and stats
+      const [domainsResult, statsResult] = await Promise.all([
+        supabase
+          .from('domains')
+          .select('*')
+          .eq('user_id', userId!)
+          .is('deleted_at', null)
+          .order('sort_order', { ascending: true })
+          .abortSignal(signal),
 
-      // Fetch counts for each domain
-      const enriched: DomainWithCounts[] = await Promise.all(
-        (domains as Domain[]).map(async (domain) => {
-          const { count: cabinetCount } = await supabase
-            .from('cabinets')
-            .select('*', { count: 'exact', head: true })
-            .eq('domain_id', domain.id)
-            .is('deleted_at', null);
+        supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .rpc('get_domain_stats' as any, { p_user_id: userId! })
+          .abortSignal(signal),
+      ]);
 
-          const { data: domainCabinets } = await supabase
-            .from('cabinets')
-            .select('id')
-            .eq('domain_id', domain.id)
-            .is('deleted_at', null);
+      if (domainsResult.error) throw domainsResult.error;
+      if (statsResult.error) throw statsResult.error;
 
-          const cabinetIds = domainCabinets?.map((c) => c.id) ?? [];
-          let streamCount = 0;
-          let entryCount = 0;
+      const domains = domainsResult.data as Domain[];
+      const stats = statsResult.data as {
+        domain_id: string;
+        cabinet_count: number;
+        stream_count: number;
+        entry_count: number;
+      }[];
 
-          if (cabinetIds.length > 0) {
-            const { count: sc } = await supabase
-              .from('streams')
-              .select('*', { count: 'exact', head: true })
-              .in('cabinet_id', cabinetIds)
-              .is('deleted_at', null);
-            streamCount = sc ?? 0;
+      // Map stats to domains
+      const statsMap = new Map(stats.map((s) => [s.domain_id, s]));
 
-            const { data: domainStreams } = await supabase
-              .from('streams')
-              .select('id')
-              .in('cabinet_id', cabinetIds)
-              .is('deleted_at', null);
-
-            const streamIds = domainStreams?.map((s) => s.id) ?? [];
-            if (streamIds.length > 0) {
-              const { count: ec } = await supabase
-                .from('entries')
-                .select('*', { count: 'exact', head: true })
-                .in('stream_id', streamIds)
-                .is('deleted_at', null);
-              entryCount = ec ?? 0;
-            }
-          }
-
-          return {
-            ...domain,
-            cabinetCount: cabinetCount ?? 0,
-            streamCount,
-            entryCount,
-          };
-        }),
-      );
+      const enriched: DomainWithCounts[] = domains.map((domain) => {
+        const s = statsMap.get(domain.id);
+        return {
+          ...domain,
+          cabinetCount: s?.cabinet_count ?? 0,
+          streamCount: s?.stream_count ?? 0,
+          entryCount: s?.entry_count ?? 0,
+        };
+      });
 
       return enriched;
     },
@@ -348,7 +327,7 @@ export default function HomePage() {
     refetch: refetchStreams,
   } = useQuery({
     queryKey: ['home-recent-streams', userId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('streams')
         .select(`
@@ -360,7 +339,8 @@ export default function HomePage() {
         `)
         .is('deleted_at', null)
         .order('updated_at', { ascending: false })
-        .limit(5);
+        .limit(5)
+        .abortSignal(signal);
       if (error) throw error;
       return (data ?? []) as unknown as RecentStream[];
     },
@@ -376,7 +356,7 @@ export default function HomePage() {
     refetch: refetchEntries,
   } = useQuery({
     queryKey: ['home-recent-entries', userId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('entries')
         .select(`
@@ -391,7 +371,8 @@ export default function HomePage() {
         `)
         .is('deleted_at', null)
         .order('updated_at', { ascending: false })
-        .limit(5);
+        .limit(5)
+        .abortSignal(signal);
       if (error) throw error;
       return (data ?? []) as unknown as RecentEntry[];
     },

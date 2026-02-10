@@ -8,13 +8,14 @@ export function useStreams(cabinetId: string) {
 
   const query = useQuery({
     queryKey: ['streams', cabinetId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('streams')
         .select('*')
         .eq('cabinet_id', cabinetId)
         .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
+        .order('sort_order', { ascending: true })
+        .abortSignal(signal);
 
       if (error) throw error;
       return data as Stream[];

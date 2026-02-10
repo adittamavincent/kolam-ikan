@@ -443,6 +443,15 @@ export type Database = {
             Returns: Json
           }
       exec_sql: { Args: { sql: string }; Returns: undefined }
+      get_domain_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          cabinet_count: number
+          domain_id: string
+          entry_count: number
+          stream_count: number
+        }[]
+      }
       jsonb_to_text: { Args: { jsonb_data: Json }; Returns: string }
       revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }

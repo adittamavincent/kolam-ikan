@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X } from 'lucide-react';
 import { Fragment, useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { NavigatorCreateButton } from './NavigatorCreateButton';
@@ -539,6 +539,7 @@ const CabinetNode = ({
 export function Navigator({ }: NavigatorProps) {
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
   const supabase = createClient();
   const queryClient = useQueryClient();
   const domainId = params?.domain as string | undefined;
@@ -1117,8 +1118,14 @@ export function Navigator({ }: NavigatorProps) {
     setCreatingItem({ type: 'stream', parentId: targetCabinetId ?? null });
   };
 
-  // Click debouncing ref
   const lastClickRef = useRef<{ id: string; time: number } | null>(null);
+  const lastNavigatedPathRef = useRef<string | null>(null);
+  const pendingStreamNavigationRef = useRef<{ path: string; startedAt: number } | null>(null);
+  
+  useEffect(() => {
+    lastNavigatedPathRef.current = null;
+    pendingStreamNavigationRef.current = null;
+  }, [pathname]);
   
   // Long press refs
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -1180,6 +1187,15 @@ export function Navigator({ }: NavigatorProps) {
       // Stream logic
       // Highlighted streams: Slow click (> 500ms) -> Rename (Legacy behavior)
       // All streams: Click -> Navigate
+      if (pendingStreamNavigationRef.current) {
+        const elapsed = now - pendingStreamNavigationRef.current.startedAt;
+        if (elapsed < 15000) {
+          lastClickRef.current = { id, time: now };
+          return;
+        }
+        pendingStreamNavigationRef.current = null;
+      }
+
       if (isActive && lastClick && lastClick.id === id && (now - lastClick.time > 500)) {
         setEditingItemId(id);
         setEditingName(name);
@@ -1187,7 +1203,17 @@ export function Navigator({ }: NavigatorProps) {
         return;
       }
       
-      router.push(`/${domainId}/${id}`);
+      // Prevent rapid double-click navigation
+      if (lastClick && lastClick.id === id && (now - lastClick.time < 500)) {
+        return;
+      }
+
+      const targetPath = `/${domainId}/${id}`;
+      if (pathname === targetPath || lastNavigatedPathRef.current === targetPath) return;
+
+      lastNavigatedPathRef.current = targetPath;
+      pendingStreamNavigationRef.current = { path: targetPath, startedAt: now };
+      router.push(targetPath);
     }
 
     lastClickRef.current = { id, time: now };

@@ -16,7 +16,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
   const query = useInfiniteQuery({
     queryKey: ['entries', streamId, search, personaId, sortOrder],
-    queryFn: async ({ pageParam = 0 }) => {
+    queryFn: async ({ pageParam = 0, signal }) => {
       let query = supabase
         .from('entries')
         .select(`
@@ -40,6 +40,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
       // Sort
       query = query.order('created_at', { ascending: sortOrder === 'oldest' });
+      
+      // Abort signal
+      query = query.abortSignal(signal);
 
       // Pagination
       const from = pageParam * PAGE_SIZE;
@@ -47,10 +50,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       
       const { data, error } = await query.range(from, to);
 
-      if (error) {
-        console.error('Error fetching entries:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       return data as EntryWithSections[];
     },

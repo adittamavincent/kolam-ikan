@@ -133,7 +133,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
         if (localDraft && localTime > dbTime) {
           // Local is newer
-          console.log('Restoring from local storage');
           loadedEntryId = localDraft.entryId;
           
           Object.entries(localDraft.sections).forEach(([instanceId, draft]) => {
@@ -148,7 +147,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           setStatus('offline');
         } else if (dbDraft) {
           // DB is newer
-          console.log('Restoring from database');
           loadedEntryId = dbDraft.id;
           
           dbDraft.sections.forEach(section => {

@@ -26,6 +26,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-query-devtools": "^5.91.3",
+    "@tanstack/react-virtual": "^3.10.0",
     "@types/lodash": "^4.17.23",
     "@types/uuid": "^10.0.0",
     "class-variance-authority": "^0.7.1",

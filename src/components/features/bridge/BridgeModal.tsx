@@ -21,6 +21,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const [includeCanvas, setIncludeCanvas] = useState(true);
   const [userInput, setUserInput] = useState('');
+  const [tokenOverLimit, setTokenOverLimit] = useState(false);
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -45,6 +46,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             onSelectionChange={setSelectedEntries}
             includeCanvas={includeCanvas}
             onIncludeCanvasChange={setIncludeCanvas}
+            disableSelectAll={tokenOverLimit}
           />
 
           {/* Token Counter */}
@@ -52,6 +54,11 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             selectedEntries={selectedEntries}
             includeCanvas={includeCanvas}
             streamId={streamId}
+            onTokenUpdate={(count, over) => {
+              setTokenOverLimit(over);
+            }}
+            onReduceSelection={() => setSelectedEntries((prev) => prev.slice(0, 5))}
+            onAutoSummarize={() => setIncludeCanvas(false)}
           />
 
           {/* User Input */}

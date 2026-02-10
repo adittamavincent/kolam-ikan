@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Fragment, useEffect } from 'react';
+import { useState, Fragment, useEffect, useRef, useCallback } from 'react';
 import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
 import { LogSection } from './LogSection';
@@ -11,17 +11,22 @@ import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/r
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { PersonaManager } from '../persona/PersonaManager';
 import { exportEntriesToMarkdown, downloadMarkdown } from '@/lib/utils/export';
+import { EntryWithSections } from '@/lib/types';
 
 interface LogPaneProps {
   streamId: string;
   logWidth: number;
+  forceWidth?: number;
 }
 
-export function LogPane({ streamId, logWidth }: LogPaneProps) {
+export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterPersonaId, setFilterPersonaId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
+  const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
+  const entryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -30,18 +35,50 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const { 
-    entries, 
+  useEffect(() => {
+    const raw = sessionStorage.getItem('kolam_search_highlight');
+    if (!raw) return;
+    try {
+      const payload = JSON.parse(raw) as {
+        term: string;
+        target: 'log' | 'canvas';
+        entryId?: string | null;
+        streamId?: string;
+      };
+      if (payload.target === 'log' && payload.streamId === streamId) {
+        setSearchTerm(payload.term);
+        setIsToolbarOpen(true);
+        setHighlightTerm(payload.term);
+        setHighlightEntryId(payload.entryId ?? null);
+        sessionStorage.removeItem('kolam_search_highlight');
+      }
+    } finally {
+    }
+  }, [streamId]);
+
+  const scrollToHighlighted = useCallback(() => {
+    if (!highlightEntryId) return;
+    const ref = entryRefs.current[highlightEntryId];
+    if (ref) {
+      ref.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [highlightEntryId]);
+
+  const {
+    items: entryList,
     isLoading: isEntriesLoading,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    fetchAllEntriesForExport
+    fetchAllEntriesForExport,
   } = useEntries(streamId, {
     search: debouncedSearch,
     personaId: filterPersonaId,
-    sortOrder
+    sortOrder,
   });
+  useEffect(() => {
+    scrollToHighlighted();
+  }, [entryList, scrollToHighlighted]);
 
   const { stream } = useStream(streamId);
   const { personas } = usePersonas();
@@ -61,9 +98,10 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
     }
   };
 
-  const isVisible = logWidth > 0;
+  const resolvedWidth = forceWidth ?? logWidth;
+  const isVisible = resolvedWidth > 0;
 
-  const getEntryLevel = (entry: (typeof entries)[number]) => {
+  const getEntryLevel = (entry: EntryWithSections) => {
     const text = entry.sections
       ?.map((section) => section.search_text ?? section.persona_name_snapshot ?? '')
       .join(' ')
@@ -86,8 +124,8 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
   };
 
   const containerStyle = {
-    width: `${logWidth}%`,
-    minWidth: logWidth === 0 ? '0px' : 'auto',
+    width: `${resolvedWidth}%`,
+    minWidth: resolvedWidth === 0 ? '0px' : 'auto',
     opacity: isVisible ? 1 : 0,
     transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
   };
@@ -222,56 +260,69 @@ export function LogPane({ streamId, logWidth }: LogPaneProps) {
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-3 pb-5 pt-4 space-y-4">
-          <EntryCreator streamId={streamId} />
-          
-          <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto px-3">
+          <div className="sticky top-0 z-20 bg-surface-default pt-4">
+            <EntryCreator streamId={streamId} />
+          </div>
+          <div className="pb-5 pt-4">
             {isEntriesLoading ? (
               <div className="space-y-4 animate-pulse">
-                {[1, 2, 3].map(i => (
+                {[1, 2, 3].map((i) => (
                   <div key={i} className="h-28 rounded-lg bg-surface-subtle/50" />
                 ))}
               </div>
-            ) : entries.length === 0 ? (
+            ) : entryList.length === 0 ? (
               <div className="text-center py-10 text-text-muted text-sm">
                 No entries found.
               </div>
             ) : (
               <>
-                {entries.map((entry) => (
-                  <div key={entry.id} className="relative group rounded-lg border border-border-subtle bg-surface-default shadow-sm overflow-hidden transition-all hover:border-border-default/50 hover:shadow-md">
-                     {/* Entry Header */}
-                     <div className="flex items-center justify-between px-3 py-1.5 bg-surface-subtle/40 border-b border-border-subtle/40">
-                       <div className="flex items-center gap-2">
-                         <Calendar className="h-3 w-3 text-text-muted" />
-                         <span className="text-[10px] font-medium text-text-subtle font-mono">
-                           {new Date(entry.created_at || '').toLocaleString(undefined, { 
-                             month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
-                           })}
-                         </span>
-                       </div>
-                       {(() => {
-                         const level = getEntryLevel(entry) as keyof typeof levelMeta;
-                         const meta = levelMeta[level];
-                         const Icon = meta.icon;
-                         return (
-                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.badge}`}>
-                             <Icon className="h-3 w-3" />
-                             {meta.label}
-                           </span>
-                         );
-                       })()}
-                     </div>
-
-                     {/* Sections */}
-                     <div className="p-1 space-y-px">
-                      {entry.sections?.map((section) => (
-                        <LogSection key={section.id} section={section} />
-                      ))}
+                <div className="flex flex-col gap-4">
+                  {entryList.map((entry) => (
+                    <div
+                      key={entry.id}
+                      ref={(node) => {
+                        entryRefs.current[entry.id] = node;
+                      }}
+                    >
+                      <div className="relative group rounded-lg border border-border-subtle bg-surface-default shadow-sm overflow-hidden transition-all hover:border-border-default/50 hover:shadow-md">
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-surface-subtle/40 border-b border-border-subtle/40">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3 w-3 text-text-muted" />
+                            <span className="text-[10px] font-medium text-text-subtle font-mono">
+                              {new Date(entry.created_at || '').toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          </div>
+                          {(() => {
+                            const level = getEntryLevel(entry) as keyof typeof levelMeta;
+                            const meta = levelMeta[level];
+                            const Icon = meta.icon;
+                            return (
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.badge}`}>
+                                <Icon className="h-3 w-3" />
+                                {meta.label}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <div className="p-3 flex flex-col gap-3">
+                          {entry.sections?.map((section: EntryWithSections['sections'][number]) => (
+                            <LogSection
+                              key={section.id}
+                              section={section}
+                              highlightTerm={entry.id === highlightEntryId ? highlightTerm ?? undefined : undefined}
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-                
+                  ))}
+                </div>
                 {hasNextPage && (
                   <div className="flex justify-center pt-4 pb-2">
                     <button

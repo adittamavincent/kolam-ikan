@@ -37,6 +37,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [recoveryAvailable, setRecoveryAvailable] = useState(false);
   
   // Map of instanceId -> { personaId, content } (for initial load)
   const [initialDrafts, setInitialDrafts] = useState<Record<string, DraftContent>>({});
@@ -95,6 +96,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
             // We'll just ignore old formats for simplicity in this refactor
             // or we could try to detect if keys are UUIDs vs persona IDs, but simpler to reset if schema changes significantly
              localDraft = parsed;
+             setRecoveryAvailable(true);
           } catch (e) {
             console.error('Failed to parse local draft', e);
           }
@@ -195,6 +197,62 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       Object.values(debouncers).forEach((d) => d.cancel?.());
     };
   }, [streamId, supabase]);
+
+  const flushPendingSaves = useCallback(async () => {
+    Object.values(debouncersRef.current).forEach((d) => d.flush());
+    if (pendingSavesRef.current.size > 0) {
+      await Promise.all(Array.from(pendingSavesRef.current));
+    }
+    if (creationPromiseRef.current) {
+      await creationPromiseRef.current;
+    }
+  }, []);
+
+  const buildDraftSnapshot = useCallback(() => {
+    const sections = Object.keys(contentRefs.current).map((instanceId) => ({
+      instanceId,
+      sectionId: sectionIdsRef.current[instanceId] ?? null,
+      personaId: personaIdsRef.current[instanceId] ?? null,
+      content: contentRefs.current[instanceId],
+      updatedAt: Date.now(),
+    }));
+    return {
+      streamId,
+      entryId: activeEntryIdRef.current,
+      sections,
+      updatedAt: Date.now(),
+    };
+  }, [streamId]);
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      const snapshot = buildDraftSnapshot();
+      if (snapshot.sections.length === 0) return;
+      if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(snapshot)], { type: 'application/json' });
+        navigator.sendBeacon('/api/draft-beacon', blob);
+      }
+    };
+
+    const handleBeforeUnload = () => {
+      void flushPendingSaves();
+      handlePageHide();
+    };
+
+    const handleFlushEvent = () => {
+      void flushPendingSaves();
+    };
+
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('kolam_flush_drafts', handleFlushEvent);
+
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('kolam_flush_drafts', handleFlushEvent);
+    };
+  }, [buildDraftSnapshot, flushPendingSaves]);
 
   // Update Local Storage Helper
   const updateLocalStorage = useCallback(() => {
@@ -524,6 +582,22 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     }
   }, [streamId, supabase, queryClient]);
 
+  const discardRecovery = useCallback(() => {
+    localStorage.removeItem(`${STORAGE_PREFIX}${streamId}`);
+    setActiveEntryId(null);
+    setInitialDrafts({});
+    sectionIdsRef.current = {};
+    contentRefs.current = {};
+    personaIdsRef.current = {};
+    activeInstancesRef.current.clear();
+    Object.values(debouncersRef.current).forEach((d) => d.cancel());
+    debouncersRef.current = {};
+    creationPromiseRef.current = null;
+    sectionCreationPromisesRef.current = {};
+    setStatus('idle');
+    setRecoveryAvailable(false);
+  }, [streamId]);
+
   return {
     status,
     lastSavedAt,
@@ -534,5 +608,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     isLoading,
     activeEntryId,
     setActiveInstances,
+    flushPendingSaves,
+    recoveryAvailable,
+    discardRecovery,
   };
 }

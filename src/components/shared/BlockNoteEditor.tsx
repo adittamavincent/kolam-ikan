@@ -10,6 +10,7 @@ export interface BlockNoteEditorProps {
   editable?: boolean;
   placeholder?: string;
   onEditorReady?: (editor: BlockNoteEditorType) => void;
+  highlightTerm?: string;
 }
 
 // Dynamically import the BaseEditor with SSR disabled to prevent window access errors

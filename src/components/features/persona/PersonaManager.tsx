@@ -27,11 +27,12 @@ const PRESET_COLORS = [
 ];
 
 export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
-  const { personas, isLoading } = usePersonas();
+  const { personas, isLoading } = usePersonas({ includeDeleted: true });
   const { createPersona, updatePersona, deletePersona } = usePersonaMutations();
   
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   
   // Form state
   const [name, setName] = useState('');
@@ -181,13 +182,38 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   </form>
                 ) : (
                   <>
+                    <div className="flex items-center justify-between mb-4">
+                      <button
+                        onClick={() => {
+                          setIsCreating(true);
+                          setName('');
+                          setIcon('user');
+                          setColor('#0ea5e9');
+                          setError(null);
+                        }}
+                        className="flex items-center gap-2 rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        New Persona
+                      </button>
+                      <label className="flex items-center gap-2 text-[11px] text-text-muted">
+                        <input
+                          type="checkbox"
+                          checked={showDeleted}
+                          onChange={() => setShowDeleted((value) => !value)}
+                        />
+                        Show deleted
+                      </label>
+                    </div>
                     <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
                       {isLoading ? (
                         <div className="flex justify-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
                         </div>
                       ) : (
-                        personas?.map((persona) => (
+                        personas
+                          ?.filter((persona) => (showDeleted ? true : !persona.deleted_at))
+                          .map((persona) => (
                           <div
                             key={persona.id}
                             className="flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-default hover:border-border-default transition-colors"
@@ -234,26 +260,26 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
+                                {persona.deleted_at && (
+                                  <button
+                                    onClick={async () => {
+                                      await updatePersona.mutateAsync({
+                                        id: persona.id,
+                                        updates: { deleted_at: null },
+                                      });
+                                    }}
+                                    className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
+                                    title="Restore"
+                                  >
+                                    Restore
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>
                         ))
                       )}
                     </div>
-
-                    <button
-                      onClick={() => {
-                        setIsCreating(true);
-                        setName('');
-                        setIcon('user');
-                        setColor('#0ea5e9');
-                        setError(null);
-                      }}
-                      className="mt-6 w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border-default text-text-muted hover:border-action-primary-bg hover:text-action-primary-bg transition-colors font-medium"
-                    >
-                      <Plus className="h-5 w-5" />
-                      Create New Persona
-                    </button>
                   </>
                 )}
               </DialogPanel>

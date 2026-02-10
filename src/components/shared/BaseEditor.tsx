@@ -13,6 +13,7 @@ export interface BaseEditorProps {
   editable?: boolean;
   placeholder?: string;
   onEditorReady?: (editor: BlockNoteEditor) => void;
+  highlightTerm?: string;
 }
 
 export default function BaseEditor({
@@ -20,6 +21,7 @@ export default function BaseEditor({
   onChange,
   editable = true,
   onEditorReady,
+  highlightTerm,
 }: BaseEditorProps) {
   const theme = useTheme();
   const editor = useCreateBlockNote({
@@ -31,6 +33,22 @@ export default function BaseEditor({
       onEditorReady(editor);
     }
   }, [editor, onEditorReady]);
+
+  useEffect(() => {
+    if (!editor || !highlightTerm) return;
+    const term = highlightTerm.toLowerCase();
+    const target = editor.document.find((block) => {
+      const content = Array.isArray(block.content) ? block.content : [];
+      const text = content
+        .map((item) => (typeof (item as { text?: unknown }).text === 'string' ? (item as { text: string }).text : ''))
+        .join('');
+      return text.toLowerCase().includes(term);
+    });
+    if (target) {
+      editor.setTextCursorPosition(target.id, 'start');
+      editor.focus();
+    }
+  }, [editor, highlightTerm]);
 
   useEffect(() => {
     if (editor && onChange) {

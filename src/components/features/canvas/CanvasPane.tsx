@@ -8,6 +8,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import debounce from 'lodash/debounce';
 import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
 import { Json } from '@/lib/types/database.types';
+import { createClient } from '@/lib/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 interface CanvasPaneProps {
   streamId: string;
@@ -18,6 +20,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const { canvas, updateCanvas, isLoading } = useCanvas(streamId);
   const { targetBlockId, setTargetBlockId } = useCanvasScroll();
   const [editor, setEditor] = useState<BlockNoteEditorType | null>(null);
+  const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
+  const [snapshotName, setSnapshotName] = useState('');
+  const [showVersions, setShowVersions] = useState(false);
+  const [isSavingSnapshot, setIsSavingSnapshot] = useState(false);
+  const supabase = createClient();
 
   const isVisible = canvasWidth > 0;
 
@@ -52,6 +59,46 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     [canvas, debouncedUpdate]
   );
 
+  const { data: versions, isLoading: versionsLoading, refetch: refetchVersions } = useQuery({
+    queryKey: ['canvas-versions', streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('canvas_versions')
+        .select('*')
+        .eq('stream_id', streamId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!streamId,
+  });
+
+  const handleSaveSnapshot = async () => {
+    if (!canvas) return;
+    setIsSavingSnapshot(true);
+    try {
+      const name = snapshotName.trim() || `Snapshot ${new Date().toLocaleString()}`;
+      const { data: userData } = await supabase.auth.getUser();
+      await supabase.from('canvas_versions').insert({
+        canvas_id: canvas.id,
+        stream_id: streamId,
+        content_json: canvas.content_json as unknown as Json,
+        name,
+        created_by: userData.user?.id ?? null,
+      });
+      setSnapshotName('');
+      refetchVersions();
+    } finally {
+      setIsSavingSnapshot(false);
+    }
+  };
+
+  const handleRestoreVersion = async (versionId: string, content: Json) => {
+    if (!canvas) return;
+    await updateCanvas.mutateAsync({ id: canvas.id, updates: { content_json: content } });
+    setShowVersions(false);
+  };
+
   // Handle auto-scroll to target block
   useEffect(() => {
     if (targetBlockId && editor && canvas) {
@@ -76,6 +123,23 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     }
   }, [targetBlockId, editor, canvas, setTargetBlockId]);
 
+  useEffect(() => {
+    const raw = sessionStorage.getItem('kolam_search_highlight');
+    if (!raw) return;
+    try {
+      const payload = JSON.parse(raw) as {
+        term: string;
+        target: 'log' | 'canvas';
+        streamId?: string;
+      };
+      if (payload.target === 'canvas' && payload.streamId === streamId) {
+        setHighlightTerm(payload.term);
+        sessionStorage.removeItem('kolam_search_highlight');
+      }
+    } finally {
+    }
+  }, [streamId]);
+
   return (
     <div
       className={`bg-surface-default relative overflow-hidden z-20 ${
@@ -86,12 +150,65 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       <div className="flex h-full flex-col" style={contentStyle}>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           {canvas ? (
-            <BlockNoteEditor
-              initialContent={canvas.content_json as unknown as PartialBlock[]}
-              onChange={handleContentChange}
-              onEditorReady={setEditor}
-              placeholder="Start writing on the canvas..."
-            />
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border-default bg-surface-subtle p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    value={snapshotName}
+                    onChange={(event) => setSnapshotName(event.target.value)}
+                    placeholder="Snapshot name (optional)"
+                    className="flex-1 rounded border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                  />
+                  <button
+                    onClick={handleSaveSnapshot}
+                    disabled={isSavingSnapshot}
+                    className="rounded bg-action-primary-bg px-3 py-1 text-xs text-action-primary-text hover:bg-action-primary-hover disabled:opacity-50"
+                  >
+                    {isSavingSnapshot ? 'Saving...' : 'Save Snapshot'}
+                  </button>
+                  <button
+                    onClick={() => setShowVersions((prev) => !prev)}
+                    className="rounded bg-surface-default px-3 py-1 text-xs text-text-default hover:bg-surface-hover"
+                  >
+                    {showVersions ? 'Hide History' : 'View History'}
+                  </button>
+                </div>
+                {showVersions && (
+                  <div className="mt-3 space-y-2">
+                    {versionsLoading && <div className="text-xs text-text-muted">Loading...</div>}
+                    {!versionsLoading && versions?.length === 0 && (
+                      <div className="text-xs text-text-muted">No snapshots yet.</div>
+                    )}
+                    {versions?.map((version) => (
+                      <div
+                        key={version.id}
+                        className="flex items-center justify-between rounded border border-border-subtle bg-surface-default px-2 py-1 text-xs"
+                      >
+                        <div className="min-w-0">
+                          <div className="truncate text-text-default">{version.name || 'Untitled Snapshot'}</div>
+                          <div className="text-[10px] text-text-muted">
+                            {version.created_at ? new Date(version.created_at).toLocaleString() : 'Unknown time'}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleRestoreVersion(version.id, version.content_json as Json)}
+                          className="rounded bg-surface-subtle px-2 py-1 text-[11px] text-text-default hover:bg-surface-hover"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <BlockNoteEditor
+                initialContent={canvas.content_json as unknown as PartialBlock[]}
+                onChange={handleContentChange}
+                onEditorReady={setEditor}
+                placeholder="Start writing on the canvas..."
+                highlightTerm={highlightTerm ?? undefined}
+              />
+            </div>
           ) : (
             <div className="flex h-full items-center justify-center text-text-muted">
               {isLoading ? 'Loading canvas...' : 'No canvas found'}

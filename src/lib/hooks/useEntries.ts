@@ -107,7 +107,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   };
 
   return {
-    entries: query.data?.pages.flat() || [],
+    items: query.data?.pages.flat() || [],
     isLoading: query.isLoading,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,

@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Menu as MenuIcon, X, ChevronDown, LogOut, Settings, PanelLeft, PanelRight, Columns } from 'lucide-react';
@@ -10,6 +10,8 @@ import { Navigator } from '@/components/layout/Navigator';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSidebar } from '@/lib/hooks/useSidebar';
 import { useLayout } from '@/lib/hooks/useLayout';
+import { createClient } from '@/lib/supabase/client';
+import { useKeyboard } from '@/lib/hooks/useKeyboard';
 import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems, Transition, TransitionChild } from '@headlessui/react';
 
 interface ClientMainLayoutProps {
@@ -42,6 +44,26 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const isLogMaximized = logWidth === 100 && canvasWidth === 0;
   const isBalanced = logWidth === 50 && canvasWidth === 50;
   const isCanvasMaximized = logWidth === 0 && canvasWidth === 100;
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<
+    {
+      type: 'section' | 'canvas';
+      id: string;
+      streamId: string;
+      streamName: string;
+      domainId: string | null;
+      domainName: string | null;
+      domainIcon: string | null;
+      personaName?: string | null;
+      contentPreview?: string | null;
+      createdAt?: string | null;
+      score: number;
+      entryId?: string;
+    }[]
+  >([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const supabase = createClient();
   
   // Show layout controls only on stream pages (domain/stream)
   const parts = pathname?.split('/').filter(Boolean) || [];
@@ -117,6 +139,22 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     }
   }, [pathname, isHomeRoute, showSidebar, hideSidebar, setSidebarVisible]);
 
+  useKeyboard([
+    {
+      key: 'k',
+      metaKey: true,
+      shiftKey: true,
+      handler: () => setSearchOpen(true),
+      description: 'Open Search',
+    },
+    {
+      key: 'k',
+      ctrlKey: true,
+      shiftKey: true,
+      handler: () => setSearchOpen(true),
+      description: 'Open Search',
+    },
+  ]);
 
   // ----- Auth redirect -----
   useEffect(() => {
@@ -145,6 +183,159 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     .slice(0, 2)
     .map((part: string) => part[0]?.toUpperCase())
     .join('') || 'U';
+
+  const parsedSearch = useMemo(() => {
+    const raw = searchTerm.trim();
+    const personaMatch = raw.match(/@([\w-]+)/);
+    const personaFilter = personaMatch?.[1] ?? null;
+    const emojiMatch = raw.match(/^\p{Extended_Pictographic}/u);
+    const domainEmoji = emojiMatch?.[0] ?? null;
+    const cleaned = raw
+      .replace(/@[\w-]+/g, '')
+      .replace(/^\p{Extended_Pictographic}/u, '')
+      .trim();
+    return { cleaned, personaFilter, domainEmoji };
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const { cleaned } = parsedSearch;
+    if (cleaned.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const { data: sectionData } = await supabase
+          .from('sections')
+          .select(
+            `id, search_text, created_at, entry:entries(id, stream_id, created_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon))) ), persona:personas(name)`
+          )
+          .ilike('search_text', `%${cleaned}%`)
+          .limit(25);
+
+        const { data: canvasData } = await supabase
+          .from('canvases')
+          .select(
+            `id, search_text, updated_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon)))`
+          )
+          .ilike('search_text', `%${cleaned}%`)
+          .limit(15);
+
+        const results: {
+          type: 'section' | 'canvas';
+          id: string;
+          streamId: string;
+          streamName: string;
+          domainId: string | null;
+          domainName: string | null;
+          domainIcon: string | null;
+          personaName?: string | null;
+          contentPreview?: string | null;
+          createdAt?: string | null;
+          score: number;
+          entryId?: string;
+        }[] = [];
+
+        const toTrigrams = (value: string) => {
+          const normalized = value.toLowerCase();
+          const padded = `  ${normalized} `;
+          const trigrams = new Set<string>();
+          for (let i = 0; i < padded.length - 2; i += 1) {
+            trigrams.add(padded.slice(i, i + 3));
+          }
+          return trigrams;
+        };
+
+        const queryTrigrams = toTrigrams(cleaned);
+        const similarity = (value: string) => {
+          const target = toTrigrams(value);
+          const intersection = [...queryTrigrams].filter((tri) => target.has(tri)).length;
+          const union = new Set([...queryTrigrams, ...target]).size || 1;
+          return intersection / union;
+        };
+
+        sectionData?.forEach((section) => {
+          const stream = section.entry?.stream;
+          const domain = stream?.cabinet?.domain;
+          const preview = section.search_text?.slice(0, 120) ?? '';
+          results.push({
+            type: 'section',
+            id: section.id,
+            streamId: stream?.id ?? '',
+            streamName: stream?.name ?? 'Untitled Stream',
+            domainId: domain?.id ?? null,
+            domainName: domain?.name ?? null,
+            domainIcon: domain?.icon ?? null,
+            personaName: section.persona?.name ?? null,
+            contentPreview: preview,
+            createdAt: section.entry?.created_at ?? null,
+            score: similarity(preview),
+            entryId: section.entry?.id,
+          });
+        });
+
+        canvasData?.forEach((canvas) => {
+          const stream = canvas.stream;
+          const domain = stream?.cabinet?.domain;
+          const preview = canvas.search_text?.slice(0, 140) ?? '';
+          results.push({
+            type: 'canvas',
+            id: canvas.id,
+            streamId: stream?.id ?? '',
+            streamName: stream?.name ?? 'Untitled Stream',
+            domainId: domain?.id ?? null,
+            domainName: domain?.name ?? null,
+            domainIcon: domain?.icon ?? null,
+            contentPreview: preview,
+            createdAt: canvas.updated_at ?? null,
+            score: similarity(preview),
+          });
+        });
+
+        const filtered = results
+          .filter((result) => {
+            if (parsedSearch.domainEmoji && result.domainIcon !== parsedSearch.domainEmoji) {
+              return false;
+            }
+            if (parsedSearch.personaFilter && result.type === 'section') {
+              return (
+                result.personaName?.toLowerCase().includes(parsedSearch.personaFilter.toLowerCase()) ??
+                false
+              );
+            }
+            if (parsedSearch.personaFilter && result.type === 'canvas') {
+              return false;
+            }
+            return true;
+          })
+          .sort((a, b) => b.score - a.score);
+
+        setSearchResults(filtered);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [parsedSearch, searchOpen, supabase]);
+
+  const renderHighlightedText = (text: string, term: string) => {
+    if (!term) return text;
+    const lower = text.toLowerCase();
+    const lowerTerm = term.toLowerCase();
+    const index = lower.indexOf(lowerTerm);
+    if (index === -1) return text;
+    return (
+      <>
+        {text.slice(0, index)}
+        <span className="bg-action-primary-bg/20 text-text-default">
+          {text.slice(index, index + term.length)}
+        </span>
+        {text.slice(index + term.length)}
+      </>
+    );
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-subtle">
@@ -326,6 +517,95 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         )}
         <main className="flex flex-1 overflow-hidden">{children}</main>
       </div>
+
+      <Transition appear show={searchOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={() => setSearchOpen(false)}>
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-200"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-150"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/40" />
+          </TransitionChild>
+          <div className="fixed inset-0 flex items-start justify-center p-4">
+            <TransitionChild
+              as={Fragment}
+              enter="ease-out duration-200"
+              enterFrom="opacity-0 scale-95"
+              enterTo="opacity-100 scale-100"
+              leave="ease-in duration-150"
+              leaveFrom="opacity-100 scale-100"
+              leaveTo="opacity-0 scale-95"
+            >
+              <DialogPanel className="w-full max-w-2xl rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+                <DialogTitle className="text-sm font-semibold text-text-default">Search</DialogTitle>
+                <div className="mt-3">
+                  <input
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Search logs and canvases... (@persona, emoji for domain)"
+                    className="w-full rounded-lg border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                    autoFocus
+                  />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-text-muted">
+                  {parsedSearch.personaFilter && (
+                    <span className="rounded-full border border-border-default px-2 py-0.5">
+                      Persona: @{parsedSearch.personaFilter}
+                    </span>
+                  )}
+                  {parsedSearch.domainEmoji && (
+                    <span className="rounded-full border border-border-default px-2 py-0.5">
+                      Domain: {parsedSearch.domainEmoji}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-4 max-h-[50vh] space-y-2 overflow-y-auto">
+                  {searchLoading && (
+                    <div className="text-xs text-text-muted">Searching...</div>
+                  )}
+                  {!searchLoading && searchResults.length === 0 && (
+                    <div className="text-xs text-text-muted">No results yet</div>
+                  )}
+                  {searchResults.map((result) => (
+                    <button
+                      key={`${result.type}-${result.id}`}
+                      onClick={() => {
+                        if (!result.domainId) return;
+                        const payload = {
+                          term: parsedSearch.cleaned,
+                          target: result.type === 'canvas' ? 'canvas' : 'log',
+                          entryId: result.entryId ?? null,
+                          streamId: result.streamId,
+                        };
+                        sessionStorage.setItem('kolam_search_highlight', JSON.stringify(payload));
+                        setSearchOpen(false);
+                        router.push(`/${result.domainId}/${result.streamId}`);
+                      }}
+                      className="w-full rounded-lg border border-border-default bg-surface-subtle p-3 text-left text-xs text-text-default transition hover:bg-surface-hover"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
+                        <span className="flex items-center gap-2">
+                          <span>{result.domainIcon}</span>
+                          <span className="truncate">{result.streamName}</span>
+                        </span>
+                        <span>{result.type === 'canvas' ? 'Canvas' : result.personaName}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-text-default">
+                        {renderHighlightedText(result.contentPreview ?? '', parsedSearch.cleaned)}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </Dialog>
+      </Transition>
 
       <Transition appear show={profileOpen} as={Fragment}>
         <Dialog as="div" className="relative z-50" onClose={() => setProfileOpen(false)}>

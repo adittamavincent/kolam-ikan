@@ -10,13 +10,15 @@ import { PartialBlock } from '@blocknote/core';
 
 interface LogSectionProps {
   section: SectionWithPersona;
+  highlightTerm?: string;
 }
 
-export function LogSection({ section }: LogSectionProps) {
+export function LogSection({ section, highlightTerm }: LogSectionProps) {
   const { personas } = usePersonas();
   const { updateSectionPersona } = usePersonaMutations();
 
   const currentPersona = section.persona;
+  const displayName = section.persona_name_snapshot || currentPersona?.name || 'Unknown';
   
   // Handle persona change
   const handlePersonaSelect = (personaId: string) => {
@@ -90,7 +92,7 @@ export function LogSection({ section }: LogSectionProps) {
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-text-default">
-            {currentPersona?.name || 'Unknown'}
+            {displayName}
           </span>
           <span className="text-[10px] text-text-muted">
              • {section.updated_at ? new Date(section.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
@@ -101,6 +103,7 @@ export function LogSection({ section }: LogSectionProps) {
           <BlockNoteEditor
             initialContent={section.content_json as unknown as PartialBlock[]}
             editable={false}
+            highlightTerm={highlightTerm}
           />
         </div>
       </div>

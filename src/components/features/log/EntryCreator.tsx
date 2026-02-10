@@ -38,9 +38,13 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     isLoading,
     activeEntryId,
     setActiveInstances,
+    flushPendingSaves,
+    recoveryAvailable,
+    discardRecovery,
   } = useDraftSystem({
     streamId
   });
+  const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(true);
 
   // Initialize selection with existing drafts only
   useEffect(() => {
@@ -163,9 +167,33 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
   return (
     <div className="relative rounded-xl border border-border-default bg-surface-default shadow-sm transition-shadow hover:shadow-md group">
       {/* Navigation Guard - warn if saving or error */}
-      {(status === 'saving' || status === 'error') && <NavigationGuard />}
+      {(status === 'saving' || status === 'error') && <NavigationGuard onFlush={flushPendingSaves} />}
 
       <div className="flex flex-col">
+        {recoveryAvailable && showRecoveryPrompt && (
+          <div className="border-b border-border-subtle/50 bg-surface-subtle px-4 py-2 text-[11px] text-text-default">
+            <div className="flex items-center justify-between gap-2">
+              <span>Recovered unsaved work from a previous session.</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowRecoveryPrompt(false)}
+                  className="rounded bg-action-primary-bg px-2 py-1 text-[10px] text-action-primary-text hover:bg-action-primary-hover"
+                >
+                  Keep
+                </button>
+                <button
+                  onClick={() => {
+                    discardRecovery();
+                    setShowRecoveryPrompt(false);
+                  }}
+                  className="rounded bg-surface-default px-2 py-1 text-[10px] text-text-default hover:bg-surface-hover"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Header / Persona Selector */}
         <div className="flex items-center justify-between px-4 pt-3 pb-1 border-b border-border-subtle/50">
             <div className="flex items-center gap-2">

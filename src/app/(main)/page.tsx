@@ -118,7 +118,7 @@ function StatCard({
   const c = colorMap[color] ?? colorMap.blue;
 
   return (
-    <div className="group rounded-2xl border border-border-subtle bg-surface-default p-5 shadow-sm transition-shadow hover:shadow-md">
+    <div className="group rounded-2xl border border-border-subtle bg-surface-default p-5">
       <div className={`mb-3 inline-flex rounded-xl ${c.iconBg} p-2.5`}>
         <Icon className={`h-5 w-5 ${c.text}`} />
       </div>
@@ -138,7 +138,7 @@ function DomainCard({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full flex-col rounded-2xl border border-border-subtle bg-surface-default p-5 text-left shadow-sm transition-all hover:border-action-primary-bg/50 hover:shadow-md"
+      className="group flex w-full flex-col rounded-2xl border border-border-subtle bg-surface-default p-5 text-left transition-all hover:border-action-primary-bg/50"
     >
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-action-primary-bg/10 text-2xl group-hover:bg-action-primary-bg/20 transition-colors">
@@ -188,7 +188,7 @@ function RecentActivityItem({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-start gap-3 rounded-xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-border-default hover:shadow-sm relative"
+      className="group flex w-full items-start gap-3 rounded-xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-border-default relative"
     >
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-lg transition-colors group-hover:bg-action-primary-bg/10">
         {icon}
@@ -218,7 +218,7 @@ function QuickAction({
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-4 rounded-2xl border border-border-subtle bg-surface-default p-4 text-left shadow-sm transition-all hover:border-action-primary-bg/50 hover:shadow-md"
+      className="group flex items-center gap-4 rounded-2xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-action-primary-bg/50"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-action-primary-bg/10 transition-colors group-hover:bg-action-primary-bg/20">
         <Icon className="h-5 w-5 text-action-primary-bg" />
@@ -244,7 +244,7 @@ function ErrorBanner({
       <span className="flex-1">{message}</span>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1 rounded-lg bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text shadow-sm transition hover:bg-surface-subtle"
+        className="inline-flex items-center gap-1 rounded-lg bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
       >
         <RefreshCw className="h-3.5 w-3.5" />
         Retry

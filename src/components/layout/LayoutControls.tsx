@@ -12,7 +12,7 @@ export function LayoutControls() {
   const isCanvasMaximized = logWidth === 0 && canvasWidth === 100;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-lg border border-border-default bg-surface-default p-2 shadow-lg">
+    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-lg border border-border-default bg-surface-default p-2">
       <button
         onClick={() => setMode('log-only')}
         className={`rounded p-2 transition-colors ${

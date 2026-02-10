@@ -35,7 +35,7 @@ export function LogSection({ section, highlightTerm }: LogSectionProps) {
       <div className="shrink-0 pt-1">
         <Menu as="div" className="relative">
           <MenuButton 
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:scale-105 hover:shadow-sm focus:outline-none"
+            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:scale-105 focus:outline-none"
             style={{ 
               backgroundColor: `${currentPersona?.color || '#94a3b8'}15`, 
               color: currentPersona?.color || '#94a3b8' 
@@ -54,7 +54,7 @@ export function LogSection({ section, highlightTerm }: LogSectionProps) {
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <MenuItems className="absolute left-0 top-full z-50 mt-1 max-h-60 w-56 overflow-auto rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none">
+            <MenuItems className="absolute left-0 top-full z-50 mt-1 max-h-60 w-56 overflow-auto rounded-xl border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
               <div className="px-2 py-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
                 Assign Persona
               </div>

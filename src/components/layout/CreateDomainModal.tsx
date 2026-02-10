@@ -111,7 +111,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-subtle">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle transition-all border border-border-subtle">
                 <div className="flex items-center justify-between mb-4">
                   <Dialog.Title
                     as="h3"
@@ -186,7 +186,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                     <button
                       type="submit"
                       disabled={!name.trim() || isSubmitting}
-                      className="inline-flex justify-center items-center gap-2 rounded-lg border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm shadow-action-primary-bg/20"
+                      className="inline-flex justify-center items-center gap-2 rounded-lg border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       {isSubmitting ? (
                         <>

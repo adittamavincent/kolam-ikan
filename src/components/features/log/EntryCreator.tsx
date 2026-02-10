@@ -158,14 +158,14 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
 
   if (isLoading) {
       return (
-        <div className="relative rounded-xl border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center shadow-sm">
+        <div className="relative rounded-xl border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
         </div>
       );
   }
 
   return (
-    <div className="relative rounded-xl border border-border-default bg-surface-default shadow-sm transition-shadow hover:shadow-md group">
+    <div className="relative rounded-xl border border-border-default bg-surface-default group">
       {/* Navigation Guard - warn if saving or error */}
       {(status === 'saving' || status === 'error') && <NavigationGuard onFlush={flushPendingSaves} />}
 
@@ -216,7 +216,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                         leaveFrom="transform opacity-100 scale-100"
                         leaveTo="transform opacity-0 scale-95"
                     >
-                        <MenuItems className="absolute left-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none max-h-60 overflow-y-auto">
+                        <MenuItems className="absolute left-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-xl border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none max-h-60 overflow-y-auto">
                             <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                                 Add Author Section
                             </div>
@@ -291,7 +291,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                                     leaveFrom="transform opacity-100 scale-100"
                                     leaveTo="transform opacity-0 scale-95"
                                 >
-                                    <MenuItems className="absolute left-0 top-full z-50 mt-1 w-48 overflow-hidden rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none max-h-60 overflow-y-auto">
+                                    <MenuItems className="absolute left-0 top-full z-50 mt-1 w-48 overflow-hidden rounded-xl border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none max-h-60 overflow-y-auto">
                                         <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                                             Switch to...
                                         </div>
@@ -357,7 +357,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                 disabled={status === 'idle' && !activeEntryId}
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                     status !== 'idle' || activeEntryId
-                        ? 'bg-action-primary-bg text-white hover:bg-action-primary-hover shadow-sm'
+                        ? 'bg-action-primary-bg text-white hover:bg-action-primary-hover'
                         : 'bg-surface-subtle text-text-muted cursor-not-allowed'
                 }`}
             >

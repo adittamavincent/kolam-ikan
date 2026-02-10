@@ -246,9 +246,9 @@ const StreamNode = ({
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
             ${isStreamActive
-            ? 'bg-action-primary-bg/10 text-action-primary-bg font-semibold shadow-sm ring-1 ring-action-primary-bg/20'
+            ? 'bg-action-primary-bg/10 text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20'
             : 'text-text-subtle hover:bg-surface-subtle hover:text-text-default'
-          } ${isNewlyCreated ? 'bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30 shadow-sm' : ''}`}
+          } ${!isStreamActive && isNewlyCreated ? 'bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30' : ''}`}
         style={{ paddingLeft: `${getStreamPaddingRem(depth)}rem` }}
         onClick={(e) => {
           e.stopPropagation();
@@ -1453,7 +1453,7 @@ export function Navigator({ }: NavigatorProps) {
       {contextMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
           <div
-            className="absolute w-48 rounded-lg border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5"
+            className="absolute w-48 rounded-lg border border-border-default bg-surface-default p-1 ring-1 ring-black/5"
             style={{ 
               top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : contextMenu.y), 
               left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x) 
@@ -1530,7 +1530,7 @@ export function Navigator({ }: NavigatorProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-sm font-semibold text-text-default">
                     Delete {deleteTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
@@ -1554,7 +1554,7 @@ export function Navigator({ }: NavigatorProps) {
                   </button>
                   <button
                     onClick={handleDeleteConfirm}
-                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-700"
+                    className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
                   >
                     Delete
                   </button>
@@ -1588,7 +1588,7 @@ export function Navigator({ }: NavigatorProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-sm font-semibold text-text-default">
                     Move {moveTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
@@ -1643,7 +1643,7 @@ export function Navigator({ }: NavigatorProps) {
                           (moveDestination ?? null) === (moveItem as Stream | undefined)?.cabinet_id
                         : (moveDestination ?? null) === (moveItem as Cabinet | undefined)?.parent_id
                     }
-                    className="rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Move
                   </button>
@@ -1677,7 +1677,7 @@ export function Navigator({ }: NavigatorProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-sm font-semibold text-text-default">Properties</DialogTitle>
                   <button

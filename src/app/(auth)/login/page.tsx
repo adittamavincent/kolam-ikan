@@ -362,7 +362,7 @@ function LoginForm() {
       <div className="w-full max-w-md space-y-8">
         {/* Branding */}
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-action-primary-bg shadow-lg shadow-action-primary-bg/20">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-action-primary-bg">
             <span className="text-3xl font-bold text-white">K</span>
           </div>
           <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-text-default">
@@ -377,14 +377,14 @@ function LoginForm() {
         </div>
 
         {/* Main Auth Card */}
-        <div className="rounded-2xl bg-surface-default p-8 shadow-xl shadow-surface-default/10 border border-border-subtle">
+        <div className="rounded-2xl bg-surface-default p-8 border border-border-subtle">
           {/* Mode Toggle */}
           <div className="mb-6 flex rounded-lg bg-surface-subtle p-1">
             <button
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
               className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${mode === "signin"
-                  ? "bg-surface-default text-text-default shadow-sm"
+                  ? "bg-surface-default text-text-default"
                   : "text-text-subtle hover:text-text-default"
                 }`}
             >
@@ -394,7 +394,7 @@ function LoginForm() {
               type="button"
               onClick={() => mode === "signin" && toggleMode()}
               className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${mode === "signup"
-                  ? "bg-surface-default text-text-default shadow-sm"
+                  ? "bg-surface-default text-text-default"
                   : "text-text-subtle hover:text-text-default"
                 }`}
             >
@@ -658,7 +658,7 @@ function LoginForm() {
                   key={acc.email}
                   onClick={() => quickLogin(acc)}
                   disabled={loading}
-                  className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-default p-3 text-left transition-all hover:border-action-primary-bg hover:shadow-md group"
+                  className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-default p-3 text-left transition-all hover:border-action-primary-bg group"
                 >
                   <div>
                     <div className="text-xs font-bold text-text-default">{acc.label}</div>

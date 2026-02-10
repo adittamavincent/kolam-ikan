@@ -127,7 +127,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
                 onMouseEnter={() => setHoveredDomain(domain.id)}
                 onMouseLeave={() => setHoveredDomain(null)}
                 className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${isActive
-                  ? 'bg-action-primary-bg/10 text-action-primary-bg ring-2 ring-action-primary-bg shadow-sm'
+                  ? 'bg-action-primary-bg/10 text-action-primary-bg ring-2 ring-action-primary-bg'
                   : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'
                   }`}
                 title={domain.name}
@@ -142,7 +142,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
                 )}
 
                 {hoveredDomain === domain.id && (
-                  <div className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-text-default px-2.5 py-1.5 text-xs font-medium text-surface-default shadow-lg z-50 animate-fade-in">
+                  <div className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-text-default px-2.5 py-1.5 text-xs font-medium text-surface-default z-50 animate-fade-in">
                     {domain.name}
                     <div className="absolute left-0 top-1/2 -ml-1 -mt-1 h-2 w-2 -rotate-45 bg-text-default" />
                   </div>

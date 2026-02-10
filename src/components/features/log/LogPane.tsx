@@ -214,7 +214,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 leaveFrom="transform opacity-100 scale-100"
                 leaveTo="transform opacity-0 scale-95"
               >
-                <MenuItems className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none">
+                <MenuItems className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
                    <MenuItem>
                     {({ focus }) => (
                       <button
@@ -261,7 +261,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-3">
-          <div className="sticky top-0 z-20 bg-surface-default pt-4">
+          <div className="sticky top-0 z-20 pt-4">
             <EntryCreator streamId={streamId} />
           </div>
           <div className="pb-5 pt-4">
@@ -285,7 +285,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                         entryRefs.current[entry.id] = node;
                       }}
                     >
-                      <div className="relative group rounded-lg border border-border-subtle bg-surface-default shadow-sm overflow-hidden transition-all hover:border-border-default/50 hover:shadow-md">
+                      <div className="relative group rounded-lg border border-border-subtle bg-surface-default overflow-hidden transition-all hover:border-border-default/50">
                         <div className="flex items-center justify-between px-3 py-1.5 bg-surface-subtle/40 border-b border-border-subtle/40">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 text-text-muted" />

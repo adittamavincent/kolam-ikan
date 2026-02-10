@@ -30,7 +30,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
       {/* Modal */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-lg bg-surface-default p-6 shadow-xl border border-border-default">
+        <Dialog.Panel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-lg bg-surface-default p-6 border border-border-default">
           <Dialog.Title className="text-2xl font-bold mb-4 text-text-default">The Bridge</Dialog.Title>
 
           {/* Persona Selection */}

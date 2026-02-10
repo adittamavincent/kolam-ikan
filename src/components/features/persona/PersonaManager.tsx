@@ -100,7 +100,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
+              <DialogPanel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
                 <div className="flex items-center justify-between mb-6">
                   <DialogTitle as="h3" className="text-lg font-medium leading-6 text-text-default">
                     Manage Personas

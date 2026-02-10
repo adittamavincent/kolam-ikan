@@ -342,7 +342,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="fixed left-4 top-4 z-50 rounded-lg bg-surface-default p-2 shadow-lg md:hidden text-text-default"
+        className="fixed left-4 top-4 z-50 rounded-lg bg-surface-default p-2 md:hidden text-text-default"
       >
         {mobileMenuOpen ? <X className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
       </button>
@@ -399,7 +399,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       {/* ====== MAIN CONTENT ====== */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="relative flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-4 py-3 shadow-sm">
+        <div className="relative flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-4 py-3">
           <div className="flex items-center gap-3">
             <StreamHeaderTitle streamId={streamId} />
           </div>
@@ -410,7 +410,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                 onClick={() => setMode('log-only')}
                 className={`rounded p-1 transition-colors ${
                   isLogMaximized
-                    ? 'bg-surface-default text-text-default shadow-sm'
+                    ? 'bg-surface-default text-text-default'
                     : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
                 }`}
                 title="Maximize Log (⌘J)"
@@ -422,7 +422,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                 onClick={() => setMode('balanced')}
                 className={`rounded p-1 transition-colors ${
                   isBalanced
-                    ? 'bg-surface-default text-text-default shadow-sm'
+                    ? 'bg-surface-default text-text-default'
                     : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
                 }`}
                 title="Reset Layout (⌘K)"
@@ -434,7 +434,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                 onClick={() => setMode('canvas-only')}
                 className={`rounded p-1 transition-colors ${
                   isCanvasMaximized
-                    ? 'bg-surface-default text-text-default shadow-sm'
+                    ? 'bg-surface-default text-text-default'
                     : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
                 }`}
                 title="Maximize Canvas (⌘L)"
@@ -445,7 +445,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           )}
 
           <Menu as="div" className="relative">
-            <MenuButton className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-default px-2 py-1.5 text-left text-xs text-text-default shadow-sm transition hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
+            <MenuButton className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-default px-2 py-1.5 text-left text-xs text-text-default transition hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
               {avatarUrl ? (
                 <Image
                   src={avatarUrl}
@@ -475,7 +475,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveFrom="transform opacity-100 scale-100"
               leaveTo="transform opacity-0 scale-95"
             >
-              <MenuItems className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none">
+              <MenuItems className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
                 <div className="px-3 py-2">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Signed in as</p>
                   <p className="truncate text-xs font-medium text-text-default">{displayName}</p>
@@ -541,7 +541,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-2xl rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+              <DialogPanel className="w-full max-w-2xl rounded-2xl border border-border-default bg-surface-default p-5">
                 <DialogTitle className="text-sm font-semibold text-text-default">Search</DialogTitle>
                 <div className="mt-3">
                   <input
@@ -630,7 +630,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5 shadow-xl">
+              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
                 <DialogTitle className="text-sm font-semibold text-text-default">Profile settings</DialogTitle>
                 <div className="mt-3 space-y-2 text-xs text-text-subtle">
                   <div className="flex items-center justify-between">

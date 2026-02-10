@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
   if (submitted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-subtle p-4">
-        <div className="w-full max-w-md space-y-8 rounded-2xl bg-surface-default p-8 text-center shadow-xl border border-border-default">
+        <div className="w-full max-w-md space-y-8 rounded-2xl bg-surface-default p-8 text-center border border-border-default">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-status-success-bg">
             <CheckCircle2 className="h-10 w-10 text-status-success-text" />
           </div>
@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
           Back to login
         </Link>
         
-        <div className="rounded-2xl bg-surface-default p-8 shadow-xl border border-border-default">
+        <div className="rounded-2xl bg-surface-default p-8 border border-border-default">
           <h2 className="text-2xl font-bold text-text-default">Forgot Password</h2>
           <p className="mt-2 text-sm text-text-muted">
             Enter your email and we&apos;ll send you a link to reset your password.

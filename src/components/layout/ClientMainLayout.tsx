@@ -2,9 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import Image from 'next/image';
-import { Menu as MenuIcon, X, ChevronDown, LogOut, Settings, PanelLeft, PanelRight, Columns } from 'lucide-react';
-import { StreamHeaderTitle } from '@/components/features/stream/StreamHeaderTitle';
+import { Menu as MenuIcon, X, PanelLeft, PanelRight, Columns } from 'lucide-react';
 import { DomainSwitcher } from '@/components/layout/DomainSwitcher';
 import { Navigator } from '@/components/layout/Navigator';
 import { useAuth } from '@/lib/hooks/useAuth';
@@ -12,7 +10,7 @@ import { useSidebar } from '@/lib/hooks/useSidebar';
 import { useLayout } from '@/lib/hooks/useLayout';
 import { createClient } from '@/lib/supabase/client';
 import { useKeyboard } from '@/lib/hooks/useKeyboard';
-import { Dialog, DialogPanel, DialogTitle, Menu, MenuButton, MenuItem, MenuItems, Transition, TransitionChild } from '@headlessui/react';
+import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
 
 interface ClientMainLayoutProps {
   children: React.ReactNode;
@@ -21,12 +19,9 @@ interface ClientMainLayoutProps {
 
 export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  const signingOutRef = useRef(false);
-  const [profileOpen, setProfileOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const { user, status, loading, error, signOut } = useAuth();
+  const { status, loading, error } = useAuth();
 
   // Sidebar state from Zustand store
   const {
@@ -68,7 +63,6 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   // Show layout controls only on stream pages (domain/stream)
   const parts = pathname?.split('/').filter(Boolean) || [];
   const showLayoutControls = parts.length === 2;
-  const streamId = showLayoutControls ? parts[1] : undefined;
 
   // Track whether we want the slide-out animation vs. a hard cut
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -158,31 +152,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
   // ----- Auth redirect -----
   useEffect(() => {
-    if (!loading && status === 'signed_out' && !signingOutRef.current) {
+    if (!loading && status === 'signed_out') {
       router.push('/login');
     }
   }, [loading, router, status]);
-
-  const handleSignOut = async () => {
-    signingOutRef.current = true;
-    setSigningOut(true);
-    try {
-      await signOut();
-      router.replace('/login');
-    } finally {
-      signingOutRef.current = false;
-      setSigningOut(false);
-    }
-  };
-
-  const displayName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'Account';
-  const avatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null;
-  const nameParts = displayName.split(' ');
-  const initials = nameParts
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part: string) => part[0]?.toUpperCase())
-    .join('') || 'U';
 
   const parsedSearch = useMemo(() => {
     const raw = searchTerm.trim();
@@ -367,15 +340,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {sidebarVisible && (
         <div
           ref={sidebarRef}
-          className="hidden md:flex overflow-visible relative group"
-          style={{
-            width: sidebarWidth,
-          }}
+          className="hidden md:flex overflow-visible relative group h-full"
+          style={{ width: sidebarWidth }}
         >
-          <div
-            className="h-full overflow-hidden"
-            style={{ width: sidebarWidth, minWidth: sidebarWidth }}
-          >
+          <div className="flex-1 overflow-hidden h-full">
             <Navigator userId={userId} />
           </div>
 
@@ -398,77 +366,6 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       {/* ====== MAIN CONTENT ====== */}
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <div className="relative flex items-center justify-between border-b border-border-subtle bg-surface-default/95 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <StreamHeaderTitle streamId={streamId} />
-          </div>
-
-          <Menu as="div" className="relative">
-            <MenuButton className="flex items-center gap-2 rounded-full border border-border-subtle bg-surface-default px-2 py-1.5 text-left text-xs text-text-default transition hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
-              {avatarUrl ? (
-                <Image
-                  src={avatarUrl}
-                  alt={displayName}
-                  width={28}
-                  height={28}
-                  unoptimized
-                  className="h-7 w-7 rounded-full object-cover"
-                />
-              ) : (
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-action-primary-bg/10 text-[11px] font-semibold text-action-primary-bg">
-                  {initials}
-                </div>
-              )}
-              <div className="hidden min-w-0 flex-col items-start sm:flex">
-                <span className="truncate text-xs font-semibold text-text-default">{displayName}</span>
-                <span className="truncate text-[10px] text-text-muted">{user?.email ?? userId}</span>
-              </div>
-              <ChevronDown className="h-4 w-4 text-text-muted" />
-            </MenuButton>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <MenuItems className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
-                <div className="px-3 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Signed in as</p>
-                  <p className="truncate text-xs font-medium text-text-default">{displayName}</p>
-                  <p className="truncate text-[10px] text-text-muted">{user?.email ?? userId}</p>
-                </div>
-                <div className="my-1 h-px bg-border-subtle" />
-                <MenuItem>
-                  {({ focus }) => (
-                    <button
-                      onClick={() => setProfileOpen(true)}
-                      className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default`}
-                    >
-                      <Settings className="h-4 w-4 text-text-muted" />
-                      Profile settings
-                    </button>
-                  )}
-                </MenuItem>
-                <MenuItem>
-                  {({ focus }) => (
-                    <button
-                      type="button"
-                      onClick={handleSignOut}
-                      disabled={loading || signingOut || status !== 'signed_in'}
-                      className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default disabled:opacity-50`}
-                    >
-                      <LogOut className="h-4 w-4 text-text-muted" />
-                      {signingOut ? 'Signing out...' : 'Sign out'}
-                    </button>
-                  )}
-                </MenuItem>
-              </MenuItems>
-            </Transition>
-          </Menu>
-        </div>
         {error && (
           <div className="border-b border-status-error-border bg-status-error-bg px-4 py-2 text-xs text-status-error-text">
             {error}
@@ -477,11 +374,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-md border border-border-subtle bg-surface-default/90 p-1 shadow-sm backdrop-blur-sm z-30">
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border-subtle bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all hover:scale-105">
             <button
               onClick={() => setMode('log-only')}
-              className={`rounded p-1 transition-colors ${isLogMaximized
-                ? 'bg-surface-subtle text-text-default shadow-sm'
+              className={`rounded-full p-2 transition-all ${isLogMaximized
+                ? 'bg-action-primary-bg text-white shadow-md'
                 : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
                 }`}
               title="Maximize Log (⌘J)"
@@ -491,8 +388,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
             <button
               onClick={() => setMode('balanced')}
-              className={`rounded p-1 transition-colors ${isBalanced
-                ? 'bg-surface-subtle text-text-default shadow-sm'
+              className={`rounded-full p-2 transition-all ${isBalanced
+                ? 'bg-action-primary-bg text-white shadow-md'
                 : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
                 }`}
               title="Reset Layout (⌘K)"
@@ -502,8 +399,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
             <button
               onClick={() => setMode('canvas-only')}
-              className={`rounded p-1 transition-colors ${isCanvasMaximized
-                ? 'bg-surface-subtle text-text-default shadow-sm'
+              className={`rounded-full p-2 transition-all ${isCanvasMaximized
+                ? 'bg-action-primary-bg text-white shadow-md'
                 : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
                 }`}
               title="Maximize Canvas (⌘L)"
@@ -537,7 +434,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-2xl rounded-2xl border border-border-default bg-surface-default p-5">
+              <DialogPanel className="w-full max-w-2xl rounded-2xl border border-border-default bg-surface-default p-5 shadow-2xl">
                 <DialogTitle className="text-sm font-semibold text-text-default">Search</DialogTitle>
                 <div className="mt-3">
                   <input
@@ -596,59 +493,6 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                       </div>
                     </button>
                   ))}
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </Dialog>
-      </Transition>
-
-      <Transition appear show={profileOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setProfileOpen(false)}>
-          <TransitionChild
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/40" />
-          </TransitionChild>
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <TransitionChild
-              as={Fragment}
-              enter="ease-out duration-200"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-150"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
-                <DialogTitle className="text-sm font-semibold text-text-default">Profile settings</DialogTitle>
-                <div className="mt-3 space-y-2 text-xs text-text-subtle">
-                  <div className="flex items-center justify-between">
-                    <span>Name</span>
-                    <span className="text-text-default">{displayName}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Email</span>
-                    <span className="text-text-default">{user?.email ?? userId}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>User ID</span>
-                    <span className="truncate text-text-default">{userId}</span>
-                  </div>
-                </div>
-                <div className="mt-5 flex justify-end">
-                  <button
-                    onClick={() => setProfileOpen(false)}
-                    className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
-                  >
-                    Close
-                  </button>
                 </div>
               </DialogPanel>
             </TransitionChild>

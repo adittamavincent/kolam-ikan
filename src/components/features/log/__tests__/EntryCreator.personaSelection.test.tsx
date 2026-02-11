@@ -408,7 +408,7 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
 
     // Now we should have 2 sections, and X buttons should appear
     await waitFor(() => {
-      const editors = screen.getAllByTestId(/editor-/);
+      const editors = screen.getAllByTestId(/^editor-\d+$/);
       expect(editors.length).toBe(2);
     });
 
@@ -432,7 +432,7 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
 
     // Wait for section to be removed from UI
     await waitFor(() => {
-      const remainingEditors = screen.getAllByTestId(/editor-/);
+      const remainingEditors = screen.getAllByTestId(/^editor-\d+$/);
       // Should be back to 1 editor after deletion
       expect(remainingEditors.length).toBeLessThan(3);
     });

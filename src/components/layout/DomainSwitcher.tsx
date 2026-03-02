@@ -1,7 +1,5 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
 import { Domain } from '@/lib/types';
 import { useRef, useState } from 'react';
 import { Home, Plus, RefreshCw, AlertCircle, LogOut, Settings } from 'lucide-react';
@@ -14,6 +12,8 @@ import { useSidebar } from '@/lib/hooks/useSidebar';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { CreateDomainModal } from './CreateDomainModal';
 import { useKeyboard } from '@/lib/hooks/useKeyboard';
+import { useDomains } from '@/lib/hooks/useDomains';
+import { EditDomainModal } from './EditDomainModal';
 
 interface DomainSwitcherProps {
   userId: string;
@@ -23,8 +23,8 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
-  const supabase = createClient();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [editingDomain, setEditingDomain] = useState<Domain | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [hoveredDomainTooltip, setHoveredDomainTooltip] = useState<{ name: string; top: number } | null>(null);
@@ -62,19 +62,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
     },
   ]);
 
-  const { data: domains, isLoading, error } = useQuery({
-    queryKey: ['domains', userId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('domains')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      return data as Domain[];
-    },
-  });
+  const { domains, isLoading, error } = useDomains(userId);
 
   const currentDomainId = params?.domain as string;
 
@@ -84,7 +72,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
     const buttonRect = event.currentTarget.getBoundingClientRect();
     const rootRect = root.getBoundingClientRect();
     setHoveredDomainTooltip({
-      name,
+      name: `${name}`,
       top: buttonRect.top - rootRect.top + buttonRect.height / 2,
     });
   };
@@ -132,8 +120,17 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
               router.push(`/${domain.id}`);
             }}
             onMouseEnter={(event) => showDomainTooltip(event, domain.name)}
+              onDoubleClick={() => {
+                setHoveredDomainTooltip(null);
+                setEditingDomain(domain);
+              }}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                setHoveredDomainTooltip(null);
+                setEditingDomain(domain);
+              }}
             onMouseLeave={() => setHoveredDomainTooltip(null)}
-            title={domain.name}
+            title={`${domain.name} (double-click to edit)`}
             aria-label={domain.name}
             className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${currentDomainId === domain.id
                 ? 'bg-action-primary-bg text-white shadow-md scale-105'
@@ -241,6 +238,14 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         userId={userId}
+      />
+
+      <EditDomainModal
+        key={editingDomain?.id ?? 'domain-editor'}
+        isOpen={Boolean(editingDomain)}
+        onClose={() => setEditingDomain(null)}
+        userId={userId}
+        domain={editingDomain}
       />
 
       <Transition appear show={profileOpen} as={Fragment}>

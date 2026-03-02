@@ -3,6 +3,8 @@ import { Dialog, Transition } from '@headlessui/react';
 import { X, Globe, Check, Loader2, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDomains } from '@/lib/hooks/useDomains';
+import { DynamicIcon } from '@/components/shared/DynamicIcon';
+import { DEFAULT_DOMAIN_ICON, DOMAIN_ICON_OPTIONS } from '@/lib/constants/domainIcons';
 
 interface CreateDomainModalProps {
   isOpen: boolean;
@@ -27,6 +29,7 @@ interface CreateDomainModalProps {
  */
 export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModalProps) {
   const [name, setName] = useState('');
+  const [icon, setIcon] = useState(DEFAULT_DOMAIN_ICON);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -36,6 +39,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
   useEffect(() => {
     if (isOpen) {
       setName('');
+      setIcon(DEFAULT_DOMAIN_ICON);
       setError(null);
       setIsSubmitting(false);
     }
@@ -67,7 +71,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
       const newDomain = await createDomain.mutateAsync({
         name: name.trim(),
         user_id: userId,
-        icon: 'Globe', // Default icon
+        icon,
         settings: { root_restriction: 'mixed' }, // Default settings
         sort_order: (domains?.length || 0) + 1,
       });
@@ -150,6 +154,28 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                         }}
                         autoFocus
                       />
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
+                        Icon
+                      </label>
+                      <div className="grid grid-cols-6 gap-2">
+                        {DOMAIN_ICON_OPTIONS.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => setIcon(option)}
+                            className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${icon === option
+                              ? 'border-action-primary-bg bg-action-primary-bg/10 text-action-primary-bg'
+                              : 'border-border-subtle text-text-muted hover:bg-surface-subtle hover:text-text-default'
+                              }`}
+                            aria-label={`Select ${option} icon`}
+                          >
+                            <DynamicIcon name={option} className="h-4 w-4" />
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Suggestions */}

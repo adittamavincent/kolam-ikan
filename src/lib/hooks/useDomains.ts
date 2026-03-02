@@ -86,7 +86,9 @@ export function useDomains(userId: string) {
     },
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: ['domains', userId] });
+      await queryClient.cancelQueries({ queryKey: ['domain', id] });
       const previousDomains = queryClient.getQueryData<Domain[]>(['domains', userId]);
+      const previousDomain = queryClient.getQueryData<Domain>(['domain', id]);
 
       if (previousDomains) {
         queryClient.setQueryData<Domain[]>(['domains', userId], (old) =>
@@ -94,15 +96,26 @@ export function useDomains(userId: string) {
         );
       }
 
-      return { previousDomains };
+      if (previousDomain) {
+        queryClient.setQueryData<Domain>(['domain', id], {
+          ...previousDomain,
+          ...updates,
+        });
+      }
+
+      return { previousDomains, previousDomain };
     },
     onError: (err, variables, context) => {
       if (context?.previousDomains) {
         queryClient.setQueryData(['domains', userId], context.previousDomains);
       }
+      if (context?.previousDomain) {
+        queryClient.setQueryData(['domain', variables.id], context.previousDomain);
+      }
     },
-    onSettled: () => {
+    onSettled: (_, __, variables) => {
       queryClient.invalidateQueries({ queryKey: ['domains', userId] });
+      queryClient.invalidateQueries({ queryKey: ['domain', variables.id] });
     },
   });
 

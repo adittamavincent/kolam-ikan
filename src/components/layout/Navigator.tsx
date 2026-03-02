@@ -116,8 +116,8 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
   return (
     <div className="mb-0.5">
       <div
-        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-        style={{ paddingLeft: `${paddingLeftRem}rem` }}
+        className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm"
+        style={{ marginLeft: `${paddingLeftRem}rem` }}
       >
         {type === 'cabinet' ? (
           <div
@@ -249,7 +249,7 @@ const StreamNode = ({
             ? 'bg-action-primary-bg/10 text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20'
             : 'text-text-subtle hover:bg-surface-subtle hover:text-text-default'
           } ${!isStreamActive && isNewlyCreated ? 'bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30' : ''}`}
-        style={{ paddingLeft: `${getStreamPaddingRem(depth)}rem` }}
+        style={{ marginLeft: `${getStreamPaddingRem(depth)}rem` }}
         onClick={(e) => {
           e.stopPropagation();
           if (!isStreamEditing) {
@@ -262,10 +262,10 @@ const StreamNode = ({
         onContextMenu={(event) => handleContextMenu(event, stream.id, 'stream')}
         tabIndex={0}
         onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
-            }
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
+          }
         }}
       >
         <div
@@ -352,12 +352,12 @@ const CabinetNode = ({
   return (
     <div className="mb-0.5" role="treeitem" aria-expanded={isExpanded} aria-selected={isActive} aria-label={ariaLabel}>
       <div
-        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
+        className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
             ${isActive
             ? 'bg-action-primary-bg/10 text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium'
             : 'text-text-subtle hover:bg-surface-subtle'
           }`}
-        style={{ paddingLeft: `${getCabinetPaddingRem(depth)}rem` }}
+        style={{ marginLeft: `${getCabinetPaddingRem(depth)}rem` }}
         onClick={(e) => {
           e.stopPropagation();
           handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
@@ -368,18 +368,18 @@ const CabinetNode = ({
         onContextMenu={(event) => handleContextMenu(event, cabinet.id, 'cabinet')}
         tabIndex={0}
         onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
-            }
-            if (e.key === 'ArrowRight' && !isExpanded) {
-                e.preventDefault();
-                toggleCabinet(cabinet.id);
-            }
-            if (e.key === 'ArrowLeft' && isExpanded) {
-                e.preventDefault();
-                toggleCabinet(cabinet.id);
-            }
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
+          }
+          if (e.key === 'ArrowRight' && !isExpanded) {
+            e.preventDefault();
+            toggleCabinet(cabinet.id);
+          }
+          if (e.key === 'ArrowLeft' && isExpanded) {
+            e.preventDefault();
+            toggleCabinet(cabinet.id);
+          }
         }}
       >
         <div
@@ -1122,12 +1122,12 @@ export function Navigator({ }: NavigatorProps) {
   const lastClickRef = useRef<{ id: string; time: number } | null>(null);
   const lastNavigatedPathRef = useRef<string | null>(null);
   const pendingStreamNavigationRef = useRef<{ path: string; startedAt: number } | null>(null);
-  
+
   useEffect(() => {
     lastNavigatedPathRef.current = null;
     pendingStreamNavigationRef.current = null;
   }, [pathname]);
-  
+
   // Long press refs
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const ignoreNextClickRef = useRef<boolean>(false);
@@ -1206,7 +1206,7 @@ export function Navigator({ }: NavigatorProps) {
         lastClickRef.current = null; // Reset
         return;
       }
-      
+
       // Prevent rapid double-click navigation
       if (lastClick && lastClick.id === id && (now - lastClick.time < 500)) {
         return;
@@ -1343,8 +1343,8 @@ export function Navigator({ }: NavigatorProps) {
   const moveCabinetOptions =
     moveTarget?.type === 'cabinet'
       ? (cabinets ?? []).filter(
-          (cabinet) => cabinet.id !== moveTarget.id && !moveExcluded.has(cabinet.id)
-        )
+        (cabinet) => cabinet.id !== moveTarget.id && !moveExcluded.has(cabinet.id)
+      )
       : cabinets ?? [];
 
   if (!domainId) {
@@ -1460,9 +1460,9 @@ export function Navigator({ }: NavigatorProps) {
         <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
           <div
             className="absolute w-48 rounded-lg border border-border-default bg-surface-default p-1 ring-1 ring-black/5"
-            style={{ 
-              top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : contextMenu.y), 
-              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x) 
+            style={{
+              top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : contextMenu.y),
+              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x)
             }}
             onClick={(event) => event.stopPropagation()}
             role="menu"
@@ -1646,7 +1646,7 @@ export function Navigator({ }: NavigatorProps) {
                     disabled={
                       moveTarget?.type === 'stream'
                         ? (isCabinetOnly && (moveDestination ?? null) === null) ||
-                          (moveDestination ?? null) === (moveItem as Stream | undefined)?.cabinet_id
+                        (moveDestination ?? null) === (moveItem as Stream | undefined)?.cabinet_id
                         : (moveDestination ?? null) === (moveItem as Cabinet | undefined)?.parent_id
                     }
                     className="rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60"

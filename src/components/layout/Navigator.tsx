@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X } from 'lucide-react';
-import { Fragment, useState, useEffect, useLayoutEffect, useRef, useMemo, useTransition } from 'react';
+import { Fragment, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
 import { NavigatorCreateButton } from './NavigatorCreateButton';
 import { Cabinet, CabinetInsert, CabinetUpdate, Stream, StreamInsert, StreamUpdate } from '@/lib/types';
 import {
@@ -846,6 +846,7 @@ export function Navigator({ }: NavigatorProps) {
 
   const settings = domain?.settings as { root_restriction?: string } | undefined;
   const isCabinetOnly = settings?.root_restriction === 'cabinet-only';
+  const currentDomainName = domain?.name?.trim() || 'Navigator';
 
   // Auto-expand cabinet containing the active stream
   useLayoutEffect(() => {
@@ -1477,7 +1478,9 @@ export function Navigator({ }: NavigatorProps) {
       <div className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
         {/* Header */}
         <div className="border-b border-border-subtle p-4">
-          <h2 className="text-sm font-semibold text-text-default">Navigator</h2>
+          <h2 className="truncate text-sm font-semibold text-text-default" title={currentDomainName}>
+            {currentDomainName}
+          </h2>
         </div>
 
         {/* Tree View */}

@@ -31,6 +31,8 @@ const config: Config = {
           subtle: "var(--bg-surface-subtle)",
           elevated: "var(--bg-surface-elevated)",
           overlay: "var(--bg-surface-overlay)",
+          hover: "var(--bg-surface-hover)",
+          dark: "var(--bg-surface-dark)",
         },
         text: {
           default: "var(--text-default)",
@@ -60,6 +62,7 @@ const config: Config = {
         status: {
           error: {
             bg: "var(--status-error-bg)",
+            border: "var(--status-error-border)",
             text: "var(--status-error-text)",
           },
           success: {

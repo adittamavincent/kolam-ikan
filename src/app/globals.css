@@ -1,3 +1,4 @@
+@config "../../tailwind.config.ts";
 @import "tailwindcss";
 
 :root {
@@ -40,6 +41,8 @@
   --color-surface-subtle: var(--bg-surface-subtle);
   --color-surface-elevated: var(--bg-surface-elevated);
   --color-surface-overlay: var(--bg-surface-overlay);
+  --color-surface-hover: var(--bg-surface-hover);
+  --color-surface-dark: var(--bg-surface-dark);
 
   /* Text & Content */
   --color-text-default: var(--text-default);
@@ -66,6 +69,7 @@
 
   /* Feedback / Status */
   --color-status-error-bg: var(--status-error-bg);
+  --color-status-error-border: var(--status-error-border);
   --color-status-error-text: var(--status-error-text);
   --color-status-success-bg: var(--status-success-bg);
   --color-status-success-text: var(--status-success-text);
@@ -87,6 +91,10 @@
   --bg-surface-subtle: #f9fafb;
   /* gray-50 */
   --bg-surface-elevated: #ffffff;
+  --bg-surface-hover: #f3f4f6;
+  /* gray-100 */
+  --bg-surface-dark: #111827;
+  /* gray-900 */
   --bg-surface-overlay: rgba(0, 0, 0, 0.5);
 
   /* Text */
@@ -126,6 +134,8 @@
   /* Status */
   --status-error-bg: #fef2f2;
   /* red-50 */
+  --status-error-border: #fecaca;
+  /* red-200 */
   --status-error-text: #b91c1c;
   /* red-700 for better contrast */
   --status-success-bg: #f0fdf4;
@@ -146,6 +156,8 @@
     /* neutral-900 */
     --bg-surface-elevated: #262626;
     /* neutral-800 */
+    --bg-surface-hover: #2a2a2a;
+    --bg-surface-dark: #0f0f0f;
     --bg-surface-overlay: rgba(0, 0, 0, 0.7);
 
     /* Text */
@@ -181,6 +193,8 @@
     /* Status */
     --status-error-bg: #450a0a;
     /* red-950 */
+    --status-error-border: #7f1d1d;
+    /* red-900 */
     --status-error-text: #f87171;
     /* red-400 */
     --status-success-bg: #052e16;

@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Domain } from '@/lib/types';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Home, Plus, RefreshCw, AlertCircle, LogOut, Settings } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Image from 'next/image';
@@ -27,6 +27,8 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [hoveredDomainTooltip, setHoveredDomainTooltip] = useState<{ name: string; top: number } | null>(null);
+  const switcherRef = useRef<HTMLDivElement>(null);
   const { user, status, loading, signOut } = useAuth();
   const { hide: hideSidebar } = useSidebar();
 
@@ -76,8 +78,19 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
 
   const currentDomainId = params?.domain as string;
 
+  const showDomainTooltip = (event: React.MouseEvent<HTMLButtonElement>, name: string) => {
+    const root = switcherRef.current;
+    if (!root) return;
+    const buttonRect = event.currentTarget.getBoundingClientRect();
+    const rootRect = root.getBoundingClientRect();
+    setHoveredDomainTooltip({
+      name,
+      top: buttonRect.top - rootRect.top + buttonRect.height / 2,
+    });
+  };
+
   return (
-    <div className="flex h-full w-16 flex-col items-center bg-surface-default py-4 border-r border-border-subtle shadow-sm z-50">
+    <div ref={switcherRef} className="relative flex h-full w-16 flex-col items-center bg-surface-default py-4 border-r border-border-subtle shadow-sm z-50">
       {/* Home / Root */}
       <button
         onClick={() => {
@@ -114,7 +127,14 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
         {domains?.map((domain) => (
           <button
             key={domain.id}
-            onClick={() => router.push(`/${domain.id}`)}
+            onClick={() => {
+              setHoveredDomainTooltip(null);
+              router.push(`/${domain.id}`);
+            }}
+            onMouseEnter={(event) => showDomainTooltip(event, domain.name)}
+            onMouseLeave={() => setHoveredDomainTooltip(null)}
+            title={domain.name}
+            aria-label={domain.name}
             className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${currentDomainId === domain.id
                 ? 'bg-action-primary-bg text-white shadow-md scale-105'
                 : 'bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105'
@@ -125,12 +145,6 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
             ) : (
               <DynamicIcon name={domain.name} className="h-5 w-5" />
             )}
-
-            {/* Tooltip */}
-            <div className="absolute left-14 z-50 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
-              {domain.name}
-            </div>
-
             {/* Active Indicator */}
             {currentDomainId === domain.id && (
               <div className="absolute -left-2 h-6 w-1 rounded-r-full bg-action-primary-bg" />
@@ -149,6 +163,15 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
           </div>
         </button>
       </div>
+
+      {hoveredDomainTooltip && (
+        <div
+          className="pointer-events-none absolute left-14 z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
+          style={{ top: hoveredDomainTooltip.top }}
+        >
+          {hoveredDomainTooltip.name}
+        </div>
+      )}
 
       {/* User Menu / Profile at bottom */}
       <div className="mt-auto flex flex-col items-center gap-4 pt-4 border-t border-border-subtle w-full">

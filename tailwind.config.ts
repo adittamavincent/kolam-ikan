@@ -21,6 +21,51 @@ const config: Config = {
           700: "#0369a1",
           800: "#075985",
           900: "#0c4a6e",
+          950: "#082f49",
+        },
+        // Semantic Tokens
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        surface: {
+          default: "var(--bg-surface-default)",
+          subtle: "var(--bg-surface-subtle)",
+          elevated: "var(--bg-surface-elevated)",
+          overlay: "var(--bg-surface-overlay)",
+        },
+        text: {
+          default: "var(--text-default)",
+          subtle: "var(--text-subtle)",
+          muted: "var(--text-muted)",
+          inverse: "var(--text-inverse)",
+        },
+        border: {
+          default: "var(--border-default)",
+          subtle: "var(--border-subtle)",
+          strong: "var(--border-strong)",
+        },
+        action: {
+          primary: {
+            bg: "var(--action-primary-bg)",
+            hover: "var(--action-primary-hover)",
+            text: "var(--action-primary-text)",
+            disabled: "var(--action-primary-disabled)",
+          },
+          secondary: {
+            bg: "var(--action-secondary-bg)",
+            hover: "var(--action-secondary-hover)",
+            text: "var(--action-secondary-text)",
+            border: "var(--action-secondary-border)",
+          },
+        },
+        status: {
+          error: {
+            bg: "var(--status-error-bg)",
+            text: "var(--status-error-text)",
+          },
+          success: {
+            bg: "var(--status-success-bg)",
+            text: "var(--status-success-text)",
+          },
         },
         // Domain Colors
         programming: "#3B82F6", // Blue

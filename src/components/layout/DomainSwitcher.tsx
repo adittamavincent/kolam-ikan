@@ -84,11 +84,10 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
           hideSidebar();
           router.push('/');
         }}
-        className={`group relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
-          pathname === '/' 
-            ? 'bg-action-primary-bg text-white shadow-md scale-105' 
+        className={`group relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${pathname === '/'
+            ? 'bg-action-primary-bg text-white shadow-md scale-105'
             : 'bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105'
-        }`}
+          }`}
       >
         <Home className="h-5 w-5" />
         <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
@@ -99,7 +98,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
       <div className="mb-4 h-px w-8 bg-border-subtle" />
 
       {/* Domain List */}
-      <div className="flex-1 w-full space-y-3 overflow-y-auto px-2 scrollbar-hide py-1">
+      <div className="flex-1 w-full flex flex-col items-center space-y-3 overflow-y-auto px-2 scrollbar-hide py-1">
         {isLoading && (
           <div className="flex h-10 w-10 items-center justify-center">
             <RefreshCw className="h-4 w-4 animate-spin text-text-muted" />
@@ -116,18 +115,17 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
           <button
             key={domain.id}
             onClick={() => router.push(`/${domain.id}`)}
-            className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
-              currentDomainId === domain.id
+            className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${currentDomainId === domain.id
                 ? 'bg-action-primary-bg text-white shadow-md scale-105'
                 : 'bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105'
-            }`}
+              }`}
           >
             {domain.icon ? (
               <DynamicIcon name={domain.icon} className="h-5 w-5" />
             ) : (
               <DynamicIcon name={domain.name} className="h-5 w-5" />
             )}
-            
+
             {/* Tooltip */}
             <div className="absolute left-14 z-50 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
               {domain.name}
@@ -157,11 +155,11 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
         <Menu as="div" className="relative">
           <MenuButton className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm">
             {avatarUrl ? (
-              <Image 
-                src={avatarUrl} 
-                alt={displayName} 
-                width={40} 
-                height={40} 
+              <Image
+                src={avatarUrl}
+                alt={displayName}
+                width={40}
+                height={40}
                 unoptimized
                 className="h-full w-full object-cover"
               />
@@ -254,11 +252,11 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
                   <div className="mt-4 space-y-4">
                     <div className="flex items-center gap-4">
                       {avatarUrl ? (
-                        <Image 
-                          src={avatarUrl} 
-                          alt={displayName} 
-                          width={64} 
-                          height={64} 
+                        <Image
+                          src={avatarUrl}
+                          alt={displayName}
+                          width={64}
+                          height={64}
                           unoptimized
                           className="rounded-full object-cover border-2 border-border-subtle"
                         />
@@ -272,7 +270,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
                         <p className="text-sm text-text-muted">{user?.email}</p>
                       </div>
                     </div>
-                    
+
                     <div className="rounded-lg bg-surface-subtle p-4 border border-border-subtle">
                       <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">Account Details</p>
                       <div className="space-y-2">

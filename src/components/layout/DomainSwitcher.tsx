@@ -166,7 +166,7 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
 
       {hoveredDomainTooltip && (
         <div
-          className="pointer-events-none absolute left-14 z-[60] -translate-y-1/2 whitespace-nowrap rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
+          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
           style={{ top: hoveredDomainTooltip.top }}
         >
           {hoveredDomainTooltip.name}

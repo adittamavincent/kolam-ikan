@@ -75,7 +75,6 @@ const getPositionGroupCenterRem = (groupIndex: number) =>
 const getCabinetPaddingRem = (depth: number) => depth * ALIGNMENT_COLUMN_REM;
 const getStreamPaddingRem = (depth: number) => (depth + 1) * ALIGNMENT_COLUMN_REM;
 const getBorderCenterRem = (depth: number) => getPositionGroupCenterRem(depth + 1);
-const getEmptyStatePaddingRem = (depth: number) => getStreamPaddingRem(depth + 1);
 
 interface CreationInputProps {
   type: 'cabinet' | 'stream';
@@ -179,9 +178,6 @@ interface CabinetNodeProps {
   handleKeyDown: (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => void;
   handleRename: (id: string, newName: string, type: 'cabinet' | 'stream') => void;
   handleItemClick: (id: string, type: 'cabinet' | 'stream', name: string, isActive: boolean) => void;
-  handleMouseDown: (id: string, name: string, type: 'cabinet' | 'stream') => void;
-  handleMouseUp: () => void;
-  handleMouseLeave: () => void;
   toggleCabinet: (id: string) => void;
   router: ReturnType<typeof useRouter>;
   domainId: string;
@@ -193,6 +189,13 @@ interface CabinetNodeProps {
   creatingItem: CreationItem | null;
   handleCreationConfirm: (name: string) => void;
   handleCreationCancel: () => void;
+  onDragStart: (e: React.DragEvent, id: string, type: NavItemType) => void;
+  onDragOver: (e: React.DragEvent, id: string | null) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent, id: string | null) => void;
+  onDragEnd: () => void;
+  draggedItem: { id: string; type: NavItemType } | null;
+  dragOverId: string | null;
 }
 
 interface StreamNodeProps {
@@ -208,11 +211,15 @@ interface StreamNodeProps {
   handleKeyDown: (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => void;
   handleRename: (id: string, newName: string, type: 'cabinet' | 'stream') => void;
   handleItemClick: (id: string, type: 'cabinet' | 'stream', name: string, isActive: boolean) => void;
-  handleMouseDown: (id: string, name: string, type: 'cabinet' | 'stream') => void;
-  handleMouseUp: () => void;
-  handleMouseLeave: () => void;
   handleContextMenu: (event: React.MouseEvent, id: string, type: NavItemType) => void;
   isNewlyCreated: boolean;
+  onDragStart: (e: React.DragEvent, id: string, type: NavItemType) => void;
+  onDragOver: (e: React.DragEvent, id: string | null) => void;
+  onDragLeave: (e: React.DragEvent) => void;
+  onDrop: (e: React.DragEvent, id: string | null) => void;
+  onDragEnd: () => void;
+  draggedItem: { id: string; type: NavItemType } | null;
+  dragOverId: string | null;
 }
 
 const StreamNode = ({
@@ -228,37 +235,64 @@ const StreamNode = ({
   handleKeyDown,
   handleRename,
   handleItemClick,
-  handleMouseDown,
-  handleMouseUp,
-  handleMouseLeave,
   handleContextMenu,
   isNewlyCreated,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  draggedItem,
+  dragOverId,
 }: StreamNodeProps) => {
   const isStreamActive = activeNode?.type === 'stream' && activeNode.id === stream.id;
   const isStreamEditing = editingItemId === stream.id;
+  const isDragged = draggedItem?.type === 'stream' && draggedItem.id === stream.id;
+  const isDragOver = dragOverId === stream.id;
   const disambiguationLabel = disambiguation ? `#${disambiguation.index}` : null;
   const ariaLabel = disambiguation
     ? `${displayName} (${disambiguation.index} of ${disambiguation.total})`
     : displayName;
 
   return (
-    <div className="group relative flex items-center" role="treeitem" aria-selected={isStreamActive} aria-label={ariaLabel}>
+    <div
+      className={`group relative flex items-center transition-opacity duration-200 ${isDragged ? 'opacity-40' : 'opacity-100'}`}
+      role="treeitem"
+      aria-selected={isStreamActive}
+      aria-label={ariaLabel}
+      onDragOver={(e) => {
+        e.stopPropagation();
+        onDragOver(e, stream.id);
+      }}
+      onDragLeave={(e) => {
+        e.stopPropagation();
+        onDragLeave(e);
+      }}
+      onDrop={(e) => {
+        e.stopPropagation();
+        onDrop(e, stream.id);
+      }}
+    >
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
             ${isStreamActive
             ? 'bg-action-primary-bg/10 text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20'
             : 'text-text-subtle hover:bg-surface-subtle hover:text-text-default'
-          } ${!isStreamActive && isNewlyCreated ? 'bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30' : ''}`}
+          } ${!isStreamActive && isNewlyCreated ? 'bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30' : ''}
+            ${isDragOver ? 'ring-2 ring-action-primary-bg ring-inset' : ''}`}
         style={{ marginLeft: `${getStreamPaddingRem(depth)}rem` }}
+        draggable={!isStreamEditing}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          onDragStart(e, stream.id, 'stream');
+        }}
+        onDragEnd={onDragEnd}
         onClick={(e) => {
           e.stopPropagation();
           if (!isStreamEditing) {
             handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
           }
         }}
-        onMouseDown={() => handleMouseDown(stream.id, stream.name, 'stream')}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
         onContextMenu={(event) => handleContextMenu(event, stream.id, 'stream')}
         tabIndex={0}
         onKeyDown={(e) => {
@@ -322,9 +356,6 @@ const CabinetNode = ({
   handleKeyDown,
   handleRename,
   handleItemClick,
-  handleMouseDown,
-  handleMouseUp,
-  handleMouseLeave,
   toggleCabinet,
   router,
   domainId,
@@ -336,6 +367,13 @@ const CabinetNode = ({
   creatingItem,
   handleCreationConfirm,
   handleCreationCancel,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
+  draggedItem,
+  dragOverId,
 }: CabinetNodeProps) => {
   const children = cabinetTree.getChildren(cabinet.id);
   const cabinetStreams = streams?.filter((s) => s.cabinet_id === cabinet.id) || [];
@@ -343,6 +381,8 @@ const CabinetNode = ({
 
   const isActive = activeNode?.type === 'cabinet' && activeNode.id === cabinet.id;
   const isEditing = editingItemId === cabinet.id;
+  const isDragged = draggedItem?.type === 'cabinet' && draggedItem.id === cabinet.id;
+  const isDragOver = dragOverId === cabinet.id;
   const disambiguation = cabinetDisambiguation.get(cabinet.id);
   const disambiguationLabel = disambiguation ? `#${disambiguation.index}` : null;
   const ariaLabel = disambiguation
@@ -350,21 +390,42 @@ const CabinetNode = ({
     : cabinet.name;
 
   return (
-    <div className="mb-0.5" role="treeitem" aria-expanded={isExpanded} aria-selected={isActive} aria-label={ariaLabel}>
+    <div
+      className={`mb-0.5 transition-opacity duration-200 ${isDragged ? 'opacity-40' : 'opacity-100'}`}
+      role="treeitem"
+      aria-expanded={isExpanded}
+      aria-selected={isActive}
+      aria-label={ariaLabel}
+      onDragOver={(e) => {
+        e.stopPropagation();
+        onDragOver(e, cabinet.id);
+      }}
+      onDragLeave={(e) => {
+        e.stopPropagation();
+        onDragLeave(e);
+      }}
+      onDrop={(e) => {
+        e.stopPropagation();
+        onDrop(e, cabinet.id);
+      }}
+    >
       <div
         className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
             ${isActive
             ? 'bg-action-primary-bg/10 text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium'
             : 'text-text-subtle hover:bg-surface-subtle'
-          }`}
+          } ${isDragOver ? 'ring-2 ring-action-primary-bg ring-inset' : ''}`}
         style={{ marginLeft: `${getCabinetPaddingRem(depth)}rem` }}
+        draggable={!isEditing}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          onDragStart(e, cabinet.id, 'cabinet');
+        }}
+        onDragEnd={onDragEnd}
         onClick={(e) => {
           e.stopPropagation();
           handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
         }}
-        onMouseDown={() => handleMouseDown(cabinet.id, cabinet.name, 'cabinet')}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
         onContextMenu={(event) => handleContextMenu(event, cabinet.id, 'cabinet')}
         tabIndex={0}
         onKeyDown={(e) => {
@@ -435,7 +496,7 @@ const CabinetNode = ({
           <div
             className="pointer-events-none absolute inset-y-0 w-0 border-border-subtle"
             style={{
-              left: `${getBorderCenterRem(depth)}rem`,
+              left: `${getBorderCenterRem(depth) + 0.5}rem`,
               borderLeftWidth: '0.0625rem',
               borderLeftStyle: 'solid',
             }}
@@ -459,9 +520,6 @@ const CabinetNode = ({
               handleKeyDown={handleKeyDown}
               handleRename={handleRename}
               handleItemClick={handleItemClick}
-              handleMouseDown={handleMouseDown}
-              handleMouseUp={handleMouseUp}
-              handleMouseLeave={handleMouseLeave}
               toggleCabinet={toggleCabinet}
               router={router}
               domainId={domainId}
@@ -473,6 +531,13 @@ const CabinetNode = ({
               creatingItem={creatingItem}
               handleCreationConfirm={handleCreationConfirm}
               handleCreationCancel={handleCreationCancel}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              onDragEnd={onDragEnd}
+              draggedItem={draggedItem}
+              dragOverId={dragOverId}
             />
           ))}
 
@@ -501,11 +566,15 @@ const CabinetNode = ({
               handleKeyDown={handleKeyDown}
               handleRename={handleRename}
               handleItemClick={handleItemClick}
-              handleMouseDown={handleMouseDown}
-              handleMouseUp={handleMouseUp}
-              handleMouseLeave={handleMouseLeave}
               handleContextMenu={handleContextMenu}
               isNewlyCreated={isStreamNewlyCreated(stream.id)}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
+              onDrop={onDrop}
+              onDragEnd={onDragEnd}
+              draggedItem={draggedItem}
+              dragOverId={dragOverId}
             />
           ))}
 
@@ -518,18 +587,7 @@ const CabinetNode = ({
             />
           )}
 
-          {/* Empty State / Actions */}
-          <div style={{ paddingLeft: `${getEmptyStatePaddingRem(depth)}rem` }}>
-            <NavigatorCreateButton
-              label="New Stream"
-              onClick={() => handleCreateStream(cabinet.id)}
-            />
-            <NavigatorCreateButton
-              label="New Cabinet"
-              onClick={() => handleCreateCabinet(cabinet.id)}
-              className="mt-1"
-            />
-          </div>
+
         </div>
       )}
     </div>
@@ -546,6 +604,10 @@ export function Navigator({ }: NavigatorProps) {
   const domainId = params?.domain as string | undefined;
   const activeStreamId = params?.stream as string | undefined;
 
+  const [draggedItem, setDraggedItem] = useState<{ id: string; type: NavItemType } | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const autoExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Track expanded cabinets
   const [expandedCabinets, setExpandedCabinets] = useState<Set<string>>(new Set());
   // Track the last stream ID that triggered an auto-expand to prevent re-expanding on refresh/update
@@ -559,6 +621,109 @@ export function Navigator({ }: NavigatorProps) {
   const [moveTarget, setMoveTarget] = useState<{ id: string; type: NavItemType } | null>(null);
   const [moveDestination, setMoveDestination] = useState<string | null>(null);
   const [propertiesTarget, setPropertiesTarget] = useState<{ id: string; type: NavItemType } | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, id: string, type: NavItemType) => {
+    setDraggedItem({ id, type });
+    e.dataTransfer.setData('application/kolam-ikan-nav-item', id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string | null) => {
+    e.preventDefault();
+    if (!draggedItem) return;
+
+    // Prevent dropping on self or own descendants
+    if (draggedItem.id === id) {
+      if (dragOverId !== null) setDragOverId(null);
+      return;
+    }
+
+    if (draggedItem.type === 'cabinet' && id) {
+      const descendants = getDescendantIds(draggedItem.id);
+      if (descendants.has(id)) {
+        if (dragOverId !== null) setDragOverId(null);
+        return;
+      }
+    }
+
+    // Update dragOverId only if it changed to reduce re-renders/flicker
+    if (dragOverId !== id) {
+      setDragOverId(id);
+
+      if (autoExpandTimerRef.current) {
+        clearTimeout(autoExpandTimerRef.current);
+        autoExpandTimerRef.current = null;
+      }
+
+      if (id && !expandedCabinets.has(id)) {
+        autoExpandTimerRef.current = setTimeout(() => {
+          setExpandedCabinets((prev) => new Set(prev).add(id));
+          autoExpandTimerRef.current = null;
+        }, 200);
+      }
+    }
+
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const { clientX, clientY } = e;
+
+    // Only clear if we actually left the element's bounding box
+    if (
+      clientX < rect.left ||
+      clientX >= rect.right ||
+      clientY < rect.top ||
+      clientY >= rect.bottom
+    ) {
+      setDragOverId(null);
+      if (autoExpandTimerRef.current) {
+        clearTimeout(autoExpandTimerRef.current);
+        autoExpandTimerRef.current = null;
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string | null) => {
+    e.preventDefault();
+    setDragOverId(null);
+    if (autoExpandTimerRef.current) clearTimeout(autoExpandTimerRef.current);
+    if (!draggedItem) return;
+
+    const { id, type } = draggedItem;
+    if (id === targetId) return;
+
+    if (type === 'cabinet' && targetId) {
+      const descendants = getDescendantIds(id);
+      if (descendants.has(targetId)) return;
+    }
+
+    let finalTargetId = targetId;
+    const targetStream = streams?.find(s => s.id === targetId);
+    if (targetStream) {
+      finalTargetId = targetStream.cabinet_id ?? null;
+    }
+
+    if (type === 'cabinet') {
+      if (id === finalTargetId) return;
+      updateCabinetMutation.mutate({ id, updates: { parent_id: finalTargetId || null } });
+      if (finalTargetId) setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
+    } else {
+      if (isCabinetOnly && finalTargetId === null) return;
+      updateStreamMutation.mutate({ id, updates: { cabinet_id: finalTargetId || null } });
+      if (finalTargetId) setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
+    }
+    setDraggedItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverId(null);
+    if (autoExpandTimerRef.current) clearTimeout(autoExpandTimerRef.current);
+  };
+
   const [justCreatedStreamId, setJustCreatedStreamId] = useState<string | null>(null);
 
   const handleCreationConfirm = (name: string) => {
@@ -955,39 +1120,25 @@ export function Navigator({ }: NavigatorProps) {
   };
 
   // Organize cabinets into a tree
-  const cabinetTree = useMemo(() => {
-    if (!cabinets) return { roots: [], getChildren: () => [] };
-    const roots = cabinets.filter(c => !c.parent_id);
-    const getChildren = (parentId: string): Cabinet[] =>
-      cabinets.filter(c => c.parent_id === parentId);
+  const roots = cabinets?.filter(c => !c.parent_id) ?? [];
+  const getChildren = (parentId: string): Cabinet[] =>
+    cabinets?.filter(c => c.parent_id === parentId) ?? [];
 
-    // We'll use a recursive render function, so we just need roots and a way to look up children
-    return { roots, getChildren };
-  }, [cabinets]);
+  // cabinetTree object will be automatically memoized by the React Compiler
+  const cabinetTree = { roots, getChildren };
 
-  const cabinetDisambiguation = useMemo(
-    () => buildDisambiguationMap(cabinets, (cabinet) => cabinet.parent_id ?? null),
-    [cabinets]
-  );
-  const streamDisambiguation = useMemo(
-    () => buildDisambiguationMap(streams, (stream) => stream.cabinet_id ?? null),
-    [streams]
-  );
-  const cabinetChildrenMap = useMemo(() => {
-    const map = new Map<string, Cabinet[]>();
-    cabinets?.forEach((cabinet) => {
-      if (!cabinet.parent_id) return;
-      const list = map.get(cabinet.parent_id) ?? [];
-      list.push(cabinet);
-      map.set(cabinet.parent_id, list);
-    });
-    return map;
-  }, [cabinets]);
+  const cabinetDisambiguation = buildDisambiguationMap(cabinets, (cabinet) => cabinet.parent_id ?? null);
+  const streamDisambiguation = buildDisambiguationMap(streams, (stream) => stream.cabinet_id ?? null);
+  const cabinetChildrenMap = new Map<string, Cabinet[]>();
+  cabinets?.forEach((cabinet) => {
+    if (!cabinet.parent_id) return;
+    const list = cabinetChildrenMap.get(cabinet.parent_id) ?? [];
+    list.push(cabinet);
+    cabinetChildrenMap.set(cabinet.parent_id, list);
+  });
 
   // Determine the effective highlight node
-  const activeNode = useMemo(() =>
-    getVisibleActiveNodeId(activeStreamId, streams, cabinets, expandedCabinets),
-    [activeStreamId, streams, cabinets, expandedCabinets]);
+  const activeNode = getVisibleActiveNodeId(activeStreamId, streams, cabinets, expandedCabinets);
 
   const isStreamNewlyCreated = (id: string) => id === justCreatedStreamId;
 
@@ -1128,34 +1279,6 @@ export function Navigator({ }: NavigatorProps) {
     pendingStreamNavigationRef.current = null;
   }, [pathname]);
 
-  // Long press refs
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const ignoreNextClickRef = useRef<boolean>(false);
-
-  // Long press handlers
-  const handleMouseDown = (id: string, name: string, type: 'cabinet' | 'stream') => {
-    void type;
-    longPressTimerRef.current = setTimeout(() => {
-      setEditingItemId(id);
-      setEditingName(name);
-      ignoreNextClickRef.current = true;
-    }, 600); // 600ms for long press
-  };
-
-  const handleMouseUp = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
   // Click handling logic
   const handleItemClick = (
     id: string,
@@ -1165,12 +1288,6 @@ export function Navigator({ }: NavigatorProps) {
   ) => {
     // Block interaction if a navigation is already pending
     if (isPending) return;
-
-    // If long press triggered rename, ignore this click
-    if (ignoreNextClickRef.current) {
-      ignoreNextClickRef.current = false;
-      return;
-    }
 
     const now = Date.now();
     const lastClick = lastClickRef.current;
@@ -1356,113 +1473,130 @@ export function Navigator({ }: NavigatorProps) {
   }
 
   return (
-    <div className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
-      {/* Header */}
-      <div className="border-b border-border-subtle p-4">
-        <h2 className="text-sm font-semibold text-text-default">Navigator</h2>
-      </div>
+    <>
+      <div className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
+        {/* Header */}
+        <div className="border-b border-border-subtle p-4">
+          <h2 className="text-sm font-semibold text-text-default">Navigator</h2>
+        </div>
 
-      {/* Tree View */}
-      <div className="flex-1 overflow-y-auto p-2" role="tree">
-        {cabinetTree.roots.map((cabinet) => (
-          <CabinetNode
-            key={cabinet.id}
-            cabinet={cabinet}
-            cabinetTree={cabinetTree}
-            streams={streams}
-            cabinetDisambiguation={cabinetDisambiguation}
-            streamDisambiguation={streamDisambiguation}
-            expandedCabinets={expandedCabinets}
-            activeNode={activeNode}
-            editingItemId={editingItemId}
-            editingName={editingName}
-            editInputRef={editInputRef}
-            setEditingName={setEditingName}
-            handleKeyDown={handleKeyDown}
-            handleRename={handleRename}
-            handleItemClick={handleItemClick}
-            handleMouseDown={handleMouseDown}
-            handleMouseUp={handleMouseUp}
-            handleMouseLeave={handleMouseLeave}
-            toggleCabinet={toggleCabinet}
-            router={router}
-            domainId={domainId || ''}
-            handleCreateStream={handleCreateStream}
-            handleCreateCabinet={handleCreateCabinet}
-            handleContextMenu={handleContextMenu}
-            isStreamNewlyCreated={isStreamNewlyCreated}
-            setEditingItemId={setEditingItemId}
-            creatingItem={creatingItem}
-            handleCreationConfirm={handleCreationConfirm}
-            handleCreationCancel={handleCreationCancel}
-          />
-        ))}
+        {/* Tree View */}
+        <div
+          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? 'bg-action-primary-bg/5' : ''}`}
+          role="tree"
+          onDragOver={(e) => handleDragOver(e, null)}
+          onDrop={(e) => handleDrop(e, null)}
+        >
+          {cabinetTree.roots.map((cabinet) => (
+            <CabinetNode
+              key={cabinet.id}
+              cabinet={cabinet}
+              cabinetTree={cabinetTree}
+              streams={streams}
+              cabinetDisambiguation={cabinetDisambiguation}
+              streamDisambiguation={streamDisambiguation}
+              expandedCabinets={expandedCabinets}
+              activeNode={activeNode}
+              editingItemId={editingItemId}
+              editingName={editingName}
+              editInputRef={editInputRef}
+              setEditingName={setEditingName}
+              handleKeyDown={handleKeyDown}
+              handleRename={handleRename}
+              handleItemClick={handleItemClick}
+              toggleCabinet={toggleCabinet}
+              router={router}
+              domainId={domainId || ''}
+              handleCreateStream={handleCreateStream}
+              handleCreateCabinet={handleCreateCabinet}
+              handleContextMenu={handleContextMenu}
+              isStreamNewlyCreated={isStreamNewlyCreated}
+              setEditingItemId={setEditingItemId}
+              creatingItem={creatingItem}
+              handleCreationConfirm={handleCreationConfirm}
+              handleCreationCancel={handleCreationCancel}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              draggedItem={draggedItem}
+              dragOverId={dragOverId}
+            />
+          ))}
 
-        {rootStreams.map((stream) => (
-          <StreamNode
-            key={stream.id}
-            stream={stream}
-            depth={0}
-            displayName={stream.name}
-            disambiguation={streamDisambiguation.get(stream.id)}
-            activeNode={activeNode}
-            editingItemId={editingItemId}
-            editingName={editingName}
-            editInputRef={editInputRef}
-            setEditingName={setEditingName}
-            handleKeyDown={handleKeyDown}
-            handleRename={handleRename}
-            handleItemClick={handleItemClick}
-            handleMouseDown={handleMouseDown}
-            handleMouseUp={handleMouseUp}
-            handleMouseLeave={handleMouseLeave}
-            handleContextMenu={handleContextMenu}
-            isNewlyCreated={isStreamNewlyCreated(stream.id)}
-          />
-        ))}
+          {rootStreams.map((stream) => (
+            <StreamNode
+              key={stream.id}
+              stream={stream}
+              depth={0}
+              displayName={stream.name}
+              disambiguation={streamDisambiguation.get(stream.id)}
+              activeNode={activeNode}
+              editingItemId={editingItemId}
+              editingName={editingName}
+              editInputRef={editInputRef}
+              setEditingName={setEditingName}
+              handleKeyDown={handleKeyDown}
+              handleRename={handleRename}
+              handleItemClick={handleItemClick}
+              handleContextMenu={handleContextMenu}
+              isNewlyCreated={isStreamNewlyCreated(stream.id)}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onDragEnd={handleDragEnd}
+              draggedItem={draggedItem}
+              dragOverId={dragOverId}
+            />
+          ))}
 
-        {creatingItem?.type === 'cabinet' && creatingItem.parentId === null && (
-          <CreationInput
-            type="cabinet"
-            depth={0}
-            onConfirm={handleCreationConfirm}
-            onCancel={handleCreationCancel}
-          />
-        )}
-
-        {creatingItem?.type === 'stream' && creatingItem.parentId === null && (
-          <CreationInput
-            type="stream"
-            depth={0}
-            onConfirm={handleCreationConfirm}
-            onCancel={handleCreationCancel}
-          />
-        )}
-
-        <div className="mt-4 flex flex-col gap-1">
-          {/* New Stream Button - Only if not restricted */}
-          {!isCabinetOnly && (
-            <NavigatorCreateButton
-              label="New Stream"
-              onClick={() => handleCreateStream(null)}
+          {creatingItem?.type === 'cabinet' && creatingItem.parentId === null && (
+            <CreationInput
+              type="cabinet"
+              depth={0}
+              onConfirm={handleCreationConfirm}
+              onCancel={handleCreationCancel}
             />
           )}
 
-          {/* New Cabinet Button */}
-          <NavigatorCreateButton
-            label="New Cabinet"
-            onClick={() => handleCreateCabinet(null)}
-          />
+          {creatingItem?.type === 'stream' && creatingItem.parentId === null && (
+            <CreationInput
+              type="stream"
+              depth={0}
+              onConfirm={handleCreationConfirm}
+              onCancel={handleCreationCancel}
+            />
+          )}
+
+          <div className="mt-4 flex flex-col gap-1">
+            {/* New Stream Button - Only if not restricted */}
+            {!isCabinetOnly && (
+              <NavigatorCreateButton
+                label="New Stream"
+                onClick={() => handleCreateStream(null)}
+              />
+            )}
+
+            {/* New Cabinet Button */}
+            <NavigatorCreateButton
+              label="New Cabinet"
+              onClick={() => handleCreateCabinet(null)}
+            />
+          </div>
         </div>
       </div>
 
       {contextMenu && (
         <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
           <div
-            className="absolute w-48 rounded-lg border border-border-default bg-surface-default p-1 ring-1 ring-black/5"
+            className="absolute w-48 rounded-lg border border-border-strong bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 z-50"
             style={{
               top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : contextMenu.y),
-              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x)
+              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x),
+              backgroundColor: 'var(--bg-surface-elevated)',
+              opacity: 1
             }}
             onClick={(event) => event.stopPropagation()}
             role="menu"
@@ -1734,6 +1868,6 @@ export function Navigator({ }: NavigatorProps) {
           </div>
         </Dialog>
       </Transition>
-    </div>
+    </>
   );
 }

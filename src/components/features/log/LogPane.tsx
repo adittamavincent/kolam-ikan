@@ -26,8 +26,13 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -82,7 +87,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const { stream } = useStream(streamId);
   const { personas } = usePersonas();
-  
+
   const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
 
@@ -138,9 +143,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   return (
     <div
-      className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 flex flex-col ${
-        isVisible ? '' : 'pointer-events-none'
-      }`}
+      className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? '' : 'pointer-events-none'
+        }`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
@@ -151,11 +155,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${
-                    isToolbarOpen 
-                      ? 'bg-surface-subtle text-text-default' 
+                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isToolbarOpen
+                      ? 'bg-surface-subtle text-text-default'
                       : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'
-                  }`}
+                    }`}
                   title={isToolbarOpen ? "Hide toolbar" : "Show toolbar"}
                 >
                   <Search className="h-4 w-4" />
@@ -179,82 +182,83 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           </div>
 
           {/* Toolbar */}
-          <div 
-            className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
-              isToolbarOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-            }`}
+          <div
+            className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isToolbarOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+              }`}
           >
             <div className="overflow-hidden">
               <div className="px-3 pb-3 flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-md border border-border-default bg-surface-subtle pl-8 pr-2 py-1 text-xs text-text-default transition-all focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
-              />
-            </div>
-            
-            {/* Filter Menu */}
-            <Menu as="div" className="relative">
-              <MenuButton
-                className={`rounded-md border p-1.5 transition-colors ${filterPersonaId ? 'bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg' : 'border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-                title="Filter by Author"
-              >
-                <Filter className="h-3.5 w-3.5" />
-              </MenuButton>
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
-              >
-                <MenuItems className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
-                   <MenuItem>
-                    {({ focus }) => (
-                      <button
-                        onClick={() => setFilterPersonaId(null)}
-                        className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
-                      >
-                        <span>All Authors</span>
-                        {!filterPersonaId && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
-                      </button>
-                    )}
-                  </MenuItem>
-                  {personas?.map((persona) => (
-                    <MenuItem key={persona.id}>
-                      {({ focus }) => (
-                        <button
-                          onClick={() => setFilterPersonaId(persona.id)}
-                        className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
-                        >
-                          <div className="flex items-center gap-2">
-                             <DynamicIcon name={persona.icon} className="h-3 w-3" />
-                             <span>{persona.name}</span>
-                          </div>
-                          {filterPersonaId === persona.id && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
-                        </button>
-                      )}
-                    </MenuItem>
-                  ))}
-                </MenuItems>
-              </Transition>
-            </Menu>
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
+                  <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full rounded-md border border-border-default bg-surface-subtle pl-8 pr-2 py-1 text-xs text-text-default transition-all focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                  />
+                </div>
 
-            {/* Sort Button */}
-            <button
-              onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}
-              className="rounded-md border border-border-default p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
-              title={`Sort by: ${sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}`}
-            >
-              <ArrowUpDown className={`h-3.5 w-3.5 transition-transform ${sortOrder === 'oldest' ? 'rotate-180' : ''}`} />
-            </button>
-          </div>
+                {/* Filter Menu */}
+                {mounted && (
+                  <Menu as="div" className="relative">
+                    <MenuButton
+                      className={`rounded-md border p-1.5 transition-colors ${filterPersonaId ? 'bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg' : 'border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
+                      title="Filter by Author"
+                    >
+                      <Filter className="h-3.5 w-3.5" />
+                    </MenuButton>
+                    <Transition
+                      as={Fragment}
+                      enter="transition ease-out duration-100"
+                      enterFrom="transform opacity-0 scale-95"
+                      enterTo="transform opacity-100 scale-100"
+                      leave="transition ease-in duration-75"
+                      leaveFrom="transform opacity-100 scale-100"
+                      leaveTo="transform opacity-0 scale-95"
+                    >
+                      <MenuItems className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
+                        <MenuItem>
+                          {({ focus }) => (
+                            <button
+                              onClick={() => setFilterPersonaId(null)}
+                              className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
+                            >
+                              <span>All Authors</span>
+                              {!filterPersonaId && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
+                            </button>
+                          )}
+                        </MenuItem>
+                        {personas?.map((persona) => (
+                          <MenuItem key={persona.id}>
+                            {({ focus }) => (
+                              <button
+                                onClick={() => setFilterPersonaId(persona.id)}
+                                className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <DynamicIcon name={persona.icon} className="h-3 w-3" />
+                                  <span>{persona.name}</span>
+                                </div>
+                                {filterPersonaId === persona.id && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
+                              </button>
+                            )}
+                          </MenuItem>
+                        ))}
+                      </MenuItems>
+                    </Transition>
+                  </Menu>
+                )}
+
+                {/* Sort Button */}
+                <button
+                  onClick={() => setSortOrder(prev => prev === 'newest' ? 'oldest' : 'newest')}
+                  className="rounded-md border border-border-default p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
+                  title={`Sort by: ${sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}`}
+                >
+                  <ArrowUpDown className={`h-3.5 w-3.5 transition-transform ${sortOrder === 'oldest' ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -290,12 +294,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           <div className="flex items-center gap-2">
                             <Calendar className="h-3 w-3 text-text-muted" />
                             <span className="text-[10px] font-medium text-text-subtle font-mono">
-                              {new Date(entry.created_at || '').toLocaleString(undefined, {
+                              {mounted ? new Date(entry.created_at || '').toLocaleString(undefined, {
                                 month: 'short',
                                 day: 'numeric',
                                 hour: 'numeric',
                                 minute: '2-digit',
-                              })}
+                              }) : new Date(entry.created_at || '').toISOString()}
                             </span>
                           </div>
                           {(() => {
@@ -339,7 +343,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           </div>
         </div>
       </div>
-      
+
       <PersonaManager isOpen={isPersonaManagerOpen} onClose={() => setIsPersonaManagerOpen(false)} />
     </div>
   );

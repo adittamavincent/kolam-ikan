@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X } from 'lucide-react';
-import { Fragment, useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
+import { Fragment, useState, useEffect, useLayoutEffect, useRef, useMemo, useTransition } from 'react';
 import { NavigatorCreateButton } from './NavigatorCreateButton';
 import { Cabinet, CabinetInsert, CabinetUpdate, Stream, StreamInsert, StreamUpdate } from '@/lib/types';
 import {
@@ -538,6 +538,7 @@ const CabinetNode = ({
 
 export function Navigator({ }: NavigatorProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const params = useParams();
   const pathname = usePathname();
   const supabase = createClient();
@@ -1162,6 +1163,9 @@ export function Navigator({ }: NavigatorProps) {
     name: string,
     isActive: boolean
   ) => {
+    // Block interaction if a navigation is already pending
+    if (isPending) return;
+
     // If long press triggered rename, ignore this click
     if (ignoreNextClickRef.current) {
       ignoreNextClickRef.current = false;
@@ -1211,9 +1215,11 @@ export function Navigator({ }: NavigatorProps) {
       const targetPath = `/${domainId}/${id}`;
       if (pathname === targetPath || lastNavigatedPathRef.current === targetPath) return;
 
-      lastNavigatedPathRef.current = targetPath;
-      pendingStreamNavigationRef.current = { path: targetPath, startedAt: now };
-      router.push(targetPath);
+      startTransition(() => {
+        lastNavigatedPathRef.current = targetPath;
+        pendingStreamNavigationRef.current = { path: targetPath, startedAt: now };
+        router.push(targetPath);
+      });
     }
 
     lastClickRef.current = { id, time: now };
@@ -1350,7 +1356,7 @@ export function Navigator({ }: NavigatorProps) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle">
+    <div className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
       {/* Header */}
       <div className="border-b border-border-subtle p-4">
         <h2 className="text-sm font-semibold text-text-default">Navigator</h2>

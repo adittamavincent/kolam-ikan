@@ -7,11 +7,15 @@ interface NavigatorCreateButtonProps extends React.ButtonHTMLAttributes<HTMLButt
 }
 
 export const NavigatorCreateButton = React.forwardRef<HTMLButtonElement, NavigatorCreateButtonProps>(
-  ({ label, icon, className, ...props }, ref) => {
+  ({ label, icon, className, disabled, ...props }, ref) => {
     return (
       <button
         ref={ref}
-        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors text-text-muted hover:bg-surface-subtle hover:text-text-default ${className || ''}`}
+        disabled={disabled}
+        className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg/40 ${disabled
+          ? 'cursor-not-allowed text-text-muted/60 opacity-70'
+          : 'text-text-muted hover:bg-surface-subtle hover:text-text-default active:bg-surface-subtle/80'
+          } ${className || ''}`}
         {...props}
       >
         {icon || <Plus className="h-4 w-4" />}

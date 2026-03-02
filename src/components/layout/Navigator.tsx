@@ -3,9 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter, usePathname } from 'next/navigation';
-import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X, FilePlus, FolderPlus } from 'lucide-react';
 import { Fragment, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
-import { NavigatorCreateButton } from './NavigatorCreateButton';
 import { Cabinet, CabinetInsert, CabinetUpdate, Stream, StreamInsert, StreamUpdate } from '@/lib/types';
 import {
   applyOptimisticCabinetCreation,
@@ -610,6 +609,7 @@ export function Navigator({ }: NavigatorProps) {
 
   // Track expanded cabinets
   const [expandedCabinets, setExpandedCabinets] = useState<Set<string>>(new Set());
+  const [manualActiveNode, setManualActiveNode] = useState<{ id: string; type: 'cabinet' | 'stream' } | null>(null);
   // Track the last stream ID that triggered an auto-expand to prevent re-expanding on refresh/update
   const lastAutoExpandedStreamRef = useRef<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -1139,7 +1139,17 @@ export function Navigator({ }: NavigatorProps) {
   });
 
   // Determine the effective highlight node
-  const activeNode = getVisibleActiveNodeId(activeStreamId, streams, cabinets, expandedCabinets);
+  const routeActiveNode = getVisibleActiveNodeId(activeStreamId, streams, cabinets, expandedCabinets);
+  const validManualActiveNode = manualActiveNode
+    ? manualActiveNode.type === 'cabinet'
+      ? cabinets?.some((cabinet) => cabinet.id === manualActiveNode.id)
+        ? manualActiveNode
+        : null
+      : streams?.some((stream) => stream.id === manualActiveNode.id)
+        ? manualActiveNode
+        : null
+    : null;
+  const activeNode = validManualActiveNode ?? routeActiveNode;
 
   const isStreamNewlyCreated = (id: string) => id === justCreatedStreamId;
 
@@ -1271,6 +1281,22 @@ export function Navigator({ }: NavigatorProps) {
     setCreatingItem({ type: 'stream', parentId: targetCabinetId ?? null });
   };
 
+  const getSelectedCreationCabinetId = () => {
+    if (!activeNode) return null;
+    if (activeNode.type === 'cabinet') return activeNode.id;
+    return streams?.find((stream) => stream.id === activeNode.id)?.cabinet_id ?? null;
+  };
+
+  const handleHeaderCreateStream = () => {
+    const selectedCabinetId = getSelectedCreationCabinetId();
+    handleCreateStream(selectedCabinetId);
+  };
+
+  const handleHeaderCreateCabinet = () => {
+    const selectedCabinetId = getSelectedCreationCabinetId();
+    handleCreateCabinet(selectedCabinetId);
+  };
+
   const lastClickRef = useRef<{ id: string; time: number } | null>(null);
   const lastNavigatedPathRef = useRef<string | null>(null);
   const pendingStreamNavigationRef = useRef<{ path: string; startedAt: number } | null>(null);
@@ -1294,6 +1320,7 @@ export function Navigator({ }: NavigatorProps) {
     const lastClick = lastClickRef.current;
 
     if (type === 'cabinet') {
+      setManualActiveNode({ id, type: 'cabinet' });
       // Cabinet logic (applied to ALL cabinets, highlighted or not):
       // 1. Rapid successive clicks (< 500ms) -> Rename
       // 2. Single click / Slow click -> Toggle Expand/Collapse
@@ -1306,6 +1333,7 @@ export function Navigator({ }: NavigatorProps) {
         toggleCabinet(id);
       }
     } else {
+      setManualActiveNode(null);
       // Stream logic
       // Highlighted streams: Slow click (> 500ms) -> Rename (Legacy behavior)
       // All streams: Click -> Navigate
@@ -1454,6 +1482,27 @@ export function Navigator({ }: NavigatorProps) {
   };
 
   const rootStreams = streams?.filter((s) => !s.cabinet_id) || [];
+  const selectedCreationCabinetId = getSelectedCreationCabinetId();
+  const selectedStreamTarget = resolveCreationTarget({
+    kind: 'stream',
+    buttonCabinetId: selectedCreationCabinetId,
+    activeStreamId,
+    streams,
+  });
+  const canCreateStreamFromSelection = isCreationAllowed(selectedStreamTarget, settings);
+  const isCreatingStream = creatingItem?.type === 'stream';
+  const isCreatingCabinet = creatingItem?.type === 'cabinet';
+  const isCreateStreamDisabled =
+    isPending ||
+    createStreamMutation.isPending ||
+    createCabinetMutation.isPending ||
+    isCreatingStream ||
+    !canCreateStreamFromSelection;
+  const isCreateCabinetDisabled =
+    isPending ||
+    createCabinetMutation.isPending ||
+    createStreamMutation.isPending ||
+    isCreatingCabinet;
   const deleteItem = deleteTarget ? getItemById(deleteTarget.id, deleteTarget.type) : null;
   const moveItem = moveTarget ? getItemById(moveTarget.id, moveTarget.type) : null;
   const propertiesItem = propertiesTarget ? getItemById(propertiesTarget.id, propertiesTarget.type) : null;
@@ -1477,10 +1526,36 @@ export function Navigator({ }: NavigatorProps) {
     <>
       <div className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
         {/* Header */}
-        <div className="border-b border-border-subtle p-4">
-          <h2 className="truncate text-sm font-semibold text-text-default" title={currentDomainName}>
-            {currentDomainName}
-          </h2>
+        <div className="border-b border-border-subtle px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="truncate text-sm font-semibold text-text-default" title={currentDomainName}>
+              {currentDomainName}
+            </h2>
+            <div className="flex items-center gap-0.5">
+              {!isCabinetOnly && (
+                <button
+                  type="button"
+                  onClick={handleHeaderCreateStream}
+                  disabled={isCreateStreamDisabled}
+                  aria-label="New stream"
+                  title={canCreateStreamFromSelection ? 'New Stream' : 'New Stream (Root is restricted)'}
+                  className="rounded p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+                >
+                  <FilePlus className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleHeaderCreateCabinet}
+                disabled={isCreateCabinetDisabled}
+                aria-label="New cabinet"
+                title="New Cabinet"
+                className="rounded p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+              >
+                <FolderPlus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Tree View */}
@@ -1573,21 +1648,6 @@ export function Navigator({ }: NavigatorProps) {
             />
           )}
 
-          <div className="mt-4 flex flex-col gap-1">
-            {/* New Stream Button - Only if not restricted */}
-            {!isCabinetOnly && (
-              <NavigatorCreateButton
-                label="New Stream"
-                onClick={() => handleCreateStream(null)}
-              />
-            )}
-
-            {/* New Cabinet Button */}
-            <NavigatorCreateButton
-              label="New Cabinet"
-              onClick={() => handleCreateCabinet(null)}
-            />
-          </div>
         </div>
       </div>
 

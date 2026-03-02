@@ -246,6 +246,12 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
         onClose={() => setEditingDomain(null)}
         userId={userId}
         domain={editingDomain}
+        onDeleteSuccess={(deletedDomainId) => {
+          if (deletedDomainId === currentDomainId) {
+            hideSidebar();
+            router.push('/');
+          }
+        }}
       />
 
       <Transition appear show={profileOpen} as={Fragment}>

@@ -1,6 +1,6 @@
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
-import { Check, AlertCircle, Loader2, Pencil, X } from 'lucide-react';
+import { Check, AlertCircle, Loader2, Pencil, X, Trash2 } from 'lucide-react';
 import { useDomains } from '@/lib/hooks/useDomains';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { DEFAULT_DOMAIN_ICON, DOMAIN_ICON_OPTIONS } from '@/lib/constants/domainIcons';
@@ -11,13 +11,15 @@ interface EditDomainModalProps {
   onClose: () => void;
   userId: string;
   domain: Domain | null;
+  onDeleteSuccess?: (deletedDomainId: string) => void;
 }
 
-export function EditDomainModal({ isOpen, onClose, userId, domain }: EditDomainModalProps) {
-  const { updateDomain, domains } = useDomains(userId);
+export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSuccess }: EditDomainModalProps) {
+  const { updateDomain, deleteDomain, domains } = useDomains(userId);
   const [name, setName] = useState(domain?.name ?? '');
   const [icon, setIcon] = useState(domain?.icon || DEFAULT_DOMAIN_ICON);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const handleSubmit = async (event?: React.FormEvent) => {
     event?.preventDefault();
@@ -57,6 +59,26 @@ export function EditDomainModal({ isOpen, onClose, userId, domain }: EditDomainM
     }
   };
 
+  const handleDelete = async () => {
+    if (!domain) return;
+
+    if (!confirmDelete) {
+      setError(null);
+      setConfirmDelete(true);
+      return;
+    }
+
+    try {
+      await deleteDomain.mutateAsync(domain.id);
+      onDeleteSuccess?.(domain.id);
+      onClose();
+    } catch {
+      setError('Failed to delete domain. Please try again.');
+    }
+  };
+
+  const isMutating = updateDomain.isPending || deleteDomain.isPending;
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -83,7 +105,7 @@ export function EditDomainModal({ isOpen, onClose, userId, domain }: EditDomainM
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl border border-border-subtle bg-surface-default p-6 text-left align-middle transition-all">
+              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-2xl border border-border-subtle bg-surface-default p-6 text-left align-middle transition-all">
                 <div className="mb-4 flex items-center justify-between">
                   <Dialog.Title
                     as="h3"
@@ -95,6 +117,7 @@ export function EditDomainModal({ isOpen, onClose, userId, domain }: EditDomainM
                   <button
                     onClick={onClose}
                     className="rounded-full p-1 transition-colors hover:bg-surface-subtle"
+                    disabled={isMutating}
                   >
                     <X className="h-5 w-5 text-text-muted" />
                   </button>
@@ -149,18 +172,36 @@ export function EditDomainModal({ isOpen, onClose, userId, domain }: EditDomainM
                     )}
                   </div>
 
-                  <div className="mt-6 flex justify-end gap-3">
+                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={isMutating}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-status-error-text/40 px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-status-error-text focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:mr-auto"
+                    >
+                      {deleteDomain.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4" />
+                          {confirmDelete ? 'Confirm Delete' : 'Delete Domain'}
+                        </>
+                      )}
+                    </button>
                     <button
                       type="button"
                       className="inline-flex justify-center rounded-lg border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-text-muted focus-visible:ring-offset-2"
                       onClick={onClose}
-                      disabled={updateDomain.isPending}
+                      disabled={isMutating}
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      disabled={!name.trim() || updateDomain.isPending}
+                      disabled={!name.trim() || isMutating}
                       className="inline-flex items-center justify-center gap-2 rounded-lg border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {updateDomain.isPending ? (

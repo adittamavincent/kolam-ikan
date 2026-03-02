@@ -333,7 +333,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         className={`fixed inset-y-0 left-0 z-40 flex transform transition-transform md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
       >
-        <DomainSwitcher userId={userId} />
+        <DomainSwitcher userId={userId} onOpenGlobalSearch={() => setSearchOpen(true)} />
       </div>
 
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}

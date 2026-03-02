@@ -2,7 +2,7 @@
 
 import { Domain } from '@/lib/types';
 import { useRef, useState } from 'react';
-import { Home, Plus, RefreshCw, AlertCircle, LogOut, Settings } from 'lucide-react';
+import { Home, Plus, RefreshCw, AlertCircle, LogOut, Settings, Search, Users } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Fragment } from 'react';
@@ -14,17 +14,20 @@ import { CreateDomainModal } from './CreateDomainModal';
 import { useKeyboard } from '@/lib/hooks/useKeyboard';
 import { useDomains } from '@/lib/hooks/useDomains';
 import { EditDomainModal } from './EditDomainModal';
+import { PersonaManager } from '@/components/features/persona/PersonaManager';
 
 interface DomainSwitcherProps {
   userId: string;
+  onOpenGlobalSearch?: () => void;
 }
 
-export function DomainSwitcher({ userId }: DomainSwitcherProps) {
+export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherProps) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<Domain | null>(null);
+  const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [hoveredDomainTooltip, setHoveredDomainTooltip] = useState<{ name: string; top: number } | null>(null);
@@ -95,6 +98,30 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
           Home
         </div>
       </button>
+
+      <div className="mb-3 flex w-full flex-col items-center gap-2 px-2">
+        <button
+          onClick={() => onOpenGlobalSearch?.()}
+          className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
+          title="Global Search (⌘⇧K)"
+        >
+          <Search className="h-5 w-5" />
+          <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+            Global Search
+          </div>
+        </button>
+
+        <button
+          onClick={() => setIsPersonaManagerOpen(true)}
+          className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
+          title="Manage Personas"
+        >
+          <Users className="h-5 w-5" />
+          <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+            Personas
+          </div>
+        </button>
+      </div>
 
       <div className="mb-4 h-px w-8 bg-border-subtle" />
 
@@ -335,6 +362,11 @@ export function DomainSwitcher({ userId }: DomainSwitcherProps) {
           </div>
         </Dialog>
       </Transition>
+
+      <PersonaManager
+        isOpen={isPersonaManagerOpen}
+        onClose={() => setIsPersonaManagerOpen(false)}
+      />
     </div>
   );
 }

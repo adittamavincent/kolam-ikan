@@ -5,11 +5,10 @@ import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
 import { LogSection } from './LogSection';
 import { useStream } from '@/lib/hooks/useStream';
-import { Filter, ArrowUpDown, Search, Users, Download, Calendar, Info, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Filter, ArrowUpDown, Search, Download, Calendar, Info, AlertTriangle, AlertCircle } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
-import { PersonaManager } from '../persona/PersonaManager';
 import { exportEntriesToMarkdown, downloadMarkdown } from '@/lib/utils/export';
 import { EntryWithSections } from '@/lib/types';
 
@@ -88,7 +87,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const { stream } = useStream(streamId);
   const { personas } = usePersonas();
 
-  const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
 
   const handleExport = async () => {
@@ -159,7 +157,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       ? 'bg-surface-subtle text-text-default'
                       : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'
                     }`}
-                  title={isToolbarOpen ? "Hide toolbar" : "Show toolbar"}
+                  title={isToolbarOpen ? 'Hide local search' : 'Show local search'}
                 >
                   <Search className="h-4 w-4" />
                 </button>
@@ -169,13 +167,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                   title="Export to Markdown"
                 >
                   <Download className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => setIsPersonaManagerOpen(true)}
-                  className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
-                  title="Manage Personas"
-                >
-                  <Users className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -343,8 +334,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           </div>
         </div>
       </div>
-
-      <PersonaManager isOpen={isPersonaManagerOpen} onClose={() => setIsPersonaManagerOpen(false)} />
     </div>
   );
 }

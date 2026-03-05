@@ -6,6 +6,15 @@ import { usePersonaMutations } from '@/lib/hooks/usePersonaMutations';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { Persona } from '@/lib/types';
 
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string' && message.length > 0) return message;
+  }
+  return 'Failed to save persona';
+};
+
 interface PersonaManagerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -63,8 +72,8 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
         });
         setIsCreating(false);
       }
-    } catch {
-      setError('Failed to save persona');
+    } catch (saveError) {
+      setError(getErrorMessage(saveError));
     }
   };
 

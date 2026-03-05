@@ -29,14 +29,18 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.rpc('create_entry_with_section', {
       p_stream_id: payload.streamId,
       p_content_json: first.content as Json,
-      p_persona_id: first.personaId || undefined,
-      p_persona_name_snapshot: undefined,
+      p_persona_id: first.personaId ?? null,
+      p_persona_name_snapshot: null,
+      p_search_text: null,
       p_is_draft: true,
     });
     if (error || !data) {
       return NextResponse.json({ ok: false }, { status: 500 });
     }
-    entryId = (data as { id: string }).id;
+    entryId = data[0]?.entry_id ?? null;
+    if (!entryId) {
+      return NextResponse.json({ ok: false }, { status: 500 });
+    }
   }
 
   for (const section of payload.sections) {

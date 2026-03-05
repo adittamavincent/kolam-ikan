@@ -132,37 +132,32 @@ test.describe('Persona Management', () => {
     test('creates a new persona', async ({ page }) => {
         // Open persona manager
         const personaBtn = page.locator('[title="Manage Personas"]');
-        if (!(await personaBtn.isVisible())) return;
-
+        await expect(personaBtn).toBeVisible();
         await personaBtn.click();
-        await page.waitForTimeout(1000);
+
+        await expect(page.getByRole('heading', { name: 'Manage Personas' })).toBeVisible();
 
         // Click New Persona button
         const addBtn = page.getByRole('button', { name: 'New Persona' });
-        if (await addBtn.isVisible()) {
-            await addBtn.click();
-            await page.waitForTimeout(500);
+        await expect(addBtn).toBeVisible();
+        await addBtn.click();
 
-            // Fill name
-            const nameInput = page.getByPlaceholder('e.g., Creative Mode');
-            if (await nameInput.isVisible()) {
-                const personaName = `E2E Bot ${Date.now()}`;
-                await nameInput.fill(personaName);
+        // Fill name
+        const nameInput = page.getByPlaceholder('e.g., Creative Mode');
+        await expect(nameInput).toBeVisible();
+        const personaName = `E2E Bot ${Date.now()}`;
+        await nameInput.fill(personaName);
 
-                // Save
-                const saveBtn = page.getByRole('button', { name: 'Save Persona' });
-                if (await saveBtn.isVisible()) {
-                    await saveBtn.click();
-                    await page.waitForTimeout(2000);
+        // Save
+        const saveBtn = page.getByRole('button', { name: 'Save Persona' });
+        await expect(saveBtn).toBeVisible();
+        await saveBtn.click();
 
-                    // Verify persona appears in the list
-                    const createdPersona = page.getByText(personaName);
-                    if (await createdPersona.isVisible().catch(() => false)) {
-                        await expect(createdPersona).toBeVisible();
-                    }
-                }
-            }
-        }
+        // Ensure creation did not surface a failure
+        await expect(page.getByText('Failed to save persona')).toHaveCount(0);
+
+        // Verify persona appears in the list
+        await expect(page.getByText(personaName)).toBeVisible({ timeout: 10_000 });
 
         // Close the dialog
         await page.keyboard.press('Escape');

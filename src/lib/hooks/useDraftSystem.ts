@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/client';
 import { PartialBlock } from '@blocknote/core';
 import debounce from 'lodash/debounce';
 import { EntryContentSchema } from '@/lib/validation/entry';
-import { EntryWithSections } from '@/lib/types';
 import { Json } from '@/lib/types/database.types';
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
@@ -319,15 +318,19 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                       p_stream_id: streamId,
                       p_content_json: content as unknown as Json,
                       p_persona_id: personaId,
-                      p_persona_name_snapshot: personaName,
+                      p_persona_name_snapshot: personaName ?? null,
+                      p_search_text: null,
                       p_is_draft: true
                     });
                     
                     if (error) throw error;
-                    
-                    const newEntry = data as unknown as EntryWithSections;
-                    const newEntryId = newEntry.id;
-                    const newSectionId = newEntry.sections[0].id;
+
+                    const created = data?.[0];
+                    if (!created?.entry_id || !created?.section_id) {
+                      throw new Error('Failed to create entry section');
+                    }
+                    const newEntryId = created.entry_id;
+                    const newSectionId = created.section_id;
                     
                     return { newEntryId, newSectionId };
                 })().then(res => {

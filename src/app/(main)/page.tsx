@@ -142,7 +142,7 @@ function DomainCard({
     >
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-action-primary-bg/10 text-2xl group-hover:bg-action-primary-bg/20 transition-colors">
-          <DynamicIcon name={domain.icon} />
+          <DynamicIcon name={domain.icon ?? domain.name} />
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-sm font-semibold text-text-default group-hover:text-action-primary-bg transition-colors">

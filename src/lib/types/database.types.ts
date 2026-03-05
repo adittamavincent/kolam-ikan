@@ -34,390 +34,428 @@ export type Database = {
   }
   public: {
     Tables: {
-      personas: {
+      audit_logs: {
         Row: {
+          action: string
+          created_at: string | null
+          expires_at: string | null
           id: string
+          payload: Json | null
+          target_id: string | null
+          target_table: string | null
           user_id: string | null
-          type: string
-          name: string
-          icon: string
-          color: string
-          is_system: boolean
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
         }
         Insert: {
-          id?: string
-          user_id?: string | null
-          type: string
-          name: string
-          icon: string
-          color: string
-          is_system?: boolean
-          deleted_at?: string | null
+          action: string
           created_at?: string | null
-          updated_at?: string | null
+          expires_at?: string | null
+          id?: string
+          payload?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+          user_id?: string | null
         }
         Update: {
+          action?: string
+          created_at?: string | null
+          expires_at?: string | null
           id?: string
+          payload?: Json | null
+          target_id?: string | null
+          target_table?: string | null
           user_id?: string | null
-          type?: string
-          name?: string
-          icon?: string
-          color?: string
-          is_system?: boolean
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      domains: {
-        Row: {
-          id: string
-          user_id: string
-          name: string
-          icon: string | null
-          description: string | null
-          sort_order: number
-          settings: Json
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          name: string
-          icon?: string | null
-          description?: string | null
-          sort_order?: number
-          settings?: Json
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          name?: string
-          icon?: string | null
-          description?: string | null
-          sort_order?: number
-          settings?: Json
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
         }
         Relationships: []
       }
       cabinets: {
         Row: {
-          id: string
+          created_at: string | null
+          deleted_at: string | null
           domain_id: string
+          id: string
+          name: string
           parent_id: string | null
-          name: string
           sort_order: number
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
+          updated_at: string | null
         }
         Insert: {
-          id?: string
+          created_at?: string | null
+          deleted_at?: string | null
           domain_id: string
-          parent_id?: string | null
+          id?: string
           name: string
+          parent_id?: string | null
           sort_order?: number
-          deleted_at?: string | null
-          created_at?: string | null
           updated_at?: string | null
         }
         Update: {
-          id?: string
+          created_at?: string | null
+          deleted_at?: string | null
           domain_id?: string
+          id?: string
+          name?: string
           parent_id?: string | null
-          name?: string
           sort_order?: number
-          deleted_at?: string | null
-          created_at?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'cabinets_domain_id_fkey'
-            columns: ['domain_id']
+            foreignKeyName: "cabinets_domain_id_fkey"
+            columns: ["domain_id"]
             isOneToOne: false
-            referencedRelation: 'domains'
-            referencedColumns: ['id']
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: 'cabinets_parent_id_fkey'
-            columns: ['parent_id']
+            foreignKeyName: "cabinets_parent_id_fkey"
+            columns: ["parent_id"]
             isOneToOne: false
-            referencedRelation: 'cabinets'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      streams: {
-        Row: {
-          id: string
-          cabinet_id: string | null
-          domain_id?: string | null
-          name: string
-          description?: string | null
-          sort_order: number
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Insert: {
-          id?: string
-          cabinet_id: string | null
-          domain_id?: string | null
-          name: string
-          description?: string | null
-          sort_order?: number
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          cabinet_id?: string | null
-          domain_id?: string | null
-          name?: string
-          description?: string | null
-          sort_order?: number
-          deleted_at?: string | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'streams_cabinet_id_fkey'
-            columns: ['cabinet_id']
-            isOneToOne: false
-            referencedRelation: 'cabinets'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      entries: {
-        Row: {
-          id: string
-          stream_id: string
-          is_draft?: boolean
-          created_at?: string | null
-          updated_at?: string | null
-          deleted_at?: string | null
-        }
-        Insert: {
-          id?: string
-          stream_id: string
-          is_draft?: boolean
-          created_at?: string | null
-          updated_at?: string | null
-          deleted_at?: string | null
-        }
-        Update: {
-          id?: string
-          stream_id?: string
-          is_draft?: boolean
-          created_at?: string | null
-          updated_at?: string | null
-          deleted_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'entries_stream_id_fkey'
-            columns: ['stream_id']
-            isOneToOne: false
-            referencedRelation: 'streams'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      sections: {
-        Row: {
-          id: string
-          entry_id: string
-          persona_id: string | null
-          persona_name_snapshot: string | null
-          content_json: Json | null
-          search_text: string | null
-          sort_order: number
-          created_at?: string | null
-          updated_at?: string | null
-          deleted_at?: string | null
-        }
-        Insert: {
-          id?: string
-          entry_id: string
-          persona_id?: string | null
-          persona_name_snapshot?: string | null
-          content_json?: Json | null
-          search_text?: string | null
-          sort_order?: number
-          created_at?: string | null
-          updated_at?: string | null
-          deleted_at?: string | null
-        }
-        Update: {
-          id?: string
-          entry_id?: string
-          persona_id?: string | null
-          persona_name_snapshot?: string | null
-          content_json?: Json | null
-          search_text?: string | null
-          sort_order?: number
-          created_at?: string | null
-          updated_at?: string | null
-          deleted_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'sections_entry_id_fkey'
-            columns: ['entry_id']
-            isOneToOne: false
-            referencedRelation: 'entries'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'sections_persona_id_fkey'
-            columns: ['persona_id']
-            isOneToOne: false
-            referencedRelation: 'personas'
-            referencedColumns: ['id']
-          },
-        ]
-      }
-      canvases: {
-        Row: {
-          id: string
-          stream_id: string
-          content_json: Json | null
-          search_text: string | null
-          version: number | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Insert: {
-          id?: string
-          stream_id: string
-          content_json?: Json | null
-          search_text?: string | null
-          version?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          id?: string
-          stream_id?: string
-          content_json?: Json | null
-          search_text?: string | null
-          version?: number | null
-          created_at?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: 'canvases_stream_id_fkey'
-            columns: ['stream_id']
-            isOneToOne: false
-            referencedRelation: 'streams'
-            referencedColumns: ['id']
+            referencedRelation: "cabinets"
+            referencedColumns: ["id"]
           },
         ]
       }
       canvas_versions: {
         Row: {
-          id: string
           canvas_id: string
-          content_json: Json | null
-          version: number | null
-          created_at?: string | null
-          name?: string | null
+          content_json: Json
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string | null
+          stream_id: string
+          summary: string | null
         }
         Insert: {
-          id?: string
           canvas_id: string
-          content_json?: Json | null
-          version?: number | null
+          content_json?: Json
           created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string | null
+          stream_id: string
+          summary?: string | null
         }
         Update: {
-          id?: string
           canvas_id?: string
-          content_json?: Json | null
-          version?: number | null
+          content_json?: Json
           created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string | null
+          stream_id?: string
+          summary?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: 'canvas_versions_canvas_id_fkey'
-            columns: ['canvas_id']
+            foreignKeyName: "canvas_versions_canvas_id_fkey"
+            columns: ["canvas_id"]
             isOneToOne: false
-            referencedRelation: 'canvases'
-            referencedColumns: ['id']
+            referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_versions_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
           },
         ]
       }
-      audit_logs: {
+      canvases: {
         Row: {
-          id: string
-          user_id: string | null
-          action: string
-          metadata: Json | null
-          target_table?: string | null
-          target_id?: string | null
-          payload?: Json | null
+          content_json: Json
           created_at: string | null
+          id: string
+          search_text: string | null
+          stream_id: string
+          updated_at: string | null
         }
         Insert: {
-          id?: string
-          user_id?: string | null
-          action: string
-          metadata?: Json | null
-          target_table?: string | null
-          target_id?: string | null
-          payload?: Json | null
+          content_json?: Json
           created_at?: string | null
+          id?: string
+          search_text?: string | null
+          stream_id: string
+          updated_at?: string | null
         }
         Update: {
-          id?: string
-          user_id?: string | null
-          action?: string
-          metadata?: Json | null
-          target_table?: string | null
-          target_id?: string | null
-          payload?: Json | null
+          content_json?: Json
           created_at?: string | null
+          id?: string
+          search_text?: string | null
+          stream_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvases_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: true
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      domains: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          icon: string
+          id: string
+          name: string
+          settings: Json | null
+          sort_order: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          icon: string
+          id?: string
+          name: string
+          settings?: Json | null
+          sort_order?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          settings?: Json | null
+          sort_order?: number
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
+      }
+      entries: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          id: string
+          is_draft: boolean
+          stream_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_draft?: boolean
+          stream_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          is_draft?: boolean
+          stream_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entries_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personas: {
+        Row: {
+          color: string
+          created_at: string | null
+          deleted_at: string | null
+          icon: string
+          id: string
+          is_system: boolean | null
+          name: string
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          color: string
+          created_at?: string | null
+          deleted_at?: string | null
+          icon: string
+          id?: string
+          is_system?: boolean | null
+          name: string
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          deleted_at?: string | null
+          icon?: string
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      sections: {
+        Row: {
+          content_json: Json
+          created_at: string | null
+          entry_id: string
+          id: string
+          persona_id: string | null
+          persona_name_snapshot: string | null
+          search_text: string | null
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          content_json?: Json
+          created_at?: string | null
+          entry_id: string
+          id?: string
+          persona_id?: string | null
+          persona_name_snapshot?: string | null
+          search_text?: string | null
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          content_json?: Json
+          created_at?: string | null
+          entry_id?: string
+          id?: string
+          persona_id?: string | null
+          persona_name_snapshot?: string | null
+          search_text?: string | null
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sections_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sections_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      streams: {
+        Row: {
+          cabinet_id: string | null
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          domain_id: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          cabinet_id?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          domain_id: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cabinet_id?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          domain_id?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "streams_cabinet_id_fkey"
+            columns: ["cabinet_id"]
+            isOneToOne: false
+            referencedRelation: "cabinets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "streams_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      apply_audit_inverse: {
+        Args: { payload: Json; target_id: string; target_table: string }
+        Returns: undefined
+      }
+      create_entry_with_section:
+        | {
+            Args: {
+              p_content_json: Json
+              p_persona_id?: string
+              p_persona_name_snapshot?: string
+              p_stream_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_content_json: Json
+              p_is_draft?: boolean
+              p_persona_id?: string
+              p_persona_name_snapshot?: string
+              p_stream_id: string
+            }
+            Returns: Json
+          }
       exec_sql: { Args: { sql: string }; Returns: undefined }
-      create_entry_with_section: {
-        Args: {
-          p_stream_id: string
-          p_persona_id?: string | null
-          p_persona_name_snapshot?: string | null
-          p_content_json: Json
-          p_search_text?: string | null
-          p_sort_order?: number | null
-          p_is_draft?: boolean
-        }
+      get_domain_stats: {
+        Args: { p_user_id: string }
         Returns: {
-          entry_id: string
-          section_id: string
+          cabinet_count: number
+          domain_id: string
+          entry_count: number
+          stream_count: number
         }[]
       }
+      jsonb_to_text: { Args: { jsonb_data: Json }; Returns: string }
+      revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never

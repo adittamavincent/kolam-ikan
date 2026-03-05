@@ -50,3 +50,4 @@ next-env.d.ts
 /test-results
 /blob-report
 /.auth
+.ctx-state.json

@@ -31,13 +31,13 @@ export async function POST(request: Request) {
       p_content_json: first.content as Json,
       p_persona_id: first.personaId ?? null,
       p_persona_name_snapshot: null,
-      p_search_text: null,
       p_is_draft: true,
     });
     if (error || !data) {
       return NextResponse.json({ ok: false }, { status: 500 });
     }
-    entryId = data[0]?.entry_id ?? null;
+    const created = data as Record<string, unknown>;
+    entryId = (created.id as string) ?? null;
     if (!entryId) {
       return NextResponse.json({ ok: false }, { status: 500 });
     }

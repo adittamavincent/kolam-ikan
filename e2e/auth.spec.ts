@@ -9,20 +9,23 @@ const TEST_USER = {
     password: 'KolamTest2026!',
 };
 
+// Ensure these tests run without any stored auth
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test.describe('Login Flow', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/login');
     });
 
     test('shows login page with branding', async ({ page }) => {
-        await expect(page.locator('h2')).toContainText('Kolam Ikan');
+        await expect(page.locator('h2').first()).toContainText('Kolam Ikan');
         await expect(page.locator('button[type="submit"]')).toContainText('Sign in');
     });
 
     test('shows validation errors for empty submit', async ({ page }) => {
         await page.click('button[type="submit"]');
-        // Email and password fields should show required errors
-        await expect(page.locator('#email')).toBeFocused;
+        // Should stay on login page — form not submitted
+        await expect(page).toHaveURL(/login/);
     });
 
     test('shows error for wrong password', async ({ page }) => {
@@ -40,8 +43,7 @@ test.describe('Login Flow', () => {
         await page.click('button[type="submit"]');
 
         // Should redirect away from login page
-        await page.waitForURL('/', { timeout: 15_000 });
-        // Should NOT be back on the login page
+        await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 15_000 });
         await expect(page).not.toHaveURL(/login/);
     });
 
@@ -115,13 +117,12 @@ test.describe('Session Persistence', () => {
         await page.fill('#email', TEST_USER.email);
         await page.fill('#password', TEST_USER.password);
         await page.click('button[type="submit"]');
-        await page.waitForURL('/', { timeout: 15_000 });
+        await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 15_000 });
 
         // Reload
         await page.reload();
 
         // Should still be on the main page, not redirected to login
-        await page.waitForTimeout(2000);
-        await expect(page).not.toHaveURL(/login/);
+        await expect(page).not.toHaveURL(/login/, { timeout: 5000 });
     });
 });

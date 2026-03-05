@@ -319,18 +319,18 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                       p_content_json: content as unknown as Json,
                       p_persona_id: personaId,
                       p_persona_name_snapshot: personaName ?? null,
-                      p_search_text: null,
                       p_is_draft: true
                     });
                     
                     if (error) throw error;
 
-                    const created = data?.[0];
-                    if (!created?.entry_id || !created?.section_id) {
+                    const created = data as Record<string, unknown> | null;
+                    const sections = created?.sections as Record<string, unknown>[] | undefined;
+                    if (!created?.id || !sections?.[0]?.id) {
                       throw new Error('Failed to create entry section');
                     }
-                    const newEntryId = created.entry_id;
-                    const newSectionId = created.section_id;
+                    const newEntryId = created.id as string;
+                    const newSectionId = sections[0].id as string;
                     
                     return { newEntryId, newSectionId };
                 })().then(res => {
@@ -412,7 +412,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         }
 
       } catch (error) {
-        console.error(`Save failed for instance ${instanceId}:`, error);
+        const errMsg = error instanceof Error ? error.message : (error as Record<string, unknown>)?.message ?? JSON.stringify(error);
+        console.error(`Save failed for instance ${instanceId}:`, errMsg);
         setStatus('error');
       }
     })();

@@ -218,8 +218,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                                     <MenuItem key={persona.id}>
                                         {({ active }) => (
                                             <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
+                                                onClick={() => {
                                                     addPersona(persona.id);
                                                 }}
                                                 className={`${
@@ -292,8 +291,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                                             <MenuItem key={p.id}>
                                                 {({ active }) => (
                                                     <button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
+                                                        onClick={() => {
                                                             changePersona(instanceId, p.id);
                                                         }}
                                                         className={`${

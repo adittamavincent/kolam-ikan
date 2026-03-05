@@ -12,11 +12,8 @@
     "db:reset": "supabase db reset",
     "db:migrate": "supabase migration up",
     "prepare": "husky",
-    "seed": "tsx -r dotenv/config supabase/seed/seed.ts",
     "e2e": "playwright test",
-    "e2e:headed": "playwright test --headed",
-    "seed:validate": "tsx -r dotenv/config supabase/seed/validate.ts",
-    "seed:reset": "supabase db reset && npm run seed"
+    "e2e:headed": "playwright test --headed"
   },
   "dependencies": {
     "@blocknote/core": "^0.46.2",

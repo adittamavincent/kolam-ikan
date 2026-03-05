@@ -1334,6 +1334,14 @@ export function Navigator({ }: NavigatorProps) {
       }
     } else {
       setManualActiveNode(null);
+
+      // Block interaction with optimistic (temp) streams — the onSuccess
+      // callback will auto-navigate once the real ID is available.
+      if (id.startsWith('temp-')) {
+        lastClickRef.current = { id, time: now };
+        return;
+      }
+
       // Stream logic
       // Highlighted streams: Slow click (> 500ms) -> Rename (Legacy behavior)
       // All streams: Click -> Navigate

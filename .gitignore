@@ -44,3 +44,9 @@ next-env.d.ts
 
 # trae
 .trae
+
+# playwright
+/playwright-report
+/test-results
+/blob-report
+/.auth

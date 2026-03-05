@@ -179,6 +179,8 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
         {/* Add Domain */}
         <button
           onClick={() => setIsCreateModalOpen(true)}
+          aria-label="Add Domain"
+          title="Add Domain"
           className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg hover:scale-105"
         >
           <Plus className="h-5 w-5" />

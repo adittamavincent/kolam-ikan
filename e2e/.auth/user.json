@@ -1,0 +1,53 @@
+{
+  "cookies": [
+    {
+      "name": "kolam-remember-me",
+      "value": "true",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1775282804.747539,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "sb-localhost-auth-token",
+      "value": "base64-eyJhY2Nlc3NfdG9rZW4iOiJleUpoYkdjaU9pSkZVekkxTmlJc0ltdHBaQ0k2SW1JNE1USTJPV1l4TFRJeFpEZ3ROR1l5WlMxaU56RTVMV015TWpRd1lUZzBNR1E1TUNJc0luUjVjQ0k2SWtwWFZDSjkuZXlKcGMzTWlPaUpvZEhSd09pOHZNVEkzTGpBdU1DNHhPalUwTXpJeEwyRjFkR2d2ZGpFaUxDSnpkV0lpT2lKaFpESm1aVEkyWXkweE9ERTNMVFJoTWpFdFlUQTJNQzB5WTJRMFpXRXhZV1kzTW1ZaUxDSmhkV1FpT2lKaGRYUm9aVzUwYVdOaGRHVmtJaXdpWlhod0lqb3hOemN5TmprME5ERTFMQ0pwWVhRaU9qRTNOekkyT1RBNE1UVXNJbVZ0WVdsc0lqb2laVEpsS3pFM056STJPVEE0TVRRM05qSkFhMjlzWVcxcGEyRnVMbXh2WTJGc0lpd2ljR2h2Ym1VaU9pSWlMQ0poY0hCZmJXVjBZV1JoZEdFaU9uc2ljSEp2ZG1sa1pYSWlPaUpsYldGcGJDSXNJbkJ5YjNacFpHVnljeUk2V3lKbGJXRnBiQ0pkZlN3aWRYTmxjbDl0WlhSaFpHRjBZU0k2ZXlKbGJXRnBiQ0k2SW1VeVpTc3hOemN5Tmprd09ERTBOell5UUd0dmJHRnRhV3RoYmk1c2IyTmhiQ0lzSW1WdFlXbHNYM1psY21sbWFXVmtJanAwY25WbExDSm1kV3hzWDI1aGJXVWlPaUpGTWtVZ1ZYTmxjaUF4TnpjeU5qa3dPREUwTnpZeUlpd2ljR2h2Ym1WZmRtVnlhV1pwWldRaU9tWmhiSE5sTENKemRXSWlPaUpoWkRKbVpUSTJZeTB4T0RFM0xUUmhNakV0WVRBMk1DMHlZMlEwWldFeFlXWTNNbVlpZlN3aWNtOXNaU0k2SW1GMWRHaGxiblJwWTJGMFpXUWlMQ0poWVd3aU9pSmhZV3d4SWl3aVlXMXlJanBiZXlKdFpYUm9iMlFpT2lKd1lYTnpkMjl5WkNJc0luUnBiV1Z6ZEdGdGNDSTZNVGMzTWpZNU1EZ3hOWDFkTENKelpYTnphVzl1WDJsa0lqb2lZemhtTnpnNU1UQXROVEpsWkMwME1UY3lMV0ptTWprdE1tTmtOV1E0T1dNMU9UYzFJaXdpYVhOZllXNXZibmx0YjNWeklqcG1ZV3h6WlgwLjlwX2g4Ri0wMk44SndHVEtWWnRycHQ2UmhyWXJfWFZGamFtVktCMTBWSU5wOGJ0UlpWZUVINkgzY0dDYldDMWNCNUJIazg0U3ZlUHRoTmg4WGtVSFFBIiwidG9rZW5fdHlwZSI6ImJlYXJlciIsImV4cGlyZXNfaW4iOjM2MDAsImV4cGlyZXNfYXQiOjE3NzI2OTQ0MTUsInJlZnJlc2hfdG9rZW4iOiJ3eG1sdWlwcWpkZm4iLCJ1c2VyIjp7ImlkIjoiYWQyZmUyNmMtMTgxNy00YTIxLWEwNjAtMmNkNGVhMWFmNzJmIiwiYXVkIjoiYXV0aGVudGljYXRlZCIsInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiZW1haWwiOiJlMmUrMTc3MjY5MDgxNDc2MkBrb2xhbWlrYW4ubG9jYWwiLCJlbWFpbF9jb25maXJtZWRfYXQiOiIyMDI2LTAzLTA1VDA2OjA2OjU0Ljk5MDU3OTg3NloiLCJwaG9uZSI6IiIsImxhc3Rfc2lnbl9pbl9hdCI6IjIwMjYtMDMtMDVUMDY6MDY6NTUuMDAwNDk2NjY4WiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoiZTJlKzE3NzI2OTA4MTQ3NjJAa29sYW1pa2FuLmxvY2FsIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImZ1bGxfbmFtZSI6IkUyRSBVc2VyIDE3NzI2OTA4MTQ3NjIiLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6ImFkMmZlMjZjLTE4MTctNGEyMS1hMDYwLTJjZDRlYTFhZjcyZiJ9LCJpZGVudGl0aWVzIjpbeyJpZGVudGl0eV9pZCI6IjM2NWI0ODc2LTkxODQtNGJhNy1hM2NmLTNjOTkzZjc3MDBhNCIsImlkIjoiYWQyZmUyNmMtMTgxNy00YTIxLWEwNjAtMmNkNGVhMWFmNzJmIiwidXNlcl9pZCI6ImFkMmZlMjZjLTE4MTctNGEyMS1hMDYwLTJjZDRlYTFhZjcyZiIsImlkZW50aXR5X2RhdGEiOnsiZW1haWwiOiJlMmUrMTc3MjY5MDgxNDc2MkBrb2xhbWlrYW4ubG9jYWwiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoiRTJFIFVzZXIgMTc3MjY5MDgxNDc2MiIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiYWQyZmUyNmMtMTgxNy00YTIxLWEwNjAtMmNkNGVhMWFmNzJmIn0sInByb3ZpZGVyIjoiZW1haWwiLCJsYXN0X3NpZ25faW5fYXQiOiIyMDI2LTAzLTA1VDA2OjA2OjU0Ljk4NTc4NzQ1OVoiLCJjcmVhdGVkX2F0IjoiMjAyNi0wMy0wNVQwNjowNjo1NC45ODU4MTZaIiwidXBkYXRlZF9hdCI6IjIwMjYtMDMtMDVUMDY6MDY6NTQuOTg1ODE2WiIsImVtYWlsIjoiZTJlKzE3NzI2OTA4MTQ3NjJAa29sYW1pa2FuLmxvY2FsIn1dLCJjcmVhdGVkX2F0IjoiMjAyNi0wMy0wNVQwNjowNjo1NC45NzQyMjZaIiwidXBkYXRlZF9hdCI6IjIwMjYtMDMtMDVUMDY6MDY6NTUuMDA5MzExWiIsImlzX2Fub255bW91cyI6ZmFsc2V9fQ",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1807250815.021844,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "kolam-dev-auth",
+      "value": "1",
+      "domain": "localhost",
+      "path": "/",
+      "expires": 1775282815.023437,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "http://localhost:3000",
+      "localStorage": [
+        {
+          "name": "kolam.auth.rememberMe",
+          "value": "true"
+        },
+        {
+          "name": "kolam.auth.state.v1",
+          "value": "{\"status\":\"signed_in\",\"updatedAt\":1772690815153,\"userId\":\"ad2fe26c-1817-4a21-a060-2cd4ea1af72f\",\"email\":\"e2e+1772690814762@kolamikan.local\",\"expiresAt\":1772694415000}"
+        },
+        {
+          "name": "sidebar-storage",
+          "value": "{\"state\":{\"width\":256,\"visible\":false},\"version\":0}"
+        }
+      ]
+    }
+  ]
+}

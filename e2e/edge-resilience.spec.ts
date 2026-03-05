@@ -1,4 +1,6 @@
 import { test, expect, Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // ============================================================================
 // EDGE CASES & RESILIENCE — Stress testing on new@kolamikan.local
@@ -10,13 +12,30 @@ import { test, expect, Page } from '@playwright/test';
 // separate account to avoid polluting other users' data.
 // ============================================================================
 
+// File-backed shared state — survives Playwright worker restarts between serial blocks
+const CTX_FILE = path.join(__dirname, '.ctx-edge.json');
+
 const ctx = {
     domainId: '',
     streamId: '',
     domainName: 'Edge Case Domain',
     cabinetName: 'Edge Cabinet',
     streamName: 'Edge Stream',
+    personaName: 'Edge Persona',
 };
+
+function saveCtx() {
+    fs.writeFileSync(CTX_FILE, JSON.stringify(ctx), 'utf-8');
+}
+
+function restoreCtx() {
+    try {
+        if (fs.existsSync(CTX_FILE)) {
+            const saved = JSON.parse(fs.readFileSync(CTX_FILE, 'utf-8'));
+            Object.assign(ctx, saved);
+        }
+    } catch { /* ignore read errors */ }
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -78,6 +97,7 @@ test.describe.serial('Edge Setup', () => {
         }, { timeout: 10_000 });
 
         ctx.domainId = page.url().split('/').filter(Boolean).pop()!;
+        saveCtx();
     });
 
     test('creates cabinet and stream for edge-case testing', async ({ page }) => {
@@ -103,6 +123,24 @@ test.describe.serial('Edge Setup', () => {
         await page.getByText(ctx.streamName).click();
         await page.waitForURL(url => url.pathname.split('/').filter(Boolean).length === 2, { timeout: 10_000 });
         ctx.streamId = page.url().split('/').filter(Boolean).pop()!;
+        saveCtx();
+    });
+
+    test('creates persona for edge-case testing', async ({ page }) => {
+        await goHome(page);
+
+        const personaBtn = page.locator('[title="Manage Personas"]');
+        await personaBtn.click();
+        await expect(page.getByRole('heading', { name: 'Manage Personas' })).toBeVisible();
+
+        await page.getByRole('button', { name: 'New Persona' }).click();
+        const nameInput = page.getByPlaceholder('e.g., Creative Mode');
+        await nameInput.fill(ctx.personaName);
+        await page.getByRole('button', { name: 'Save Persona' }).click();
+        await page.waitForTimeout(1000);
+
+        await expect(page.getByText(ctx.personaName)).toBeVisible({ timeout: 5000 });
+        await page.keyboard.press('Escape');
     });
 });
 
@@ -134,9 +172,9 @@ test.describe.serial('Domain Edge Cases', () => {
         const nameInput = page.getByPlaceholder('e.g., My Knowledge Base');
         await nameInput.waitFor({ timeout: 5000 });
 
-        // Leave name empty and try to create
-        await page.getByRole('button', { name: 'Create Domain' }).click();
-        await page.waitForTimeout(1000);
+        // Leave name empty — Create Domain button should be disabled
+        const createBtn = page.getByRole('button', { name: 'Create Domain' });
+        await expect(createBtn).toBeDisabled();
 
         // Should still be on modal (not navigated)
         await expect(nameInput).toBeVisible();
@@ -151,8 +189,9 @@ test.describe.serial('Domain Edge Cases', () => {
         await nameInput.waitFor({ timeout: 5000 });
         await nameInput.fill('   ');
 
-        await page.getByRole('button', { name: 'Create Domain' }).click();
-        await page.waitForTimeout(1000);
+        // Create Domain button should be disabled for whitespace-only name
+        const createBtn = page.getByRole('button', { name: 'Create Domain' });
+        await expect(createBtn).toBeDisabled();
 
         await expect(nameInput).toBeVisible();
         await page.keyboard.press('Escape');
@@ -165,10 +204,19 @@ test.describe.serial('Domain Edge Cases', () => {
 
 test.describe.serial('Content Edge Cases', () => {
     test('handles unicode content (Indonesian, emoji, CJK)', async ({ page }) => {
+        restoreCtx();
         await goToStream(page, ctx.domainId, ctx.streamId);
 
+        // Add persona section to EntryCreator
+        await page.getByRole('button', { name: 'Add Persona' }).click();
+        const menu = page.locator('[role="menu"]');
+        await menu.waitFor({ timeout: 3000 });
+        await menu.locator('button', { hasText: ctx.personaName }).click();
+        await menu.waitFor({ state: 'hidden', timeout: 3000 });
+
         const unicodeText = `Catatan: Müzik eğitimi 🎵 音楽教育 ${Date.now()}`;
-        const editor = page.locator('[class*="bn-editor"], [contenteditable="true"]').first();
+        const editor = page.locator('.bn-editor[contenteditable="true"]').first();
+        await editor.waitFor({ timeout: 5000 });
         await editor.click();
         await editor.type(unicodeText, { delay: 30 });
         await page.waitForTimeout(2000);
@@ -180,10 +228,19 @@ test.describe.serial('Content Edge Cases', () => {
     });
 
     test('handles very long single-line entry', async ({ page }) => {
+        restoreCtx();
         await goToStream(page, ctx.domainId, ctx.streamId);
 
+        // Add persona section to EntryCreator
+        await page.getByRole('button', { name: 'Add Persona' }).click();
+        const menu = page.locator('[role="menu"]');
+        await menu.waitFor({ timeout: 3000 });
+        await menu.locator('button', { hasText: ctx.personaName }).click();
+        await menu.waitFor({ state: 'hidden', timeout: 3000 });
+
         const longText = 'A'.repeat(500) + ` ${Date.now()}`;
-        const editor = page.locator('[class*="bn-editor"], [contenteditable="true"]').first();
+        const editor = page.locator('.bn-editor[contenteditable="true"]').first();
+        await editor.waitFor({ timeout: 5000 });
         await editor.click();
         await editor.type(longText, { delay: 5 });
         await page.waitForTimeout(2000);
@@ -216,7 +273,7 @@ test.describe.serial('Keyboard Shortcuts', () => {
         await page.keyboard.press('Meta+Shift+k');
         await page.waitForTimeout(1000);
 
-        const searchInput = page.locator('input[type="text"], input[type="search"]').first();
+        const searchInput = page.getByPlaceholder(/search/i);
         await expect(searchInput).toBeVisible({ timeout: 5000 });
         await page.keyboard.press('Escape');
     });
@@ -240,6 +297,7 @@ test.describe.serial('Keyboard Shortcuts', () => {
 
 test.describe.serial('Navigator Edge Cases', () => {
     test('cancelling stream creation with Escape removes the input', async ({ page }) => {
+        restoreCtx();
         await goToDomain(page, ctx.domainId);
 
         const btn = page.getByRole('button', { name: 'New stream' });
@@ -256,6 +314,7 @@ test.describe.serial('Navigator Edge Cases', () => {
     });
 
     test('right-click context menu shows rename and delete options', async ({ page }) => {
+        restoreCtx();
         await goToDomain(page, ctx.domainId);
 
         const streamItem = page.locator('[role="treeitem"]').filter({
@@ -368,6 +427,8 @@ test.describe.serial('Viewport Resilience', () => {
 
 test.describe.serial('Rapid Interactions', () => {
     test('rapid domain switching does not crash', async ({ page }) => {
+        restoreCtx();
+
         // Create a second domain for switching
         await goHome(page);
         await page.getByRole('button', { name: 'Add Domain' }).click();
@@ -377,15 +438,17 @@ test.describe.serial('Rapid Interactions', () => {
         await page.getByRole('button', { name: 'Create Domain' }).click();
         await page.waitForURL(url => url.pathname.split('/').filter(Boolean).length === 1, { timeout: 10_000 });
 
-        // Now rapid switch between domains 
-        const domainBtns = page.locator('button[aria-label]').filter({
-            has: page.locator('svg'),
-        });
-        const count = await domainBtns.count();
+        // Wait for the create modal to fully close
+        await expect(page.locator('#headlessui-portal-root >> .fixed')).toHaveCount(0, { timeout: 5000 }).catch(() => {});
+        await page.waitForTimeout(500);
 
-        if (count >= 2) {
-            for (let i = 0; i < 5; i++) {
-                await domainBtns.nth(i % count).click();
+        // Click domain buttons by known names
+        const domainNames = [ctx.domainName, 'Rapid Switch Target'];
+        for (let i = 0; i < 5; i++) {
+            const name = domainNames[i % domainNames.length];
+            const btn = page.locator(`button[aria-label="${name}"]`);
+            if (await btn.isVisible().catch(() => false)) {
+                await btn.click();
                 await page.waitForTimeout(300);
             }
         }
@@ -394,6 +457,7 @@ test.describe.serial('Rapid Interactions', () => {
     });
 
     test('session persists across multiple navigations', async ({ page }) => {
+        restoreCtx();
         await goHome(page);
         await goToDomain(page, ctx.domainId);
         await goToStream(page, ctx.domainId, ctx.streamId);

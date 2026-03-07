@@ -7,6 +7,7 @@ import { usePersonas } from '@/lib/hooks/usePersonas';
 import { usePersonaMutations } from '@/lib/hooks/usePersonaMutations';
 import { Check } from 'lucide-react';
 import { PartialBlock } from '@blocknote/core';
+import { useMemo } from 'react';
 
 interface LogSectionProps {
   section: SectionWithPersona;
@@ -29,8 +30,62 @@ export function LogSection({ section, highlightTerm }: LogSectionProps) {
     });
   };
 
+  const trimmedContent = useMemo(() => {
+    const blocks = (section.content_json as unknown as PartialBlock[]) ?? [];
+    if (!Array.isArray(blocks) || blocks.length === 0) return [];
+
+    const trimmableTypes = new Set([
+      'paragraph',
+      'heading',
+      'quote',
+      'bulletListItem',
+      'numberedListItem',
+      'checkListItem',
+      'toggleListItem',
+    ]);
+
+    const hasMeaningfulInlineContent = (content: unknown): boolean => {
+      if (typeof content === 'string') return content.trim().length > 0;
+      if (!Array.isArray(content)) return false;
+
+      return content.some((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const typedItem = item as { type?: unknown; text?: unknown };
+
+        if (typedItem.type === 'text') {
+          return typeof typedItem.text === 'string' && typedItem.text.trim().length > 0;
+        }
+
+        // Non-text inline nodes (mentions, links, etc.) count as meaningful.
+        return true;
+      });
+    };
+
+    const isBlockEmpty = (block: PartialBlock | undefined): boolean => {
+      if (!block || typeof block !== 'object') return true;
+
+      const blockType = (block as { type?: unknown }).type;
+      if (typeof blockType !== 'string' || !trimmableTypes.has(blockType)) return false;
+
+      const blockContent = (block as { content?: unknown }).content;
+      const children = (block as { children?: PartialBlock[] }).children;
+      const hasNonEmptyChild = Array.isArray(children) && children.some((child) => !isBlockEmpty(child));
+
+      return !hasMeaningfulInlineContent(blockContent) && !hasNonEmptyChild;
+    };
+
+    let start = 0;
+    let end = blocks.length - 1;
+
+    while (start <= end && isBlockEmpty(blocks[start])) start += 1;
+    while (end >= start && isBlockEmpty(blocks[end])) end -= 1;
+
+    if (start > end) return [];
+    return blocks.slice(start, end + 1);
+  }, [section.content_json]);
+
   return (
-    <div className="group relative flex gap-3 p-2 transition-all hover:bg-surface-hover/30 rounded-lg">
+    <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 rounded-md">
       {/* Sidebar / Persona Indicator */ }
       <div className="shrink-0 pt-1">
         <Menu as="div" className="relative">
@@ -99,9 +154,9 @@ export function LogSection({ section, highlightTerm }: LogSectionProps) {
           </span>
         </div>
         
-        <div className="prose prose-sm dark:prose-invert max-w-none [&_.bn-block-content]:py-0!">
+        <div className="blocknote-readonly prose prose-sm dark:prose-invert max-w-none [&_.bn-block-content]:py-0!">
           <BlockNoteEditor
-            initialContent={section.content_json as unknown as PartialBlock[]}
+            initialContent={trimmedContent}
             editable={false}
             highlightTerm={highlightTerm}
           />

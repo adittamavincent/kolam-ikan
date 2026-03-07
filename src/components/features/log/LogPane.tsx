@@ -5,11 +5,12 @@ import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
 import { LogSection } from './LogSection';
 import { useStream } from '@/lib/hooks/useStream';
-import { Filter, ArrowUpDown, Search, Download, Calendar, Info, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Filter, ArrowUpDown, Search, Download, Calendar, PanelLeft } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { exportEntriesToMarkdown, downloadMarkdown } from '@/lib/utils/export';
+import { useSidebar } from '@/lib/hooks/useSidebar';
 import { EntryWithSections } from '@/lib/types';
 
 interface LogPaneProps {
@@ -86,6 +87,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const { stream } = useStream(streamId);
   const { personas } = usePersonas();
+  const { visible: sidebarVisible, show: showSidebar } = useSidebar();
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
 
@@ -103,28 +105,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const resolvedWidth = forceWidth ?? logWidth;
   const isVisible = resolvedWidth > 0;
-
-  const getEntryLevel = (entry: EntryWithSections) => {
-    const text = entry.sections
-      ?.map((section) => section.search_text ?? section.persona_name_snapshot ?? '')
-      .join(' ')
-      .toLowerCase();
-
-    if (!text) return 'info';
-
-    const errorTokens = ['error', 'failed', 'exception', 'critical', 'panic', 'fatal'];
-    const warningTokens = ['warn', 'warning', 'deprecated', 'risk', 'caution'];
-
-    if (errorTokens.some((token) => text.includes(token))) return 'error';
-    if (warningTokens.some((token) => text.includes(token))) return 'warning';
-    return 'info';
-  };
-
-  const levelMeta = {
-    info: { label: 'Info', icon: Info, badge: 'text-sky-600 dark:text-sky-400 bg-sky-500/10 ring-1 ring-sky-500/20' },
-    warning: { label: 'Warning', icon: AlertTriangle, badge: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 ring-1 ring-amber-500/20' },
-    error: { label: 'Error', icon: AlertCircle, badge: 'text-rose-600 dark:text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20' },
-  };
 
   const containerStyle = {
     width: `${resolvedWidth}%`,
@@ -151,6 +131,15 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           <div className="px-2 py-1.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
+                {!sidebarVisible && (
+                  <button
+                    onClick={showSidebar}
+                    className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+                    title="Show sidebar"
+                  >
+                    <PanelLeft className="h-4 w-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isToolbarOpen
@@ -272,7 +261,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               </div>
             ) : (
               <>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2.5">
                   {entryList.map((entry) => (
                     <div
                       key={entry.id}
@@ -281,8 +270,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       }}
                     >
                       <div className="relative group rounded-lg border border-border-subtle bg-surface-default overflow-hidden transition-all hover:border-border-default/50">
-                        <div className="flex items-center justify-between px-3 py-1.5 bg-surface-subtle/40 border-b border-border-subtle/40">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center px-2.5 py-1 bg-surface-subtle/40 border-b border-border-subtle/40">
+                          <div className="flex items-center gap-1.5">
                             <Calendar className="h-3 w-3 text-text-muted" />
                             <span className="text-[10px] font-medium text-text-subtle font-mono">
                               {mounted ? new Date(entry.created_at || '').toLocaleString(undefined, {
@@ -293,19 +282,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                               }) : new Date(entry.created_at || '').toISOString()}
                             </span>
                           </div>
-                          {(() => {
-                            const level = getEntryLevel(entry) as keyof typeof levelMeta;
-                            const meta = levelMeta[level];
-                            const Icon = meta.icon;
-                            return (
-                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.badge}`}>
-                                <Icon className="h-3 w-3" />
-                                {meta.label}
-                              </span>
-                            );
-                          })()}
                         </div>
-                        <div className="p-3 flex flex-col gap-3">
+                        <div className="px-2.5 py-2 flex flex-col gap-1.5">
                           {entry.sections?.map((section: EntryWithSections['sections'][number]) => (
                             <LogSection
                               key={section.id}

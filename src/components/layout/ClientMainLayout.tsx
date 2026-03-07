@@ -337,25 +337,27 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       </div>
 
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}
-      {sidebarVisible && (
+      <div
+        ref={sidebarRef}
+        className="hidden md:flex overflow-visible relative group h-full transition-[width] duration-300 ease-in-out"
+        style={{ width: sidebarVisible ? sidebarWidth : 0 }}
+      >
         <div
-          ref={sidebarRef}
-          className="hidden md:flex overflow-visible relative group h-full"
-          style={{ width: sidebarWidth }}
+          className={`flex-1 overflow-hidden h-full transition-all duration-300 ease-in-out ${sidebarVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'
+            }`}
         >
-          <div className="flex-1 overflow-hidden h-full">
-            <Navigator userId={userId} />
-          </div>
-
-          {/* Resize Handle */}
-          <div
-            className={`absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-action-primary-bg/50 active:bg-action-primary-bg transition-colors z-50
-              ${isResizing ? 'bg-action-primary-bg w-1' : 'bg-transparent'}
-            `}
-            onMouseDown={handleMouseDown}
-          />
+          <Navigator userId={userId} />
         </div>
-      )}
+
+        {/* Resize Handle */}
+        <div
+          className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors z-50 ${sidebarVisible
+            ? 'hover:bg-action-primary-bg/50 active:bg-action-primary-bg'
+            : 'pointer-events-none'
+            } ${isResizing ? 'bg-action-primary-bg w-1' : 'bg-transparent'}`}
+          onMouseDown={handleMouseDown}
+        />
+      </div>
 
       {/* Mobile sidebar — toggled by mobile menu */}
       {mobileMenuOpen && (

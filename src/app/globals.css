@@ -286,3 +286,26 @@ body {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* -------------------------------------------------------------------------- */
+/*  BLOCKNOTE DARK-MODE BACKGROUND FIX                                       */
+/* -------------------------------------------------------------------------- */
+
+/* Make BlockNote editor background transparent so it inherits the container */
+[data-color-scheme="dark"] .bn-container,
+[data-color-scheme="dark"] .bn-editor {
+  background-color: transparent !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  BLOCKNOTE READ-ONLY: HIDE SIDE MENU (plus + drag handle)                 */
+/* -------------------------------------------------------------------------- */
+
+.blocknote-readonly .bn-side-menu {
+  display: none !important;
+}
+
+/* BlockNote reserves 54px inline padding for side-menu/drag handles by default. */
+.blocknote-readonly .bn-editor {
+  padding-inline: 0 !important;
+}

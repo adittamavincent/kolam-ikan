@@ -61,7 +61,12 @@ export default function BaseEditor({
 
   return (
     <div className="blocknote-editor w-full max-w-full overflow-hidden wrap-anywhere [word-break:break-word]">
-      <BlockNoteView editor={editor} theme={theme} editable={editable} />
+      <BlockNoteView
+        editor={editor}
+        theme={theme}
+        editable={editable}
+        sideMenu={editable ? undefined : false}
+      />
     </div>
   );
 }

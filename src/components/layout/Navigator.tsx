@@ -3,9 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter, usePathname } from 'next/navigation';
-import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X, FilePlus, FolderPlus } from 'lucide-react';
+import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X, FilePlus, FolderPlus, PanelLeftClose } from 'lucide-react';
 import { Fragment, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
 import { Cabinet, CabinetInsert, CabinetUpdate, Stream, StreamInsert, StreamUpdate } from '@/lib/types';
+import { useSidebar } from '@/lib/hooks/useSidebar';
 import {
   applyOptimisticCabinetCreation,
   applyOptimisticStreamCreation,
@@ -602,6 +603,7 @@ export function Navigator({ }: NavigatorProps) {
   const queryClient = useQueryClient();
   const domainId = params?.domain as string | undefined;
   const activeStreamId = params?.stream as string | undefined;
+  const { hide: hideSidebar } = useSidebar();
 
   const [draggedItem, setDraggedItem] = useState<{ id: string; type: NavItemType } | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -1561,6 +1563,15 @@ export function Navigator({ }: NavigatorProps) {
                 className="rounded p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
               >
                 <FolderPlus className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={hideSidebar}
+                aria-label="Collapse sidebar"
+                title="Collapse sidebar"
+                className="rounded p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
+              >
+                <PanelLeftClose className="h-4 w-4" />
               </button>
             </div>
           </div>

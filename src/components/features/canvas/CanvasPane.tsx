@@ -10,6 +10,7 @@ import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote
 import { Json } from '@/lib/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { History, Save, RotateCcw } from 'lucide-react';
 
 interface CanvasPaneProps {
   streamId: string;
@@ -151,69 +152,90 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {canvas ? (
-            <div className="space-y-4">
-              <div className="rounded-lg border border-border-default bg-surface-subtle p-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={snapshotName}
-                    onChange={(event) => setSnapshotName(event.target.value)}
-                    placeholder="Snapshot name (optional)"
-                    className="flex-1 rounded border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
-                  />
-                  <button
-                    onClick={handleSaveSnapshot}
-                    disabled={saveSnapshotMutation.isPending}
-                    className="rounded bg-action-primary-bg px-3 py-1 text-xs text-action-primary-text hover:bg-action-primary-hover disabled:opacity-50"
-                  >
-                    {saveSnapshotMutation.isPending ? 'Saving...' : 'Save Snapshot'}
-                  </button>
-                  <button
-                    onClick={() => setShowVersions((prev) => !prev)}
-                    className="rounded bg-surface-default px-3 py-1 text-xs text-text-default hover:bg-surface-hover"
-                  >
-                    {showVersions ? 'Hide History' : 'View History'}
-                  </button>
-                </div>
-                {showVersions && (
-                  <div className="mt-3 space-y-2">
-                    {versionsLoading && <div className="text-xs text-text-muted">Loading...</div>}
-                    {!versionsLoading && versions?.length === 0 && (
-                      <div className="text-xs text-text-muted">No snapshots yet.</div>
-                    )}
-                    {versions?.map((version) => (
-                      <div
-                        key={version.id}
-                        className="flex items-center justify-between rounded border border-border-subtle bg-surface-default px-2 py-1 text-xs"
-                      >
-                        <div className="min-w-0">
-                          <div className="truncate text-text-default">{version.name || 'Untitled Snapshot'}</div>
-                          <div className="text-[10px] text-text-muted">
-                            {version.created_at ? new Date(version.created_at).toLocaleString() : 'Unknown time'}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleRestoreVersion(version.id, version.content_json as Json)}
-                          className="rounded bg-surface-subtle px-2 py-1 text-[11px] text-text-default hover:bg-surface-hover"
-                        >
-                          Restore
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+        {/* Compact toolbar */}
+        {canvas && (
+          <div className="border-b border-border-subtle bg-surface-default shrink-0">
+            <div className="px-2 py-1.5">
+              <div className="flex items-center justify-end gap-1">
+                <button
+                  onClick={handleSaveSnapshot}
+                  disabled={saveSnapshotMutation.isPending}
+                  className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
+                  title={saveSnapshotMutation.isPending ? 'Saving...' : 'Save Snapshot'}
+                >
+                  <Save className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setShowVersions((prev) => !prev)}
+                  className={`rounded-md p-1.5 transition-colors ${showVersions ? 'bg-surface-subtle text-text-default' : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
+                  title={showVersions ? 'Hide History' : 'View History'}
+                >
+                  <History className="h-4 w-4" />
+                </button>
               </div>
-              <BlockNoteEditor
-                initialContent={canvas.content_json as unknown as PartialBlock[]}
-                onChange={handleContentChange}
-                onEditorReady={setEditor}
-                placeholder="Start writing on the canvas..."
-                highlightTerm={highlightTerm ?? undefined}
-              />
             </div>
+
+            {/* Collapsible snapshot name + version history */}
+            <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${showVersions ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+              <div className="overflow-hidden">
+                <div className="px-3 pb-2 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      value={snapshotName}
+                      onChange={(event) => setSnapshotName(event.target.value)}
+                      placeholder="Snapshot name..."
+                      className="flex-1 rounded-md border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                    />
+                    <button
+                      onClick={handleSaveSnapshot}
+                      disabled={saveSnapshotMutation.isPending}
+                      className="rounded-md bg-action-primary-bg px-2.5 py-1 text-xs text-action-primary-text hover:bg-action-primary-hover disabled:opacity-50"
+                    >
+                      {saveSnapshotMutation.isPending ? '...' : 'Save'}
+                    </button>
+                  </div>
+                  {versionsLoading && <div className="text-xs text-text-muted py-1">Loading...</div>}
+                  {!versionsLoading && versions?.length === 0 && (
+                    <div className="text-xs text-text-muted py-1">No snapshots yet.</div>
+                  )}
+                  {versions?.map((version) => (
+                    <div
+                      key={version.id}
+                      className="flex items-center justify-between rounded-md border border-border-subtle bg-surface-subtle px-2 py-1 text-xs"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-text-default text-[11px]">{version.name || 'Untitled'}</div>
+                        <div className="text-[10px] text-text-muted">
+                          {version.created_at ? new Date(version.created_at).toLocaleString() : ''}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleRestoreVersion(version.id, version.content_json as Json)}
+                        className="shrink-0 rounded-md p-1 text-text-muted hover:bg-surface-hover hover:text-text-default"
+                        title="Restore this version"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Editor area */}
+        <div className="flex-1 overflow-y-auto px-3 py-2">
+          {canvas ? (
+            <BlockNoteEditor
+              initialContent={canvas.content_json as unknown as PartialBlock[]}
+              onChange={handleContentChange}
+              onEditorReady={setEditor}
+              placeholder="Start writing on the canvas..."
+              highlightTerm={highlightTerm ?? undefined}
+            />
           ) : (
-            <div className="flex h-full items-center justify-center text-text-muted">
+            <div className="flex h-full items-center justify-center text-text-muted text-sm">
               {isLoading ? 'Loading canvas...' : 'No canvas found'}
             </div>
           )}

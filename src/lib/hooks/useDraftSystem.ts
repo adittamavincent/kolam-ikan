@@ -317,8 +317,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                     const { data, error } = await supabase.rpc('create_entry_with_section', {
                       p_stream_id: streamId,
                       p_content_json: content as unknown as Json,
-                      p_persona_id: personaId,
-                      p_persona_name_snapshot: personaName ?? null,
+                      p_persona_id: personaId ?? undefined,
+                      p_persona_name_snapshot: personaName ?? undefined,
                       p_is_draft: true
                     });
                     

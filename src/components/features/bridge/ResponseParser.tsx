@@ -253,7 +253,7 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
         await supabase.rpc('create_entry_with_section', {
           p_stream_id: streamId,
           p_content_json: blocks as unknown as Json,
-          p_persona_id: null,
+          p_persona_id: undefined,
           p_persona_name_snapshot: aiPersonaName,
           p_is_draft: false,
         });

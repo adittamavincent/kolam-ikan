@@ -29,8 +29,8 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.rpc('create_entry_with_section', {
       p_stream_id: payload.streamId,
       p_content_json: first.content as Json,
-      p_persona_id: first.personaId ?? null,
-      p_persona_name_snapshot: null,
+      p_persona_id: first.personaId ?? undefined,
+      p_persona_name_snapshot: undefined,
       p_is_draft: true,
     });
     if (error || !data) {

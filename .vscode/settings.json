@@ -1,0 +1,6 @@
+{
+  "js/ts.tsserver.experimental.enableProjectDiagnostics": false,
+  "problems.exclude": {
+    "**/node_modules/**": true
+  }
+}

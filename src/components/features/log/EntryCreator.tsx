@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, Fragment, useEffect } from 'react';
+import { useState, useRef, Fragment, useEffect, useMemo } from 'react';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
 import { Loader2, Send, Check, Plus, X, ChevronDown } from 'lucide-react';
@@ -17,6 +17,18 @@ interface EntryCreatorProps {
 
 export function EntryCreator({ streamId }: EntryCreatorProps) {
   const { personas } = usePersonas();
+    const personaUsageStorageKey = `entry-creator:persona-usage:${streamId}`;
+
+    const getInitialPersonaUsage = () => {
+        if (typeof window === 'undefined') return {} as Record<string, number>;
+        try {
+            const stored = window.localStorage.getItem(personaUsageStorageKey);
+            if (!stored) return {} as Record<string, number>;
+            return JSON.parse(stored) as Record<string, number>;
+        } catch {
+            return {} as Record<string, number>;
+        }
+    };
 
   // State for sections (instances)
   interface SectionState {
@@ -24,6 +36,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     personaId: string;
   }
   const [sections, setSections] = useState<SectionState[]>([]);
+    const [personaUsageCounts, setPersonaUsageCounts] = useState<Record<string, number>>(getInitialPersonaUsage);
   
   // Refs for editors to clear them
   const editorRefs = useRef<Record<string, BlockNoteEditorType>>({});
@@ -45,6 +58,33 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     streamId
   });
   const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(true);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(personaUsageStorageKey, JSON.stringify(personaUsageCounts));
+        } catch {
+            // Ignore write failures (quota/private mode).
+        }
+    }, [personaUsageCounts, personaUsageStorageKey]);
+
+    const quickPersonas = useMemo(() => {
+        if (!personas?.length) return [];
+        return [...personas]
+            .sort((a, b) => {
+                const countA = personaUsageCounts[a.id] ?? 0;
+                const countB = personaUsageCounts[b.id] ?? 0;
+                if (countA !== countB) return countB - countA;
+                return a.name.localeCompare(b.name);
+            })
+            .slice(0, 3);
+    }, [personas, personaUsageCounts]);
+
+    const trackPersonaUsage = (personaId: string) => {
+        setPersonaUsageCounts((prev) => ({
+            ...prev,
+            [personaId]: (prev[personaId] ?? 0) + 1,
+        }));
+    };
 
   // Initialize selection with existing drafts only
   useEffect(() => {
@@ -108,6 +148,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
   };
 
   const addPersona = (pId: string) => {
+      trackPersonaUsage(pId);
       setSections(prev => [
           ...prev,
           { instanceId: crypto.randomUUID(), personaId: pId }
@@ -147,6 +188,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
       
       // Force immediate save to ensure refs are updated
       saveDraft(instanceId, newPersonaId, content, newPersona?.name);
+      trackPersonaUsage(newPersonaId);
   };
 
   if (isLoading) {
@@ -189,8 +231,25 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
         )}
         {/* Header / Persona Selector */}
         <div className="flex items-center justify-between px-4 pt-3 pb-1 border-b border-border-subtle/50">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-medium text-text-subtle uppercase tracking-wider">New Entry as</span>
+
+                {quickPersonas.map((persona) => (
+                    <button
+                        key={`quick-persona-${persona.id}`}
+                        onClick={() => addPersona(persona.id)}
+                        className="flex items-center gap-1.5 rounded-lg border border-border-subtle/70 bg-surface-subtle/40 px-2 py-1 text-[11px] font-medium text-text-default transition-colors hover:bg-surface-subtle"
+                        title={`Quick add ${persona.name}`}
+                    >
+                        <div
+                            className="flex h-4 w-4 items-center justify-center rounded"
+                            style={{ backgroundColor: `${persona.color}20`, color: persona.color }}
+                        >
+                            <DynamicIcon name={persona.icon} className="h-2.5 w-2.5" />
+                        </div>
+                        <span>{persona.name}</span>
+                    </button>
+                ))}
                 
                 <Menu as="div" className="relative z-10">
                     <MenuButton 

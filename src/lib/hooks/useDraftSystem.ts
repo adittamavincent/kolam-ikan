@@ -445,9 +445,21 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     activeInstancesRef.current.add(instanceId);
     updateLocalStorage(); // Sync to local immediately
     setStatus('saving');
+
+    // Deletions must run immediately; if debounced they can be canceled by
+    // setActiveInstances() during section removal and leave status stuck in saving.
+    if (!content || content.length === 0) {
+      const debouncer = debouncersRef.current[instanceId];
+      if (debouncer) {
+        debouncer.cancel();
+        delete debouncersRef.current[instanceId];
+      }
+      void performSave(instanceId, personaId, content, personaName);
+      return;
+    }
     
     getDebouncer(instanceId)(personaId, content, personaName);
-  }, [updateLocalStorage, getDebouncer]);
+  }, [updateLocalStorage, getDebouncer, performSave]);
   
   // Method to mark instances as active (called by UI)
   const setActiveInstances = useCallback((instanceIds: string[]) => {

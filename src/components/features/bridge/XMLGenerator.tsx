@@ -1,31 +1,29 @@
 'use client';
 
 import { Copy, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { BlockNoteBlock } from '@/lib/types';
 
 interface XMLGeneratorProps {
   streamId: string;
-  personaId: string | null;
   interactionMode: string;
   selectedEntries: string[];
   includeCanvas: boolean;
   includeGlobalStream: boolean;
-  globalStreamId: string | null;
+  globalStreamIds: string[];
   globalStreamName: string | null;
   userInput: string;
 }
 
 export function XMLGenerator({
   streamId,
-  personaId,
   interactionMode,
   selectedEntries,
   includeCanvas,
   includeGlobalStream,
-  globalStreamId,
+  globalStreamIds,
   globalStreamName,
   userInput,
 }: XMLGeneratorProps) {
@@ -71,42 +69,60 @@ export function XMLGenerator({
     enabled: includeCanvas,
   });
 
-  const { data: globalEntries } = useQuery({
-    queryKey: ['global-entries-xml', globalStreamId, includeGlobalStream],
+  const additionalGlobalStreamIds = useMemo(
+    () => (globalStreamIds ?? []).filter((id) => id !== streamId),
+    [globalStreamIds, streamId]
+  );
+
+  const { data: globalStreamsMeta } = useQuery({
+    queryKey: ['global-streams-meta-xml', additionalGlobalStreamIds],
     queryFn: async () => {
-      if (!includeGlobalStream || !globalStreamId) return [];
+      if (additionalGlobalStreamIds.length === 0) return [];
+      const { data } = await supabase
+        .from('streams')
+        .select('id, name')
+        .in('id', additionalGlobalStreamIds);
+      return data ?? [];
+    },
+    enabled: additionalGlobalStreamIds.length > 0,
+  });
+
+  const { data: globalEntries } = useQuery({
+    queryKey: ['global-entries-xml', additionalGlobalStreamIds, includeGlobalStream],
+    queryFn: async () => {
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
       const { data } = await supabase
         .from('entries')
         .select('*, sections(*)')
-        .eq('stream_id', globalStreamId)
+        .in('stream_id', additionalGlobalStreamIds)
         .eq('is_draft', false)
         .order('created_at', { ascending: true });
       return data as unknown as EntryWithSections[];
     },
-    enabled: includeGlobalStream && !!globalStreamId,
+    enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
-  const { data: globalCanvas } = useQuery({
-    queryKey: ['global-canvas-xml', globalStreamId, includeGlobalStream],
+  const { data: globalCanvases } = useQuery({
+    queryKey: ['global-canvas-xml', additionalGlobalStreamIds, includeGlobalStream],
     queryFn: async () => {
-      if (!includeGlobalStream || !globalStreamId) return null;
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
       const { data } = await supabase
         .from('canvases')
         .select('*')
-        .eq('stream_id', globalStreamId)
-        .single();
-      return data;
+        .in('stream_id', additionalGlobalStreamIds);
+      return data ?? [];
     },
-    enabled: includeGlobalStream && !!globalStreamId,
+    enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
   const generateXML = () => {
     const domainName = stream?.domain?.name || '';
+    const isGlobal = stream?.stream_kind === 'GLOBAL' || (stream?.cabinet_id === null && stream?.sort_order === -100);
+    const streamNameById = new Map((globalStreamsMeta ?? []).map((globalStream) => [globalStream.id, globalStream.name || globalStream.id]));
     
     return `<system_directive>
-Persona: ${personaId || 'None'}
 Target: ${interactionMode}
-Stream: ${stream?.name || ''}
+Stream: ${stream?.name || ''} ${isGlobal ? '(Global)' : ''}
 Domain: ${domainName}
 </system_directive>
 
@@ -123,16 +139,32 @@ ${entries?.map((entry) => entryToMarkdown(entry)).join('\n\n') || ''}
 </log_context>
 
 ${
-  includeGlobalStream && globalStreamId
+  includeGlobalStream && additionalGlobalStreamIds.length > 0
     ? `<global_context>
-${globalStreamName || 'Global User Entry'}
+${globalStreamName || 'Domain Global Streams'}
 
-<global_canvas>
-${canvasToMarkdown((globalCanvas?.content_json as unknown as BlockNoteBlock[]) || [])}
-</global_canvas>
+<global_canvases>
+${(globalCanvases ?? [])
+  .map((canvasItem) => {
+    const streamName = streamNameById.get(canvasItem.stream_id) || canvasItem.stream_id;
+    return `<global_canvas stream="${streamName}">
+${canvasToMarkdown((canvasItem.content_json as unknown as BlockNoteBlock[]) || [])}
+</global_canvas>`;
+  })
+  .join('\n\n')}
+</global_canvases>
 
 <global_entries>
-${globalEntries?.map((entry) => entryToMarkdown(entry)).join('\n\n') || ''}
+${
+  globalEntries
+    ?.map((entry) => {
+      const streamName = streamNameById.get(entry.stream_id) || entry.stream_id;
+      return `<global_entry stream="${streamName}">
+${entryToMarkdown(entry)}
+</global_entry>`;
+    })
+    .join('\n\n') || ''
+}
 </global_entries>
 </global_context>`
     : ''

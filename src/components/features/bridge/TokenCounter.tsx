@@ -25,7 +25,7 @@ export function TokenCounter({
   includeCanvas,
   streamId,
   includeGlobalStream,
-  globalStreamId,
+  globalStreamIds,
   tokenLimit = 8000,
   onTokenUpdate,
   onReduceSelection,
@@ -35,13 +35,14 @@ export function TokenCounter({
   includeCanvas: boolean;
   streamId: string;
   includeGlobalStream: boolean;
-  globalStreamId: string | null;
+  globalStreamIds: string[];
   tokenLimit?: number;
   onTokenUpdate?: (tokens: number, overLimit: boolean) => void;
   onReduceSelection?: () => void;
   onAutoSummarize?: () => void;
 }) {
   const supabase = createClient();
+  const additionalGlobalStreamIds = (globalStreamIds ?? []).filter((id) => id !== streamId);
 
   const { data: entries } = useQuery({
     queryKey: ['bridge-token-entries', streamId, selectedEntries],
@@ -74,34 +75,33 @@ export function TokenCounter({
   });
 
   const { data: globalEntries } = useQuery({
-    queryKey: ['bridge-token-global-entries', globalStreamId, includeGlobalStream],
+    queryKey: ['bridge-token-global-entries', additionalGlobalStreamIds, includeGlobalStream],
     queryFn: async () => {
-      if (!includeGlobalStream || !globalStreamId) return [];
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
       const { data, error } = await supabase
         .from('entries')
         .select('id, created_at, sections(content_json, persona_name_snapshot)')
-        .eq('stream_id', globalStreamId)
+        .in('stream_id', additionalGlobalStreamIds)
         .eq('is_draft', false)
         .order('created_at', { ascending: true });
       if (error) throw error;
       return data as unknown as EntryWithSections[];
     },
-    enabled: includeGlobalStream && !!globalStreamId,
+    enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
-  const { data: globalCanvas } = useQuery({
-    queryKey: ['bridge-token-global-canvas', globalStreamId, includeGlobalStream],
+  const { data: globalCanvases } = useQuery({
+    queryKey: ['bridge-token-global-canvas', additionalGlobalStreamIds, includeGlobalStream],
     queryFn: async () => {
-      if (!includeGlobalStream || !globalStreamId) return null;
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
       const { data, error } = await supabase
         .from('canvases')
         .select('content_json')
-        .eq('stream_id', globalStreamId)
-        .single();
+        .in('stream_id', additionalGlobalStreamIds);
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
-    enabled: includeGlobalStream && !!globalStreamId,
+    enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
   const tokens = useMemo(() => {
@@ -116,7 +116,7 @@ export function TokenCounter({
     const canvasText = includeCanvas
       ? blocksToText((canvas?.content_json as unknown as BlockNoteBlock[]) ?? [])
       : '';
-    const globalEntryText = includeGlobalStream
+    const globalEntryText = includeGlobalStream && additionalGlobalStreamIds.length > 0
       ? (globalEntries?.map((entry) => {
         const sectionsText =
           entry.sections
@@ -125,15 +125,15 @@ export function TokenCounter({
         return sectionsText;
       }) ?? [])
       : [];
-    const globalCanvasText = includeGlobalStream
-      ? blocksToText((globalCanvas?.content_json as unknown as BlockNoteBlock[]) ?? [])
-      : '';
+    const globalCanvasText = includeGlobalStream && additionalGlobalStreamIds.length > 0
+      ? (globalCanvases?.map((canvasItem) => blocksToText((canvasItem.content_json as unknown as BlockNoteBlock[]) ?? [])) ?? [])
+      : [];
 
-    const combined = [...entryText, canvasText, ...globalEntryText, globalCanvasText]
+    const combined = [...entryText, canvasText, ...globalEntryText, ...globalCanvasText]
       .filter(Boolean)
       .join('\n');
     return encode(combined).length;
-  }, [entries, canvas, globalEntries, globalCanvas, includeCanvas, includeGlobalStream]);
+  }, [entries, canvas, globalEntries, globalCanvases, includeCanvas, includeGlobalStream, additionalGlobalStreamIds.length]);
 
   const overLimit = tokens > tokenLimit;
 

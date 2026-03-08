@@ -48,6 +48,7 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
   const displayName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'Account';
   const avatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null;
   const initials = displayName.split(' ').filter(Boolean).slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join('') || 'U';
+  const profileMenuIdBase = `profile-menu-${userId}`;
 
   // Keyboard shortcut to open create modal
   useKeyboard([
@@ -202,7 +203,7 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
       {/* User Menu / Profile at bottom */}
       <div className="mt-auto flex flex-col items-center gap-4 pt-4 border-t border-border-subtle w-full">
         <Menu as="div" className="relative">
-          <MenuButton className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm">
+          <MenuButton id={`${profileMenuIdBase}-button`} className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm">
             {avatarUrl ? (
               <Image
                 src={avatarUrl}
@@ -227,7 +228,7 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <MenuItems className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none">
+            <MenuItems id={`${profileMenuIdBase}-items`} className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none">
               <div className="px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Signed in as</p>
                 <p className="truncate text-xs font-medium text-text-default">{displayName}</p>

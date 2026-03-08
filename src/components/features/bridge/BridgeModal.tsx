@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { PersonaSelector } from './PersonaSelector';
+import { Globe } from 'lucide-react';
 import { InteractionSwitcher } from './InteractionSwitcher';
 import { ContextBag } from './ContextBag';
 import { TokenCounter } from './TokenCounter';
@@ -19,20 +19,19 @@ interface BridgeModalProps {
 
 export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const supabase = createClient();
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [interactionMode, setInteractionMode] = useState<'ASK' | 'GO' | 'BOTH'>('ASK');
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const [includeCanvas, setIncludeCanvas] = useState(true);
-  const [includeGlobalStream, setIncludeGlobalStream] = useState(true);
+  const [userGlobalStreamChoice, setUserGlobalStreamChoice] = useState<boolean>(true);
   const [userInput, setUserInput] = useState('');
   const [tokenOverLimit, setTokenOverLimit] = useState(false);
 
-  const { data: streamMeta } = useQuery({
+  const { data: streamMeta, isLoading: isStreamMetaLoading } = useQuery({
     queryKey: ['bridge-stream-meta', streamId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('streams')
-        .select('id, domain_id, stream_kind')
+        .select('*')
         .eq('id', streamId)
         .single();
       if (error) throw error;
@@ -41,31 +40,37 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     enabled: !!streamId,
   });
 
-  const { data: domainGlobalStream } = useQuery({
-    queryKey: ['bridge-domain-global-stream', streamMeta?.domain_id],
+  const { data: domainGlobalStreamsData, isLoading: isGlobalStreamLoading } = useQuery({
+    queryKey: ['streams', streamMeta?.domain_id],
     queryFn: async () => {
-      if (!streamMeta?.domain_id) return null;
+      if (!streamMeta?.domain_id) return [];
       const { data, error } = await supabase
         .from('streams')
-        .select('id, name, stream_kind, is_system_global')
+        .select('*')
         .eq('domain_id', streamMeta.domain_id)
-        .eq('stream_kind', 'GLOBAL')
-        .eq('is_system_global', true)
         .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
+        .order('sort_order', { ascending: true });
       if (error) throw error;
-      return data;
+      return data ?? [];
     },
+    placeholderData: [],
     enabled: !!streamMeta?.domain_id,
   });
 
-  const currentStreamIsGlobal = streamMeta?.stream_kind === 'GLOBAL';
-  const includeGlobalAvailable = !!domainGlobalStream && domainGlobalStream.id !== streamId;
+  const isGlobal = (s: { stream_kind: string; cabinet_id: string | null; sort_order: number }) =>
+    s.stream_kind === 'GLOBAL' || (s.cabinet_id === null && s.sort_order === -100);
 
-  useEffect(() => {
-    setIncludeGlobalStream(includeGlobalAvailable);
-  }, [includeGlobalAvailable]);
+  const currentStreamIsGlobal = streamMeta ? isGlobal(streamMeta) : false;
+  const allDomainStreams = domainGlobalStreamsData ?? [];
+  const domainGlobalStreams = allDomainStreams.filter(isGlobal);
+  const domainGlobalStreamIds = domainGlobalStreams.map((stream) => stream.id);
+  const includeGlobalAvailable = domainGlobalStreamIds.length > 0;
+  const includeGlobalStream = includeGlobalAvailable && userGlobalStreamChoice;
+  const globalStreamName = domainGlobalStreams.length === 1
+    ? domainGlobalStreams[0]?.name ?? null
+    : domainGlobalStreams.length > 1
+      ? `${domainGlobalStreams.length} global streams`
+      : null;
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -75,10 +80,21 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
       {/* Modal */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-lg bg-surface-default p-6 border border-border-default">
-          <Dialog.Title className="text-2xl font-bold mb-4 text-text-default">The Bridge</Dialog.Title>
-
-          {/* Persona Selection */}
-          <PersonaSelector value={selectedPersona} onChange={setSelectedPersona} />
+          <div className="flex items-center justify-between mb-4">
+            <Dialog.Title className="text-2xl font-bold text-text-default">The Bridge</Dialog.Title>
+            {streamMeta?.name && (
+              <div className="flex items-center gap-2 text-text-muted text-sm">
+                <span>on</span>
+                <span className="font-semibold text-text-default">{streamMeta.name}</span>
+                {currentStreamIsGlobal && (
+                  <div className="flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                    <Globe className="h-3 w-3" />
+                    Global
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Interaction Mode */}
           <InteractionSwitcher value={interactionMode} onChange={setInteractionMode} />
@@ -90,10 +106,11 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             onSelectionChange={setSelectedEntries}
             includeCanvas={includeCanvas}
             onIncludeCanvasChange={setIncludeCanvas}
-            includeGlobalStream={includeGlobalStream}
-            onIncludeGlobalStreamChange={setIncludeGlobalStream}
-            globalStreamName={domainGlobalStream?.name ?? null}
-            globalStreamDisabled={!includeGlobalAvailable}
+            includeGlobalStream={userGlobalStreamChoice}
+            onIncludeGlobalStreamChange={setUserGlobalStreamChoice}
+            globalStreamName={globalStreamName}
+            globalStreamDisabled={currentStreamIsGlobal || !includeGlobalAvailable}
+            globalStreamLoading={isStreamMetaLoading || isGlobalStreamLoading}
             currentStreamIsGlobal={currentStreamIsGlobal}
             disableSelectAll={tokenOverLimit}
           />
@@ -104,7 +121,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             includeCanvas={includeCanvas}
             streamId={streamId}
             includeGlobalStream={includeGlobalStream}
-            globalStreamId={includeGlobalAvailable ? domainGlobalStream?.id ?? null : null}
+            globalStreamIds={includeGlobalAvailable ? domainGlobalStreamIds : []}
             onTokenUpdate={(count, over) => {
               setTokenOverLimit(over);
             }}
@@ -126,13 +143,12 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
           {/* Generate XML */}
           <XMLGenerator
-            personaId={selectedPersona}
             interactionMode={interactionMode}
             selectedEntries={selectedEntries}
             includeCanvas={includeCanvas}
             includeGlobalStream={includeGlobalStream}
-            globalStreamId={includeGlobalAvailable ? domainGlobalStream?.id ?? null : null}
-            globalStreamName={domainGlobalStream?.name ?? null}
+            globalStreamIds={includeGlobalAvailable ? domainGlobalStreamIds : []}
+            globalStreamName={globalStreamName}
             userInput={userInput}
             streamId={streamId}
           />

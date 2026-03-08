@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
+import { Globe } from 'lucide-react';
 
 export function ContextBag({
   streamId,
@@ -14,6 +14,7 @@ export function ContextBag({
   onIncludeGlobalStreamChange,
   globalStreamName,
   globalStreamDisabled,
+  globalStreamLoading,
   currentStreamIsGlobal,
   disableSelectAll,
 }: {
@@ -26,12 +27,14 @@ export function ContextBag({
   onIncludeGlobalStreamChange: (include: boolean) => void;
   globalStreamName: string | null;
   globalStreamDisabled: boolean;
+  globalStreamLoading?: boolean;
   currentStreamIsGlobal: boolean;
   disableSelectAll?: boolean;
 }) {
   const supabase = createClient();
+  const isGlobalToggleDisabled = globalStreamDisabled || !!globalStreamLoading;
 
-  const { data: entries } = useQuery({
+  const { data: entries, isLoading: isEntriesLoading } = useQuery({
     queryKey: ['bridge-entries', streamId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -44,17 +47,25 @@ export function ContextBag({
       return data ?? [];
     },
     enabled: !!streamId,
+    staleTime: 1000 * 60 * 5, // 5 minutes cache
   });
 
-  const groupedEntries = useMemo(() => {
+  const groupedEntries = (() => {
     const groups: Record<string, typeof entries> = {};
     (entries ?? []).forEach((entry) => {
       const dateKey = entry.created_at ? new Date(entry.created_at).toDateString() : 'Unknown Date';
       groups[dateKey] = groups[dateKey] || [];
-      groups[dateKey]?.push(entry);
+      // Avoid duplicates if any
+      if (!groups[dateKey]?.some(e => e.id === entry.id)) {
+        groups[dateKey]?.push(entry);
+      }
     });
-    return Object.entries(groups);
-  }, [entries]);
+    
+    // Sort groups by date descending
+    return Object.entries(groups).sort((a, b) => 
+      new Date(b[0]).getTime() - new Date(a[0]).getTime()
+    );
+  })();
 
   const toggleEntry = (entryId: string) => {
     if (selectedEntries.includes(entryId)) {
@@ -66,17 +77,23 @@ export function ContextBag({
 
   const selectAll = () => {
     if (disableSelectAll) return;
-    onSelectionChange((entries ?? []).map((entry) => entry.id));
+    const allIds = groupedEntries.flatMap(([, group]) => (group ?? []).map((entry) => entry.id));
+    onSelectionChange(Array.from(new Set(allIds)));
   };
 
   const selectLastFive = () => {
-    const ids = (entries ?? []).slice(0, 5).map((entry) => entry.id);
+    const ids = groupedEntries
+      .flatMap(([, group]) => group ?? [])
+      .slice(0, 5)
+      .map((entry) => entry.id);
     onSelectionChange(ids);
   };
 
   const clearAll = () => {
     onSelectionChange([]);
   };
+
+  const isLoadingEntries = isEntriesLoading;
 
   return (
     <div className="mb-4 rounded border border-border-default p-4">
@@ -90,34 +107,56 @@ export function ContextBag({
           />
           Include Current Canvas
         </label>
-        <label className="flex items-center gap-2 text-text-default text-sm">
-          <input
-            type="checkbox"
-            checked={includeGlobalStream}
-            onChange={(e) => onIncludeGlobalStreamChange(e.target.checked)}
-            disabled={globalStreamDisabled}
-          />
-          <span>
-            Include Domain Global Stream
-            {globalStreamName ? ` (${globalStreamName})` : ''}
-          </span>
-        </label>
-        <p className="text-[11px] text-text-muted">
-          {currentStreamIsGlobal
-            ? 'Current stream is global, so bridge already uses its context.'
-            : 'Global stream helps carry domain-wide backstory into bridge prompts.'}
-        </p>
+        <div className="space-y-1">
+          <label
+            className={`flex items-center gap-2 text-sm select-none ${
+              isGlobalToggleDisabled
+                ? 'cursor-not-allowed opacity-60'
+                : 'cursor-pointer'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={includeGlobalStream}
+              onChange={(e) => onIncludeGlobalStreamChange(e.target.checked)}
+              disabled={isGlobalToggleDisabled}
+              className="accent-action-primary-bg"
+            />
+            <span className="flex items-center gap-1.5 text-text-default">
+              <Globe className={`h-3.5 w-3.5 ${
+                includeGlobalStream && !isGlobalToggleDisabled ? 'text-action-primary-bg' : 'text-text-muted'
+              }`} />
+              Include Domain Global Stream
+            </span>
+            {globalStreamLoading && (
+              <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-text-muted border-t-transparent" />
+            )}
+          </label>
+          {!globalStreamLoading && globalStreamName && !globalStreamDisabled && (
+            <p className="ml-7 text-[11px] text-text-muted">{globalStreamName}</p>
+          )}
+          <p className="ml-7 text-[11px] text-text-muted">
+            {globalStreamLoading
+              ? 'Checking global stream for this domain...'
+              : currentStreamIsGlobal
+              ? 'Current stream is already global — its context is included by default.'
+              : globalStreamDisabled
+                ? 'No global stream found in this domain.'
+                : 'Carries domain-wide backstory into bridge prompts.'}
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2 text-xs">
           <button
             onClick={selectAll}
-            disabled={disableSelectAll}
+            disabled={disableSelectAll || isLoadingEntries}
             className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover disabled:opacity-50"
           >
             Select All
           </button>
           <button
             onClick={selectLastFive}
-            className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
+            disabled={isLoadingEntries}
+            className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover disabled:opacity-50"
           >
             Last 5
           </button>
@@ -130,37 +169,40 @@ export function ContextBag({
           <span className="ml-auto text-text-muted">{selectedEntries.length} selected</span>
         </div>
         <div className="max-h-48 space-y-3 overflow-y-auto rounded border border-border-subtle p-2 text-xs">
-          {groupedEntries.length === 0 && (
+          {isLoadingEntries ? (
+            <div className="text-text-muted animate-pulse">Loading entries...</div>
+          ) : groupedEntries.length === 0 ? (
             <div className="text-text-muted">No entries yet.</div>
-          )}
-          {groupedEntries.map(([dateKey, group]) => (
-            <div key={dateKey} className="space-y-2">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
-                {dateKey}
-              </div>
-              {group?.map((entry) => {
-                const preview =
-                  entry.sections?.[0]?.search_text ||
-                  entry.sections?.[0]?.persona_name_snapshot ||
-                  'Empty entry';
-                return (
-                  <label key={entry.id} className="flex items-start gap-2 text-text-default">
-                    <input
-                      type="checkbox"
-                      checked={selectedEntries.includes(entry.id)}
-                      onChange={() => toggleEntry(entry.id)}
-                    />
-                    <div>
-                      <div className="text-[11px] text-text-default">{preview.slice(0, 80)}</div>
-                      <div className="text-[10px] text-text-muted">
-                        {entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown time'}
+          ) : (
+            groupedEntries.map(([dateKey, group]) => (
+              <div key={dateKey} className="space-y-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                  {dateKey}
+                </div>
+                {group?.map((entry) => {
+                  const preview =
+                    entry.sections?.[0]?.search_text ||
+                    entry.sections?.[0]?.persona_name_snapshot ||
+                    'Empty entry';
+                  return (
+                    <label key={entry.id} className="flex items-start gap-2 text-text-default cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={selectedEntries.includes(entry.id)}
+                        onChange={() => toggleEntry(entry.id)}
+                      />
+                      <div>
+                        <div className="text-[11px] text-text-default">{preview.slice(0, 80)}</div>
+                        <div className="text-[10px] text-text-muted">
+                          {entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown time'}
+                        </div>
                       </div>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          ))}
+                    </label>
+                  );
+                })}
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

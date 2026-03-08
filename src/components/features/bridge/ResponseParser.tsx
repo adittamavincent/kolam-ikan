@@ -445,6 +445,9 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
         });
         queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
         queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
       }
 
       if (canProcessCanvas && mergedBlocks) {
@@ -473,7 +476,25 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
               })),
             } as unknown as Json,
           });
+
+          // Auto-save a canvas snapshot so it appears in the timeline
+          const { data: userData } = await supabase.auth.getUser();
+          const summaryText = thoughtLog
+            ? thoughtLog.length > 200
+              ? thoughtLog.slice(0, 200) + '…'
+              : thoughtLog
+            : null;
+          await supabase.from('canvas_versions').insert({
+            canvas_id: canvas.id,
+            stream_id: streamId,
+            content_json: mergedBlocks as unknown as Json,
+            name: 'AI Bridge Update',
+            summary: summaryText,
+            created_by: userData.user?.id ?? null,
+          });
+
           queryClient.invalidateQueries({ queryKey: ['canvas', streamId] });
+          queryClient.invalidateQueries({ queryKey: ['canvas-versions', streamId] });
         }
       }
     } catch (err) {
@@ -594,11 +615,10 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
                 <button
                   key={mode}
                   onClick={() => setPreviewMode(mode)}
-                  className={`rounded px-3 py-1 text-xs ${
-                    previewMode === mode
+                  className={`rounded px-3 py-1 text-xs ${previewMode === mode
                       ? 'bg-action-primary-bg text-action-primary-text'
                       : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
-                  }`}
+                    }`}
                 >
                   {mode[0].toUpperCase() + mode.slice(1)}
                 </button>
@@ -640,33 +660,30 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                   <button
                     onClick={() => updateDecision(change.id, 'accept')}
-                    className={`rounded px-2 py-1 ${
-                      change.decision === 'accept'
+                    className={`rounded px-2 py-1 ${change.decision === 'accept'
                         ? 'bg-action-primary-bg text-action-primary-text'
                         : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
-                    }`}
+                      }`}
                   >
                     Accept
                   </button>
                   {change.type === 'modify' && (
                     <button
                       onClick={() => updateDecision(change.id, 'both')}
-                      className={`rounded px-2 py-1 ${
-                        change.decision === 'both'
+                      className={`rounded px-2 py-1 ${change.decision === 'both'
                           ? 'bg-action-primary-bg text-action-primary-text'
                           : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
-                      }`}
+                        }`}
                     >
                       Take Both
                     </button>
                   )}
                   <button
                     onClick={() => updateDecision(change.id, 'reject')}
-                    className={`rounded px-2 py-1 ${
-                      change.decision === 'reject'
+                    className={`rounded px-2 py-1 ${change.decision === 'reject'
                         ? 'bg-action-primary-bg text-action-primary-text'
                         : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
-                    }`}
+                      }`}
                   >
                     Reject
                   </button>

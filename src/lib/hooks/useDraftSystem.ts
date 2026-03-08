@@ -27,6 +27,55 @@ interface DraftState {
 
 const STORAGE_PREFIX = 'kolam_draft_';
 
+const hasTextValue = (value: unknown): boolean => typeof value === 'string' && value.trim().length > 0;
+
+const hasMeaningfulBlockPayload = (value: unknown): boolean => {
+  if (hasTextValue(value)) return true;
+  if (Array.isArray(value)) {
+    return value.some((item) => hasMeaningfulBlockPayload(item));
+  }
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (hasTextValue(record.text) || hasTextValue(record.url) || hasTextValue(record.src) || hasTextValue(record.href)) {
+    return true;
+  }
+
+  if (hasMeaningfulBlockPayload(record.content) || hasMeaningfulBlockPayload(record.children)) {
+    return true;
+  }
+
+  const blockType = typeof record.type === 'string' ? record.type : null;
+  if (blockType && blockType !== 'paragraph') {
+    return true;
+  }
+
+  return false;
+};
+
+const hasMeaningfulDraftContent = (content: PartialBlock[] | undefined): boolean => {
+  if (!Array.isArray(content) || content.length === 0) {
+    return false;
+  }
+  return content.some((block) => hasMeaningfulBlockPayload(block));
+};
+
+const hasRecoverableLocalDraft = (draft: DraftState | null): draft is DraftState => {
+  if (!draft || !draft.sections || typeof draft.sections !== 'object') {
+    return false;
+  }
+
+  return Object.values(draft.sections).some((section) => {
+    if (!section || typeof section.personaId !== 'string' || section.personaId.length === 0) {
+      return false;
+    }
+    return hasMeaningfulDraftContent(section.content);
+  });
+};
+
 export interface DraftContent {
   personaId: string;
   content: PartialBlock[];
@@ -75,9 +124,22 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     activeEntryIdRef.current = activeEntryId;
   }, [activeEntryId]);
 
-  // Load draft on mount
+  // Load draft on mount / stream change
   useEffect(() => {
     isMountedRef.current = true;
+    setRecoveryAvailable(false);
+    setIsLoading(true);
+    setActiveEntryId(null);
+    setInitialDrafts({});
+    activeEntryIdRef.current = null;
+    sectionIdsRef.current = {};
+    contentRefs.current = {};
+    personaIdsRef.current = {};
+    activeInstancesRef.current.clear();
+    Object.values(debouncersRef.current).forEach(d => d.cancel());
+    debouncersRef.current = {};
+    creationPromiseRef.current = null;
+    sectionCreationPromisesRef.current = {};
     
     async function loadDraft() {
       if (!streamId) return;
@@ -91,11 +153,11 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         if (localDraftStr) {
           try {
             const parsed = JSON.parse(localDraftStr);
-            // Migration check: if it's the old format (personaId keys) or older
-            // We'll just ignore old formats for simplicity in this refactor
-            // or we could try to detect if keys are UUIDs vs persona IDs, but simpler to reset if schema changes significantly
-             localDraft = parsed;
-             setRecoveryAvailable(true);
+            localDraft = parsed as DraftState;
+            if (!hasRecoverableLocalDraft(localDraft)) {
+              localDraft = null;
+              localStorage.removeItem(localDraftKey);
+            }
           } catch (e) {
             console.error('Failed to parse local draft', e);
           }
@@ -137,6 +199,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           loadedEntryId = localDraft.entryId;
           
           Object.entries(localDraft.sections).forEach(([instanceId, draft]) => {
+             // Skip sections with no meaningful content
+             if (!hasMeaningfulDraftContent(draft.content)) return;
              loadedDrafts[instanceId] = {
                personaId: draft.personaId,
                content: draft.content
@@ -146,24 +210,29 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           });
           
           setStatus('offline');
+          setRecoveryAvailable(Object.keys(loadedDrafts).length > 0);
         } else if (dbDraft) {
           // DB is newer
-          loadedEntryId = dbDraft.id;
-          
           dbDraft.sections.forEach(section => {
-             if (section.persona_id) {
-                 // Use section.id as instanceId for DB drafts
-                 const instanceId = section.id;
-                 loadedDrafts[instanceId] = {
-                   personaId: section.persona_id,
-                   content: section.content_json as unknown as PartialBlock[]
-                 };
-                 loadedSectionIds[instanceId] = section.id;
-                 loadedPersonaIds[instanceId] = section.persona_id;
+             const sectionContent = section.content_json as unknown as PartialBlock[];
+             if (!section.persona_id || !hasMeaningfulDraftContent(sectionContent)) {
+               return;
              }
+
+             // Use section.id as instanceId for DB drafts
+             const instanceId = section.id;
+             loadedDrafts[instanceId] = {
+               personaId: section.persona_id,
+               content: sectionContent
+             };
+             loadedSectionIds[instanceId] = section.id;
+             loadedPersonaIds[instanceId] = section.persona_id;
           });
-          
-          setStatus('saved');
+
+          if (Object.keys(loadedDrafts).length > 0) {
+            loadedEntryId = dbDraft.id;
+            setStatus('saved');
+          }
         }
 
         if (loadedEntryId) {
@@ -261,17 +330,23 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
          updatedAt: Date.now()
      };
      
-     // Populate sections from refs
+     // Populate sections from refs, skip empty content
      Object.keys(contentRefs.current).forEach(instanceId => {
+         const content = contentRefs.current[instanceId];
+         if (!hasMeaningfulDraftContent(content)) return;
          state.sections[instanceId] = {
              sectionId: sectionIdsRef.current[instanceId] || null,
              personaId: personaIdsRef.current[instanceId],
-             content: contentRefs.current[instanceId],
+             content: content,
              updatedAt: Date.now()
          };
      });
      
-     localStorage.setItem(`${STORAGE_PREFIX}${streamId}`, JSON.stringify(state));
+     if (Object.keys(state.sections).length === 0) {
+       localStorage.removeItem(`${STORAGE_PREFIX}${streamId}`);
+     } else {
+       localStorage.setItem(`${STORAGE_PREFIX}${streamId}`, JSON.stringify(state));
+     }
   }, [streamId]);
 
   // Save implementation
@@ -283,16 +358,31 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
       try {
         // Handle empty content - delete section if it exists
-        if (!content || content.length === 0) {
+        if (!hasMeaningfulDraftContent(content)) {
             const sectionId = sectionIdsRef.current[instanceId];
             if (sectionId) {
-                await supabase.from('sections').delete().eq('id', sectionId);
+                const { error: deleteError } = await supabase.from('sections').delete().eq('id', sectionId);
+                if (deleteError) {
+                    const { error: clearError } = await supabase
+                      .from('sections')
+                      .update({
+                        content_json: [] as unknown as Json,
+                        updated_at: new Date().toISOString(),
+                      })
+                      .eq('id', sectionId);
+
+                    if (clearError) {
+                      throw clearError;
+                    }
+                }
                 delete sectionIdsRef.current[instanceId];
             }
-            // Clean up refs for this instance since it has no content
-            contentRefs.current[instanceId] = [];
-            delete personaIdsRef.current[instanceId];
-            activeInstancesRef.current.delete(instanceId);
+            // Clean up refs only if instance hasn't already been cleaned by setActiveInstances
+            if (activeInstancesRef.current.has(instanceId)) {
+              delete contentRefs.current[instanceId];
+              delete personaIdsRef.current[instanceId];
+              activeInstancesRef.current.delete(instanceId);
+            }
             
             updateLocalStorage();
             setStatus('saved');
@@ -439,26 +529,44 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
   // Public save method
   const saveDraft = useCallback((instanceId: string, personaId: string, content: PartialBlock[], personaName?: string) => {
-    contentRefs.current[instanceId] = content;
+    const hasMeaningfulContent = hasMeaningfulDraftContent(content);
+    const normalizedContent = hasMeaningfulContent ? content : [];
+
+    contentRefs.current[instanceId] = normalizedContent;
     personaIdsRef.current[instanceId] = personaId;
-    // Mark this instance as active
-    activeInstancesRef.current.add(instanceId);
-    updateLocalStorage(); // Sync to local immediately
     setStatus('saving');
 
     // Deletions must run immediately; if debounced they can be canceled by
     // setActiveInstances() during section removal and leave status stuck in saving.
-    if (!content || content.length === 0) {
+    if (!hasMeaningfulContent) {
+      // Don't add to activeInstances for deletions — the section is being removed.
+      // Clean up refs eagerly so updateLocalStorage doesn't persist stale data.
+      delete contentRefs.current[instanceId];
+      delete personaIdsRef.current[instanceId];
+      updateLocalStorage();
+      // Clear from initialDrafts so the consumer's re-initialization guard
+      // (e.g. "if sections.length === 0 && initialDrafts has keys") cannot
+      // resurrect a section the user just removed.
+      setInitialDrafts(prev => {
+        if (!(instanceId in prev)) return prev;
+        const next = { ...prev };
+        delete next[instanceId];
+        return next;
+      });
+
       const debouncer = debouncersRef.current[instanceId];
       if (debouncer) {
         debouncer.cancel();
         delete debouncersRef.current[instanceId];
       }
-      void performSave(instanceId, personaId, content, personaName);
+      void performSave(instanceId, personaId, normalizedContent, personaName);
       return;
     }
-    
-    getDebouncer(instanceId)(personaId, content, personaName);
+
+    // Mark this instance as active only for meaningful content
+    activeInstancesRef.current.add(instanceId);
+    updateLocalStorage();
+    getDebouncer(instanceId)(personaId, normalizedContent, personaName);
   }, [updateLocalStorage, getDebouncer, performSave]);
   
   // Method to mark instances as active (called by UI)
@@ -515,7 +623,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     const activeInstancesWithContent = Array.from(activeInstancesRef.current).filter(
       instanceId => {
         const content = contentRefs.current[instanceId];
-        const hasContent = content && content.length > 0;
+        const hasContent = hasMeaningfulDraftContent(content);
         const hasPersona = personaIdsRef.current[instanceId];
         return hasContent && hasPersona;
       }
@@ -596,6 +704,9 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         
         queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
         queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
 
     } catch (error) {
         console.error("Commit failed", error);

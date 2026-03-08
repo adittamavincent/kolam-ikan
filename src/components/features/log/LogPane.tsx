@@ -4,7 +4,10 @@ import { useState, Fragment, useEffect, useRef, useCallback } from 'react';
 import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
 import { LogSection } from './LogSection';
+import { CanvasSnapshotCard } from './CanvasSnapshotCard';
+import { CanvasDraftCard } from './CanvasDraftCard';
 import { useStream } from '@/lib/hooks/useStream';
+import { useTimelineItems } from '@/lib/hooks/useTimelineItems';
 import { Filter, ArrowUpDown, Search, Download, Calendar, PanelLeft, Check, X, PencilLine, Loader2 } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
@@ -93,6 +96,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     personaId: filterPersonaId,
     sortOrder,
   });
+
+  const { timelineItems } = useTimelineItems(streamId, entryList, { sortOrder });
 
   const { data: latestEntryId } = useQuery({
     queryKey: ['latest-entry-id', streamId],
@@ -228,8 +233,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 <button
                   onClick={() => setIsToolbarOpen(!isToolbarOpen)}
                   className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isToolbarOpen
-                      ? 'bg-surface-subtle text-text-default'
-                      : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'
+                    ? 'bg-surface-subtle text-text-default'
+                    : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'
                     }`}
                   title={isToolbarOpen ? 'Hide local search' : 'Show local search'}
                 >
@@ -330,124 +335,147 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-3">
-          <div className="sticky top-0 z-20 pt-4">
-            <EntryCreator streamId={streamId} />
-          </div>
           <div className="pb-5 pt-4">
+            {sortOrder === 'newest' && (
+              <div className="mb-4 space-y-2">
+                <EntryCreator key={streamId} streamId={streamId} />
+                <CanvasDraftCard streamId={streamId} />
+              </div>
+            )}
             {isEntriesLoading ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="h-28 rounded-lg bg-surface-subtle/50" />
                 ))}
               </div>
-            ) : entryList.length === 0 ? (
+            ) : timelineItems.length === 0 ? (
               <div className="text-center py-10 text-text-muted text-sm">
                 No entries found.
               </div>
             ) : (
               <>
                 <div className="flex flex-col gap-2.5">
-                  {entryList.map((entry) => {
+                  {timelineItems.map((item) => {
+                    if (item.type === 'canvas_snapshot') {
+                      return (
+                        <CanvasSnapshotCard
+                          key={`snapshot-${item.data.id}`}
+                          version={item.data}
+                          streamId={streamId}
+                          mounted={mounted}
+                        />
+                      );
+                    }
+
+                    const entry = item.data;
                     const isLatestEntry = latestEntryId === entry.id;
                     const isAmending = amendState?.entryId === entry.id;
 
                     return (
-                    <div
-                      key={entry.id}
-                      ref={(node) => {
-                        entryRefs.current[entry.id] = node;
-                      }}
-                    >
-                      <div className={`relative group rounded-lg border bg-surface-default overflow-hidden transition-all ${isAmending ? 'border-action-primary-bg/50 ring-1 ring-action-primary-bg/40' : 'border-border-subtle hover:border-border-default/50'}`}>
-                        <div className="flex items-center px-2.5 py-1 bg-surface-subtle/40 border-b border-border-subtle/40">
-                          <div className="flex w-full items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <Calendar className="h-3 w-3 text-text-muted" />
-                              <span className="text-[10px] font-medium text-text-subtle font-mono">
-                                {mounted ? new Date(entry.created_at || '').toLocaleString(undefined, {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: 'numeric',
-                                  minute: '2-digit',
-                                }) : new Date(entry.created_at || '').toISOString()}
-                              </span>
-                              {isLatestEntry && (
-                                <span className="inline-flex items-center rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
-                                  Latest
+                      <div
+                        key={entry.id}
+                        ref={(node) => {
+                          entryRefs.current[entry.id] = node;
+                        }}
+                      >
+                        <div className={`relative group rounded-lg border bg-surface-default overflow-hidden transition-all ${isAmending ? 'border-action-primary-bg/50 ring-1 ring-action-primary-bg/40' : 'border-border-subtle hover:border-border-default/50'}`}>
+                          <div className="flex items-center px-2.5 py-1 bg-surface-subtle/40 border-b border-border-subtle/40">
+                            <div className="flex w-full items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <Calendar className="h-3 w-3 text-text-muted" />
+                                <span className="text-[10px] font-medium text-text-subtle font-mono">
+                                  {mounted ? new Date(entry.created_at || '').toLocaleString(undefined, {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: 'numeric',
+                                    minute: '2-digit',
+                                  }) : new Date(entry.created_at || '').toISOString()}
                                 </span>
-                              )}
-                            </div>
-
-                            {isLatestEntry && (
-                              <div className="flex items-center gap-1">
-                                {isAmending ? (
-                                  <>
-                                    <button
-                                      onClick={() => handleSaveAmend(entry)}
-                                      disabled={amendEntry.isPending}
-                                      className="inline-flex items-center gap-1 rounded-md bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
-                                      title="Save amendment"
-                                    >
-                                      {amendEntry.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
-                                      Save
-                                    </button>
-                                    <button
-                                      onClick={handleCancelAmend}
-                                      disabled={amendEntry.isPending}
-                                      className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
-                                      title="Cancel amendment"
-                                    >
-                                      <X className="h-3 w-3" />
-                                      Cancel
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    onClick={() => handleStartAmend(entry)}
-                                    className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
-                                    title="Amend latest entry"
-                                  >
-                                    <PencilLine className="h-3 w-3" />
-                                    Amend
-                                  </button>
+                                {isLatestEntry && (
+                                  <span className="inline-flex items-center rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                                    Latest
+                                  </span>
                                 )}
                               </div>
-                            )}
+
+                              {isLatestEntry && (
+                                <div className="flex items-center gap-1">
+                                  {isAmending ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleSaveAmend(entry)}
+                                        disabled={amendEntry.isPending}
+                                        className="inline-flex items-center gap-1 rounded-md bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                                        title="Save amendment"
+                                      >
+                                        {amendEntry.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={handleCancelAmend}
+                                        disabled={amendEntry.isPending}
+                                        className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
+                                        title="Cancel amendment"
+                                      >
+                                        <X className="h-3 w-3" />
+                                        Cancel
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleStartAmend(entry)}
+                                      className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
+                                      title="Amend latest entry"
+                                    >
+                                      <PencilLine className="h-3 w-3" />
+                                      Amend
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        {isAmending && amendError && (
-                          <div className="px-2.5 py-1 text-[11px] text-danger-text bg-danger-bg/15 border-b border-danger-border/30">
-                            {amendError}
+                          {isAmending && amendError && (
+                            <div className="px-2.5 py-1 text-[11px] text-danger-text bg-danger-bg/15 border-b border-danger-border/30">
+                              {amendError}
+                            </div>
+                          )}
+                          <div className="px-2.5 py-2 flex flex-col gap-1.5">
+                            {entry.sections?.map((section: EntryWithSections['sections'][number]) => (
+                              <LogSection
+                                key={section.id}
+                                section={section}
+                                editable={isAmending}
+                                onContentChange={(content) => {
+                                  if (!isAmending) return;
+                                  setAmendState((prev) => {
+                                    if (!prev || prev.entryId !== entry.id) return prev;
+                                    return {
+                                      ...prev,
+                                      sections: {
+                                        ...prev.sections,
+                                        [section.id]: content,
+                                      },
+                                    };
+                                  });
+                                }}
+                                highlightTerm={entry.id === highlightEntryId ? highlightTerm ?? undefined : undefined}
+                              />
+                            ))}
                           </div>
-                        )}
-                        <div className="px-2.5 py-2 flex flex-col gap-1.5">
-                          {entry.sections?.map((section: EntryWithSections['sections'][number]) => (
-                            <LogSection
-                              key={section.id}
-                              section={section}
-                              editable={isAmending}
-                              onContentChange={(content) => {
-                                if (!isAmending) return;
-                                setAmendState((prev) => {
-                                  if (!prev || prev.entryId !== entry.id) return prev;
-                                  return {
-                                    ...prev,
-                                    sections: {
-                                      ...prev.sections,
-                                      [section.id]: content,
-                                    },
-                                  };
-                                });
-                              }}
-                              highlightTerm={entry.id === highlightEntryId ? highlightTerm ?? undefined : undefined}
-                            />
-                          ))}
                         </div>
                       </div>
-                    </div>
                     );
                   })}
                 </div>
+
+                {sortOrder === 'oldest' && (
+                  <div className="mt-4 space-y-2">
+                    <CanvasDraftCard streamId={streamId} />
+                    <EntryCreator key={streamId} streamId={streamId} />
+                  </div>
+                )}
+
                 {hasNextPage && (
                   <div className="flex justify-center pt-4 pb-2">
                     <button

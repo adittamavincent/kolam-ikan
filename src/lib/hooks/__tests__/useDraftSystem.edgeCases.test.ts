@@ -108,6 +108,30 @@ describe('useDraftSystem - Edge Cases', () => {
         expect(mockUpdate).not.toHaveBeenCalled();
     });
 
+    it('should not mark recovery available for empty local drafts', async () => {
+        localStorage.setItem(
+            'kolam_draft_stream-empty',
+            JSON.stringify({
+                entryId: null,
+                sections: {
+                    'inst-1': {
+                        sectionId: null,
+                        personaId: 'persona-a',
+                        content: [{ id: 'b1', type: 'paragraph', content: [] }],
+                        updatedAt: Date.now(),
+                    },
+                },
+                updatedAt: Date.now(),
+            })
+        );
+
+        const { result } = renderHook(() => useDraftSystem({ streamId: 'stream-empty' }), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.recoveryAvailable).toBe(false);
+        expect(result.current.initialDrafts).toEqual({});
+    });
+
     // Scene: Raka rapidly saves with same instanceId but different content
     it('should handle rapid content changes on same instance', async () => {
         const { result } = renderHook(() => useDraftSystem({ streamId: 'stream-1' }), { wrapper });
@@ -226,5 +250,96 @@ describe('useDraftSystem - Edge Cases', () => {
             (call: string[]) => typeof call[0] === 'string' && call[0].includes('stream-local')
         );
         expect(hasStreamKey).toBe(true);
+    });
+
+    it('should ignore DB drafts with empty section content', async () => {
+        mockSupabase.from = vi.fn((table: string) => {
+            if (table === 'entries') {
+                return {
+                    select: vi.fn().mockReturnThis(),
+                    eq: vi.fn().mockReturnThis(),
+                    order: vi.fn().mockReturnThis(),
+                    limit: vi.fn().mockResolvedValue({
+                        data: [
+                            {
+                                id: 'entry-empty',
+                                updated_at: new Date().toISOString(),
+                                sections: [
+                                    {
+                                        id: 'section-empty',
+                                        persona_id: 'persona-a',
+                                        content_json: [{ id: 'b1', type: 'paragraph', content: [] }],
+                                        updated_at: new Date().toISOString(),
+                                    },
+                                ],
+                            },
+                        ],
+                        error: null,
+                    }),
+                };
+            }
+
+            return {
+                select: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+            };
+        });
+
+        const { result } = renderHook(() => useDraftSystem({ streamId: 'stream-empty-db' }), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        expect(result.current.activeEntryId).toBeNull();
+        expect(result.current.initialDrafts).toEqual({});
+        expect(result.current.recoveryAvailable).toBe(false);
+    });
+
+    it('should clear section content when delete fails', async () => {
+        const { result } = renderHook(() => useDraftSystem({ streamId: 'stream-delete-fallback' }), { wrapper });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+        mockSupabase.rpc = vi.fn().mockResolvedValue({
+            data: { id: 'entry-1', sections: [{ id: 'section-1' }] },
+            error: null,
+        });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const content = [{ id: 'b1', type: 'paragraph', content: [{ type: 'text', text: 'Draft text' }] }] as any;
+
+        act(() => {
+            result.current.saveDraft('inst-1', 'persona-a', content, 'Persona A');
+        });
+
+        await waitFor(() => expect(result.current.activeEntryId).toBe('entry-1'));
+
+        const mockDeleteEq = vi.fn().mockResolvedValue({ error: { message: 'delete failed' } });
+        const mockDelete = vi.fn().mockReturnValue({ eq: mockDeleteEq });
+        const mockUpdateEq = vi.fn().mockResolvedValue({ error: null });
+        const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq });
+
+        mockSupabase.from = vi.fn((table: string) => {
+            if (table === 'sections') {
+                return {
+                    delete: mockDelete,
+                    update: mockUpdate,
+                };
+            }
+            return {
+                update: vi.fn().mockReturnThis(),
+                eq: vi.fn().mockResolvedValue({ error: null }),
+            };
+        });
+
+        act(() => {
+            result.current.saveDraft('inst-1', 'persona-a', [], 'Persona A');
+        });
+
+        await waitFor(() => {
+            expect(mockDelete).toHaveBeenCalled();
+            expect(mockUpdate).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    content_json: [],
+                })
+            );
+        });
     });
 });

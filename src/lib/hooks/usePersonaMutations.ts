@@ -6,6 +6,12 @@ export function usePersonaMutations() {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
+  type DeletePersonaParams = {
+    id: string;
+    transferToId?: string | null;
+    transferToName?: string | null;
+  };
+
   const createPersona = useMutation({
     mutationFn: async (newPersona: Omit<Persona, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'is_system' | 'user_id'>) => {
       // Need to get current user to assign user_id
@@ -45,7 +51,19 @@ export function usePersonaMutations() {
   });
 
   const deletePersona = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, transferToId, transferToName }: DeletePersonaParams) => {
+      if (transferToId) {
+        const { error: transferError } = await supabase
+          .from('sections')
+          .update({
+            persona_id: transferToId,
+            persona_name_snapshot: transferToName ?? null,
+          })
+          .eq('persona_id', id);
+
+        if (transferError) throw transferError;
+      }
+
       // Soft delete
       const { error } = await supabase
         .from('personas')
@@ -56,6 +74,34 @@ export function usePersonaMutations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['personas'] });
+      queryClient.invalidateQueries({ queryKey: ['entries'] });
+    },
+  });
+
+  const hardDeletePersona = useMutation({
+    mutationFn: async ({ id, transferToId, transferToName }: DeletePersonaParams) => {
+      if (transferToId) {
+        const { error: transferError } = await supabase
+          .from('sections')
+          .update({
+            persona_id: transferToId,
+            persona_name_snapshot: transferToName ?? null,
+          })
+          .eq('persona_id', id);
+
+        if (transferError) throw transferError;
+      }
+
+      const { error } = await supabase
+        .from('personas')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['personas'] });
+      queryClient.invalidateQueries({ queryKey: ['entries'] });
     },
   });
 
@@ -78,6 +124,7 @@ export function usePersonaMutations() {
     createPersona,
     updatePersona,
     deletePersona,
+    hardDeletePersona,
     updateSectionPersona,
   };
 }

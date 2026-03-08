@@ -1,10 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import DOMPurify from 'isomorphic-dompurify';
 import { createClient } from '@/lib/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import { BlockNoteBlock } from '@/lib/types';
+import { BlockNoteBlock, BlockNoteContent } from '@/lib/types';
 import { z } from 'zod';
 import { BlockSchema } from '@/lib/validation/entry';
 import { Json } from '@/lib/types/database.types';
@@ -31,25 +30,146 @@ function extractBlockText(block: BlockNoteBlock): string {
   return block.content?.map((c) => c.text).join('') || '';
 }
 
+function parseInlineMarkdown(text: string): BlockNoteContent[] {
+  const tokens: BlockNoteContent[] = [];
+  const pattern = /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(`[^`]+`)/g;
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    if (match.index === undefined) continue;
+
+    if (match.index > lastIndex) {
+      tokens.push({
+        type: 'text',
+        text: text.slice(lastIndex, match.index),
+      });
+    }
+
+    const matched = match[0];
+    if (matched.startsWith('**') && matched.endsWith('**')) {
+      tokens.push({
+        type: 'text',
+        text: matched.slice(2, -2),
+        styles: { bold: true },
+      });
+    } else if (matched.startsWith('*') && matched.endsWith('*')) {
+      tokens.push({
+        type: 'text',
+        text: matched.slice(1, -1),
+        styles: { italic: true },
+      });
+    } else if (matched.startsWith('`') && matched.endsWith('`')) {
+      tokens.push({
+        type: 'text',
+        text: matched.slice(1, -1),
+        styles: { code: true },
+      });
+    }
+
+    lastIndex = match.index + matched.length;
+  }
+
+  if (lastIndex < text.length) {
+    tokens.push({
+      type: 'text',
+      text: text.slice(lastIndex),
+    });
+  }
+
+  return tokens.length > 0 ? tokens : [{ type: 'text', text }];
+}
+
 function toParagraphBlocks(text: string): BlockNoteBlock[] {
-  const chunks = text
-    .split(/\n\s*\n/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  if (chunks.length === 0) {
+  const normalized = text.replace(/\r\n/g, '\n').trim();
+  if (!normalized) {
     return [
       {
         id: crypto.randomUUID(),
         type: 'paragraph',
-        content: [{ type: 'text', text: text.trim() }],
+        content: [{ type: 'text', text: '' }],
       },
     ];
   }
-  return chunks.map((chunk) => ({
-    id: crypto.randomUUID(),
-    type: 'paragraph',
-    content: [{ type: 'text', text: chunk }],
-  }));
+
+  const lines = normalized
+    .split('\n')
+    .map((line) => line.trimEnd());
+
+  const blocks: BlockNoteBlock[] = [];
+  let blankStreak = 0;
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trim();
+
+    if (!line) {
+      blankStreak += 1;
+      if (blankStreak >= 2) {
+        blocks.push({
+          id: crypto.randomUUID(),
+          type: 'paragraph',
+          content: [{ type: 'text', text: '' }],
+        });
+        blankStreak = 0;
+      }
+      return;
+    }
+
+    blankStreak = 0;
+
+    const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
+    if (headingMatch) {
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'heading',
+        props: { level: headingMatch[1].length as unknown as Json },
+        content: parseInlineMarkdown(headingMatch[2]),
+        children: [],
+      });
+      return;
+    }
+
+    const bulletMatch = line.match(/^[-*]\s+(.+)$/);
+    if (bulletMatch) {
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'bulletListItem',
+        content: parseInlineMarkdown(bulletMatch[1]),
+        children: [],
+      });
+      return;
+    }
+
+    const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    if (numberedMatch) {
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: 'numberedListItem',
+        content: parseInlineMarkdown(numberedMatch[1]),
+        children: [],
+      });
+      return;
+    }
+
+    blocks.push({
+      id: crypto.randomUUID(),
+      type: 'paragraph',
+      content: parseInlineMarkdown(line),
+      children: [],
+    });
+  });
+
+  if (blocks.length === 0) {
+    return [
+      {
+        id: crypto.randomUUID(),
+        type: 'paragraph',
+        content: [{ type: 'text', text: normalized }],
+        children: [],
+      },
+    ];
+  }
+
+  return blocks;
 }
 
 function resolveIncomingBlocks(raw: string): { blocks: BlockNoteBlock[]; error?: string } {
@@ -67,6 +187,42 @@ function resolveIncomingBlocks(raw: string): { blocks: BlockNoteBlock[]; error?:
   } catch {
     return { blocks: [], error: 'Canvas update is not valid JSON' };
   }
+}
+
+function resolveCanvasBlocks(raw: string): {
+  blocks: BlockNoteBlock[];
+  format: 'json' | 'markdown';
+  error?: string;
+} {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { blocks: [], format: 'markdown' };
+  }
+
+  const looksLikeJson = trimmed.startsWith('[') || trimmed.startsWith('{');
+  if (looksLikeJson) {
+    const jsonResult = resolveIncomingBlocks(trimmed);
+    if (!jsonResult.error) {
+      return { blocks: jsonResult.blocks, format: 'json' };
+    }
+    return {
+      blocks: [],
+      format: 'json',
+      error: 'Canvas update looks like JSON but is invalid. Use valid JSON or compact markdown.',
+    };
+  }
+
+  return { blocks: toParagraphBlocks(trimmed), format: 'markdown' };
+}
+
+function extractTagContent(text: string, tagName: string): string | null {
+  const pattern = new RegExp(
+    `<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`,
+    'i'
+  );
+  const match = pattern.exec(text);
+  if (!match?.[1]) return null;
+  return match[1].trim();
 }
 
 export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponseParserProps) {
@@ -143,51 +299,76 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
         throw new Error('Stream not available');
       }
 
-      const sanitized = DOMPurify.sanitize(pastedXML);
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(sanitized, 'text/xml');
-
-      const parserError = doc.querySelector('parsererror');
-      if (parserError) {
-        throw new Error('Invalid XML format');
+      const raw = pastedXML.trim();
+      if (!raw) {
+        throw new Error('No response to parse');
       }
 
       const nextIgnored: string[] = [];
       const warnings: string[] = [];
 
-      const thoughtNode = doc.querySelector('thought_log');
-      const canvasNode = doc.querySelector('canvas_update');
-      const baseUpdatedAtNode = doc.querySelector('canvas_base_updated_at');
+      const thoughtContent = extractTagContent(raw, 'thought_log');
+      const canvasJsonContent = extractTagContent(raw, 'canvas_update_json');
+      const canvasMarkdownContent = extractTagContent(raw, 'canvas_update_md');
+      const canvasDefaultContent = extractTagContent(raw, 'canvas_update');
+      const canvasContent = canvasJsonContent ?? canvasMarkdownContent ?? canvasDefaultContent;
+      const baseUpdatedAt = extractTagContent(raw, 'canvas_base_updated_at');
 
-      if (thoughtNode?.textContent && canProcessLog) {
-        setThoughtLog(thoughtNode.textContent.trim());
-      } else if (thoughtNode?.textContent) {
+      if (!thoughtContent && !canvasContent) {
+        throw new Error(
+          'Could not find <thought_log> or canvas update tags (<canvas_update>, <canvas_update_md>, <canvas_update_json>) in the response. ' +
+          'Make sure the LLM response contains the expected XML structure.'
+        );
+      }
+
+      if (thoughtContent && canProcessLog) {
+        setThoughtLog(thoughtContent);
+      } else if (thoughtContent) {
         nextIgnored.push('thought_log');
       }
 
+      if (canProcessLog && !thoughtContent) {
+        warnings.push('No <thought_log> found — expected for this interaction mode.');
+      }
+
       let resolvedBlocks: BlockNoteBlock[] | null = null;
-      if (canvasNode?.textContent && canProcessCanvas) {
-        const rawCanvas = canvasNode.textContent.trim();
-        const result = resolveIncomingBlocks(rawCanvas);
+      if (canvasContent && canProcessCanvas) {
+        const result = (() => {
+          if (canvasJsonContent) {
+            const jsonResult = resolveIncomingBlocks(canvasJsonContent);
+            return {
+              blocks: jsonResult.blocks,
+              error: jsonResult.error,
+              format: 'json' as const,
+            };
+          }
+          return resolveCanvasBlocks(canvasContent);
+        })();
         if (result.error) {
           setCanvasParseError(result.error);
-          warnings.push('Canvas update could not be parsed as JSON');
+          warnings.push('Canvas update could not be parsed');
         } else {
           resolvedBlocks = result.blocks;
           setIncomingBlocks(result.blocks);
+          if (result.format === 'markdown') {
+            warnings.push('Canvas update parsed in compact markdown mode.');
+          }
         }
-      } else if (canvasNode?.textContent) {
+      } else if (canvasContent) {
         nextIgnored.push('canvas_update');
       }
 
-      if (baseUpdatedAtNode?.textContent) {
-        const baseUpdated = baseUpdatedAtNode.textContent.trim();
+      if (canProcessCanvas && !canvasContent) {
+        warnings.push('No canvas update tag found — expected <canvas_update>, <canvas_update_md>, or <canvas_update_json>.');
+      }
+
+      if (baseUpdatedAt) {
         const { data: canvas } = await supabase
           .from('canvases')
           .select('id, updated_at, content_json')
           .eq('stream_id', streamId)
           .single();
-        if (canvas?.updated_at && baseUpdated && canvas.updated_at !== baseUpdated) {
+        if (canvas?.updated_at && canvas.updated_at !== baseUpdatedAt) {
           setConflictWarning('Canvas was edited after the AI response was generated.');
         }
         if (canvas?.content_json) {
@@ -263,6 +444,7 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
           payload: { content: thoughtLog },
         });
         queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
       }
 
       if (canProcessCanvas && mergedBlocks) {
@@ -303,8 +485,11 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
 
   const handlePlainTextImport = () => {
     if (!canProcessCanvas) return;
-    const canvasNodeMatch = /<canvas_update[^>]*>([\s\S]*?)<\/canvas_update>/i.exec(pastedXML);
-    const raw = canvasNodeMatch?.[1] ?? '';
+    const raw =
+      extractTagContent(pastedXML, 'canvas_update_md') ??
+      extractTagContent(pastedXML, 'canvas_update') ??
+      extractTagContent(pastedXML, 'canvas_update_json') ??
+      '';
     const blocks = toParagraphBlocks(raw);
     setIncomingBlocks(blocks);
     setChanges(
@@ -340,7 +525,7 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
           onChange={(e) => setPastedXML(e.target.value)}
           className="w-full rounded border border-border-default bg-surface-subtle text-text-default p-3 focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
           rows={6}
-          placeholder="<response>...</response>"
+          placeholder={`Paste the LLM response here. Expected format:\n<response>\n  ${canProcessLog ? '<thought_log>...</thought_log>' : ''}${canProcessLog && canProcessCanvas ? '\n  ' : ''}${canProcessCanvas ? '<canvas_update>markdown or JSON</canvas_update>' : ''}\n</response>`}
         />
       </div>
 
@@ -377,6 +562,27 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
           >
             Import as Plain Text
           </button>
+        </div>
+      )}
+
+      {(thoughtLog || incomingBlocks) && (
+        <div className="rounded border border-border-default bg-surface-subtle p-3 text-xs space-y-2">
+          <div className="font-medium text-text-default">Parsed Content</div>
+          {thoughtLog && (
+            <div>
+              <span className="font-medium text-text-muted">Thought Log → New Entry:</span>
+              <div className="mt-1 max-h-32 overflow-y-auto rounded bg-surface-default p-2 text-text-default whitespace-pre-wrap">
+                {thoughtLog}
+              </div>
+            </div>
+          )}
+          {incomingBlocks && (
+            <div>
+              <span className="font-medium text-text-muted">
+                Canvas Update: {incomingBlocks.length} block{incomingBlocks.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

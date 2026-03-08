@@ -84,6 +84,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
     },
   });
 
@@ -167,6 +168,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
     },
   });
 

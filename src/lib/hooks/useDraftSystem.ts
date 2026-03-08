@@ -595,6 +595,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         setStatus('idle');
         
         queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+        queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
 
     } catch (error) {
         console.error("Commit failed", error);

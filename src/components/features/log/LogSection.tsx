@@ -161,7 +161,7 @@ export function LogSection({ section, highlightTerm, editable = false, onContent
           </span>
         </div>
         
-        <div className={`${editable ? 'blocknote-editable' : 'blocknote-readonly'} prose prose-sm dark:prose-invert max-w-none [&_.bn-block-content]:py-0!`}>
+        <div className={`${editable ? 'blocknote-editable' : 'blocknote-readonly'} prose prose-sm dark:prose-invert max-w-none`}>
           <BlockNoteEditor
             key={editable ? `editable-${section.id}` : `readonly-${section.id}-${section.updated_at ?? 'na'}`}
             initialContent={editable ? editableContent : trimmedContent}

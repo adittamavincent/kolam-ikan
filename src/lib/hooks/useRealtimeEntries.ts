@@ -22,6 +22,7 @@ export function useRealtimeEntries(streamId: string) {
         () => {
           // Invalidate queries on changes
           queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+          queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
         }
       )
       .subscribe();

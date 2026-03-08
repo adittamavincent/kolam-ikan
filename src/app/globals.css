@@ -301,6 +301,19 @@ body {
 /*  BLOCKNOTE READ-ONLY: HIDE SIDE MENU (plus + drag handle)                 */
 /* -------------------------------------------------------------------------- */
 
+/* Give visible vertical rhythm between BlockNote blocks/paragraphs. */
+.blocknote-editor .bn-block-content {
+  padding-block: 0.3rem !important;
+}
+
+.blocknote-editor .bn-block + .bn-block {
+  margin-top: 0.3rem;
+}
+
+.blocknote-editor .ProseMirror > * + * {
+  margin-top: 0.3rem;
+}
+
 .blocknote-readonly .bn-side-menu {
   display: none !important;
 }

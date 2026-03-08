@@ -4,7 +4,7 @@ import { Copy, Check } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { BlockNoteBlock } from '@/lib/types';
+import { BlockNoteBlock, EntryWithSections, SectionWithPersona } from '@/lib/types';
 
 interface XMLGeneratorProps {
   streamId: string;
@@ -119,11 +119,16 @@ export function XMLGenerator({
     const domainName = stream?.domain?.name || '';
     const isGlobal = stream?.stream_kind === 'GLOBAL' || (stream?.cabinet_id === null && stream?.sort_order === -100);
     const streamNameById = new Map((globalStreamsMeta ?? []).map((globalStream) => [globalStream.id, globalStream.name || globalStream.id]));
-    
+    const canvasUpdatedAt = (canvas as Record<string, unknown>)?.updated_at as string | undefined;
+
+    const responseFormatDirective = buildResponseDirective(interactionMode, canvasUpdatedAt);
+
     return `<system_directive>
 Target: ${interactionMode}
 Stream: ${stream?.name || ''} ${isGlobal ? '(Global)' : ''}
 Domain: ${domainName}
+
+${responseFormatDirective}
 </system_directive>
 
 ${
@@ -221,11 +226,109 @@ function extractText(block: BlockNoteBlock): string {
   return block.content?.map((c) => c.text).join('') || '';
 }
 
-import { EntryWithSections, SectionWithPersona } from '@/lib/types';
-
 function entryToMarkdown(entry: EntryWithSections): string {
   return `Entry #${entry.id} - ${entry.created_at ? new Date(entry.created_at).toLocaleString() : ''}
 ${entry.sections
   .map((s: SectionWithPersona) => canvasToMarkdown(s.content_json as unknown as BlockNoteBlock[]))
   .join('\n')}`;
+}
+
+function buildResponseDirective(mode: string, canvasUpdatedAt?: string): string {
+  const askDirective = `<response_format_ask>
+You MUST respond with a <thought_log> tag containing your analysis, reasoning, or answer.
+This content will be saved as a new entry (log item) in the stream's left pillar.
+
+Write in natural prose. Separate paragraphs with blank lines.
+Each double-newline-separated paragraph becomes a distinct block in the entry.
+
+Do NOT include any canvas-related tags.
+
+Example response:
+<response>
+<thought_log>
+Your analysis paragraph one goes here.
+
+Another paragraph with further reasoning.
+</thought_log>
+</response>
+</response_format_ask>`;
+
+  const goDirective = `<response_format_go>
+You MUST respond with a <canvas_update> tag containing compact markdown-style text.
+This updates the stream canvas (right pillar) with minimal token usage.
+
+Allowed syntax inside <canvas_update>:
+- Headings: #, ##, ###
+- Bullets: - item
+- Numbered list: 1. item
+- Paragraphs: plain lines
+- Inline style: **bold**, *italic*, \`code\`
+
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ''}
+
+Do NOT include any thought_log tags in GO mode.
+
+Example response:
+<response>
+<canvas_update>
+# Recommendation List
+
+- Stabilize team alignment in week 1
+- Run 1:1 check-ins with core members
+
+1. Define 3 top priorities
+2. Assign owners and due dates
+</canvas_update>
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ''}
+</response>
+</response_format_go>`;
+
+  const bothDirective = `<response_format_both>
+You MUST respond with BOTH a <thought_log> tag AND a <canvas_update> tag.
+
+1. <thought_log>: Your analysis/reasoning in natural prose (saved as a new log entry in the left pillar).
+   Separate paragraphs with blank lines.
+
+2. <canvas_update>: compact markdown-style content for canvas update.
+   Use #/## headings, - bullets, numbered lists, and plain paragraphs.
+  Inline style allowed: **bold**, *italic*, \`code\`.
+
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ''}
+
+Example response:
+<response>
+<thought_log>
+Your reasoning and analysis go here.
+
+Additional observations in a second paragraph.
+</thought_log>
+<canvas_update>
+## Action Plan
+
+- Quick win 1
+- Quick win 2
+
+1. Step one
+2. Step two
+</canvas_update>
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ''}
+</response>
+</response_format_both>`;
+
+  const modeDirectives: Record<string, string> = {
+    ASK: askDirective,
+    GO: goDirective,
+    BOTH: bothDirective,
+  };
+
+  return `<response_instructions>
+You are an AI assistant integrated into a structured knowledge management system called "Kolam Ikan".
+Your response MUST be wrapped in a <response> root tag and follow the structured output format below exactly.
+Do NOT output any text outside the <response> tags. The system parses your XML response programmatically.
+
+The user's interaction mode is: ${mode}
+${mode === 'ASK' ? '- ASK mode: Generate a thought log entry only (left pillar / log).' : ''}${mode === 'GO' ? '- GO mode: Generate a canvas update only (right pillar / canvas).' : ''}${mode === 'BOTH' ? '- BOTH mode: Generate both a thought log entry AND a canvas update.' : ''}
+
+${modeDirectives[mode] || modeDirectives['ASK']}
+</response_instructions>`;
 }

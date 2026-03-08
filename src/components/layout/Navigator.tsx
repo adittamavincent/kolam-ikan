@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X, FilePlus, FolderPlus, PanelLeftClose, Globe } from 'lucide-react';
 import { Fragment, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { Cabinet, CabinetInsert, CabinetUpdate, Stream, StreamInsert, StreamKind, StreamUpdate, STREAM_KIND } from '@/lib/types';
 import { useSidebar } from '@/lib/hooks/useSidebar';
 import {
@@ -1830,10 +1831,10 @@ export function Navigator({ }: NavigatorProps) {
         </div>
       </div>
 
-      {contextMenu && (
-        <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
+      {contextMenu && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[100]" onClick={() => setContextMenu(null)}>
           <div
-            className="absolute w-48 rounded-lg border border-border-strong bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 z-50"
+            className="absolute w-48 rounded-lg border border-border-strong bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 z-[100]"
             style={{
               top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : contextMenu.y),
               left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x),
@@ -1888,11 +1889,12 @@ export function Navigator({ }: NavigatorProps) {
               <span className="text-[10px] text-rose-400">Del</span>
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <Transition appear show={!!deleteTarget} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setDeleteTarget(null)}>
+        <Dialog as="div" className="relative z-[100]" onClose={() => setDeleteTarget(null)}>
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
@@ -1950,7 +1952,7 @@ export function Navigator({ }: NavigatorProps) {
       </Transition>
 
       <Transition appear show={!!moveTarget} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={closeMoveDialog}>
+        <Dialog as="div" className="relative z-[100]" onClose={closeMoveDialog}>
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
@@ -2042,7 +2044,7 @@ export function Navigator({ }: NavigatorProps) {
       </Transition>
 
       <Transition appear show={!!propertiesTarget} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setPropertiesTarget(null)}>
+        <Dialog as="div" className="relative z-[100]" onClose={() => setPropertiesTarget(null)}>
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"

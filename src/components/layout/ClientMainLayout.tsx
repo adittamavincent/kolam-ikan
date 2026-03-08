@@ -357,11 +357,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}
       <div
         ref={sidebarRef}
-        className={`hidden md:flex overflow-visible relative group h-full ${isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-in-out'}`}
+        className={`hidden md:flex overflow-visible relative z-30 group h-full ${isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-in-out'}`}
         style={{ width: sidebarVisible ? sidebarWidth : 0 }}
       >
         <div
-          className={`flex-1 overflow-hidden h-full transition-all duration-300 ease-in-out ${sidebarVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'
+          className={`flex-1 overflow-visible h-full transition-all duration-300 ease-in-out ${sidebarVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'
             }`}
         >
           <Navigator userId={userId} />

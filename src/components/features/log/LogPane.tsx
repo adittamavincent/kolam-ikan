@@ -5,13 +5,21 @@ import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
 import { LogSection } from './LogSection';
 import { useStream } from '@/lib/hooks/useStream';
-import { Filter, ArrowUpDown, Search, Download, Calendar, PanelLeft } from 'lucide-react';
+import { Filter, ArrowUpDown, Search, Download, Calendar, PanelLeft, Check, X, PencilLine, Loader2 } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { exportEntriesToMarkdown, downloadMarkdown } from '@/lib/utils/export';
 import { useSidebar } from '@/lib/hooks/useSidebar';
 import { EntryWithSections } from '@/lib/types';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
+import { PartialBlock } from '@blocknote/core';
+
+interface AmendState {
+  entryId: string;
+  sections: Record<string, PartialBlock[]>;
+}
 
 interface LogPaneProps {
   streamId: string;
@@ -20,6 +28,7 @@ interface LogPaneProps {
 }
 
 export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
+  const supabase = createClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filterPersonaId, setFilterPersonaId] = useState<string | null>(null);
@@ -27,6 +36,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [amendState, setAmendState] = useState<AmendState | null>(null);
+  const [amendError, setAmendError] = useState<string | null>(null);
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -75,11 +86,31 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    amendEntry,
     fetchAllEntriesForExport,
   } = useEntries(streamId, {
     search: debouncedSearch,
     personaId: filterPersonaId,
     sortOrder,
+  });
+
+  const { data: latestEntryId } = useQuery({
+    queryKey: ['latest-entry-id', streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('entries')
+        .select('id')
+        .eq('stream_id', streamId)
+        .eq('is_draft', false)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data?.id ?? null;
+    },
+    enabled: !!streamId,
   });
   useEffect(() => {
     scrollToHighlighted();
@@ -90,6 +121,60 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const { visible: sidebarVisible, show: showSidebar } = useSidebar();
 
   const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+
+  const handleStartAmend = (entry: EntryWithSections) => {
+    const sections = Object.fromEntries(
+      (entry.sections ?? []).map((section) => [
+        section.id,
+        ((section.content_json as unknown as PartialBlock[]) ?? []) as PartialBlock[],
+      ]),
+    );
+    setAmendState({ entryId: entry.id, sections });
+    setAmendError(null);
+  };
+
+  const handleCancelAmend = () => {
+    setAmendState(null);
+    setAmendError(null);
+  };
+
+  const handleSaveAmend = async (entry: EntryWithSections) => {
+    if (!amendState || amendState.entryId !== entry.id) return;
+
+    const changedSections = (entry.sections ?? []).flatMap((section) => {
+      const draftBlocks = amendState.sections[section.id];
+      if (!draftBlocks) return [];
+
+      const original = JSON.stringify((section.content_json as unknown as PartialBlock[]) ?? []);
+      const updated = JSON.stringify(draftBlocks);
+
+      if (original === updated) return [];
+
+      return [
+        {
+          sectionId: section.id,
+          content: draftBlocks,
+        },
+      ];
+    });
+
+    if (!changedSections.length) {
+      handleCancelAmend();
+      return;
+    }
+
+    try {
+      setAmendError(null);
+      await amendEntry.mutateAsync({
+        entryId: entry.id,
+        sections: changedSections,
+      });
+      setAmendState(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to amend entry';
+      setAmendError(message);
+    }
+  };
 
   const handleExport = async () => {
     try {
@@ -262,39 +347,106 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             ) : (
               <>
                 <div className="flex flex-col gap-2.5">
-                  {entryList.map((entry) => (
+                  {entryList.map((entry) => {
+                    const isLatestEntry = latestEntryId === entry.id;
+                    const isAmending = amendState?.entryId === entry.id;
+
+                    return (
                     <div
                       key={entry.id}
                       ref={(node) => {
                         entryRefs.current[entry.id] = node;
                       }}
                     >
-                      <div className="relative group rounded-lg border border-border-subtle bg-surface-default overflow-hidden transition-all hover:border-border-default/50">
+                      <div className={`relative group rounded-lg border bg-surface-default overflow-hidden transition-all ${isAmending ? 'border-action-primary-bg/50 ring-1 ring-action-primary-bg/40' : 'border-border-subtle hover:border-border-default/50'}`}>
                         <div className="flex items-center px-2.5 py-1 bg-surface-subtle/40 border-b border-border-subtle/40">
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="h-3 w-3 text-text-muted" />
-                            <span className="text-[10px] font-medium text-text-subtle font-mono">
-                              {mounted ? new Date(entry.created_at || '').toLocaleString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              }) : new Date(entry.created_at || '').toISOString()}
-                            </span>
+                          <div className="flex w-full items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <Calendar className="h-3 w-3 text-text-muted" />
+                              <span className="text-[10px] font-medium text-text-subtle font-mono">
+                                {mounted ? new Date(entry.created_at || '').toLocaleString(undefined, {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                }) : new Date(entry.created_at || '').toISOString()}
+                              </span>
+                              {isLatestEntry && (
+                                <span className="inline-flex items-center rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                                  Latest
+                                </span>
+                              )}
+                            </div>
+
+                            {isLatestEntry && (
+                              <div className="flex items-center gap-1">
+                                {isAmending ? (
+                                  <>
+                                    <button
+                                      onClick={() => handleSaveAmend(entry)}
+                                      disabled={amendEntry.isPending}
+                                      className="inline-flex items-center gap-1 rounded-md bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                                      title="Save amendment"
+                                    >
+                                      {amendEntry.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={handleCancelAmend}
+                                      disabled={amendEntry.isPending}
+                                      className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
+                                      title="Cancel amendment"
+                                    >
+                                      <X className="h-3 w-3" />
+                                      Cancel
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    onClick={() => handleStartAmend(entry)}
+                                    className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
+                                    title="Amend latest entry"
+                                  >
+                                    <PencilLine className="h-3 w-3" />
+                                    Amend
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
+                        {isAmending && amendError && (
+                          <div className="px-2.5 py-1 text-[11px] text-danger-text bg-danger-bg/15 border-b border-danger-border/30">
+                            {amendError}
+                          </div>
+                        )}
                         <div className="px-2.5 py-2 flex flex-col gap-1.5">
                           {entry.sections?.map((section: EntryWithSections['sections'][number]) => (
                             <LogSection
                               key={section.id}
                               section={section}
+                              editable={isAmending}
+                              onContentChange={(content) => {
+                                if (!isAmending) return;
+                                setAmendState((prev) => {
+                                  if (!prev || prev.entryId !== entry.id) return prev;
+                                  return {
+                                    ...prev,
+                                    sections: {
+                                      ...prev.sections,
+                                      [section.id]: content,
+                                    },
+                                  };
+                                });
+                              }}
                               highlightTerm={entry.id === highlightEntryId ? highlightTerm ?? undefined : undefined}
                             />
                           ))}
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 {hasNextPage && (
                   <div className="flex justify-center pt-4 pb-2">

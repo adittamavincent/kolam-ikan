@@ -1,11 +1,21 @@
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { EntryWithSections } from '@/lib/types';
+import { Json } from '@/lib/types/database.types';
+import { PartialBlock } from '@blocknote/core';
 
 interface UseEntriesOptions {
   search?: string;
   personaId?: string | null;
   sortOrder?: 'newest' | 'oldest';
+}
+
+interface AmendEntryInput {
+  entryId: string;
+  sections: Array<{
+    sectionId: string;
+    content: PartialBlock[];
+  }>;
 }
 
 export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
@@ -77,6 +87,89 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     },
   });
 
+  const amendEntry = useMutation({
+    onMutate: async ({ entryId, sections }) => {
+      await queryClient.cancelQueries({ queryKey: ['entries', streamId] });
+
+      const previousQueries = queryClient.getQueriesData<InfiniteData<EntryWithSections[]>>({
+        queryKey: ['entries', streamId],
+      });
+
+      const nextUpdatedAt = new Date().toISOString();
+      const sectionContentMap = new Map(sections.map((section) => [section.sectionId, section.content]));
+
+      previousQueries.forEach(([queryKey, queryData]) => {
+        if (!queryData) return;
+
+        const nextData: InfiniteData<EntryWithSections[]> = {
+          ...queryData,
+          pages: queryData.pages.map((page) =>
+            page.map((entry) => {
+              if (entry.id !== entryId) return entry;
+
+              const nextSections = entry.sections.map((section) => {
+                const nextContent = sectionContentMap.get(section.id);
+                if (!nextContent) return section;
+
+                return {
+                  ...section,
+                  content_json: nextContent as unknown as Json,
+                  updated_at: nextUpdatedAt,
+                };
+              });
+
+              return {
+                ...entry,
+                updated_at: nextUpdatedAt,
+                sections: nextSections,
+              };
+            }),
+          ),
+        };
+
+        queryClient.setQueryData(queryKey, nextData);
+      });
+
+      return { previousQueries };
+    },
+    mutationFn: async ({ entryId, sections }: AmendEntryInput) => {
+      if (!sections.length) {
+        throw new Error('No amended sections to save');
+      }
+
+      const nowIso = new Date().toISOString();
+      const updates = sections.map(({ sectionId, content }) =>
+        supabase
+          .from('sections')
+          .update({
+            content_json: content as unknown as Json,
+            updated_at: nowIso,
+          })
+          .eq('id', sectionId),
+      );
+
+      const results = await Promise.all(updates);
+      const failed = results.find((result) => result.error);
+      if (failed?.error) throw failed.error;
+
+      const { error: entryError } = await supabase
+        .from('entries')
+        .update({ updated_at: nowIso })
+        .eq('id', entryId);
+
+      if (entryError) throw entryError;
+      return { entryId };
+    },
+    onError: (_error, _variables, context) => {
+      context?.previousQueries?.forEach(([queryKey, queryData]) => {
+        queryClient.setQueryData(queryKey, queryData);
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+    },
+  });
+
   const fetchAllEntriesForExport = async () => {
     let query = supabase
       .from('entries')
@@ -114,6 +207,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     fetchNextPage: query.fetchNextPage,
     error: query.error,
     createEntry,
+    amendEntry,
     fetchAllEntriesForExport,
   };
 }

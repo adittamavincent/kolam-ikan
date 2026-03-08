@@ -12,9 +12,11 @@ import { useMemo } from 'react';
 interface LogSectionProps {
   section: SectionWithPersona;
   highlightTerm?: string;
+  editable?: boolean;
+  onContentChange?: (content: PartialBlock[]) => void;
 }
 
-export function LogSection({ section, highlightTerm }: LogSectionProps) {
+export function LogSection({ section, highlightTerm, editable = false, onContentChange }: LogSectionProps) {
   const { personas } = usePersonas();
   const { updateSectionPersona } = usePersonaMutations();
 
@@ -82,6 +84,11 @@ export function LogSection({ section, highlightTerm }: LogSectionProps) {
 
     if (start > end) return [];
     return blocks.slice(start, end + 1);
+  }, [section.content_json]);
+
+  const editableContent = useMemo(() => {
+    const blocks = (section.content_json as unknown as PartialBlock[]) ?? [];
+    return Array.isArray(blocks) ? blocks : [];
   }, [section.content_json]);
 
   return (
@@ -154,11 +161,13 @@ export function LogSection({ section, highlightTerm }: LogSectionProps) {
           </span>
         </div>
         
-        <div className="blocknote-readonly prose prose-sm dark:prose-invert max-w-none [&_.bn-block-content]:py-0!">
+        <div className={`${editable ? 'blocknote-editable' : 'blocknote-readonly'} prose prose-sm dark:prose-invert max-w-none [&_.bn-block-content]:py-0!`}>
           <BlockNoteEditor
-            initialContent={trimmedContent}
-            editable={false}
-            highlightTerm={highlightTerm}
+            key={editable ? `editable-${section.id}` : `readonly-${section.id}-${section.updated_at ?? 'na'}`}
+            initialContent={editable ? editableContent : trimmedContent}
+            editable={editable}
+            onChange={editable ? onContentChange : undefined}
+            highlightTerm={editable ? undefined : highlightTerm}
           />
         </div>
       </div>

@@ -40,6 +40,8 @@ const createStream = (
     cabinet_id: cabinetId,
     domain_id: 'domain-1',
     name: name || `Stream ${id}`,
+    stream_kind: 'REGULAR',
+    is_system_global: false,
     sort_order: sortOrder,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

@@ -370,8 +370,10 @@ export type Database = {
           description: string | null
           domain_id: string
           id: string
+          is_system_global: boolean
           name: string
           sort_order: number
+          stream_kind: string
           updated_at: string | null
         }
         Insert: {
@@ -381,8 +383,10 @@ export type Database = {
           description?: string | null
           domain_id: string
           id?: string
+          is_system_global?: boolean
           name: string
           sort_order?: number
+          stream_kind?: string
           updated_at?: string | null
         }
         Update: {
@@ -392,8 +396,10 @@ export type Database = {
           description?: string | null
           domain_id?: string
           id?: string
+          is_system_global?: boolean
           name?: string
           sort_order?: number
+          stream_kind?: string
           updated_at?: string | null
         }
         Relationships: [

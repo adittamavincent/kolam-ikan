@@ -27,6 +27,8 @@ const createStream = (id: string, cabinetId: string | null): Stream => ({
   cabinet_id: cabinetId,
   domain_id: 'domain-1',
   name: `Stream ${id}`,
+  stream_kind: 'REGULAR',
+  is_system_global: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   deleted_at: null,

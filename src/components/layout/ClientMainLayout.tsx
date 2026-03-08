@@ -66,6 +66,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
   // Track whether we want the slide-out animation vs. a hard cut
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const pendingSidebarWidthRef = useRef(sidebarWidth);
+
+  useEffect(() => {
+    pendingSidebarWidthRef.current = sidebarWidth;
+  }, [sidebarWidth]);
 
   // Resize logic
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -76,25 +81,35 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   useEffect(() => {
     if (!isResizing) return;
 
+    let frameId: number | null = null;
+    let latestClientX = 0;
+
+    const applyWidth = () => {
+      frameId = null;
+      if (!sidebarRef.current) return;
+
+      const sidebarRect = sidebarRef.current.getBoundingClientRect();
+      const newWidth = latestClientX - sidebarRect.left;
+      const clampedWidth = Math.min(Math.max(newWidth, 200), 500);
+
+      pendingSidebarWidthRef.current = clampedWidth;
+      sidebarRef.current.style.width = `${clampedWidth}px`;
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
-      // Calculate new width based on mouse position
-      // Assuming sidebar is on the left, width is basically e.clientX - offset
-      // Since DomainSwitcher is on the left (fixed or relative), we need to account for its width if it's in the flow
-      // However, the resize handle is at the right edge of the sidebar.
-      // So the width of the sidebar is roughly e.clientX - (DomainSwitcher width)
-
-      // Let's get the sidebar's left position to be accurate
-      if (sidebarRef.current) {
-        const sidebarRect = sidebarRef.current.getBoundingClientRect();
-        const newWidth = e.clientX - sidebarRect.left;
-
-        // Clamp width
-        const clampedWidth = Math.min(Math.max(newWidth, 200), 500);
-        setSidebarWidth(clampedWidth);
+      latestClientX = e.clientX;
+      if (frameId === null) {
+        frameId = requestAnimationFrame(applyWidth);
       }
     };
 
     const handleMouseUp = () => {
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+        applyWidth();
+      }
+
+      setSidebarWidth(pendingSidebarWidthRef.current);
       setIsResizing(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -108,6 +123,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId);
+      }
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -339,7 +357,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}
       <div
         ref={sidebarRef}
-        className="hidden md:flex overflow-visible relative group h-full transition-[width] duration-300 ease-in-out"
+        className={`hidden md:flex overflow-visible relative group h-full ${isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-in-out'}`}
         style={{ width: sidebarVisible ? sidebarWidth : 0 }}
       >
         <div

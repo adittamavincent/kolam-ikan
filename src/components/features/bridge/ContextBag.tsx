@@ -10,6 +10,11 @@ export function ContextBag({
   onSelectionChange,
   includeCanvas,
   onIncludeCanvasChange,
+  includeGlobalStream,
+  onIncludeGlobalStreamChange,
+  globalStreamName,
+  globalStreamDisabled,
+  currentStreamIsGlobal,
   disableSelectAll,
 }: {
   streamId: string;
@@ -17,6 +22,11 @@ export function ContextBag({
   onSelectionChange: (ids: string[]) => void;
   includeCanvas: boolean;
   onIncludeCanvasChange: (include: boolean) => void;
+  includeGlobalStream: boolean;
+  onIncludeGlobalStreamChange: (include: boolean) => void;
+  globalStreamName: string | null;
+  globalStreamDisabled: boolean;
+  currentStreamIsGlobal: boolean;
   disableSelectAll?: boolean;
 }) {
   const supabase = createClient();
@@ -80,6 +90,23 @@ export function ContextBag({
           />
           Include Current Canvas
         </label>
+        <label className="flex items-center gap-2 text-text-default text-sm">
+          <input
+            type="checkbox"
+            checked={includeGlobalStream}
+            onChange={(e) => onIncludeGlobalStreamChange(e.target.checked)}
+            disabled={globalStreamDisabled}
+          />
+          <span>
+            Include Domain Global Stream
+            {globalStreamName ? ` (${globalStreamName})` : ''}
+          </span>
+        </label>
+        <p className="text-[11px] text-text-muted">
+          {currentStreamIsGlobal
+            ? 'Current stream is global, so bridge already uses its context.'
+            : 'Global stream helps carry domain-wide backstory into bridge prompts.'}
+        </p>
         <div className="flex flex-wrap gap-2 text-xs">
           <button
             onClick={selectAll}

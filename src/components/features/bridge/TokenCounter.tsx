@@ -24,6 +24,8 @@ export function TokenCounter({
   selectedEntries,
   includeCanvas,
   streamId,
+  includeGlobalStream,
+  globalStreamId,
   tokenLimit = 8000,
   onTokenUpdate,
   onReduceSelection,
@@ -32,6 +34,8 @@ export function TokenCounter({
   selectedEntries: string[];
   includeCanvas: boolean;
   streamId: string;
+  includeGlobalStream: boolean;
+  globalStreamId: string | null;
   tokenLimit?: number;
   onTokenUpdate?: (tokens: number, overLimit: boolean) => void;
   onReduceSelection?: () => void;
@@ -69,6 +73,37 @@ export function TokenCounter({
     enabled: includeCanvas,
   });
 
+  const { data: globalEntries } = useQuery({
+    queryKey: ['bridge-token-global-entries', globalStreamId, includeGlobalStream],
+    queryFn: async () => {
+      if (!includeGlobalStream || !globalStreamId) return [];
+      const { data, error } = await supabase
+        .from('entries')
+        .select('id, created_at, sections(content_json, persona_name_snapshot)')
+        .eq('stream_id', globalStreamId)
+        .eq('is_draft', false)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return data as unknown as EntryWithSections[];
+    },
+    enabled: includeGlobalStream && !!globalStreamId,
+  });
+
+  const { data: globalCanvas } = useQuery({
+    queryKey: ['bridge-token-global-canvas', globalStreamId, includeGlobalStream],
+    queryFn: async () => {
+      if (!includeGlobalStream || !globalStreamId) return null;
+      const { data, error } = await supabase
+        .from('canvases')
+        .select('content_json')
+        .eq('stream_id', globalStreamId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: includeGlobalStream && !!globalStreamId,
+  });
+
   const tokens = useMemo(() => {
     const entryText =
       entries?.map((entry) => {
@@ -81,9 +116,24 @@ export function TokenCounter({
     const canvasText = includeCanvas
       ? blocksToText((canvas?.content_json as unknown as BlockNoteBlock[]) ?? [])
       : '';
-    const combined = [...entryText, canvasText].filter(Boolean).join('\n');
+    const globalEntryText = includeGlobalStream
+      ? (globalEntries?.map((entry) => {
+        const sectionsText =
+          entry.sections
+            ?.map((section) => blocksToText(section.content_json as unknown as BlockNoteBlock[]))
+            .join('\n') ?? '';
+        return sectionsText;
+      }) ?? [])
+      : [];
+    const globalCanvasText = includeGlobalStream
+      ? blocksToText((globalCanvas?.content_json as unknown as BlockNoteBlock[]) ?? [])
+      : '';
+
+    const combined = [...entryText, canvasText, ...globalEntryText, globalCanvasText]
+      .filter(Boolean)
+      .join('\n');
     return encode(combined).length;
-  }, [entries, canvas, includeCanvas]);
+  }, [entries, canvas, globalEntries, globalCanvas, includeCanvas, includeGlobalStream]);
 
   const overLimit = tokens > tokenLimit;
 

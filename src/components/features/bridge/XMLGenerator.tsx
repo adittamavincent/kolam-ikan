@@ -12,6 +12,9 @@ interface XMLGeneratorProps {
   interactionMode: string;
   selectedEntries: string[];
   includeCanvas: boolean;
+  includeGlobalStream: boolean;
+  globalStreamId: string | null;
+  globalStreamName: string | null;
   userInput: string;
 }
 
@@ -21,6 +24,9 @@ export function XMLGenerator({
   interactionMode,
   selectedEntries,
   includeCanvas,
+  includeGlobalStream,
+  globalStreamId,
+  globalStreamName,
   userInput,
 }: XMLGeneratorProps) {
   const [copied, setCopied] = useState(false);
@@ -32,7 +38,7 @@ export function XMLGenerator({
     queryFn: async () => {
       const { data } = await supabase
         .from('streams')
-        .select('*, cabinet:cabinets(*, domain:domains(*))')
+        .select('*, domain:domains(*)')
         .eq('id', streamId)
         .single();
       return data;
@@ -65,8 +71,37 @@ export function XMLGenerator({
     enabled: includeCanvas,
   });
 
+  const { data: globalEntries } = useQuery({
+    queryKey: ['global-entries-xml', globalStreamId, includeGlobalStream],
+    queryFn: async () => {
+      if (!includeGlobalStream || !globalStreamId) return [];
+      const { data } = await supabase
+        .from('entries')
+        .select('*, sections(*)')
+        .eq('stream_id', globalStreamId)
+        .eq('is_draft', false)
+        .order('created_at', { ascending: true });
+      return data as unknown as EntryWithSections[];
+    },
+    enabled: includeGlobalStream && !!globalStreamId,
+  });
+
+  const { data: globalCanvas } = useQuery({
+    queryKey: ['global-canvas-xml', globalStreamId, includeGlobalStream],
+    queryFn: async () => {
+      if (!includeGlobalStream || !globalStreamId) return null;
+      const { data } = await supabase
+        .from('canvases')
+        .select('*')
+        .eq('stream_id', globalStreamId)
+        .single();
+      return data;
+    },
+    enabled: includeGlobalStream && !!globalStreamId,
+  });
+
   const generateXML = () => {
-    const domainName = stream?.cabinet?.domain?.name || '';
+    const domainName = stream?.domain?.name || '';
     
     return `<system_directive>
 Persona: ${personaId || 'None'}
@@ -86,6 +121,22 @@ ${canvasToMarkdown((canvas?.content_json as unknown as BlockNoteBlock[]) || [])}
 <log_context>
 ${entries?.map((entry) => entryToMarkdown(entry)).join('\n\n') || ''}
 </log_context>
+
+${
+  includeGlobalStream && globalStreamId
+    ? `<global_context>
+${globalStreamName || 'Global User Entry'}
+
+<global_canvas>
+${canvasToMarkdown((globalCanvas?.content_json as unknown as BlockNoteBlock[]) || [])}
+</global_canvas>
+
+<global_entries>
+${globalEntries?.map((entry) => entryToMarkdown(entry)).join('\n\n') || ''}
+</global_entries>
+</global_context>`
+    : ''
+}
 
 <instruction>
 ${userInput}

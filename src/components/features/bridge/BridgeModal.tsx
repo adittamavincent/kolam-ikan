@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Dialog } from '@headlessui/react';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 import { PersonaSelector } from './PersonaSelector';
 import { InteractionSwitcher } from './InteractionSwitcher';
 import { ContextBag } from './ContextBag';
@@ -16,12 +18,54 @@ interface BridgeModalProps {
 }
 
 export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
+  const supabase = createClient();
   const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
   const [interactionMode, setInteractionMode] = useState<'ASK' | 'GO' | 'BOTH'>('ASK');
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const [includeCanvas, setIncludeCanvas] = useState(true);
+  const [includeGlobalStream, setIncludeGlobalStream] = useState(true);
   const [userInput, setUserInput] = useState('');
   const [tokenOverLimit, setTokenOverLimit] = useState(false);
+
+  const { data: streamMeta } = useQuery({
+    queryKey: ['bridge-stream-meta', streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('streams')
+        .select('id, domain_id, stream_kind')
+        .eq('id', streamId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!streamId,
+  });
+
+  const { data: domainGlobalStream } = useQuery({
+    queryKey: ['bridge-domain-global-stream', streamMeta?.domain_id],
+    queryFn: async () => {
+      if (!streamMeta?.domain_id) return null;
+      const { data, error } = await supabase
+        .from('streams')
+        .select('id, name, stream_kind, is_system_global')
+        .eq('domain_id', streamMeta.domain_id)
+        .eq('stream_kind', 'GLOBAL')
+        .eq('is_system_global', true)
+        .is('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!streamMeta?.domain_id,
+  });
+
+  const currentStreamIsGlobal = streamMeta?.stream_kind === 'GLOBAL';
+  const includeGlobalAvailable = !!domainGlobalStream && domainGlobalStream.id !== streamId;
+
+  useEffect(() => {
+    setIncludeGlobalStream(includeGlobalAvailable);
+  }, [includeGlobalAvailable]);
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -46,6 +90,11 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             onSelectionChange={setSelectedEntries}
             includeCanvas={includeCanvas}
             onIncludeCanvasChange={setIncludeCanvas}
+            includeGlobalStream={includeGlobalStream}
+            onIncludeGlobalStreamChange={setIncludeGlobalStream}
+            globalStreamName={domainGlobalStream?.name ?? null}
+            globalStreamDisabled={!includeGlobalAvailable}
+            currentStreamIsGlobal={currentStreamIsGlobal}
             disableSelectAll={tokenOverLimit}
           />
 
@@ -54,6 +103,8 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             selectedEntries={selectedEntries}
             includeCanvas={includeCanvas}
             streamId={streamId}
+            includeGlobalStream={includeGlobalStream}
+            globalStreamId={includeGlobalAvailable ? domainGlobalStream?.id ?? null : null}
             onTokenUpdate={(count, over) => {
               setTokenOverLimit(over);
             }}
@@ -79,6 +130,9 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             interactionMode={interactionMode}
             selectedEntries={selectedEntries}
             includeCanvas={includeCanvas}
+            includeGlobalStream={includeGlobalStream}
+            globalStreamId={includeGlobalAvailable ? domainGlobalStream?.id ?? null : null}
+            globalStreamName={domainGlobalStream?.name ?? null}
             userInput={userInput}
             streamId={streamId}
           />

@@ -16,6 +16,12 @@ export type CabinetUpdate = Database["public"]["Tables"]["cabinets"]["Update"];
 export type Stream = Database["public"]["Tables"]["streams"]["Row"];
 export type StreamInsert = Database["public"]["Tables"]["streams"]["Insert"];
 export type StreamUpdate = Database["public"]["Tables"]["streams"]["Update"];
+export type StreamKind = 'GLOBAL' | 'REGULAR';
+
+export const STREAM_KIND = {
+  GLOBAL: 'GLOBAL' as StreamKind,
+  REGULAR: 'REGULAR' as StreamKind,
+};
 
 export type Entry = Database["public"]["Tables"]["entries"]["Row"];
 export type EntryInsert = Database["public"]["Tables"]["entries"]["Insert"];

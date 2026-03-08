@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { Stream, StreamInsert, StreamUpdate } from '@/lib/types';
+import { Stream, StreamInsert, StreamKind, StreamUpdate, STREAM_KIND } from '@/lib/types';
 
 export function useStreams(cabinetId: string) {
   const supabase = createClient();
@@ -44,6 +44,8 @@ export function useStreams(cabinetId: string) {
           {
             ...newStream,
             id: 'temp-' + Date.now(),
+            stream_kind: (newStream.stream_kind as StreamKind) ?? STREAM_KIND.REGULAR,
+            is_system_global: newStream.is_system_global ?? false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             deleted_at: null,

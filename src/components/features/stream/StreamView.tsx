@@ -6,15 +6,40 @@ import { BridgeModal } from '@/components/features/bridge/BridgeModal';
 import { useRealtimeEntries } from '@/lib/hooks/useRealtimeEntries';
 import { useLayout } from '@/lib/hooks/useLayout';
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Globe } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 
 export function StreamView({ streamId }: { streamId: string }) {
+  const supabase = createClient();
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
   const { logWidth } = useLayout();
   useRealtimeEntries(streamId);
 
+  const { data: streamMeta } = useQuery({
+    queryKey: ['stream-kind', streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('streams')
+        .select('stream_kind')
+        .eq('id', streamId)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!streamId,
+  });
+
+  const isGlobalStream = streamMeta?.stream_kind === 'GLOBAL';
+
   return (
     <div className="flex flex-1 relative h-full">
+      {isGlobalStream && (
+        <div className="absolute left-4 top-4 z-30 inline-flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2.5 py-1 text-xs font-semibold text-action-primary-bg">
+          <Globe className="h-3.5 w-3.5" />
+          Global Stream
+        </div>
+      )}
       <LogPane streamId={streamId} logWidth={logWidth} />
       <CanvasPane streamId={streamId} />
       

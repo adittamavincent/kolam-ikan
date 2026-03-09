@@ -63,6 +63,107 @@ function resolveIncomingBlocks(raw: string): { blocks: BlockNoteBlock[]; error?:
     }
 }
 
+function applyDiffToBlocks(currentBlocks: BlockNoteBlock[], diffText: string): BlockNoteBlock[] {
+    const lines = diffText.split('\n');
+    const result = [...currentBlocks];
+    
+    lines.forEach(line => {
+        const trimmedLine = line.trim();
+        if (trimmedLine.startsWith('-')) {
+            const contentToRemove = trimmedLine.slice(1).trim();
+            if (!contentToRemove) return;
+            const index = result.findIndex(b => extractBlockText(b).trim() === contentToRemove);
+            if (index !== -1) result.splice(index, 1);
+        } else if (trimmedLine.startsWith('+')) {
+            const contentToAdd = trimmedLine.slice(1).trim();
+            const newBlocks = toParagraphBlocks(contentToAdd || ' ');
+            result.push(...newBlocks);
+        }
+    });
+    return result;
+}
+
+describe('applyDiffToBlocks', () => {
+    it('adds a new block with +', () => {
+        const current: BlockNoteBlock[] = [];
+        const diff = '+ # New Title';
+        const result = applyDiffToBlocks(current, diff);
+        expect(result).toHaveLength(1);
+        expect(result[0].type).toBe('paragraph'); // toParagraphBlocks in test is simple
+    });
+
+    it('removes an existing block with -', () => {
+        const current: BlockNoteBlock[] = [
+            { id: 'b1', type: 'paragraph', content: [{ type: 'text', text: 'Old content' }] }
+        ];
+        const diff = '- Old content';
+        const result = applyDiffToBlocks(current, diff);
+        expect(result).toHaveLength(0);
+    });
+
+    it('handles multiple changes', () => {
+        const current: BlockNoteBlock[] = [
+            { id: 'b1', type: 'paragraph', content: [{ type: 'text', text: 'Keep me' }] },
+            { id: 'b2', type: 'paragraph', content: [{ type: 'text', text: 'Remove me' }] }
+        ];
+        const diff = '- Remove me\n+ Added line';
+        const result = applyDiffToBlocks(current, diff);
+        expect(result).toHaveLength(2);
+        expect(extractBlockText(result[0])).toBe('Keep me');
+        expect(extractBlockText(result[1])).toBe('Added line');
+    });
+
+    it('is robust to extra whitespace and missing spaces after marker', () => {
+        const current: BlockNoteBlock[] = [
+            { id: 'b1', type: 'paragraph', content: [{ type: 'text', text: 'Target' }] }
+        ];
+        const diff = '  -Target\n+NewItem';
+        const result = applyDiffToBlocks(current, diff);
+        expect(result).toHaveLength(1);
+        expect(extractBlockText(result[0])).toBe('NewItem');
+    });
+});
+
+function resolveCanvasBlocks(raw: string, currentBlocks: BlockNoteBlock[] = []): {
+    blocks: BlockNoteBlock[];
+    format: 'json' | 'markdown' | 'diff';
+    error?: string;
+} {
+    const trimmed = raw.trim();
+    if (!trimmed) return { blocks: [], format: 'markdown' };
+
+    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        const jsonResult = resolveIncomingBlocks(trimmed);
+        if (!jsonResult.error) return { blocks: jsonResult.blocks, format: 'json' };
+    }
+
+    const lines = trimmed.split('\n');
+
+    const nonEmptyLines = lines.filter(l => l.trim().length > 0);
+    const allStarPrefixed = nonEmptyLines.length > 0 &&
+        nonEmptyLines.every(l => l.trim().startsWith('*'));
+    const normalizedText = allStarPrefixed
+        ? lines.map(l => {
+            const t = l.trim();
+            if (t.startsWith('* ')) return '+ ' + t.slice(2);
+            if (t === '*') return '+ ';
+            return l;
+          }).join('\n')
+        : trimmed;
+
+    const normalizedLines = normalizedText.split('\n');
+    const hasDiffMarkers = normalizedLines.some(l => {
+        const t = l.trim();
+        return t.startsWith('+') || t.startsWith('-');
+    });
+
+    if (hasDiffMarkers) {
+        return { blocks: applyDiffToBlocks(currentBlocks, normalizedText), format: 'diff' };
+    }
+
+    return { blocks: toParagraphBlocks(trimmed), format: 'markdown' };
+}
+
 describe('extractBlockText', () => {
     it('extracts text from a simple paragraph block', () => {
         const block: BlockNoteBlock = {
@@ -201,5 +302,34 @@ describe('resolveIncomingBlocks', () => {
     it('returns error for truncated/incomplete JSON', () => {
         const result = resolveIncomingBlocks('[{"id":"b1","type":"para');
         expect(result.error).toBe('Canvas update is not valid JSON');
+    });
+});
+
+describe('resolveCanvasBlocks', () => {
+    it('normalizes * prefix to + for diff parsing', () => {
+        const raw = '* # Title\n\n* ## Section\n* - Item one\n* - Item two';
+        const result = resolveCanvasBlocks(raw);
+        expect(result.format).toBe('diff');
+        expect(result.blocks.length).toBeGreaterThan(0);
+    });
+
+    it('treats standard + prefix as diff', () => {
+        const raw = '+ # Title\n+ - Item';
+        const result = resolveCanvasBlocks(raw);
+        expect(result.format).toBe('diff');
+        expect(result.blocks.length).toBeGreaterThan(0);
+    });
+
+    it('falls back to markdown when no diff markers', () => {
+        const raw = '# Just a heading\n\nSome paragraph text.';
+        const result = resolveCanvasBlocks(raw);
+        expect(result.format).toBe('markdown');
+    });
+
+    it('handles * prefix with blank lines between groups', () => {
+        const raw = '* # Road Map\n\n* ## Section One\n\n* * **Bold item:** description';
+        const result = resolveCanvasBlocks(raw);
+        expect(result.format).toBe('diff');
+        expect(result.blocks.length).toBe(3);
     });
 });

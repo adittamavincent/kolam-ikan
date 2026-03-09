@@ -203,9 +203,36 @@ function resolveIncomingBlocks(raw: string): { blocks: BlockNoteBlock[]; error?:
   }
 }
 
-function resolveCanvasBlocks(raw: string): {
+function applyDiffToBlocks(currentBlocks: BlockNoteBlock[], diffText: string): BlockNoteBlock[] {
+  const lines = diffText.split('\n');
+  const result = [...currentBlocks];
+  
+  lines.forEach(line => {
+    const trimmedLine = line.trim();
+    
+    // Support "+ [content]", "- [content]" or even "+[content]"
+    if (trimmedLine.startsWith('-')) {
+      const contentToRemove = trimmedLine.slice(1).trim();
+      if (!contentToRemove) return;
+      
+      const index = result.findIndex(b => extractBlockText(b).trim() === contentToRemove);
+      if (index !== -1) {
+        result.splice(index, 1);
+      }
+    } else if (trimmedLine.startsWith('+')) {
+      const contentToAdd = trimmedLine.slice(1).trim();
+      // If the line is empty (just "+"), we still might want a paragraph
+      const newBlocks = toParagraphBlocks(contentToAdd || ' ');
+      result.push(...newBlocks);
+    }
+  });
+  
+  return result;
+}
+
+function resolveCanvasBlocks(raw: string, currentBlocks: BlockNoteBlock[] = []): {
   blocks: BlockNoteBlock[];
-  format: 'json' | 'markdown';
+  format: 'json' | 'markdown' | 'diff';
   error?: string;
 } {
   const trimmed = raw.trim();
@@ -223,6 +250,35 @@ function resolveCanvasBlocks(raw: string): {
       blocks: [],
       format: 'json',
       error: 'Canvas update looks like JSON but is invalid. Use valid JSON or compact markdown.',
+    };
+  }
+
+  // Check if it looks like a diff
+  const lines = trimmed.split('\n');
+
+  // Normalize * prefix to + (common LLM mistake)
+  const nonEmptyLines = lines.filter(l => l.trim().length > 0);
+  const allStarPrefixed = nonEmptyLines.length > 0 &&
+    nonEmptyLines.every(l => l.trim().startsWith('*'));
+  const normalizedText = allStarPrefixed
+    ? lines.map(l => {
+        const t = l.trim();
+        if (t.startsWith('* ')) return '+ ' + t.slice(2);
+        if (t === '*') return '+ ';
+        return l;
+      }).join('\n')
+    : trimmed;
+
+  const normalizedLines = normalizedText.split('\n');
+  const hasDiffMarkers = normalizedLines.some(l => {
+    const t = l.trim();
+    return t.startsWith('+') || t.startsWith('-');
+  });
+  
+  if (hasDiffMarkers) {
+    return { 
+      blocks: applyDiffToBlocks(currentBlocks, normalizedText), 
+      format: 'diff' 
     };
   }
 
@@ -385,6 +441,10 @@ export const ResponseParser = forwardRef<ResponseParserHandle, ResponseParserPro
 
       let resolvedBlocks: BlockNoteBlock[] | null = null;
       if (canvasContent && canProcessCanvas) {
+        // Fetch current blocks for diff resolution
+        const currentData = queryClient.getQueryData<{ content_json: Json }>(['canvas', streamId]);
+        const currentBlocks = (currentData?.content_json as unknown as BlockNoteBlock[]) || [];
+
         const result = (() => {
           if (canvasJsonContent) {
             const jsonResult = resolveIncomingBlocks(canvasJsonContent);
@@ -394,7 +454,7 @@ export const ResponseParser = forwardRef<ResponseParserHandle, ResponseParserPro
               format: 'json' as const,
             };
           }
-          return resolveCanvasBlocks(canvasContent);
+          return resolveCanvasBlocks(canvasContent, currentBlocks);
         })();
         if (result.error) {
           setCanvasParseError(result.error);
@@ -404,6 +464,8 @@ export const ResponseParser = forwardRef<ResponseParserHandle, ResponseParserPro
           setIncomingBlocks(result.blocks);
           if (result.format === 'markdown') {
             warnings.push('Canvas update parsed in compact markdown mode.');
+          } else if (result.format === 'diff') {
+            warnings.push('Canvas update applied via git-diff mode.');
           }
         }
       } else if (canvasContent) {

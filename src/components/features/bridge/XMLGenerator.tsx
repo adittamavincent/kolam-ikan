@@ -128,8 +128,10 @@ export function XMLGenerator({
     const isGlobal = stream?.stream_kind === 'GLOBAL' || (stream?.cabinet_id === null && stream?.sort_order === -100);
     const streamNameById = new Map((globalStreamsMeta ?? []).map((globalStream) => [globalStream.id, globalStream.name || globalStream.id]));
     const canvasUpdatedAt = (canvas as Record<string, unknown>)?.updated_at as string | undefined;
+    const canvasContent = (canvas?.content_json as unknown as BlockNoteBlock[]) || [];
+    const canvasIsEmpty = canvasContent.length === 0 || canvasContent.every(b => !extractText(b).trim());
 
-    const responseFormatDirective = buildResponseDirective(interactionMode, canvasUpdatedAt);
+    const responseFormatDirective = buildResponseDirective(interactionMode, canvasUpdatedAt, canvasIsEmpty);
 
     return `<system_directive>
 Target: ${interactionMode}
@@ -260,13 +262,69 @@ ${entry.sections
   .join('\n')}`;
 }
 
-function buildResponseDirective(mode: string, canvasUpdatedAt?: string): string {
-  const askDirective = `<response_format_ask>
-You MUST respond with a <thought_log> tag containing your analysis, reasoning, or answer.
+function buildResponseDirective(mode: string, canvasUpdatedAt?: string, canvasIsEmpty?: boolean): string {
+  // --- Shared core blocks ---
+
+  const askCore = `You MUST include a <thought_log> tag containing your analysis, reasoning, or answer.
 This content will be saved as a new entry (log item) in the stream's left pillar.
 
 Write in natural prose. Separate paragraphs with blank lines.
-Each double-newline-separated paragraph becomes a distinct block in the entry.
+Each double-newline-separated paragraph becomes a distinct block in the entry.`;
+
+  const canvasRules = canvasIsEmpty
+    ? `The canvas is currently EMPTY. You are creating fresh content from scratch.
+Format the content as a unified diff (like \`git diff\`) where every line is a new addition.
+Every single line inside <canvas_update> MUST start with \`+ \` (plus, then a space), then the content.
+This includes headings, bullets, numbered lists, and blank lines — EVERYTHING.
+A blank line is represented as: \`+ \` (plus, then a single space, nothing after).
+Do NOT use \`*\`, \`#\`, or \`-\` as the first character of a line. ALWAYS prefix with \`+ \`.
+
+\`\`\`diff
++ # My Title
++ 
++ ## Section One
++ - First item
++ - Second item
++ 
++ Some paragraph text here.
+\`\`\`
+
+Wrap the above inside <canvas_update>...</canvas_update> (no \`\`\`diff fences inside the tag).`
+    : `The canvas has existing content. Use unified diff format (like \`git diff\` / \`diff -u\`) to describe your changes.
+Every line inside <canvas_update> MUST start with one of:
+- \`+ \` (plus, space) — add this line
+- \`- \` (minus, space) — remove this line
+- \` \` (single space) — unchanged context line (use sparingly for clarity)
+
+Do NOT use \`*\` as a line prefix. This is NOT markdown — it is a strict git-style unified diff.
+
+\`\`\`diff
+- # Old Title
++ # Updated Title
+ 
++ ## New Section
++ - Added item
+- - Removed item
+\`\`\`
+
+Wrap the above inside <canvas_update>...</canvas_update> (no \`\`\`diff fences inside the tag).`;
+
+  const goCore = `You MUST include a <canvas_update> tag using unified diff format (git diff style).
+
+${canvasRules}
+
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ''}
+
+CRITICAL FORMATTING RULES:
+- Every line inside <canvas_update> MUST begin with \`+ \`, \`- \`, or \` \` (space). NO EXCEPTIONS.
+- Do NOT write raw markdown lines. Do NOT start lines directly with \`#\`, \`*\`, or \`-\`.
+- A heading: \`+ # My Heading\` — a bullet: \`+ - item\` — a blank line: \`+ \`
+- If any line is missing the \`+\`/\`-\`/\` \` prefix, YOUR RESPONSE WILL BE REJECTED.`;
+
+  // --- Directives composed from shared cores ---
+
+  const askDirective = `<response_format_ask>
+${askCore}
 
 Do NOT include any canvas-related tags.
 
@@ -281,62 +339,37 @@ Another paragraph with further reasoning.
 </response_format_ask>`;
 
   const goDirective = `<response_format_go>
-You MUST respond with a <canvas_update> tag containing compact markdown-style text.
-This updates the stream canvas (right pillar) with minimal token usage.
-
-Allowed syntax inside <canvas_update>:
-- Headings: #, ##, ###
-- Bullets: - item
-- Numbered list: 1. item
-- Paragraphs: plain lines
-- Inline style: **bold**, *italic*, \`code\`
-
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ''}
+${goCore}
 
 Do NOT include any thought_log tags in GO mode.
 
 Example response:
 <response>
 <canvas_update>
-# Recommendation List
-
-- Stabilize team alignment in week 1
-- Run 1:1 check-ins with core members
-
-1. Define 3 top priorities
-2. Assign owners and due dates
++ # Example Title
++ 
++ - Example bullet
 </canvas_update>
 ${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ''}
 </response>
 </response_format_go>`;
 
   const bothDirective = `<response_format_both>
-You MUST respond with BOTH a <thought_log> tag AND a <canvas_update> tag.
+${askCore}
 
-1. <thought_log>: Your analysis/reasoning in natural prose (saved as a new log entry in the left pillar).
-   Separate paragraphs with blank lines.
-
-2. <canvas_update>: compact markdown-style content for canvas update.
-   Use #/## headings, - bullets, numbered lists, and plain paragraphs.
-  Inline style allowed: **bold**, *italic*, \`code\`.
-
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ''}
+${goCore}
 
 Example response:
 <response>
 <thought_log>
-Your reasoning and analysis go here.
-
-Additional observations in a second paragraph.
+Your reasoning goes here.
 </thought_log>
 <canvas_update>
-## Action Plan
-
-- Quick win 1
-- Quick win 2
-
-1. Step one
-2. Step two
++ # Title
++ 
++ ## Section
++ - Task one
++ - Task two
 </canvas_update>
 ${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ''}
 </response>

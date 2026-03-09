@@ -96,10 +96,15 @@ export function ContextBag({
   const isLoadingEntries = isEntriesLoading;
 
   return (
-    <div className="mb-4 rounded border border-border-default p-4">
-      <h3 className="mb-2 font-medium text-text-default">Context Bag</h3>
-      <div className="space-y-3">
-        <label className="flex items-center gap-2 text-text-default text-sm">
+    <div className="mb-6 rounded-xl border border-border-default/50 bg-surface-subtle/20 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-text-default">Context Bag</h3>
+        <span className="rounded-full bg-surface-subtle px-2.5 py-1 text-[10px] font-bold tracking-wider text-text-muted">
+          {selectedEntries.length} SELECTED
+        </span>
+      </div>
+      <div className="space-y-4">
+        <label className="flex items-center gap-2.5 text-text-default text-sm cursor-pointer select-none">
           <input
             type="checkbox"
             checked={includeCanvas}
@@ -145,30 +150,29 @@ export function ContextBag({
                 : 'Carries domain-wide backstory into bridge prompts.'}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="flex flex-wrap gap-2 text-xs mt-1">
           <button
             onClick={selectAll}
             disabled={disableSelectAll || isLoadingEntries}
-            className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover disabled:opacity-50"
+            className="rounded-full border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
           >
             Select All
           </button>
           <button
             onClick={selectLastFive}
             disabled={isLoadingEntries}
-            className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover disabled:opacity-50"
+            className="rounded-full border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
           >
             Last 5
           </button>
           <button
             onClick={clearAll}
-            className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
+            className="rounded-full border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default transition-all shadow-sm"
           >
             Clear
           </button>
-          <span className="ml-auto text-text-muted">{selectedEntries.length} selected</span>
         </div>
-        <div className="max-h-48 space-y-3 overflow-y-auto rounded border border-border-subtle p-2 text-xs">
+        <div className="max-h-56 space-y-3 overflow-y-auto rounded-lg border border-border-subtle/50 bg-surface-default/50 p-3 text-xs shadow-inner">
           {isLoadingEntries ? (
             <div className="text-text-muted animate-pulse">Loading entries...</div>
           ) : groupedEntries.length === 0 ? (
@@ -185,15 +189,16 @@ export function ContextBag({
                     entry.sections?.[0]?.persona_name_snapshot ||
                     'Empty entry';
                   return (
-                    <label key={entry.id} className="flex items-start gap-2 text-text-default cursor-pointer select-none">
+                      <label key={entry.id} className="flex items-start gap-3 rounded-md p-1.5 hover:bg-surface-subtle transition-colors cursor-pointer select-none">
                       <input
                         type="checkbox"
+                        className="mt-0.5 accent-action-primary-bg"
                         checked={selectedEntries.includes(entry.id)}
                         onChange={() => toggleEntry(entry.id)}
                       />
                       <div>
-                        <div className="text-[11px] text-text-default">{preview.slice(0, 80)}</div>
-                        <div className="text-[10px] text-text-muted">
+                        <div className="text-[12px] font-medium text-text-default leading-snug">{preview.slice(0, 80)}</div>
+                        <div className="text-[10px] text-text-muted mt-0.5">
                           {entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown time'}
                         </div>
                       </div>

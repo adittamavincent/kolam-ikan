@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { BlockNoteBlock, BlockNoteContent } from '@/lib/types';
@@ -11,6 +11,20 @@ import { Json } from '@/lib/types/database.types';
 interface ResponseParserProps {
   streamId?: string;
   interactionMode?: 'ASK' | 'GO' | 'BOTH';
+  pastedXML: string;
+  onPastedXMLChange: (value: string) => void;
+  onStatusChange?: (status: {
+    isApplying: boolean;
+    canApply: boolean;
+    canParse: boolean;
+    hasParsed: boolean;
+  }) => void;
+}
+
+export interface ResponseParserHandle {
+  parse: () => void;
+  apply: () => void;
+  reset: () => void;
 }
 
 type ChangeDecision = 'accept' | 'reject' | 'both';
@@ -225,8 +239,13 @@ function extractTagContent(text: string, tagName: string): string | null {
   return match[1].trim();
 }
 
-export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponseParserProps) {
-  const [pastedXML, setPastedXML] = useState('');
+export const ResponseParser = forwardRef<ResponseParserHandle, ResponseParserProps>(({ 
+  streamId, 
+  interactionMode = 'ASK',
+  pastedXML,
+  onPastedXMLChange,
+  onStatusChange,
+}, ref) => {
   const [parseError, setParseError] = useState<string | null>(null);
   const [ignoredTags, setIgnoredTags] = useState<string[]>([]);
   const [thoughtLog, setThoughtLog] = useState<string | null>(null);
@@ -242,6 +261,26 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
 
   const supabase = createClient();
   const queryClient = useQueryClient();
+
+  const reset = () => {
+    setParseError(null);
+    setApplyError(null);
+    setIgnoredTags([]);
+    setThoughtLog(null);
+    setIncomingBlocks(null);
+    setChanges([]);
+    setConflictWarning(null);
+    setParseWarnings([]);
+    setCanvasParseError(null);
+    setUsePlainText(false);
+    onPastedXMLChange('');
+  };
+
+  useImperativeHandle(ref, () => ({
+    parse: parseResponse,
+    apply: handleApply,
+    reset,
+  }));
 
   const canProcessCanvas = interactionMode === 'GO' || interactionMode === 'BOTH';
   const canProcessLog = interactionMode === 'ASK' || interactionMode === 'BOTH';
@@ -281,6 +320,19 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
 
     return next;
   }, [changes, incomingBlocks, previewMode, queryClient, streamId]);
+
+  const canApply = !isApplying && (!!thoughtLog || !!mergedBlocks);
+  const canParse = !!pastedXML.trim();
+  const hasParsed = !!thoughtLog || !!incomingBlocks;
+
+  useEffect(() => {
+    onStatusChange?.({
+      isApplying,
+      canApply,
+      canParse,
+      hasParsed,
+    });
+  }, [isApplying, canApply, canParse, hasParsed, onStatusChange]);
 
   const parseResponse = async () => {
     try {
@@ -544,7 +596,7 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
         <p className="mb-2 text-xs text-text-muted">Paste the model output in the same XML structure to parse and merge safely.</p>
         <textarea
           value={pastedXML}
-          onChange={(e) => setPastedXML(e.target.value)}
+          onChange={(e) => onPastedXMLChange(e.target.value)}
           className="w-full rounded border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
           rows={6}
           placeholder={`Paste the LLM response here. Expected format:\n<response>\n  ${canProcessLog ? '<thought_log>...</thought_log>' : ''}${canProcessLog && canProcessCanvas ? '\n  ' : ''}${canProcessCanvas ? '<canvas_update>markdown or JSON</canvas_update>' : ''}\n</response>`}
@@ -563,14 +615,8 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
         </div>
       )}
 
-      {parseWarnings.length > 0 && (
-        <div className="rounded border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
-          {parseWarnings.join(' ')}
-        </div>
-      )}
-
       {conflictWarning && (
-        <div className="rounded border border-status-error-border bg-status-error-bg p-3 text-xs text-status-error-text">
+        <div className="rounded-lg border border-status-error-border bg-status-error-bg/20 p-3 text-xs text-status-error-text">
           {conflictWarning}
         </div>
       )}
@@ -641,50 +687,69 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="divide-y divide-border-subtle/30 overflow-hidden rounded-lg border border-border-default/50 bg-surface-default shadow-sm">
             {changes.map((change) => (
-              <div key={change.id} className="rounded border border-border-default bg-surface-default p-3">
-                <div className="mb-2 flex items-center justify-between text-xs text-text-muted">
-                  <span>{change.type === 'add' ? 'New Block' : 'Changed Block'}</span>
-                  {change.originalId && <span>Original ID: {change.originalId}</span>}
+              <div key={change.id} className="flex flex-col md:flex-row items-stretch group hover:bg-surface-subtle/30 transition-colors">
+                {/* Meta info & Labels */}
+                <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center px-4 py-2 bg-surface-subtle/50 md:w-32 border-b md:border-b-0 md:border-r border-border-subtle/30">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${change.type === 'add' ? 'text-status-success-text' : 'text-action-primary-bg'}`}>
+                    {change.type === 'add' ? 'New' : 'Update'}
+                  </span>
+                  {change.originalId && <span className="text-[9px] text-text-muted font-mono truncate max-w-full md:mt-1 opacity-50 group-hover:opacity-100 transition-opacity">ID: {change.originalId.slice(0,8)}</span>}
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+
+                {/* Content area */}
+                <div className="flex-1 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border-subtle/20">
                   {change.current && (
-                    <div className="rounded border border-border-default bg-surface-subtle p-2 text-xs text-text-default">
-                      {extractBlockText(change.current)}
+                    <div className="flex-1 p-3 flex flex-col gap-1 min-w-0">
+                      <span className="text-[9px] font-bold text-text-muted uppercase">Current</span>
+                      <div className="text-[12px] text-text-muted line-clamp-3 md:line-clamp-6 leading-relaxed">
+                        {extractBlockText(change.current)}
+                      </div>
                     </div>
                   )}
-                  <div className="rounded border border-border-default bg-surface-subtle p-2 text-xs text-text-default">
-                    {extractBlockText(change.incoming)}
+                  <div className="flex-1 p-3 flex flex-col gap-1 min-w-0 bg-surface-subtle/10">
+                    <span className="text-[9px] font-bold text-text-muted uppercase">Incoming</span>
+                    <div className="text-[12px] text-text-default font-medium leading-relaxed">
+                      {extractBlockText(change.incoming)}
+                    </div>
                   </div>
                 </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+
+                {/* Actions */}
+                <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle/20 border-t md:border-t-0 md:border-l border-border-subtle/30 min-w-[120px]">
                   <button
                     onClick={() => updateDecision(change.id, 'accept')}
-                    className={`rounded px-2 py-1 ${change.decision === 'accept'
-                        ? 'bg-action-primary-bg text-action-primary-text'
-                        : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
-                      }`}
+                    title="Accept"
+                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition-all ${
+                      change.decision === 'accept'
+                        ? 'bg-action-primary-bg text-action-primary-text shadow-sm'
+                        : 'text-text-muted hover:text-text-default hover:bg-surface-hover/50'
+                    }`}
                   >
                     Accept
                   </button>
                   {change.type === 'modify' && (
                     <button
                       onClick={() => updateDecision(change.id, 'both')}
-                      className={`rounded px-2 py-1 ${change.decision === 'both'
-                          ? 'bg-action-primary-bg text-action-primary-text'
-                          : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
-                        }`}
+                      title="Keep both"
+                      className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition-all ${
+                        change.decision === 'both'
+                          ? 'bg-action-primary-bg text-action-primary-text shadow-sm'
+                          : 'text-text-muted hover:text-text-default hover:bg-surface-hover/50'
+                      }`}
                     >
-                      Take Both
+                      Both
                     </button>
                   )}
                   <button
                     onClick={() => updateDecision(change.id, 'reject')}
-                    className={`rounded px-2 py-1 ${change.decision === 'reject'
-                        ? 'bg-action-primary-bg text-action-primary-text'
-                        : 'bg-surface-subtle text-text-default hover:bg-surface-hover'
-                      }`}
+                    title="Reject"
+                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition-all ${
+                      change.decision === 'reject'
+                        ? 'bg-action-primary-bg text-action-primary-text shadow-sm'
+                        : 'text-text-muted hover:text-text-default hover:bg-surface-hover/50'
+                    }`}
                   >
                     Reject
                   </button>
@@ -721,4 +786,6 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
       </div>
     </div>
   );
-}
+});
+
+ResponseParser.displayName = 'ResponseParser';

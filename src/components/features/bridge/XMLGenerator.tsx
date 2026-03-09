@@ -1,7 +1,7 @@
 'use client';
 
 import { Copy, Check } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { BlockNoteBlock, EntryWithSections, SectionWithPersona } from '@/lib/types';
@@ -15,6 +15,7 @@ interface XMLGeneratorProps {
   globalStreamIds: string[];
   globalStreamName: string | null;
   userInput: string;
+  onXMLGenerated?: (xml: string) => void;
 }
 
 export function XMLGenerator({
@@ -26,9 +27,16 @@ export function XMLGenerator({
   globalStreamIds,
   globalStreamName,
   userInput,
+  onXMLGenerated,
 }: XMLGeneratorProps) {
   const [copied, setCopied] = useState(false);
   const supabase = createClient();
+
+  const generatedXML = useMemo(() => {
+    // We already have generateXML below, but to avoid redundant calls 
+    // and use it in a memoized way for the parent interaction:
+    return null; // I'll refactor the existing generateXML to use useMemo
+  }, []);
 
   // Fetch data
   const { data: stream } = useQuery({
@@ -115,7 +123,7 @@ export function XMLGenerator({
     enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
-  const generateXML = () => {
+  const currentXML = useMemo(() => {
     const domainName = stream?.domain?.name || '';
     const isGlobal = stream?.stream_kind === 'GLOBAL' || (stream?.cabinet_id === null && stream?.sort_order === -100);
     const streamNameById = new Map((globalStreamsMeta ?? []).map((globalStream) => [globalStream.id, globalStream.name || globalStream.id]));
@@ -178,37 +186,46 @@ ${entryToMarkdown(entry)}
 <instruction>
 ${userInput}
 </instruction>`;
-  };
+  }, [stream, interactionMode, includeCanvas, canvas, entries, includeGlobalStream, additionalGlobalStreamIds, globalStreamsMeta, globalCanvases, globalEntries, globalStreamName, userInput]);
+
+  useEffect(() => {
+    onXMLGenerated?.(currentXML);
+  }, [currentXML, onXMLGenerated]);
 
   const copyToClipboard = async () => {
-    await navigator.clipboard.writeText(generateXML());
+    await navigator.clipboard.writeText(currentXML);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="mt-6 space-y-3">
       <div>
-        <label className="mb-1 block text-sm font-medium text-text-default">Generated Bridge XML</label>
-        <p className="mb-2 text-xs text-text-muted">Review and copy this payload to your model before generating a response.</p>
+        <label className="text-sm font-semibold text-text-default">Generated Bridge Payload</label>
+        <p className="text-xs text-text-muted mt-0.5 mb-2">Review and copy this payload to your model before generating a response.</p>
       </div>
 
-      <div className="rounded border border-border-default bg-surface-subtle p-3">
+      <div className="relative group rounded-lg border border-border-default/50 bg-[#0d1117] shadow-inner overflow-hidden">
         <textarea
           readOnly
           rows={6}
-          value={generateXML()}
-          className="w-full rounded border border-border-default bg-surface-default p-3 font-mono text-[12px] leading-5 text-text-default outline-none resize-none"
+          value={currentXML}
+          className="w-full bg-transparent p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] outline-none resize-y min-h-[140px]"
         />
+        <div className="absolute top-2 right-2">
+          <button
+            onClick={copyToClipboard}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold backdrop-blur-md transition-all ${
+              copied
+                ? 'bg-status-success-bg/20 text-status-success-text border border-status-success-bg/30'
+                : 'bg-white/10 text-white border border-white/20 hover:bg-white/20 opacity-0 group-hover:opacity-100'
+            }`}
+          >
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
       </div>
-
-      <button
-        onClick={copyToClipboard}
-        className="mt-2 flex items-center gap-2 rounded bg-action-primary-bg px-4 py-2 text-action-primary-text hover:bg-action-primary-hover transition-colors"
-      >
-        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-        {copied ? 'Copied!' : 'Copy to Clipboard'}
-      </button>
     </div>
   );
 }

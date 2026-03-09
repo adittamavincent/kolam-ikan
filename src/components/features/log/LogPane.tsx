@@ -13,7 +13,7 @@ import {
   Filter, ArrowUpDown, Search, Download, Calendar, PanelLeft,
   Check, X, PencilLine, Loader2, Copy, RotateCcw, Trash2,
   GitCommitHorizontal, Undo2, ChevronsDown, Archive,
-  GitCompare, Eye, EyeOff, Tag, GitBranch, Network,
+  GitCompare, Eye, EyeOff, Tag, GitBranch, Network, Globe,
 } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
@@ -611,6 +611,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                   >
                     <Archive className="h-4 w-4" />
                   </button>
+                )}
+                {stream?.stream_kind === 'GLOBAL' && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
+                    <Globe className="h-3 w-3" />
+                    Global
+                  </span>
                 )}
               </div>
               {/* git log info pill + graph toggle */}

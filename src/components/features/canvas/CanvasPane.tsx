@@ -11,7 +11,9 @@ import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote
 import { Json } from '@/lib/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save } from 'lucide-react';
+import { Save, PanelLeft, Globe } from 'lucide-react';
+import { useSidebar } from '@/lib/hooks/useSidebar';
+import { useStream } from '@/lib/hooks/useStream';
 
 interface CanvasPaneProps {
   streamId: string;
@@ -19,6 +21,8 @@ interface CanvasPaneProps {
 
 export function CanvasPane({ streamId }: CanvasPaneProps) {
   const { canvasWidth } = useLayout();
+  const { visible: sidebarVisible, show: showSidebar } = useSidebar();
+  const { stream } = useStream(streamId);
   const { canvas, updateCanvas, isLoading } = useCanvas(streamId);
   const { targetBlockId, setTargetBlockId } = useCanvasScroll();
   const [editor, setEditor] = useState<BlockNoteEditorType | null>(null);
@@ -150,7 +154,25 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         {canvas && (
           <div className="border-b border-border-subtle bg-surface-default shrink-0">
             <div className="px-2 py-1.5">
-              <div className="flex items-center justify-end gap-1">
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-1.5">
+                  {canvasWidth === 100 && !sidebarVisible && (
+                    <button
+                      onClick={showSidebar}
+                      className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+                      title="Show sidebar"
+                    >
+                      <PanelLeft className="h-4 w-4" />
+                    </button>
+                  )}
+                  {canvasWidth === 100 && stream?.stream_kind === 'GLOBAL' && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-1 text-[11px] font-semibold text-action-primary-bg">
+                      <Globe className="h-3 w-3" />
+                      Global
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
                 {showNameInput ? (
                   <div className="flex items-center gap-1 flex-1">
                     <input
@@ -187,6 +209,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                     <Save className="h-4 w-4" />
                   </button>
                 )}
+                </div>
               </div>
             </div>
           </div>

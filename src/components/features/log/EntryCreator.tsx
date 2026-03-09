@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, Fragment, useEffect, useMemo } from 'react';
+import { useState, useRef, Fragment, useEffect, useMemo, useCallback } from 'react';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
 import { Loader2, Send, Check, Plus, X, ChevronDown } from 'lucide-react';
@@ -49,15 +49,16 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
         initialDrafts,
         getDraftContent,
         isLoading,
-        activeEntryId,
         setActiveInstances,
         flushPendingSaves,
         recoveryAvailable,
         discardRecovery,
+        clearDraft,
     } = useDraftSystem({
         streamId
     });
     const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(true);
+    const [discardedRecovery, setDiscardedRecovery] = useState(false);
 
     useEffect(() => {
         try {
@@ -88,7 +89,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
 
     // Initialize selection with existing drafts only
     useEffect(() => {
-        if (sections.length === 0 && !isLoading) {
+        if (sections.length === 0 && !isLoading && !discardedRecovery) {
             // If we have initial drafts, use them
             if (initialDrafts && Object.keys(initialDrafts).length > 0) {
                 const loadedSections = Object.entries(initialDrafts).map(([instanceId, draft]) => ({
@@ -101,12 +102,24 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             // Don't auto-initialize with a default persona
             // Let the user explicitly select a persona or add a section
         }
-    }, [initialDrafts, isLoading, sections.length]);
+    }, [initialDrafts, isLoading, sections.length, discardedRecovery]);
+
+    const handleKeepRecovery = () => {
+        setDiscardedRecovery(false);
+        setShowRecoveryPrompt(false);
+    };
+
+    const handleDiscardRecovery = () => {
+        setDiscardedRecovery(true);
+        discardRecovery();
+        setSections([]);
+        editorRefs.current = {};
+        setShowRecoveryPrompt(false);
+    };
 
     // Sync active instances with draft system whenever sections change
     useEffect(() => {
-        const instanceIds = sections.map(s => s.instanceId);
-        setActiveInstances(instanceIds);
+        setActiveInstances();
     }, [sections, setActiveInstances]);
 
     // Keyboard shortcuts
@@ -148,28 +161,46 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     };
 
     const addPersona = (pId: string) => {
+        const instanceId = crypto.randomUUID();
+        const persona = personas?.find((p) => p.id === pId);
+
         trackPersonaUsage(pId);
-        setSections(prev => [
+        setSections((prev) => [
             ...prev,
-            { instanceId: crypto.randomUUID(), personaId: pId }
+            { instanceId, personaId: pId }
         ]);
+
+        // Persist section creation immediately so empty sections survive reload.
+        saveDraft(instanceId, pId, [], persona?.name);
     };
 
-    const removeSection = (instanceId: string) => {
-        setSections(prev => {
-            // Clear content (delete section)
-            const section = prev.find(s => s.instanceId === instanceId);
-            if (section) {
-                const persona = personas?.find(p => p.id === section.personaId);
-                // Save with empty content to trigger deletion in DB
-                saveDraft(instanceId, section.personaId, [], persona?.name);
-            }
+    const removeSection = useCallback((instanceId: string) => {
+        // Find the section and remaining list BEFORE updating state so we can
+        // pass them to saveDraft synchronously (outside the updater).
+        const section = sections.find(s => s.instanceId === instanceId);
+        const remaining = sections.filter(s => s.instanceId !== instanceId);
 
-            // Remove from sections state - this will trigger the useEffect
-            // that syncs with setActiveInstances, which will clean up refs
-            return prev.filter(s => s.instanceId !== instanceId);
-        });
-    };
+        // Pure state update — no side effects inside the updater.
+        setSections(remaining);
+
+        if (section) {
+            const persona = personas?.find(p => p.id === section.personaId);
+            // Always call saveDraft(forceDelete=true) synchronously regardless of
+            // whether this is the last section. This clears contentRefs.current[instanceId]
+            // and localStorage immediately — BEFORE React re-renders or effects run.
+            // Without this, if the user reloads instantly after clicking X, the
+            // beforeunload handler reads stale contentRefs and sends a beacon that
+            // resurrects the section in the DB. For the last-section case, clearDraft()
+            // then awaits this section delete and deletes the full entry from DB.
+            saveDraft(instanceId, section.personaId, [], persona?.name, true);
+        }
+
+        if (remaining.length === 0) {
+            // Clear immediately when the last section is removed so clearing flags
+            // are written before a fast page unload can interrupt async cleanup.
+            void clearDraft();
+        }
+    }, [sections, personas, saveDraft, clearDraft]);
 
     const changePersona = (instanceId: string, newPersonaId: string) => {
         const section = sections.find(s => s.instanceId === instanceId);
@@ -209,16 +240,13 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                             <span>Recovered unsaved work from a previous session.</span>
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => setShowRecoveryPrompt(false)}
+                                    onClick={handleKeepRecovery}
                                     className="rounded bg-action-primary-bg px-2 py-1 text-[10px] text-action-primary-text hover:bg-action-primary-hover"
                                 >
                                     Keep
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        discardRecovery();
-                                        setShowRecoveryPrompt(false);
-                                    }}
+                                    onClick={handleDiscardRecovery}
                                     className="rounded bg-surface-default px-2 py-1 text-[10px] text-text-default hover:bg-surface-hover"
                                 >
                                     Discard
@@ -399,8 +427,8 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                         </div>
                         <button
                             onClick={handleCommit}
-                            disabled={status === 'idle' && !activeEntryId}
-                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${status !== 'idle' || activeEntryId
+                            disabled={status === 'saving'}
+                            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${status !== 'saving'
                                 ? 'bg-action-primary-bg text-white hover:bg-action-primary-hover'
                                 : 'bg-surface-subtle text-text-muted cursor-not-allowed'
                                 }`}

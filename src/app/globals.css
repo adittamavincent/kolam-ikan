@@ -261,6 +261,30 @@ body {
   word-break: break-word;
 }
 
+/* Base font-size reduction for the entire editor */
+.blocknote-editor {
+  font-size: 0.875rem !important; /* 14px */
+}
+
+/* Ensure BlockNote elements respect the parent font-size */
+.blocknote-editor .bn-container,
+.blocknote-editor .bn-editor {
+  font-size: inherit !important;
+}
+
+/* Scale down headings proportionally */
+.blocknote-editor h1.bn-inline-content { font-size: 1.5rem !important; }
+.blocknote-editor h2.bn-inline-content { font-size: 1.25rem !important; }
+.blocknote-editor h3.bn-inline-content { font-size: 1.125rem !important; }
+
+/* Scale down UI elements slightly (toolbar, menus) to feel more compact */
+.blocknote-editor .bn-toolbar,
+.blocknote-editor .bn-side-menu,
+.blocknote-editor .bn-suggestion-menu {
+  transform: scale(0.9);
+  transform-origin: top left;
+}
+
 /* Handle specific BlockNote elements that might contain long text */
 .bn-block-content,
 .bn-inline-content,

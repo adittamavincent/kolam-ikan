@@ -365,7 +365,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   };
 
   return (
-    <div ref={layoutRootRef} className="flex h-screen overflow-hidden bg-surface-subtle">
+    <div ref={layoutRootRef} className="flex h-dvh overflow-hidden overscroll-none bg-surface-subtle">
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

@@ -216,7 +216,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         )}
 
         {/* Editor area */}
-        <div className="flex-1 overflow-y-auto px-3 py-2">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-24">
           {canvas ? (
             <BlockNoteEditor
               key={`canvas-${canvas.id}-${canvas.updated_at ?? 'na'}`}

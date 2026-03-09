@@ -735,7 +735,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             />
           </div>
         ) : (
-        <div className="flex-1 overflow-y-auto px-3">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-3">
           <div className="pb-5 pt-4">
             {sortOrder === 'newest' && (
               <div className="mb-4 space-y-2">

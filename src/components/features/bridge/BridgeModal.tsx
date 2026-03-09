@@ -131,13 +131,14 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
           {/* User Input */}
           <div className="mb-4">
-            <label className="mb-1 block text-sm font-medium text-text-default">Instruction</label>
+            <label className="mb-1 block text-sm font-medium text-text-default">Bridge Instruction</label>
+            <p className="mb-2 text-xs text-text-muted">Describe the outcome you want from ASK, GO, or BOTH mode.</p>
             <textarea
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               placeholder="What would you like to accomplish?"
-              className="w-full rounded border border-border-default bg-surface-subtle text-text-default p-3 focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
-              rows={4}
+              className="w-full rounded border border-border-default bg-surface-subtle p-3 text-sm leading-6 text-text-default focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
+              rows={3}
             />
           </div>
 

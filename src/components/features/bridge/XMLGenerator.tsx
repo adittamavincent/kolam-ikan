@@ -187,9 +187,19 @@ ${userInput}
   };
 
   return (
-    <div className="mt-4">
-      <div className="rounded-lg border border-border-default bg-surface-subtle p-4">
-        <pre className="overflow-x-auto text-xs whitespace-pre-wrap text-text-default">{generateXML()}</pre>
+    <div className="mt-4 space-y-2">
+      <div>
+        <label className="mb-1 block text-sm font-medium text-text-default">Generated Bridge XML</label>
+        <p className="mb-2 text-xs text-text-muted">Review and copy this payload to your model before generating a response.</p>
+      </div>
+
+      <div className="rounded border border-border-default bg-surface-subtle p-3">
+        <textarea
+          readOnly
+          rows={6}
+          value={generateXML()}
+          className="w-full rounded border border-border-default bg-surface-default p-3 font-mono text-[12px] leading-5 text-text-default outline-none resize-none"
+        />
       </div>
 
       <button

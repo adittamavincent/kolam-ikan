@@ -541,10 +541,11 @@ export function ResponseParser({ streamId, interactionMode = 'ASK' }: ResponsePa
         <label className="mb-2 block text-sm font-medium text-text-default">
           Paste Response XML
         </label>
+        <p className="mb-2 text-xs text-text-muted">Paste the model output in the same XML structure to parse and merge safely.</p>
         <textarea
           value={pastedXML}
           onChange={(e) => setPastedXML(e.target.value)}
-          className="w-full rounded border border-border-default bg-surface-subtle text-text-default p-3 focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
+          className="w-full rounded border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
           rows={6}
           placeholder={`Paste the LLM response here. Expected format:\n<response>\n  ${canProcessLog ? '<thought_log>...</thought_log>' : ''}${canProcessLog && canProcessCanvas ? '\n  ' : ''}${canProcessCanvas ? '<canvas_update>markdown or JSON</canvas_update>' : ''}\n</response>`}
         />

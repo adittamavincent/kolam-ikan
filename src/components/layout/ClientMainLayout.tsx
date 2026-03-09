@@ -17,6 +17,16 @@ interface ClientMainLayoutProps {
   userId: string;
 }
 
+const SIDEBAR_MIN_WIDTH = 200;
+const SIDEBAR_MAX_WIDTH = 500;
+const MAIN_CONTENT_MIN_WIDTH = 520;
+
+function clampSidebarWidth(proposedWidth: number, sidebarLeft: number, layoutRight: number) {
+  const maxByLayout = layoutRight - sidebarLeft - MAIN_CONTENT_MIN_WIDTH;
+  const dynamicMax = Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, maxByLayout));
+  return Math.min(Math.max(proposedWidth, SIDEBAR_MIN_WIDTH), dynamicMax);
+}
+
 export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
@@ -65,6 +75,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const showLayoutControls = parts.length === 2;
 
   // Track whether we want the slide-out animation vs. a hard cut
+  const layoutRootRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const pendingSidebarWidthRef = useRef(sidebarWidth);
 
@@ -89,8 +100,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       if (!sidebarRef.current) return;
 
       const sidebarRect = sidebarRef.current.getBoundingClientRect();
+      const layoutRect = layoutRootRef.current?.getBoundingClientRect();
+      const layoutRight = layoutRect?.right ?? window.innerWidth;
       const newWidth = latestClientX - sidebarRect.left;
-      const clampedWidth = Math.min(Math.max(newWidth, 200), 500);
+      const clampedWidth = clampSidebarWidth(newWidth, sidebarRect.left, layoutRight);
 
       pendingSidebarWidthRef.current = clampedWidth;
       sidebarRef.current.style.width = `${clampedWidth}px`;
@@ -130,6 +143,29 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       document.body.style.userSelect = '';
     };
   }, [isResizing, setSidebarWidth, setIsResizing]);
+
+  useEffect(() => {
+    const syncSidebarWidthToViewport = () => {
+      if (!sidebarRef.current) return;
+
+      const sidebarRect = sidebarRef.current.getBoundingClientRect();
+      const layoutRect = layoutRootRef.current?.getBoundingClientRect();
+      const layoutRight = layoutRect?.right ?? window.innerWidth;
+      const clamped = clampSidebarWidth(sidebarWidth, sidebarRect.left, layoutRight);
+
+      pendingSidebarWidthRef.current = clamped;
+      if (sidebarVisible) {
+        sidebarRef.current.style.width = `${clamped}px`;
+      }
+      if (clamped !== sidebarWidth) {
+        setSidebarWidth(clamped);
+      }
+    };
+
+    syncSidebarWidthToViewport();
+    window.addEventListener('resize', syncSidebarWidthToViewport);
+    return () => window.removeEventListener('resize', syncSidebarWidthToViewport);
+  }, [sidebarVisible, sidebarWidth, setSidebarWidth]);
 
   // Detect "home" route — the root path with no domain param
   const isHomeRoute = pathname === '/';
@@ -329,7 +365,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-subtle">
+    <div ref={layoutRootRef} className="flex h-screen overflow-hidden bg-surface-subtle">
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -357,11 +393,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}
       <div
         ref={sidebarRef}
-        className={`hidden md:flex overflow-visible relative z-30 group h-full ${isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-in-out'}`}
+        className={`hidden md:flex overflow-hidden relative z-30 group h-full ${isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-in-out'}`}
         style={{ width: sidebarVisible ? sidebarWidth : 0 }}
       >
         <div
-          className={`flex-1 overflow-visible h-full transition-all duration-300 ease-in-out ${sidebarVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'
+          className={`flex-1 overflow-hidden h-full transition-all duration-300 ease-in-out ${sidebarVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'
             }`}
         >
           <Navigator userId={userId} />
@@ -385,7 +421,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       )}
 
       {/* ====== MAIN CONTENT ====== */}
-      <div className="relative flex flex-1 flex-col overflow-hidden">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {error && (
           <div className="border-b border-status-error-border bg-status-error-bg px-4 py-2 text-xs text-status-error-text">
             {error}

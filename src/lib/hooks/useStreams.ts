@@ -2,25 +2,32 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { Stream, StreamInsert, StreamKind, StreamUpdate, STREAM_KIND } from '@/lib/types';
 
-export function useStreams(cabinetId: string) {
+export function useStreams(cabinetId: string | null) {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ['streams', cabinetId],
     queryFn: async ({ signal }) => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('streams')
         .select('*')
-        .eq('cabinet_id', cabinetId)
         .is('deleted_at', null)
         .order('sort_order', { ascending: true })
         .abortSignal(signal);
 
+      if (cabinetId) {
+        query = query.eq('cabinet_id', cabinetId);
+      } else {
+        query = query.is('cabinet_id', null);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
       return data as Stream[];
     },
-    enabled: !!cabinetId,
+    enabled: true,
   });
 
   const createStream = useMutation({
@@ -62,6 +69,7 @@ export function useStreams(cabinetId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['streams', cabinetId] });
+      queryClient.invalidateQueries({ queryKey: ['streams'] });
     },
   });
 
@@ -96,6 +104,7 @@ export function useStreams(cabinetId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['streams', cabinetId] });
+      queryClient.invalidateQueries({ queryKey: ['streams'] });
     },
   });
 
@@ -127,6 +136,7 @@ export function useStreams(cabinetId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['streams', cabinetId] });
+      queryClient.invalidateQueries({ queryKey: ['streams'] });
     },
   });
 

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef, Fragment, useEffect, useMemo, useCallback } from 'react';
+import { useState, useRef, Fragment, useEffect, useMemo } from 'react';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
-import { Loader2, Send, Check, Plus, X, ChevronDown } from 'lucide-react';
+import { Loader2, Send, Check, Plus, X, ChevronDown, GitBranch } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { useKeyboard } from '@/lib/hooks/useKeyboard';
 import { NavigationGuard } from './NavigationGuard';
@@ -13,6 +13,26 @@ import { DynamicIcon } from '@/components/shared/DynamicIcon';
 
 interface EntryCreatorProps {
     streamId: string;
+}
+
+const BRANCH_REFS_KEY = (streamId: string) => `kolam_branch_refs_${streamId}`;
+const CURRENT_BRANCH_KEY = (streamId: string) => `kolam_current_branch_${streamId}`;
+const BRANCH_STATE_UPDATED_EVENT = 'kolam:branch-state-updated';
+
+function getBranchState(streamId: string): { refs: Record<string, string>; current: string } {
+    if (typeof window === 'undefined') {
+        return { refs: { main: '' }, current: 'main' };
+    }
+    try {
+        const rawRefs = localStorage.getItem(BRANCH_REFS_KEY(streamId));
+        const refs = rawRefs
+            ? (JSON.parse(rawRefs) as Record<string, string>)
+            : ({ main: '' } as Record<string, string>);
+        const rawCurrent = localStorage.getItem(CURRENT_BRANCH_KEY(streamId));
+        return { refs, current: rawCurrent?.trim() || 'main' };
+    } catch {
+        return { refs: { main: '' }, current: 'main' };
+    }
 }
 
 export function EntryCreator({ streamId }: EntryCreatorProps) {
@@ -37,9 +57,33 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     }
     const [sections, setSections] = useState<SectionState[]>([]);
     const [personaUsageCounts, setPersonaUsageCounts] = useState<Record<string, number>>(getInitialPersonaUsage);
+    const [branchRefs, setBranchRefs] = useState<Record<string, string>>(() => getBranchState(streamId).refs);
+    const [currentBranch, setCurrentBranch] = useState(() => getBranchState(streamId).current);
 
     // Refs for editors to clear them
     const editorRefs = useRef<Record<string, BlockNoteEditorType>>({});
+    const pendingFocusInstanceIdRef = useRef<string | null>(null);
+
+    const focusEditorForInstance = (instanceId: string) => {
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        const tryFocus = () => {
+            const editor = editorRefs.current[instanceId];
+            if (editor) {
+                editor.focus();
+                return;
+            }
+
+            attempts += 1;
+            if (attempts < maxAttempts) {
+                window.setTimeout(tryFocus, 30);
+            }
+        };
+
+        // Delay one tick so focus wins after menu close/focus restoration.
+        window.setTimeout(tryFocus, 0);
+    };
 
     // Draft System Hook
     const {
@@ -67,6 +111,21 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             // Ignore write failures (quota/private mode).
         }
     }, [personaUsageCounts, personaUsageStorageKey]);
+
+    useEffect(() => {
+        const syncBranchState = () => {
+            const next = getBranchState(streamId);
+            setBranchRefs(next.refs);
+            setCurrentBranch(next.current);
+        };
+
+        window.addEventListener(BRANCH_STATE_UPDATED_EVENT, syncBranchState as EventListener);
+        window.addEventListener('storage', syncBranchState);
+        return () => {
+            window.removeEventListener(BRANCH_STATE_UPDATED_EVENT, syncBranchState as EventListener);
+            window.removeEventListener('storage', syncBranchState);
+        };
+    }, [streamId]);
 
     const quickPersonas = useMemo(() => {
         if (!personas?.length) return [];
@@ -150,11 +209,27 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
 
     const handleCommit = async () => {
         try {
-            await commitDraft();
+            const committedEntryId = await commitDraft();
+
+            if (committedEntryId) {
+                const targetBranch = currentBranch.trim() || 'main';
+                const nextRefs = { ...branchRefs, [targetBranch]: committedEntryId };
+
+                setBranchRefs(nextRefs);
+                localStorage.setItem(BRANCH_REFS_KEY(streamId), JSON.stringify(nextRefs));
+
+                setCurrentBranch(targetBranch);
+                localStorage.setItem(CURRENT_BRANCH_KEY(streamId), targetBranch);
+
+                window.dispatchEvent(new CustomEvent(BRANCH_STATE_UPDATED_EVENT, {
+                    detail: { streamId, branchRefs: nextRefs, currentBranch: targetBranch },
+                }));
+            }
 
             // Reset to empty state (no auto-default persona)
             setSections([]);
             editorRefs.current = {};
+            pendingFocusInstanceIdRef.current = null;
         } catch (e) {
             console.error("Failed to commit", e);
         }
@@ -163,6 +238,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     const addPersona = (pId: string) => {
         const instanceId = crypto.randomUUID();
         const persona = personas?.find((p) => p.id === pId);
+        pendingFocusInstanceIdRef.current = instanceId;
 
         trackPersonaUsage(pId);
         setSections((prev) => [
@@ -172,9 +248,12 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
 
         // Persist section creation immediately so empty sections survive reload.
         saveDraft(instanceId, pId, [], persona?.name);
+
+        // Request focus immediately; helper retries until editor instance is ready.
+        focusEditorForInstance(instanceId);
     };
 
-    const removeSection = useCallback((instanceId: string) => {
+    const removeSection = (instanceId: string) => {
         // Find the section and remaining list BEFORE updating state so we can
         // pass them to saveDraft synchronously (outside the updater).
         const section = sections.find(s => s.instanceId === instanceId);
@@ -200,7 +279,11 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             // are written before a fast page unload can interrupt async cleanup.
             void clearDraft();
         }
-    }, [sections, personas, saveDraft, clearDraft]);
+
+        if (pendingFocusInstanceIdRef.current === instanceId) {
+            pendingFocusInstanceIdRef.current = null;
+        }
+    };
 
     const changePersona = (instanceId: string, newPersonaId: string) => {
         const section = sections.find(s => s.instanceId === instanceId);
@@ -218,6 +301,32 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
         // Force immediate save to ensure refs are updated
         saveDraft(instanceId, newPersonaId, content, newPersona?.name);
         trackPersonaUsage(newPersonaId);
+
+        // Keep typing context active on the currently selected persona section.
+        focusEditorForInstance(instanceId);
+    };
+
+    const handleCreateBranch = () => {
+        const baseBranchName = currentBranch || 'main';
+        const requested = window.prompt('Branch name', `${baseBranchName}-new`);
+        if (requested === null) return;
+
+        const branchName = requested.trim();
+        if (!branchName) {
+            window.alert('Branch name is required.');
+            return;
+        }
+
+        const nextRefs = { ...branchRefs, [branchName]: branchRefs[currentBranch] ?? '' };
+        setBranchRefs(nextRefs);
+        localStorage.setItem(BRANCH_REFS_KEY(streamId), JSON.stringify(nextRefs));
+
+        setCurrentBranch(branchName);
+        localStorage.setItem(CURRENT_BRANCH_KEY(streamId), branchName);
+
+        window.dispatchEvent(new CustomEvent(BRANCH_STATE_UPDATED_EVENT, {
+            detail: { streamId, branchRefs: nextRefs, currentBranch: branchName },
+        }));
     };
 
     if (isLoading) {
@@ -411,7 +520,13 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                                         initialContent={getDraftContent(instanceId)}
                                         onChange={(content) => saveDraft(instanceId, personaId, content, persona.name)}
                                         placeholder={`What would ${persona.name} say?`}
-                                        onEditorReady={(editor) => { editorRefs.current[instanceId] = editor; }}
+                                        onEditorReady={(editor) => {
+                                            editorRefs.current[instanceId] = editor;
+                                            if (pendingFocusInstanceIdRef.current === instanceId) {
+                                                pendingFocusInstanceIdRef.current = null;
+                                                focusEditorForInstance(instanceId);
+                                            }
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -422,8 +537,62 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                 {/* Footer Actions */}
                 {sections.length > 0 && (
                     <div className="flex items-center justify-between px-4 py-2 bg-surface-subtle/30 border-t border-border-subtle/50">
-                        <div className="text-[10px] text-text-muted">
-                            <span className="font-medium">Cmd+Enter</span> to commit
+                        <div className="flex items-center gap-2">
+                            <Menu as="div" className="relative">
+                                <MenuButton className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-default px-2 py-1 text-[10px] font-medium text-text-default hover:bg-surface-hover focus:outline-none">
+                                    <GitBranch className="h-3 w-3" />
+                                    {currentBranch || 'main'}
+                                    <ChevronDown className="h-3 w-3 text-text-muted" />
+                                </MenuButton>
+                                <Transition
+                                    as={Fragment}
+                                    enter="transition ease-out duration-100"
+                                    enterFrom="transform opacity-0 scale-95"
+                                    enterTo="transform opacity-100 scale-100"
+                                    leave="transition ease-in duration-75"
+                                    leaveFrom="transform opacity-100 scale-100"
+                                    leaveTo="transform opacity-0 scale-95"
+                                >
+                                    <MenuItems className="absolute bottom-full left-0 z-50 mb-1 w-52 overflow-hidden rounded-xl border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
+                                        <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+                                            Commit Target Branch
+                                        </div>
+                                        {Object.keys(branchRefs)
+                                            .sort((a, b) => a.localeCompare(b))
+                                            .map((branchName) => (
+                                                <MenuItem key={branchName}>
+                                                    {({ active }) => (
+                                                        <button
+                                                            onClick={() => {
+                                                                setCurrentBranch(branchName);
+                                                                localStorage.setItem(CURRENT_BRANCH_KEY(streamId), branchName);
+                                                                window.dispatchEvent(new CustomEvent(BRANCH_STATE_UPDATED_EVENT, {
+                                                                    detail: { streamId, branchRefs, currentBranch: branchName },
+                                                                }));
+                                                            }}
+                                                            className={`${active ? 'bg-surface-subtle text-text-default' : 'text-text-subtle'} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
+                                                        >
+                                                            <span>{branchName}</span>
+                                                            {currentBranch === branchName && <Check className="h-3 w-3 text-action-primary-bg" />}
+                                                        </button>
+                                                    )}
+                                                </MenuItem>
+                                            ))}
+                                        <div className="my-1 h-px bg-border-subtle" />
+                                        <button
+                                            onClick={handleCreateBranch}
+                                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                            New branch
+                                        </button>
+                                    </MenuItems>
+                                </Transition>
+                            </Menu>
+
+                            <div className="text-[10px] text-text-muted">
+                                <span className="font-medium">Cmd+Enter</span> commits to <span className="font-medium">{currentBranch || 'main'}</span>
+                            </div>
                         </div>
                         <button
                             onClick={handleCommit}

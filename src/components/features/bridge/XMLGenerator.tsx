@@ -32,12 +32,6 @@ export function XMLGenerator({
   const [copied, setCopied] = useState(false);
   const supabase = createClient();
 
-  const generatedXML = useMemo(() => {
-    // We already have generateXML below, but to avoid redundant calls 
-    // and use it in a memoized way for the parent interaction:
-    return null; // I'll refactor the existing generateXML to use useMemo
-  }, []);
-
   // Fetch data
   const { data: stream } = useQuery({
     queryKey: ['stream', streamId],

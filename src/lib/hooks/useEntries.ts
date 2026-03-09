@@ -178,6 +178,126 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     },
   });
 
+  const deleteEntry = useMutation({
+    mutationFn: async (entryId: string) => {
+      const { error } = await supabase
+        .from('entries')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', entryId);
+
+      if (error) throw error;
+      return { entryId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+    },
+  });
+
+  const resetToEntry = useMutation({
+    mutationFn: async (entry: EntryWithSections) => {
+      // Mark all entries newer than this one in the same stream as deleted
+      const { error } = await supabase
+        .from('entries')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('stream_id', streamId)
+        .gt('created_at', entry.created_at || '')
+        .is('deleted_at', null);
+
+      if (error) throw error;
+      return { entryId: entry.id };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+    },
+  });
+
+  const duplicateEntry = useMutation({
+    mutationFn: async (entry: EntryWithSections) => {
+      // Create a new entry
+      const { data: newEntry, error: entryError } = await supabase
+        .from('entries')
+        .insert({ stream_id: streamId })
+        .select()
+        .single();
+
+      if (entryError) throw entryError;
+
+      // Clone all sections into the new entry
+      if (entry.sections?.length) {
+        const sectionsToInsert = entry.sections.map((section, index) => ({
+          entry_id: newEntry.id,
+          content_json: section.content_json,
+          persona_id: section.persona_id,
+          persona_name_snapshot: section.persona_name_snapshot,
+          sort_order: index,
+        }));
+
+        const { error: sectionsError } = await supabase
+          .from('sections')
+          .insert(sectionsToInsert);
+
+        if (sectionsError) throw sectionsError;
+      }
+
+      return newEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+    },
+  });
+
+  const revertEntry = useMutation({
+    mutationFn: async (entry: EntryWithSections) => {
+      const { data: newEntry, error: entryError } = await supabase
+        .from('entries')
+        .insert({ stream_id: streamId })
+        .select()
+        .single();
+
+      if (entryError) throw entryError;
+
+      if (entry.sections?.length) {
+        const revertDate = entry.created_at
+          ? new Date(entry.created_at).toLocaleDateString()
+          : entry.id.slice(0, 7);
+        const sectionsToInsert = entry.sections.map((section, index) => ({
+          entry_id: newEntry.id,
+          content_json: section.content_json,
+          persona_id: section.persona_id,
+          persona_name_snapshot: `↩ Revert of ${section.persona_name_snapshot || 'Unknown'} (${revertDate})`,
+          sort_order: index,
+        }));
+
+        const { error: sectionsError } = await supabase
+          .from('sections')
+          .insert(sectionsToInsert);
+
+        if (sectionsError) throw sectionsError;
+      }
+
+      return newEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+    },
+  });
+
   const fetchAllEntriesForExport = async () => {
     let query = supabase
       .from('entries')
@@ -216,6 +336,10 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     error: query.error,
     createEntry,
     amendEntry,
+    deleteEntry,
+    resetToEntry,
+    duplicateEntry,
+    revertEntry,
     fetchAllEntriesForExport,
   };
 }

@@ -222,7 +222,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     
     // Safety check - ignore commit if content has zero meaning
     const meaningfulSections = activeSections.filter(s => hasMeaningfulDraftContent(s.content) && s.personaId);
-    if (meaningfulSections.length === 0) return;
+    if (meaningfulSections.length === 0) return null;
 
     setStatus('saving');
 
@@ -268,6 +268,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+
+      return newEntryId;
 
     } catch (err) {
       console.error("Commit failed", err);

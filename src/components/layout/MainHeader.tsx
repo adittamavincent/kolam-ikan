@@ -10,6 +10,7 @@ import {
   Globe,
   Search,
   Download,
+  FileUp,
   Archive,
   ArrowUpDown,
   Network,
@@ -147,6 +148,14 @@ export function MainHeader() {
                 />
               </div>
             )}
+
+            <button
+              onClick={() => emit('kolam_header_documents_import')}
+              className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+              title="Import PDF"
+            >
+              <FileUp className="h-4 w-4" />
+            </button>
 
             <button
               onClick={() => emit('kolam_header_log_export')}

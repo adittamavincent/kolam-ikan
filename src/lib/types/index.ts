@@ -27,6 +27,22 @@ export type Entry = Database["public"]["Tables"]["entries"]["Row"];
 export type EntryInsert = Database["public"]["Tables"]["entries"]["Insert"];
 export type EntryUpdate = Database["public"]["Tables"]["entries"]["Update"];
 
+export type Document = Database["public"]["Tables"]["documents"]["Row"];
+export type DocumentInsert = Database["public"]["Tables"]["documents"]["Insert"];
+export type DocumentUpdate = Database["public"]["Tables"]["documents"]["Update"];
+
+export type DocumentImportJob = Database["public"]["Tables"]["document_import_jobs"]["Row"];
+export type DocumentImportJobInsert = Database["public"]["Tables"]["document_import_jobs"]["Insert"];
+export type DocumentImportJobUpdate = Database["public"]["Tables"]["document_import_jobs"]["Update"];
+
+export type DocumentChunk = Database["public"]["Tables"]["document_chunks"]["Row"];
+export type DocumentChunkInsert = Database["public"]["Tables"]["document_chunks"]["Insert"];
+export type DocumentChunkUpdate = Database["public"]["Tables"]["document_chunks"]["Update"];
+
+export type DocumentEntryLink = Database["public"]["Tables"]["document_entry_links"]["Row"];
+export type DocumentEntryLinkInsert = Database["public"]["Tables"]["document_entry_links"]["Insert"];
+export type DocumentEntryLinkUpdate = Database["public"]["Tables"]["document_entry_links"]["Update"];
+
 export type Section = Database["public"]["Tables"]["sections"]["Row"];
 export type SectionInsert = Database["public"]["Tables"]["sections"]["Insert"];
 export type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
@@ -37,6 +53,17 @@ export type CanvasUpdate = Database["public"]["Tables"]["canvases"]["Update"];
 
 export type CanvasVersion =
   Database["public"]["Tables"]["canvas_versions"]["Row"];
+
+export type DocumentImportStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'canceled';
+
+export interface DocumentWithLatestJob extends Document {
+  latestJob?: DocumentImportJob | null;
+}
+
+export interface DocumentImportDispatchResult {
+  accepted: boolean;
+  message?: string;
+}
 
 // Enums
 export type PersonaType = "HUMAN" | "AI";

@@ -3,15 +3,26 @@
 import { LogPane } from '@/components/features/log/LogPane';
 import { CanvasPane } from '@/components/features/canvas/CanvasPane';
 import { BridgeModal } from '@/components/features/bridge/BridgeModal';
+import { DocumentImportModal } from '@/components/features/documents/DocumentImportModal';
 import { useRealtimeEntries } from '@/lib/hooks/useRealtimeEntries';
 import { useLayout } from '@/lib/hooks/useLayout';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
+  const [isDocumentImportOpen, setIsDocumentImportOpen] = useState(false);
   const { logWidth } = useLayout();
   useRealtimeEntries(streamId);
+
+  useEffect(() => {
+    const onOpenDocumentImport = () => setIsDocumentImportOpen(true);
+    window.addEventListener('kolam_header_documents_import', onOpenDocumentImport);
+
+    return () => {
+      window.removeEventListener('kolam_header_documents_import', onOpenDocumentImport);
+    };
+  }, []);
 
   return (
     <div className="flex flex-1 relative min-h-0 h-full">
@@ -33,6 +44,12 @@ export function StreamView({ streamId }: { streamId: string }) {
       <BridgeModal
         isOpen={isBridgeOpen}
         onClose={() => setIsBridgeOpen(false)}
+        streamId={streamId}
+      />
+
+      <DocumentImportModal
+        isOpen={isDocumentImportOpen}
+        onClose={() => setIsDocumentImportOpen(false)}
         streamId={streamId}
       />
     </div>

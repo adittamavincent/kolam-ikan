@@ -263,6 +263,239 @@ export type Database = {
           },
         ]
       }
+      document_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_markdown: string
+          chunk_metadata: Json
+          created_at: string
+          document_id: string
+          heading_path: Json
+          id: string
+          page_end: number | null
+          page_start: number | null
+          stream_id: string
+          token_count: number | null
+        }
+        Insert: {
+          chunk_index: number
+          chunk_markdown: string
+          chunk_metadata?: Json
+          created_at?: string
+          document_id: string
+          heading_path?: Json
+          id?: string
+          page_end?: number | null
+          page_start?: number | null
+          stream_id: string
+          token_count?: number | null
+        }
+        Update: {
+          chunk_index?: number
+          chunk_markdown?: string
+          chunk_metadata?: Json
+          created_at?: string
+          document_id?: string
+          heading_path?: Json
+          id?: string
+          page_end?: number | null
+          page_start?: number | null
+          stream_id?: string
+          token_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_chunks_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_entry_links: {
+        Row: {
+          created_at: string
+          document_id: string
+          entry_id: string
+          relationship_type: string
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          entry_id: string
+          relationship_type?: string
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          entry_id?: string
+          relationship_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_entry_links_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_entry_links_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_import_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          document_id: string
+          error_message: string | null
+          eta_seconds: number | null
+          id: string
+          parser_config: Json
+          progress_message: string | null
+          progress_percent: number | null
+          provider: string
+          retry_count: number
+          started_at: string | null
+          status: string
+          stream_id: string
+          updated_at: string
+          warning_messages: Json
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id: string
+          error_message?: string | null
+          eta_seconds?: number | null
+          id?: string
+          parser_config?: Json
+          progress_message?: string | null
+          progress_percent?: number | null
+          provider?: string
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          stream_id: string
+          updated_at?: string
+          warning_messages?: Json
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string
+          error_message?: string | null
+          eta_seconds?: number | null
+          id?: string
+          parser_config?: Json
+          progress_message?: string | null
+          progress_percent?: number | null
+          provider?: string
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          stream_id?: string
+          updated_at?: string
+          warning_messages?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_import_jobs_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_import_jobs_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          content_type: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          extracted_markdown: string | null
+          extraction_metadata: Json
+          file_size_bytes: number | null
+          id: string
+          import_status: string
+          original_filename: string
+          source_metadata: Json
+          storage_bucket: string
+          storage_path: string
+          stream_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          extracted_markdown?: string | null
+          extraction_metadata?: Json
+          file_size_bytes?: number | null
+          id?: string
+          import_status?: string
+          original_filename: string
+          source_metadata?: Json
+          storage_bucket?: string
+          storage_path: string
+          stream_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          extracted_markdown?: string | null
+          extraction_metadata?: Json
+          file_size_bytes?: number | null
+          id?: string
+          import_status?: string
+          original_filename?: string
+          source_metadata?: Json
+          storage_bucket?: string
+          storage_path?: string
+          stream_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domains: {
         Row: {
           created_at: string | null
@@ -578,6 +811,10 @@ export type Database = {
       revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      user_can_access_stream: {
+        Args: { p_stream_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

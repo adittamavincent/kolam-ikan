@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, Fragment, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
@@ -15,10 +15,13 @@ import { DynamicIcon } from '@/components/shared/DynamicIcon';
 
 interface EntryCreatorProps {
     streamId: string;
+    currentBranch?: string;
+    onCurrentBranchChange?: (branchName: string) => void;
 }
 
-export function EntryCreator({ streamId }: EntryCreatorProps) {
+export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }: EntryCreatorProps) {
     const supabase = createClient();
+    const queryClient = useQueryClient();
     const { personas } = usePersonas();
     const personaUsageStorageKey = `entry-creator:persona-usage:${streamId}`;
 
@@ -40,7 +43,9 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     }
     const [sections, setSections] = useState<SectionState[]>([]);
     const [personaUsageCounts, setPersonaUsageCounts] = useState<Record<string, number>>(getInitialPersonaUsage);
-    const [currentBranch, setCurrentBranch] = useState('main');
+    const [internalCurrentBranch, setInternalCurrentBranch] = useState('main');
+    const selectedBranch = currentBranch ?? internalCurrentBranch;
+    const setSelectedBranch = onCurrentBranchChange ?? setInternalCurrentBranch;
 
     const { data: branches, refetch: refetchBranches } = useQuery({
         queryKey: ['branches', streamId],
@@ -49,6 +54,18 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                 .from('branches')
                 .select('*')
                 .eq('stream_id', streamId);
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!streamId,
+    });
+
+    const { data: commitBranches, refetch: refetchCommitBranches } = useQuery({
+        queryKey: ['commit-branches', streamId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('commit_branches')
+                .select('*');
             if (error) throw error;
             return data;
         },
@@ -118,6 +135,21 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             })
             .slice(0, 3);
     }, [personas, personaUsageCounts]);
+
+    const branchOptions = useMemo(() => {
+        const base = branches ?? [];
+        const hasMain = base.some((branch) => branch.name === 'main');
+        const withMain = hasMain
+            ? base
+            : [{ id: '__main__', name: 'main', stream_id: streamId }, ...base];
+
+        const seen = new Set<string>();
+        return withMain.filter((branch) => {
+            if (seen.has(branch.name)) return false;
+            seen.add(branch.name);
+            return true;
+        });
+    }, [branches, streamId]);
 
     const trackPersonaUsage = (personaId: string) => {
         setPersonaUsageCounts((prev) => ({
@@ -191,13 +223,34 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             const committedEntryId = await commitDraft();
 
             if (committedEntryId) {
-                const targetBranch = branches?.find(b => b.name === currentBranch);
+                let targetBranch = branches?.find(b => b.name === selectedBranch);
+
+                if (!targetBranch) {
+                    const { data: newBranch, error: createBranchError } = await supabase
+                        .from('branches')
+                        .insert({ stream_id: streamId, name: selectedBranch })
+                        .select('*')
+                        .single();
+                    if (createBranchError) throw createBranchError;
+                    targetBranch = newBranch;
+                }
+
                 if (targetBranch) {
+                    const { error: deleteError } = await supabase
+                        .from('commit_branches')
+                        .delete()
+                        .eq('branch_id', targetBranch.id);
+                    if (deleteError) throw deleteError;
+
                     const { error } = await supabase
                         .from('commit_branches')
                         .insert({ commit_id: committedEntryId, branch_id: targetBranch.id });
                     if (error) throw error;
                 }
+
+                await refetchBranches();
+                await refetchCommitBranches();
+                queryClient.invalidateQueries({ queryKey: ['commit-branches', streamId] });
             }
 
             // Reset to empty state (no auto-default persona)
@@ -281,7 +334,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     };
 
     const handleCreateBranch = async () => {
-        const baseBranchName = currentBranch || 'main';
+        const baseBranchName = selectedBranch || 'main';
         const requested = window.prompt('Branch name', `${baseBranchName}-new`);
         if (requested === null) return;
 
@@ -291,17 +344,36 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             return;
         }
 
-        const { error } = await supabase
+        const { data: createdBranch, error } = await supabase
             .from('branches')
-            .insert({ stream_id: streamId, name: branchName });
+            .insert({ stream_id: streamId, name: branchName })
+            .select('*')
+            .single();
 
         if (error) {
             console.error('Failed to create branch', error);
             return;
         }
 
-        refetchBranches();
-        setCurrentBranch(branchName);
+        const baseBranch = branches?.find((branch) => branch.name === baseBranchName);
+        const baseBranchHead = baseBranch
+            ? commitBranches?.find((link) => link.branch_id === baseBranch.id)
+            : null;
+
+        if (baseBranchHead && createdBranch) {
+            const { error: linkError } = await supabase
+                .from('commit_branches')
+                .insert({ commit_id: baseBranchHead.commit_id, branch_id: createdBranch.id });
+
+            if (linkError) {
+                console.error('Failed to point new branch to current head', linkError);
+            }
+        }
+
+        await refetchBranches();
+        await refetchCommitBranches();
+        setSelectedBranch(branchName);
+        queryClient.invalidateQueries({ queryKey: ['commit-branches', streamId] });
     };
 
     if (isLoading) {
@@ -516,7 +588,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                             <Menu as="div" className="relative">
                                 <MenuButton className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-default px-2 py-1 text-[10px] font-medium text-text-default hover:bg-surface-hover focus:outline-none">
                                     <GitBranch className="h-3 w-3" />
-                                    {currentBranch || 'main'}
+                                    {selectedBranch || 'main'}
                                     <ChevronDown className="h-3 w-3 text-text-muted" />
                                 </MenuButton>
                                 <Transition
@@ -532,15 +604,15 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                                         <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
                                             Commit Target Branch
                                         </div>
-                                        {branches?.map((branch) => (
+                                        {branchOptions.map((branch) => (
                                             <MenuItem key={branch.id}>
                                                 {({ active }) => (
                                                     <button
-                                                        onClick={() => setCurrentBranch(branch.name)}
+                                                        onClick={() => setSelectedBranch(branch.name)}
                                                         className={`${active ? 'bg-surface-subtle text-text-default' : 'text-text-subtle'} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
                                                     >
                                                         <span>{branch.name}</span>
-                                                        {currentBranch === branch.name && <Check className="h-3 w-3 text-action-primary-bg" />}
+                                                        {selectedBranch === branch.name && <Check className="h-3 w-3 text-action-primary-bg" />}
                                                     </button>
                                                 )}
                                             </MenuItem>
@@ -558,7 +630,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                             </Menu>
 
                             <div className="text-[10px] text-text-muted">
-                                <span className="font-medium">Cmd+Enter</span> commits to <span className="font-medium">{currentBranch || 'main'}</span>
+                                <span className="font-medium">Cmd+Enter</span> commits to <span className="font-medium">{selectedBranch || 'main'}</span>
                             </div>
                         </div>
                         <button

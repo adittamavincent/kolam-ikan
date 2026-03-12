@@ -69,24 +69,24 @@ export type Database = {
       }
       branches: {
         Row: {
-          id: string
-          stream_id: string
-          name: string
           created_at: string | null
+          id: string
+          name: string
+          stream_id: string
           updated_at: string | null
         }
         Insert: {
-          id?: string
-          stream_id: string
-          name: string
           created_at?: string | null
+          id?: string
+          name: string
+          stream_id: string
           updated_at?: string | null
         }
         Update: {
-          id?: string
-          stream_id?: string
-          name?: string
           created_at?: string | null
+          id?: string
+          name?: string
+          stream_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -96,41 +96,12 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "streams"
             referencedColumns: ["id"]
-          }
-        ]
-      }
-      commit_branches: {
-        Row: {
-          commit_id: string
-          branch_id: string
-        }
-        Insert: {
-          commit_id: string
-          branch_id: string
-        }
-        Update: {
-          commit_id?: string
-          branch_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "commit_branches_commit_id_fkey"
-            columns: ["commit_id"]
-            isOneToOne: false
-            referencedRelation: "entries"
-            referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "commit_branches_branch_id_fkey"
-            columns: ["branch_id"]
-            isOneToOne: false
-            referencedRelation: "branches"
-            referencedColumns: ["id"]
-          }
         ]
       }
       cabinets: {
         Row: {
+          archived_at: string | null
           created_at: string | null
           deleted_at: string | null
           domain_id: string
@@ -141,6 +112,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string | null
           deleted_at?: string | null
           domain_id: string
@@ -151,6 +123,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           created_at?: string | null
           deleted_at?: string | null
           domain_id?: string
@@ -260,6 +233,36 @@ export type Database = {
           },
         ]
       }
+      commit_branches: {
+        Row: {
+          branch_id: string
+          commit_id: string
+        }
+        Insert: {
+          branch_id: string
+          commit_id: string
+        }
+        Update: {
+          branch_id?: string
+          commit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commit_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commit_branches_commit_id_fkey"
+            columns: ["commit_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       domains: {
         Row: {
           created_at: string | null
@@ -330,6 +333,44 @@ export type Database = {
             columns: ["stream_id"]
             isOneToOne: false
             referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nav_tags: {
+        Row: {
+          color: string
+          created_at: string | null
+          domain_id: string
+          id: string
+          label: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string | null
+          domain_id: string
+          id?: string
+          label: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          color?: string
+          created_at?: string | null
+          domain_id?: string
+          id?: string
+          label?: string
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nav_tags_domain_id_fkey"
+            columns: ["domain_id"]
+            isOneToOne: false
+            referencedRelation: "domains"
             referencedColumns: ["id"]
           },
         ]
@@ -426,6 +467,7 @@ export type Database = {
       }
       streams: {
         Row: {
+          archived_at: string | null
           cabinet_id: string | null
           created_at: string | null
           deleted_at: string | null
@@ -434,11 +476,13 @@ export type Database = {
           id: string
           is_system_global: boolean
           name: string
+          parent_stream_id: string | null
           sort_order: number
           stream_kind: string
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
@@ -447,11 +491,13 @@ export type Database = {
           id?: string
           is_system_global?: boolean
           name: string
+          parent_stream_id?: string | null
           sort_order?: number
           stream_kind?: string
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
@@ -460,6 +506,7 @@ export type Database = {
           id?: string
           is_system_global?: boolean
           name?: string
+          parent_stream_id?: string | null
           sort_order?: number
           stream_kind?: string
           updated_at?: string | null
@@ -477,6 +524,13 @@ export type Database = {
             columns: ["domain_id"]
             isOneToOne: false
             referencedRelation: "domains"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "streams_parent_stream_id_fkey"
+            columns: ["parent_stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
             referencedColumns: ["id"]
           },
         ]

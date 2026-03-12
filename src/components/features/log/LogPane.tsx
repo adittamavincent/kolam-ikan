@@ -49,6 +49,23 @@ function shortHash(id: string): string {
   return id.replace(/-/g, '').slice(0, 7);
 }
 
+function getSupabaseErrorMessage(error: unknown): string {
+  if (!error || typeof error !== 'object') return 'Unknown error';
+
+  const maybeError = error as {
+    message?: string;
+    details?: string;
+    hint?: string;
+    code?: string;
+  };
+
+  const parts = [maybeError.message, maybeError.details, maybeError.hint]
+    .filter((part): part is string => Boolean(part && part.trim()));
+
+  if (parts.length > 0) return parts.join(' | ');
+  return maybeError.code ? `Code ${maybeError.code}` : 'Unknown error';
+}
+
 /** Compute line-level diff between two strings; returns array of diff lines */
 type DiffLine = { type: 'eq' | 'add' | 'del'; text: string };
 function lineDiff(oldText: string, newText: string): DiffLine[] {
@@ -349,6 +366,36 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     enabled: !!streamId,
   });
 
+  const { data: currentBranchHeadEntry } = useQuery({
+    queryKey: ['branch-head-entry', streamId, currentBranch, branches],
+    queryFn: async () => {
+      const branch = branches?.find((b) => b.name === currentBranch);
+      if (!branch) return null;
+
+      const { data: branchLinks, error: branchLinksError } = await supabase
+        .from('commit_branches')
+        .select('commit_id')
+        .eq('branch_id', branch.id);
+
+      if (branchLinksError) throw branchLinksError;
+      if (!branchLinks || branchLinks.length === 0) return null;
+
+      const commitIds = branchLinks.map((link) => link.commit_id);
+
+      const { data: headEntry, error: headEntryError } = await supabase
+        .from('entries')
+        .select('id,created_at')
+        .in('id', commitIds)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (headEntryError) throw headEntryError;
+      return headEntry;
+    },
+    enabled: !!streamId && !!currentBranch,
+  });
+
   useEffect(() => {
     scrollToHighlighted();
   }, [entryList, scrollToHighlighted]);
@@ -510,23 +557,46 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           break;
         }
 
-        const { data: newBranch, error } = await supabase
-          .from('branches')
-          .insert({ stream_id: streamId, name: branchName })
-          .select()          .single();
+        let targetBranch = branches?.find((branch) => branch.name === branchName) ?? null;
 
-        if (error) {
-          console.error('Failed to create branch', error);
-          break;
+        if (!targetBranch) {
+          const { data, error } = await supabase
+            .from('branches')
+            .insert({ stream_id: streamId, name: branchName })
+            .select('id,name,stream_id,created_at,updated_at')
+            .single();
+
+          if (error) {
+            const message = getSupabaseErrorMessage(error);
+            console.error('Failed to create branch:', message, error);
+            window.alert(`Failed to create branch: ${message}`);
+            break;
+          }
+
+          targetBranch = data;
         }
 
-        if (newBranch) {
+        if (targetBranch) {
+          const { error: resetBranchError } = await supabase
+            .from('commit_branches')
+            .delete()
+            .eq('branch_id', targetBranch.id);
+
+          if (resetBranchError) {
+            const message = getSupabaseErrorMessage(resetBranchError);
+            console.error('Failed to move branch pointer:', message, resetBranchError);
+            window.alert(`Failed to move branch pointer: ${message}`);
+            break;
+          }
+
           const { error: commitError } = await supabase
             .from('commit_branches')
-            .insert({ commit_id: entry.id, branch_id: newBranch.id });
+            .insert({ commit_id: entry.id, branch_id: targetBranch.id });
 
           if (commitError) {
-            console.error('Failed to associate commit with branch', commitError);
+            const message = getSupabaseErrorMessage(commitError);
+            console.error('Failed to associate commit with branch:', message, commitError);
+            window.alert(`Failed to associate commit with branch: ${message}`);
             break;
           }
 
@@ -542,7 +612,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         break;
       case 'diff': {
         // find the previous entry in the flat sorted list
-        const flatEntries = entryList.filter((e) => !e.is_draft);
+        const flatEntries = branchEntries.filter((e) => !e.is_draft);
         const idx = flatEntries.findIndex((e) => e.id === entry.id);
         const prevEntry = idx < flatEntries.length - 1 ? flatEntries[idx + 1] : null;
         setDiffTarget({ entry, prevEntry });
@@ -635,18 +705,31 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
+  const currentBranchCutoffMs = useMemo(() => {
+    if (!currentBranchHeadEntry?.created_at) return null;
+    const ts = new Date(currentBranchHeadEntry.created_at).getTime();
+    return Number.isFinite(ts) ? ts : null;
+  }, [currentBranchHeadEntry]);
+
+  const branchTimelineItems = useMemo(() => {
+    if (currentBranchCutoffMs === null) return timelineItems;
+    return timelineItems.filter((item) => {
+      const itemTs = new Date(item.created_at).getTime();
+      return Number.isFinite(itemTs) && itemTs <= currentBranchCutoffMs;
+    });
+  }, [timelineItems, currentBranchCutoffMs]);
+
+  const branchEntries = useMemo(
+    () => branchTimelineItems.filter((item) => item.type === 'entry').map((item) => item.data),
+    [branchTimelineItems],
+  );
+
   const visibleEntries = showStash
-    ? entryList
-    : entryList.filter((e) => !stashedIds.has(e.id));
+    ? branchEntries
+    : branchEntries.filter((e) => !stashedIds.has(e.id));
 
   const stashCount = stashedIds.size;
-  const currentBranchRefId = useMemo(() => {
-    if (!branches || !commitBranches) return null;
-    const branch = branches.find((b) => b.name === currentBranch);
-    if (!branch) return null;
-    const commitBranch = commitBranches.find((cb) => cb.branch_id === branch.id);
-    return commitBranch?.commit_id ?? null;
-  }, [branches, commitBranches, currentBranch]);
+  const currentBranchRefId = currentBranchHeadEntry?.id ?? null;
 
   const branchesByEntryId = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -831,7 +914,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           <div className="pb-3 pt-2">
             {sortOrder === 'newest' && (
               <div className="mb-2 space-y-1.5">
-                <EntryCreator key={streamId} streamId={streamId} />
+                <EntryCreator
+                  key={streamId}
+                  streamId={streamId}
+                  currentBranch={currentBranch}
+                  onCurrentBranchChange={setCurrentBranch}
+                />
                 <CanvasDraftCard streamId={streamId} />
               </div>
             )}
@@ -841,12 +929,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                   <div key={i} className="h-28 rounded-lg bg-surface-subtle/50" />
                 ))}
               </div>
-            ) : timelineItems.length === 0 ? (
+            ) : branchTimelineItems.length === 0 ? (
               <div className="text-center py-10 text-text-muted text-sm">No commits found.</div>
             ) : (
               <>
                 <div className="flex flex-col gap-1.5">
-                  {timelineItems.map((item) => {
+                  {branchTimelineItems.map((item) => {
                     if (item.type === 'canvas_snapshot') {
                       return (
                         <CanvasSnapshotCard
@@ -862,7 +950,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     // Hide stashed (unless showStash is on)
                     if (!showStash && stashedIds.has(entry.id)) return null;
 
-                    const isLatestEntry = latestEntryId === entry.id;
+                    const isLatestEntry = currentBranchRefId === entry.id;
                     const isAmending = amendState?.entryId === entry.id;
                     const isStashed = stashedIds.has(entry.id);
                     const tag = tags[entry.id];
@@ -991,7 +1079,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 {sortOrder === 'oldest' && (
                   <div className="mt-2 space-y-1.5">
                     <CanvasDraftCard streamId={streamId} />
-                    <EntryCreator key={streamId} streamId={streamId} />
+                    <EntryCreator
+                      key={streamId}
+                      streamId={streamId}
+                      currentBranch={currentBranch}
+                      onCurrentBranchChange={setCurrentBranch}
+                    />
                   </div>
                 )}
 

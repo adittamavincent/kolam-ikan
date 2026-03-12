@@ -15,14 +15,11 @@ import {
 const EXPIRY_POLL_INTERVAL_MS = 30000;
 
 export function useAuth() {
-  const initialStored = readStoredAuthState();
   const [user, setUser] = useState<User | null>(null);
-  const [status, setStatus] = useState<AuthStatus>(
-    initialStored?.status ?? "signed_out",
-  );
+  const [status, setStatus] = useState<AuthStatus>("signed_out");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const expiryRef = useRef<number | null>(initialStored?.expiresAt ?? null);
+  const expiryRef = useRef<number | null>(null);
   const supabase = createClient();
 
   const handleSessionUpdate = useCallback((session: Session | null) => {

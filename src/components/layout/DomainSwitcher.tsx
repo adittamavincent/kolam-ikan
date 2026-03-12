@@ -66,7 +66,7 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
     },
   ]);
 
-  const { domains, isLoading, error } = useDomains(userId);
+  const { domains, error } = useDomains(userId);
 
   const currentDomainId = params?.domain as string;
 
@@ -128,7 +128,7 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
 
       {/* Domain List */}
       <div className="flex-1 w-full flex flex-col items-center space-y-3 overflow-y-auto px-2 scrollbar-hide py-1">
-        {isLoading && (
+        {!domains && !error && (
           <div className="flex h-10 w-10 items-center justify-center">
             <RefreshCw className="h-4 w-4 animate-spin text-text-muted" />
           </div>

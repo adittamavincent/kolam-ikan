@@ -228,7 +228,7 @@ export function DocumentImportModal({ isOpen, onClose, streamId, onSelectDocumen
                 <button
                   type="submit"
                   disabled={createImport.isPending}
-                  className="inline-flex items-center gap-2 rounded-lg bg-action-primary-bg px-4 py-2 text-sm font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="whitespace-nowrap shrink-0 inline-flex items-center gap-2 rounded-lg bg-action-primary-bg px-4 py-2 text-sm font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {createImport.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
                   Queue Import

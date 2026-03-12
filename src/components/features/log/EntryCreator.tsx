@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, Fragment, useEffect, useMemo } from 'react';
+import React, { useState, useRef, Fragment, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
-import { Loader2, Send, Check, Plus, X, ChevronDown, FileText, Upload, ArrowUp, ArrowDown, ExternalLink, Download, Eye } from 'lucide-react';
+import { Loader2, Send, Check, Plus, X, ChevronDown, FileText, Upload, GripVertical, ExternalLink, Download, Eye } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { useKeyboard } from '@/lib/hooks/useKeyboard';
 import { NavigationGuard } from './NavigationGuard';
@@ -15,6 +15,15 @@ import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { PdfAttachmentThumbnail } from './PdfAttachmentThumbnail';
 import { DocumentImportModal } from '@/components/features/documents/DocumentImportModal';
 import { DocumentWithLatestJob } from '@/lib/types';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortableSection({ id, children }: { id: string; children: (dragHandleProps: React.HTMLAttributes<HTMLElement>) => React.ReactElement }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style = { transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 10 : undefined };
+    return <div ref={setNodeRef} style={style}>{children({ ...attributes, ...listeners })}</div>;
+}
 
 interface EntryCreatorProps {
     streamId: string;
@@ -471,19 +480,17 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         }
     };
 
-    const moveSection = (instanceId: string, direction: -1 | 1) => {
-        setSections((prev) => {
-            const currentIndex = prev.findIndex((section) => section.instanceId === instanceId);
-            if (currentIndex < 0) return prev;
+    const sensors = useSensors(useSensor(PointerSensor));
 
-            const nextIndex = currentIndex + direction;
-            if (nextIndex < 0 || nextIndex >= prev.length) return prev;
-
-            const next = [...prev];
-            const [removed] = next.splice(currentIndex, 1);
-            next.splice(nextIndex, 0, removed);
-            return next;
-        });
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setSections((prev) => {
+                const oldIndex = prev.findIndex((s) => s.instanceId === active.id);
+                const newIndex = prev.findIndex((s) => s.instanceId === over.id);
+                return arrayMove(prev, oldIndex, newIndex);
+            });
+        }
     };
 
     if (isLoading) {
@@ -522,7 +529,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 )}
 
                 {/* Persona picker */}
-                <div className={`flex items-center gap-2 flex-wrap px-3 py-2 ${sections.length > 0 ? 'border-b border-border-subtle/50' : ''}`}>
+                <div className={`flex items-center gap-2 flex-wrap px-3 py-2 bg-surface-subtle/50 rounded-t-xl ${sections.length > 0 ? 'border-b border-border-default/50' : 'rounded-b-xl'}`}>
                     <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">New Entry as</span>
 
                     {quickPersonas.map((persona) => (
@@ -605,8 +612,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 </div>
 
                 {/* Editor sections */}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={sections.map(s => s.instanceId)} strategy={verticalListSortingStrategy}>
                 <div className="flex flex-col divide-y divide-border-subtle/30">
-                    {sections.map((section, index) => {
+                    {sections.map((section) => {
                         const { instanceId } = section;
 
                         if (section.kind === 'PERSONA') {
@@ -614,24 +623,17 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             if (!persona) return null;
 
                             return (
-                                <div key={instanceId} className="flex flex-col">
-                                    <div className="flex items-center justify-between px-4 py-1.5 bg-surface-subtle/10">
+                                <SortableSection key={instanceId} id={instanceId}>
+                                {(dragHandleProps) => (
+                                <div className="flex flex-col">
+                                    <div className="flex items-center justify-between px-4 py-1.5 bg-surface-subtle/50 border-y border-border-subtle/70">
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => moveSection(instanceId, -1)}
-                                                disabled={index === 0}
-                                                className="rounded p-0.5 text-text-muted hover:bg-surface-subtle disabled:opacity-30"
-                                                aria-label="Move section up"
+                                                className="cursor-grab rounded p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
+                                                aria-label="Drag to reorder"
+                                                {...dragHandleProps}
                                             >
-                                                <ArrowUp className="h-3 w-3" />
-                                            </button>
-                                            <button
-                                                onClick={() => moveSection(instanceId, 1)}
-                                                disabled={index === sections.length - 1}
-                                                className="rounded p-0.5 text-text-muted hover:bg-surface-subtle disabled:opacity-30"
-                                                aria-label="Move section down"
-                                            >
-                                                <ArrowDown className="h-3 w-3" />
+                                                <GripVertical className="h-3 w-3" />
                                             </button>
 
                                             <Menu as="div" className="relative z-30">
@@ -714,6 +716,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                         />
                                     </div>
                                 </div>
+                                )}
+                                </SortableSection>
                             );
                         }
 
@@ -733,24 +737,17 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         }));
 
                         return (
-                            <div key={instanceId} className="flex flex-col bg-surface-subtle/25">
+                            <SortableSection key={instanceId} id={instanceId}>
+                            {(dragHandleProps) => (
+                            <div className="flex flex-col bg-surface-subtle/25">
                                 <div className="flex items-center justify-between px-4 py-1.5 bg-surface-subtle/50 border-y border-border-subtle/70">
                                     <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => moveSection(instanceId, -1)}
-                                            disabled={index === 0}
-                                            className="rounded p-0.5 text-text-muted hover:bg-surface-subtle disabled:opacity-30"
-                                            aria-label="Move section up"
+                                            className="cursor-grab rounded p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
+                                            aria-label="Drag to reorder"
+                                            {...dragHandleProps}
                                         >
-                                            <ArrowUp className="h-3 w-3" />
-                                        </button>
-                                        <button
-                                            onClick={() => moveSection(instanceId, 1)}
-                                            disabled={index === sections.length - 1}
-                                            className="rounded p-0.5 text-text-muted hover:bg-surface-subtle disabled:opacity-30"
-                                            aria-label="Move section down"
-                                        >
-                                            <ArrowDown className="h-3 w-3" />
+                                            <GripVertical className="h-3 w-3" />
                                         </button>
                                         <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
                                             <FileText className="h-3 w-3" />
@@ -777,22 +774,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             <Upload className="h-3 w-3" />
                                             Import / Select PDF
                                         </button>
-
-                                        <div className="flex items-center gap-1 rounded-lg border border-border-subtle bg-surface-subtle p-0.5">
-                                            {(['inline', 'download', 'external'] as const).map((mode) => (
-                                                <button
-                                                    key={`${instanceId}-${mode}`}
-                                                    onClick={() => {
-                                                        const nextSection = { ...section, displayMode: mode };
-                                                        updatePdfSection(instanceId, () => nextSection);
-                                                        persistPdfSection(instanceId, nextSection);
-                                                    }}
-                                                    className={`rounded px-2 py-1 text-[11px] ${section.displayMode === mode ? 'bg-surface-default text-text-default' : 'text-text-muted hover:text-text-default'}`}
-                                                >
-                                                    {mode === 'inline' ? 'Inline' : mode === 'download' ? 'Download' : 'External'}
-                                                </button>
-                                            ))}
-                                        </div>
 
                                         {section.isUploading && (
                                             <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
@@ -853,93 +834,23 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                                         </div>
                                                     </div>
 
-                                                    <div className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-3">
-                                                        <input
-                                                            type="text"
-                                                            value={attachment.annotationText ?? ''}
-                                                            onChange={(event) => {
-                                                                let draftToPersist: Extract<SectionState, { kind: 'PDF' }> | null = null;
-                                                                updatePdfSection(instanceId, (current) => {
-                                                                    const updated: Extract<SectionState, { kind: 'PDF' }> = {
-                                                                        ...current,
-                                                                        attachments: current.attachments.map((item) =>
-                                                                            item.documentId === attachment.documentId
-                                                                                ? { ...item, annotationText: event.target.value }
-                                                                                : item,
-                                                                        ),
-                                                                    };
-                                                                    draftToPersist = updated;
-                                                                    return updated;
-                                                                });
-                                                                if (draftToPersist) persistPdfSection(instanceId, draftToPersist);
-                                                            }}
-                                                            placeholder="Persona note about this PDF"
-                                                            className="rounded border border-border-subtle bg-surface-subtle px-2 py-1 text-xs text-text-default"
-                                                        />
-                                                        <select
-                                                            value={attachment.referencedPersonaId ?? ''}
-                                                            onChange={(event) => {
-                                                                let draftToPersist: Extract<SectionState, { kind: 'PDF' }> | null = null;
-                                                                updatePdfSection(instanceId, (current) => {
-                                                                    const updated: Extract<SectionState, { kind: 'PDF' }> = {
-                                                                        ...current,
-                                                                        attachments: current.attachments.map((item) =>
-                                                                            item.documentId === attachment.documentId
-                                                                                ? { ...item, referencedPersonaId: event.target.value || null }
-                                                                                : item,
-                                                                        ),
-                                                                    };
-                                                                    draftToPersist = updated;
-                                                                    return updated;
-                                                                });
-                                                                if (draftToPersist) persistPdfSection(instanceId, draftToPersist);
-                                                            }}
-                                                            className="rounded border border-border-subtle bg-surface-subtle px-2 py-1 text-xs text-text-default"
-                                                        >
-                                                            <option value="">Reference persona</option>
-                                                            {personas?.map((persona) => (
-                                                                <option key={`${attachment.documentId}-${persona.id}`} value={persona.id}>
-                                                                    {persona.name}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                        <input
-                                                            type="number"
-                                                            min={1}
-                                                            value={attachment.referencedPage ?? ''}
-                                                            onChange={(event) => {
-                                                                let draftToPersist: Extract<SectionState, { kind: 'PDF' }> | null = null;
-                                                                updatePdfSection(instanceId, (current) => {
-                                                                    const updated: Extract<SectionState, { kind: 'PDF' }> = {
-                                                                        ...current,
-                                                                        attachments: current.attachments.map((item) =>
-                                                                            item.documentId === attachment.documentId
-                                                                                ? { ...item, referencedPage: event.target.value ? Number(event.target.value) : null }
-                                                                                : item,
-                                                                        ),
-                                                                    };
-                                                                    draftToPersist = updated;
-                                                                    return updated;
-                                                                });
-                                                                if (draftToPersist) persistPdfSection(instanceId, draftToPersist);
-                                                            }}
-                                                            placeholder="Page"
-                                                            className="rounded border border-border-subtle bg-surface-subtle px-2 py-1 text-xs text-text-default"
-                                                        />
-                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
                                 </div>
                             </div>
+                            )}
+                            </SortableSection>
                         );
                     })}
                 </div>
+                </SortableContext>
+                </DndContext>
 
                 {/* Footer — commit action */}
                 {sections.length > 0 && (
-                    <div className="flex items-center justify-between px-3 py-2 bg-surface-subtle/30 border-t border-border-subtle/50 rounded-b-xl">
+                    <div className="flex items-center justify-between px-3 py-2 bg-surface-subtle/50 border-t border-border-default/50 rounded-b-xl">
                         <div className="text-[10px] text-text-muted">
                             <kbd className="rounded border border-border-subtle bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">⌘+Enter</kbd>
                             <span className="mx-1">→</span>

@@ -862,14 +862,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           <div className="p-4 min-h-20">
                             <BlockNoteEditor
                               initialContent={getDraftContent(instanceId)}
-                              onChange={(content) =>
+                              onChange={(content) => {
                                 saveDraft(
                                   instanceId,
                                   section.personaId,
                                   content,
                                   persona.name,
-                                )
-                              }
+                                );
+                              }}
                               placeholder={`What would ${persona.name} say?`}
                               onEditorReady={(editor) => {
                                 editorRefs.current[instanceId] = editor;

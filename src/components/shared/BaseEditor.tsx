@@ -27,6 +27,7 @@ export default function BaseEditor({
   const editor = useCreateBlockNote({
     initialContent:
       initialContent && initialContent.length > 0 ? initialContent : undefined,
+    trailingBlock: false,
   });
 
   useEffect(() => {

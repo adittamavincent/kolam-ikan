@@ -226,12 +226,21 @@ function applyDiffToBlocks(
 ): BlockNoteBlock[] {
   const lines = diffText.split("\n");
   const result = [...currentBlocks];
+  let additionsBuffer: string[] = [];
+
+  const flushAdditions = () => {
+    if (additionsBuffer.length === 0) return;
+    const contentToAdd = additionsBuffer.join("\n");
+    const newBlocks = toParagraphBlocks(contentToAdd);
+    result.push(...newBlocks);
+    additionsBuffer = [];
+  };
 
   lines.forEach((line) => {
     const trimmedLine = line.trim();
 
-    // Support "+ [content]", "- [content]" or even "+[content]"
     if (trimmedLine.startsWith("-")) {
+      flushAdditions();
       const contentToRemove = trimmedLine.slice(1).trim();
       if (!contentToRemove) return;
 
@@ -242,13 +251,14 @@ function applyDiffToBlocks(
         result.splice(index, 1);
       }
     } else if (trimmedLine.startsWith("+")) {
-      const contentToAdd = trimmedLine.slice(1).trim();
-      // If the line is empty (just "+"), we still might want a paragraph
-      const newBlocks = toParagraphBlocks(contentToAdd || " ");
-      result.push(...newBlocks);
+      const contentToAdd = line.slice(1).trimEnd();
+      additionsBuffer.push(contentToAdd || " ");
+    } else {
+      flushAdditions();
     }
   });
 
+  flushAdditions();
   return result;
 }
 

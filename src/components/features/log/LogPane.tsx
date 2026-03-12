@@ -304,6 +304,7 @@ interface LogPaneProps {
 
 export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const supabase = createClient();
+  const [hasHydrated, setHasHydrated] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterPersonaId] = useState<string | null>(null);
@@ -335,6 +336,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   });
   const params = useParams();
   const domainId = (params?.domain as string | undefined) ?? "";
+
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -851,6 +856,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     : branchEntries.filter((e) => !stashedIds.has(e.id));
 
   const stashCount = stashedIds.size;
+  const showLoadingState =
+    !hasHydrated ||
+    ((isEntriesLoading || isEntriesFetching) && branchTimelineItems.length === 0);
+  const showEmptyState =
+    hasHydrated &&
+    branchTimelineItems.length === 0 &&
+    !isEntriesLoading &&
+    !isEntriesFetching;
 
   const headEntryId = useMemo(() => {
     if (!branchEntries.length) return null;
@@ -1091,8 +1104,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                   <CanvasDraftCard streamId={streamId} />
                 </div>
               )}
-              {(isEntriesLoading || isEntriesFetching) &&
-              branchTimelineItems.length === 0 ? (
+              {showLoadingState ? (
                 <div className="space-y-4 animate-pulse">
                   {[1, 2, 3].map((i) => (
                     <div
@@ -1101,7 +1113,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     />
                   ))}
                 </div>
-              ) : branchTimelineItems.length === 0 && !isEntriesFetching ? (
+              ) : showEmptyState ? (
                 <div className="text-center py-10 text-text-muted text-sm">
                   No commits found.
                 </div>

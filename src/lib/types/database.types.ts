@@ -67,6 +67,68 @@ export type Database = {
         }
         Relationships: []
       }
+      branches: {
+        Row: {
+          id: string
+          stream_id: string
+          name: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          stream_id: string
+          name: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          stream_id?: string
+          name?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      commit_branches: {
+        Row: {
+          commit_id: string
+          branch_id: string
+        }
+        Insert: {
+          commit_id: string
+          branch_id: string
+        }
+        Update: {
+          commit_id?: string
+          branch_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commit_branches_commit_id_fkey"
+            columns: ["commit_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commit_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       cabinets: {
         Row: {
           created_at: string | null

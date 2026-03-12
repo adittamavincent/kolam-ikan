@@ -2,7 +2,9 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSidebar } from '@/lib/hooks/useSidebar';
+import { useLayout } from '@/lib/hooks/useLayout';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -27,6 +29,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  useEffect(() => {
+    useSidebar.persist.rehydrate();
+    useLayout.persist.rehydrate();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useRef, Fragment, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
 import { Loader2, Send, Check, Plus, X, ChevronDown, GitBranch } from 'lucide-react';
@@ -15,27 +17,8 @@ interface EntryCreatorProps {
     streamId: string;
 }
 
-const BRANCH_REFS_KEY = (streamId: string) => `kolam_branch_refs_${streamId}`;
-const CURRENT_BRANCH_KEY = (streamId: string) => `kolam_current_branch_${streamId}`;
-const BRANCH_STATE_UPDATED_EVENT = 'kolam:branch-state-updated';
-
-function getBranchState(streamId: string): { refs: Record<string, string>; current: string } {
-    if (typeof window === 'undefined') {
-        return { refs: { main: '' }, current: 'main' };
-    }
-    try {
-        const rawRefs = localStorage.getItem(BRANCH_REFS_KEY(streamId));
-        const refs = rawRefs
-            ? (JSON.parse(rawRefs) as Record<string, string>)
-            : ({ main: '' } as Record<string, string>);
-        const rawCurrent = localStorage.getItem(CURRENT_BRANCH_KEY(streamId));
-        return { refs, current: rawCurrent?.trim() || 'main' };
-    } catch {
-        return { refs: { main: '' }, current: 'main' };
-    }
-}
-
 export function EntryCreator({ streamId }: EntryCreatorProps) {
+    const supabase = createClient();
     const { personas } = usePersonas();
     const personaUsageStorageKey = `entry-creator:persona-usage:${streamId}`;
 
@@ -57,8 +40,20 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
     }
     const [sections, setSections] = useState<SectionState[]>([]);
     const [personaUsageCounts, setPersonaUsageCounts] = useState<Record<string, number>>(getInitialPersonaUsage);
-    const [branchRefs, setBranchRefs] = useState<Record<string, string>>(() => getBranchState(streamId).refs);
-    const [currentBranch, setCurrentBranch] = useState(() => getBranchState(streamId).current);
+    const [currentBranch, setCurrentBranch] = useState('main');
+
+    const { data: branches, refetch: refetchBranches } = useQuery({
+        queryKey: ['branches', streamId],
+        queryFn: async () => {
+            const { data, error } = await supabase
+                .from('branches')
+                .select('*')
+                .eq('stream_id', streamId);
+            if (error) throw error;
+            return data;
+        },
+        enabled: !!streamId,
+    });
 
     // Refs for editors to clear them
     const editorRefs = useRef<Record<string, BlockNoteEditorType>>({});
@@ -112,21 +107,6 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
         }
     }, [personaUsageCounts, personaUsageStorageKey]);
 
-    useEffect(() => {
-        const syncBranchState = () => {
-            const next = getBranchState(streamId);
-            setBranchRefs(next.refs);
-            setCurrentBranch(next.current);
-        };
-
-        window.addEventListener(BRANCH_STATE_UPDATED_EVENT, syncBranchState as EventListener);
-        window.addEventListener('storage', syncBranchState);
-        return () => {
-            window.removeEventListener(BRANCH_STATE_UPDATED_EVENT, syncBranchState as EventListener);
-            window.removeEventListener('storage', syncBranchState);
-        };
-    }, [streamId]);
-
     const quickPersonas = useMemo(() => {
         if (!personas?.length) return [];
         return [...personas]
@@ -155,7 +135,6 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                     instanceId,
                     personaId: draft.personaId
                 }));
-                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setSections(loadedSections);
             }
             // Don't auto-initialize with a default persona
@@ -212,18 +191,13 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             const committedEntryId = await commitDraft();
 
             if (committedEntryId) {
-                const targetBranch = currentBranch.trim() || 'main';
-                const nextRefs = { ...branchRefs, [targetBranch]: committedEntryId };
-
-                setBranchRefs(nextRefs);
-                localStorage.setItem(BRANCH_REFS_KEY(streamId), JSON.stringify(nextRefs));
-
-                setCurrentBranch(targetBranch);
-                localStorage.setItem(CURRENT_BRANCH_KEY(streamId), targetBranch);
-
-                window.dispatchEvent(new CustomEvent(BRANCH_STATE_UPDATED_EVENT, {
-                    detail: { streamId, branchRefs: nextRefs, currentBranch: targetBranch },
-                }));
+                const targetBranch = branches?.find(b => b.name === currentBranch);
+                if (targetBranch) {
+                    const { error } = await supabase
+                        .from('commit_branches')
+                        .insert({ commit_id: committedEntryId, branch_id: targetBranch.id });
+                    if (error) throw error;
+                }
             }
 
             // Reset to empty state (no auto-default persona)
@@ -306,7 +280,7 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
         focusEditorForInstance(instanceId);
     };
 
-    const handleCreateBranch = () => {
+    const handleCreateBranch = async () => {
         const baseBranchName = currentBranch || 'main';
         const requested = window.prompt('Branch name', `${baseBranchName}-new`);
         if (requested === null) return;
@@ -317,16 +291,17 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
             return;
         }
 
-        const nextRefs = { ...branchRefs, [branchName]: branchRefs[currentBranch] ?? '' };
-        setBranchRefs(nextRefs);
-        localStorage.setItem(BRANCH_REFS_KEY(streamId), JSON.stringify(nextRefs));
+        const { error } = await supabase
+            .from('branches')
+            .insert({ stream_id: streamId, name: branchName });
 
+        if (error) {
+            console.error('Failed to create branch', error);
+            return;
+        }
+
+        refetchBranches();
         setCurrentBranch(branchName);
-        localStorage.setItem(CURRENT_BRANCH_KEY(streamId), branchName);
-
-        window.dispatchEvent(new CustomEvent(BRANCH_STATE_UPDATED_EVENT, {
-            detail: { streamId, branchRefs: nextRefs, currentBranch: branchName },
-        }));
     };
 
     if (isLoading) {
@@ -557,27 +532,19 @@ export function EntryCreator({ streamId }: EntryCreatorProps) {
                                         <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
                                             Commit Target Branch
                                         </div>
-                                        {Object.keys(branchRefs)
-                                            .sort((a, b) => a.localeCompare(b))
-                                            .map((branchName) => (
-                                                <MenuItem key={branchName}>
-                                                    {({ active }) => (
-                                                        <button
-                                                            onClick={() => {
-                                                                setCurrentBranch(branchName);
-                                                                localStorage.setItem(CURRENT_BRANCH_KEY(streamId), branchName);
-                                                                window.dispatchEvent(new CustomEvent(BRANCH_STATE_UPDATED_EVENT, {
-                                                                    detail: { streamId, branchRefs, currentBranch: branchName },
-                                                                }));
-                                                            }}
-                                                            className={`${active ? 'bg-surface-subtle text-text-default' : 'text-text-subtle'} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
-                                                        >
-                                                            <span>{branchName}</span>
-                                                            {currentBranch === branchName && <Check className="h-3 w-3 text-action-primary-bg" />}
-                                                        </button>
-                                                    )}
-                                                </MenuItem>
-                                            ))}
+                                        {branches?.map((branch) => (
+                                            <MenuItem key={branch.id}>
+                                                {({ active }) => (
+                                                    <button
+                                                        onClick={() => setCurrentBranch(branch.name)}
+                                                        className={`${active ? 'bg-surface-subtle text-text-default' : 'text-text-subtle'} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
+                                                    >
+                                                        <span>{branch.name}</span>
+                                                        {currentBranch === branch.name && <Check className="h-3 w-3 text-action-primary-bg" />}
+                                                    </button>
+                                                )}
+                                            </MenuItem>
+                                        ))}
                                         <div className="my-1 h-px bg-border-subtle" />
                                         <button
                                             onClick={handleCreateBranch}

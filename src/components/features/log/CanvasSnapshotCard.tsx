@@ -9,10 +9,9 @@ import { useCanvas } from '@/lib/hooks/useCanvas';
 interface CanvasSnapshotCardProps {
     version: CanvasVersion;
     streamId: string;
-    mounted: boolean;
 }
 
-export function CanvasSnapshotCard({ version, streamId, mounted }: CanvasSnapshotCardProps) {
+export function CanvasSnapshotCard({ version, streamId }: CanvasSnapshotCardProps) {
     const [isRestoring, setIsRestoring] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const { updateCanvas, canvas } = useCanvas(streamId);
@@ -56,14 +55,12 @@ export function CanvasSnapshotCard({ version, streamId, mounted }: CanvasSnapsho
                         )}
                     </div>
                     <span className="text-[10px] font-medium text-text-subtle font-mono">
-                        {mounted
-                            ? new Date(version.created_at || '').toLocaleString(undefined, {
+                        {new Date(version.created_at || '').toLocaleString(undefined, {
                                 month: 'short',
                                 day: 'numeric',
                                 hour: 'numeric',
                                 minute: '2-digit',
-                            })
-                            : new Date(version.created_at || '').toISOString()}
+                            })}
                     </span>
                 </div>
             </div>

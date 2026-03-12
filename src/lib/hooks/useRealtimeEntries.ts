@@ -26,6 +26,7 @@ export function useRealtimeEntries(streamId: string) {
           queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
           queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
           queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+          queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
         }
       )
       .subscribe();

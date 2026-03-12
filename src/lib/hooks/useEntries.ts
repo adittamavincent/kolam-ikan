@@ -88,6 +88,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
     },
   });
 
@@ -175,6 +176,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
     },
   });
 
@@ -194,6 +196,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
       queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
     },
   });
 

@@ -58,6 +58,7 @@ export const useLayout = create<LayoutState>()(
     }),
     {
       name: 'kolam-layout-state',
+      skipHydration: true,
     }
   )
 );

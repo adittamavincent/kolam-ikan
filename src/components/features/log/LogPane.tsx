@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Fragment, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, Fragment, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react';
 import { useEntries } from '@/lib/hooks/useEntries';
 import { EntryCreator } from './EntryCreator';
 import { LogSection } from './LogSection';
@@ -86,9 +86,6 @@ function lineDiff(oldText: string, newText: string): DiffLine[] {
 }
 
 const STASH_KEY = (streamId: string) => `kolam_stash_${streamId}`;
-const BRANCH_REFS_KEY = (streamId: string) => `kolam_branch_refs_${streamId}`;
-const CURRENT_BRANCH_KEY = (streamId: string) => `kolam_current_branch_${streamId}`;
-const BRANCH_STATE_UPDATED_EVENT = 'kolam:branch-state-updated';
 
 // ─── Git Diff Modal ──────────────────────────────────────────────────────────
 
@@ -237,7 +234,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
   const [amendState, setAmendState] = useState<AmendState | null>(null);
   const [amendError, setAmendError] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ entry: EntryWithSections; x: number; y: number } | null>(null);
@@ -246,53 +242,15 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [stashedIds, setStashedIds] = useState<Set<string>>(new Set());
   const [showStash, setShowStash] = useState(false);
   const [tags, setTags] = useState<Record<string, string>>({}); // entryId → tag label
-  const [branchRefs, setBranchRefs] = useState<Record<string, string>>({});
   const [currentBranch, setCurrentBranch] = useState('main');
   const [graphView, setGraphView] = useState(false);
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ left: 0, top: 0 });
   const params = useParams();
   const domainId = (params?.domain as string | undefined) ?? '';
 
-  // Load stash + tags from localStorage on mount
-  useEffect(() => {
-    setMounted(true);
-    try {
-      const raw = localStorage.getItem(STASH_KEY(streamId));
-      if (raw) setStashedIds(new Set(JSON.parse(raw)));
-      const tagRaw = localStorage.getItem(`kolam_tags_${streamId}`);
-      if (tagRaw) setTags(JSON.parse(tagRaw));
-      const branchRefsRaw = localStorage.getItem(BRANCH_REFS_KEY(streamId));
-      if (branchRefsRaw) {
-        setBranchRefs(JSON.parse(branchRefsRaw));
-      } else {
-        setBranchRefs({ main: '' });
-      }
-      const currentBranchRaw = localStorage.getItem(CURRENT_BRANCH_KEY(streamId));
-      setCurrentBranch(currentBranchRaw?.trim() || 'main');
-    } catch { /* ignore */ }
-  }, [streamId]);
 
-  useEffect(() => {
-    const syncBranchState = () => {
-      try {
-        const branchRefsRaw = localStorage.getItem(BRANCH_REFS_KEY(streamId));
-        if (branchRefsRaw) {
-          setBranchRefs(JSON.parse(branchRefsRaw));
-        }
-        const currentBranchRaw = localStorage.getItem(CURRENT_BRANCH_KEY(streamId));
-        setCurrentBranch(currentBranchRaw?.trim() || 'main');
-      } catch {
-        // ignore invalid local state
-      }
-    };
-
-    window.addEventListener(BRANCH_STATE_UPDATED_EVENT, syncBranchState as EventListener);
-    window.addEventListener('storage', syncBranchState);
-    return () => {
-      window.removeEventListener(BRANCH_STATE_UPDATED_EVENT, syncBranchState as EventListener);
-      window.removeEventListener('storage', syncBranchState);
-    };
-  }, [streamId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -366,19 +324,36 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     enabled: !!streamId,
   });
 
+  const { data: branches, refetch: refetchBranches } = useQuery({
+    queryKey: ['branches', streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('stream_id', streamId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!streamId,
+  });
+
+  const { data: commitBranches, refetch: refetchCommitBranches } = useQuery({
+    queryKey: ['commit-branches', streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('commit_branches')
+        .select('*');
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!streamId,
+  });
+
   useEffect(() => {
     scrollToHighlighted();
   }, [entryList, scrollToHighlighted]);
 
-  useEffect(() => {
-    if (!latestEntryId) return;
-    setBranchRefs((prev) => {
-      if (prev.main) return prev;
-      const next = { ...prev, main: latestEntryId };
-      localStorage.setItem(BRANCH_REFS_KEY(streamId), JSON.stringify(next));
-      return next;
-    });
-  }, [latestEntryId, streamId]);
+
 
   const { personas } = usePersonas();
   const { visible: sidebarVisible, show: showSidebar } = useSidebar();
@@ -408,8 +383,73 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   // ─── Context menu ──────────────────────────────────────────────────────────
 
+  const clampContextMenuPosition = useCallback((x: number, y: number, menuWidth: number, menuHeight: number) => {
+    if (typeof window === 'undefined') return { left: x, top: y };
+
+    const VIEWPORT_PADDING = 8;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let nextLeft = x;
+    let nextTop = y;
+
+    if (nextLeft + menuWidth + VIEWPORT_PADDING > viewportWidth) {
+      nextLeft = viewportWidth - menuWidth - VIEWPORT_PADDING;
+    }
+
+    if (nextTop + menuHeight + VIEWPORT_PADDING > viewportHeight) {
+      nextTop = viewportHeight - menuHeight - VIEWPORT_PADDING;
+    }
+
+    return {
+      left: Math.max(VIEWPORT_PADDING, nextLeft),
+      top: Math.max(VIEWPORT_PADDING, nextTop),
+    };
+  }, []);
+
+  const recalculateContextMenuPosition = useCallback(() => {
+    if (!contextMenu || typeof window === 'undefined' || !contextMenuRef.current) return;
+    const menuRect = contextMenuRef.current.getBoundingClientRect();
+    const { left: nextLeft, top: nextTop } = clampContextMenuPosition(
+      contextMenu.x,
+      contextMenu.y,
+      menuRect.width,
+      menuRect.height,
+    );
+
+    setContextMenuPosition((prev) =>
+      prev.left === nextLeft && prev.top === nextTop
+        ? prev
+        : { left: nextLeft, top: nextTop },
+    );
+  }, [clampContextMenuPosition, contextMenu]);
+
+  useLayoutEffect(() => {
+    if (!contextMenu) return;
+    recalculateContextMenuPosition();
+  }, [contextMenu, recalculateContextMenuPosition]);
+
+  useEffect(() => {
+    if (!contextMenu || typeof window === 'undefined') return;
+
+    const handleViewportChange = () => {
+      recalculateContextMenuPosition();
+    };
+
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [contextMenu, recalculateContextMenuPosition]);
+
   const handleContextMenu = (e: React.MouseEvent, entry: EntryWithSections) => {
     e.preventDefault();
+    // Use a close initial estimate so the menu starts near-final position before exact measurement.
+    const estimated = clampContextMenuPosition(e.clientX, e.clientY, 224, 300);
+    setContextMenuPosition(estimated);
     setContextMenu({ entry, x: e.clientX, y: e.clientY });
   };
 
@@ -444,14 +484,31 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           break;
         }
 
-        setBranchRefs((prev) => {
-          const next = { ...prev, [branchName]: entry.id };
-          localStorage.setItem(BRANCH_REFS_KEY(streamId), JSON.stringify(next));
-          return next;
-        });
-        setCurrentBranch(branchName);
-        localStorage.setItem(CURRENT_BRANCH_KEY(streamId), branchName);
-        saveTag(entry.id, `branch:${branchName}`);
+        const { data: newBranch, error } = await supabase
+          .from('branches')
+          .insert({ stream_id: streamId, name: branchName })
+          .select()          .single();
+
+        if (error) {
+          console.error('Failed to create branch', error);
+          break;
+        }
+
+        if (newBranch) {
+          const { error: commitError } = await supabase
+            .from('commit_branches')
+            .insert({ commit_id: entry.id, branch_id: newBranch.id });
+
+          if (commitError) {
+            console.error('Failed to associate commit with branch', commitError);
+            break;
+          }
+
+          refetchBranches();
+          refetchCommitBranches();
+          setCurrentBranch(branchName);
+        }
+
         break;
       }
       case 'revert':
@@ -557,17 +614,28 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     : entryList.filter((e) => !stashedIds.has(e.id));
 
   const stashCount = stashedIds.size;
-  const currentBranchRefId = branchRefs[currentBranch] || latestEntryId || null;
+  const currentBranchRefId = useMemo(() => {
+    if (!branches || !commitBranches) return null;
+    const branch = branches.find((b) => b.name === currentBranch);
+    if (!branch) return null;
+    const commitBranch = commitBranches.find((cb) => cb.branch_id === branch.id);
+    return commitBranch?.commit_id ?? null;
+  }, [branches, commitBranches, currentBranch]);
+
   const branchesByEntryId = useMemo(() => {
     const map = new Map<string, string[]>();
-    Object.entries(branchRefs).forEach(([branchName, entryId]) => {
-      if (!entryId) return;
-      const existing = map.get(entryId) ?? [];
-      existing.push(branchName);
-      map.set(entryId, existing);
-    });
+    if (!branches || !commitBranches) return map;
+
+    for (const commitBranch of commitBranches) {
+      const branch = branches.find((b) => b.id === commitBranch.branch_id);
+      if (branch) {
+        const existing = map.get(commitBranch.commit_id) ?? [];
+        existing.push(branch.name);
+        map.set(commitBranch.commit_id, existing);
+      }
+    }
     return map;
-  }, [branchRefs]);
+  }, [branches, commitBranches]);
 
   return (
     <div
@@ -655,8 +723,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     className="w-full rounded-md border border-border-default bg-surface-subtle pl-8 pr-2 py-1 text-xs text-text-default transition-all focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                   />
                 </div>
-                {mounted && (
-                  <Menu as="div" className="relative">
+                <Menu as="div" className="relative">
                     <MenuButton
                       className={`rounded-md border p-1.5 transition-colors ${filterPersonaId ? 'bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg' : 'border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
                       title="Filter by Author"
@@ -703,7 +770,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       </MenuItems>
                     </Transition>
                   </Menu>
-                )}
                 <button
                   onClick={() => setSortOrder((prev) => prev === 'newest' ? 'oldest' : 'newest')}
                   className="rounded-md border border-border-default p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
@@ -761,7 +827,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           key={`snapshot-${item.data.id}`}
                           version={item.data}
                           streamId={streamId}
-                          mounted={mounted}
                         />
                       );
                     }
@@ -777,9 +842,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     const tag = tags[entry.id];
                     const hash = shortHash(entry.id);
                     const entryBranches = branchesByEntryId.get(entry.id) ?? [];
-                    const createdAtText = mounted
-                      ? new Date(entry.created_at || '').toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-                      : new Date(entry.created_at || '').toISOString();
+                    const createdAtText = new Date(entry.created_at || '').toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 
                     return (
                       <div
@@ -929,10 +992,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       {contextMenu && typeof window !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
           <div
-            className="absolute w-56 rounded-xl border border-border-strong bg-surface-elevated p-1.5 shadow-2xl ring-1 ring-black/10 z-50"
+            ref={contextMenuRef}
+            className="absolute z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border border-border-strong bg-surface-elevated p-1.5 shadow-2xl ring-1 ring-black/10"
             style={{
-              top: Math.min(contextMenu.y, window.innerHeight - 310),
-              left: Math.min(contextMenu.x, window.innerWidth - 230),
+              top: contextMenuPosition.top,
+              left: contextMenuPosition.left,
               backgroundColor: 'var(--bg-surface-elevated)',
             }}
             onClick={(e) => e.stopPropagation()}
@@ -943,9 +1007,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               <GitCommitHorizontal className="h-3.5 w-3.5 text-text-muted" />
               <code className="text-[11px] font-mono text-action-primary-bg/80">{shortHash(contextMenu.entry.id)}</code>
               <span className="text-[10px] text-text-muted truncate">
-                {mounted && contextMenu.entry.created_at
-                  ? new Date(contextMenu.entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-                  : ''}
+                                {contextMenu.entry.created_at && new Date(contextMenu.entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
               </span>
             </div>
             <div className="h-px bg-border-subtle mb-0.5" />

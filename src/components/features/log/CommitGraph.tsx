@@ -1,46 +1,107 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-interface GraphEntry {
+/**
+ * A commit node with explicit parent pointers — mirrors git's object model.
+ *
+ * parentId     — previous commit on the same branch
+ * forkParentId — main-branch commit this branch diverged from
+ *                (only set for the oldest entry of a non-main stream)
+ */
+interface GraphNode {
   id: string;
+  row: number;
+  col: number;
+  color: string;
   shortHash: string;
   date: Date;
   streamId: string;
   streamName: string;
-  col: number; // x-column in the graph
+  isHead: boolean;
   tag?: string;
-  isHead?: boolean;
+  parentId: string | null;
+  forkParentId: string | null;
 }
 
-interface GraphBranch {
+interface GBranch {
   streamId: string;
   name: string;
   col: number;
   color: string;
+  createdAt: Date;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Layout constants ─────────────────────────────────────────────────────────
 
-function shortHash(id: string) {
+const CELL_W = 18;
+const CELL_H = 36;
+const DOT_R  = 4;
+const ARC_R  = 6;
+const LPAD   = 14;
+
+const BRANCH_COLORS = [
+  '#818cf8',
+  '#34d399',
+  '#fb923c',
+  '#f472b6',
+  '#a78bfa',
+  '#22d3ee',
+  '#facc15',
+  '#4ade80',
+];
+
+// ─── Pure helpers ─────────────────────────────────────────────────────────────
+
+function shortHash(id: string): string {
   return id.replace(/-/g, '').slice(0, 7);
 }
 
-const BRANCH_COLORS = [
-  '#6366f1', // indigo (main)
-  '#10b981', // emerald
-  '#f59e0b', // amber
-  '#ef4444', // rose
-  '#8b5cf6', // violet
-  '#06b6d4', // cyan
-  '#f97316', // orange
-  '#ec4899', // pink
-];
+function relativeTime(date: Date): string {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d`;
+  return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+}
+
+/**
+ * L-shaped SVG edge path with a single rounded corner — no diagonals.
+ *
+ * Routing strategy:
+ *   • Parent is BELOW child (y2 > y1): vertical-first → arc → horizontal.
+ *   • Parent is ABOVE child (y2 < y1): horizontal-first → arc → vertical up.
+ */
+function edgePath(x1: number, y1: number, x2: number, y2: number): string {
+  if (x1 === x2) return `M ${x1} ${y1} L ${x2} ${y2}`;
+  const r = Math.min(ARC_R, Math.abs(y2 - y1) * 0.9, Math.abs(x2 - x1) * 0.9);
+
+  if (y2 >= y1) {
+    // Parent below: vertical-first (down → arc → horizontal)
+    if (x2 > x1) {
+      return `M ${x1} ${y1} L ${x1} ${y2 - r} A ${r} ${r} 0 0 0 ${x1 + r} ${y2} L ${x2} ${y2}`;
+    }
+    return `M ${x1} ${y1} L ${x1} ${y2 - r} A ${r} ${r} 0 0 1 ${x1 - r} ${y2} L ${x2} ${y2}`;
+  }
+
+  // Parent above: horizontal-first (horizontal → arc → up)
+  if (x2 > x1) {
+    return `M ${x1} ${y1} L ${x2 - r} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y1 - r} L ${x2} ${y2}`;
+  }
+  return `M ${x1} ${y1} L ${x2 + r} ${y1} A ${r} ${r} 0 0 0 ${x2} ${y1 - r} L ${x2} ${y2}`;
+}
+
+const lx = (col: number) => LPAD + col * CELL_W + CELL_W / 2;
+const ly = (row: number) => row * CELL_H + CELL_H / 2;
 
 // ─── CommitGraph ──────────────────────────────────────────────────────────────
 
@@ -59,12 +120,12 @@ export function CommitGraph({
   latestEntryId,
   onEntryClick,
 }: CommitGraphProps) {
-  const supabase = createClient();
-  const router = useRouter();
+  const supabase     = createClient();
+  const router       = useRouter();
+  const queryClient  = useQueryClient();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [tooltip, setTooltip] = useState<{
-    x: number; y: number; entry: GraphEntry;
-  } | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number; node: GraphNode } | null>(null);
 
   // 1. Fetch current stream to get cabinet_id + domain_id
   const { data: currentStream } = useQuery({
@@ -104,16 +165,37 @@ export function CommitGraph({
     enabled: !!currentStream,
   });
 
-  // 3. Fetch entries for all sibling streams
+  // ── Fetch entries ───────────────────────────────────────────────────────
   const streamIds = useMemo(() => siblingStreams?.map((s) => s.id) ?? [], [siblingStreams]);
 
-  const { data: allEntries } = useQuery({
+  // ── Real-time: invalidate graph queries when entries change ─────────────
+  useEffect(() => {
+    if (!streamIds.length) return;
+
+    const channel = supabase
+      .channel(`graph-entries:${streamIds.join(',')}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'entries' },
+        (payload) => {
+          const changed = payload.new as { stream_id?: string } | null ?? payload.old as { stream_id?: string } | null;
+          if (changed?.stream_id && streamIds.includes(changed.stream_id)) {
+            queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [streamIds, queryClient, supabase]);
+
+  const { data: rawEntries } = useQuery({
     queryKey: ['graph-entries', streamIds],
     queryFn: async () => {
       if (!streamIds.length) return [];
       const { data, error } = await supabase
         .from('entries')
-        .select('id, stream_id, created_at, is_draft, deleted_at')
+        .select('id, stream_id, created_at')
         .in('stream_id', streamIds)
         .eq('is_draft', false)
         .is('deleted_at', null)
@@ -122,322 +204,389 @@ export function CommitGraph({
       return data as Array<{ id: string; stream_id: string; created_at: string | null }>;
     },
     enabled: streamIds.length > 0,
+    refetchOnMount: 'always',
   });
 
-  // 4. Build graph data
-  const { branches, graphEntries } = useMemo(() => {
-    if (!siblingStreams || !allEntries) return { branches: [], graphEntries: [] };
+  // ── Build graph ─────────────────────────────────────────────────────────
+  const { branches, nodes } = useMemo(() => {
+    if (!siblingStreams || !rawEntries) {
+      return { branches: [] as GBranch[], nodes: [] as GraphNode[] };
+    }
 
-    // Assign columns — current stream is always col 0
-    const sorted = [
-      ...(siblingStreams.filter((s) => s.id === currentStreamId)),
-      ...(siblingStreams.filter((s) => s.id !== currentStreamId)),
+    // Current stream occupies lane 0 (HEAD lane stays leftmost)
+    const ordered = [
+      ...siblingStreams.filter((s) => s.id === currentStreamId),
+      ...siblingStreams.filter((s) => s.id !== currentStreamId),
     ];
 
-    const branches: GraphBranch[] = sorted.map((s, i) => ({
+    const branches: GBranch[] = ordered.map((s, i) => ({
       streamId: s.id,
       name: s.name,
       col: i,
       color: BRANCH_COLORS[i % BRANCH_COLORS.length],
+      createdAt: new Date(s.created_at ?? 0),
     }));
 
-    const branchMap = new Map(branches.map((b) => [b.streamId, b]));
+    const bMap = new Map(branches.map((b) => [b.streamId, b]));
 
-    const graphEntries: GraphEntry[] = allEntries
-      .filter((e) => branchMap.has(e.stream_id))
-      .map((e) => {
-        const branch = branchMap.get(e.stream_id)!;
-        return {
-          id: e.id,
-          shortHash: shortHash(e.id),
-          date: new Date(e.created_at ?? ''),
-          streamId: e.stream_id,
-          streamName: branch.name,
-          col: branch.col,
-          tag: tags[e.id],
-          isHead: e.id === latestEntryId && e.stream_id === currentStreamId,
-        };
-      })
-      // Sort newest first
+    // All entries newest-first — row index determines vertical position
+    const allSorted = rawEntries
+      .filter((e) => bMap.has(e.stream_id))
+      .map((e) => ({ id: e.id, streamId: e.stream_id, date: new Date(e.created_at ?? 0) }))
       .sort((a, b) => b.date.getTime() - a.date.getTime());
 
-    return { branches, graphEntries };
-  }, [siblingStreams, allEntries, currentStreamId, tags, latestEntryId]);
+    const rowOf = new Map(allSorted.map((e, i) => [e.id, i]));
 
-  // ─── SVG layout constants ──────────────────────────────────────────────────
+    // Per-branch entries, each newest → oldest
+    const perBranch = new Map<string, typeof allSorted>(
+      branches.map((b) => [
+        b.streamId,
+        allSorted.filter((e) => e.streamId === b.streamId),
+      ])
+    );
 
-  const COL_WIDTH = 28;
-  const ROW_HEIGHT = 44;
-  const DOT_R = 6;
-  const LABEL_X = (branches.length * COL_WIDTH) + 12;
-  const SVG_W = Math.max(LABEL_X + 180, 280);
-  const SVG_H = Math.max(graphEntries.length * ROW_HEIGHT + 40, 80);
+    // Main-branch entries sorted oldest → newest for fork-point lookup
+    const mainBranch   = branches[0];
+    const mainOldToNew = (perBranch.get(mainBranch?.streamId) ?? []).slice().reverse();
+
+    const nodes: GraphNode[] = allSorted.map((e) => {
+      const b           = bMap.get(e.streamId)!;
+      const branchEs    = perBranch.get(e.streamId)!;
+      const idxInBranch = branchEs.findIndex((x) => x.id === e.id);
+
+      // Same-branch parent: the next (older) entry on this lane
+      const sameBranchParent = branchEs[idxInBranch + 1] ?? null;
+
+      // Fork parent: only for the oldest entry of a non-main branch
+      let forkParentId: string | null = null;
+      const isOldestOnBranch = idxInBranch === branchEs.length - 1;
+      if (isOldestOnBranch && b.col !== 0 && mainOldToNew.length > 0) {
+        const cutoff   = b.createdAt.getTime() > 0 ? b.createdAt.getTime() : e.date.getTime();
+        const candidate =
+          mainOldToNew.slice().reverse().find((m) => m.date.getTime() <= cutoff) ??
+          mainOldToNew[0];
+        forkParentId = candidate?.id ?? null;
+      }
+
+      return {
+        id: e.id,
+        row: rowOf.get(e.id)!,
+        col: b.col,
+        color: b.color,
+        shortHash: shortHash(e.id),
+        date: e.date,
+        streamId: e.streamId,
+        streamName: b.name,
+        isHead: e.id === latestEntryId && e.streamId === currentStreamId,
+        tag: tags[e.id],
+        parentId:     sameBranchParent?.id ?? null,
+        forkParentId,
+      };
+    });
+
+    // Defensive: drop dangling references
+    const idSet = new Set(nodes.map((n) => n.id));
+    for (const n of nodes) {
+      if (n.parentId     && !idSet.has(n.parentId))     n.parentId     = null;
+      if (n.forkParentId && !idSet.has(n.forkParentId)) n.forkParentId = null;
+    }
+
+    return { branches, nodes };
+  }, [siblingStreams, rawEntries, currentStreamId, tags, latestEntryId]);
+
+  // ── Build edges (drawn under dots) ─────────────────────────────────────
+  interface Edge {
+    key: string;
+    d: string;
+    color: string;
+    isFork: boolean;
+  }
+
+  const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+
+  const edges = useMemo((): Edge[] => {
+    const result: Edge[] = [];
+    for (const node of nodes) {
+      if (node.parentId) {
+        const parent = nodeMap.get(node.parentId);
+        if (parent) {
+          result.push({
+            key:    `e-${node.id}`,
+            d:      edgePath(lx(node.col), ly(node.row), lx(parent.col), ly(parent.row)),
+            color:  node.color,
+            isFork: false,
+          });
+        }
+      }
+      if (node.forkParentId) {
+        const parent = nodeMap.get(node.forkParentId);
+        if (parent) {
+          result.push({
+            key:    `ef-${node.id}`,
+            d:      edgePath(lx(node.col), ly(node.row), lx(parent.col), ly(parent.row)),
+            color:  node.color,
+            isFork: true,
+          });
+        }
+      }
+    }
+    return result;
+  }, [nodes, nodeMap]);
+
+  // ── SVG dimensions ──────────────────────────────────────────────────────
+  const numCols = Math.max(branches.length, 1);
+  const LABEL_X = LPAD + numCols * CELL_W + 14;
+  const SVG_W   = Math.max(LABEL_X + 270, 320);
+  const SVG_H   = Math.max(nodes.length * CELL_H + 20, 60);
+
+  // ─── Early return ──────────────────────────────────────────────────────────
+
+  if (!nodes.length) {
+    return (
+      <div className="flex h-full items-center justify-center text-text-muted text-sm">
+        No commits to display
+      </div>
+    );
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-auto bg-surface-default"
     >
-      {graphEntries.length === 0 ? (
-        <div className="flex h-full items-center justify-center text-text-muted text-sm">
-          No commits to display
-        </div>
-      ) : (
-        <>
-          {/* Branch labels at top */}
-          <div
-            className="sticky top-0 z-10 flex gap-0 border-b border-border-subtle bg-surface-default/90 backdrop-blur-sm px-3 py-1.5"
-          >
-            {branches.map((b) => (
-              <div
-                key={b.streamId}
-                className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-                style={{ width: COL_WIDTH, minWidth: COL_WIDTH }}
-                onClick={() => router.push(`/${domainId}/${b.streamId}`)}
-                title={`Switch to ${b.name}`}
-              >
-                <div
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: b.color }}
-                />
-              </div>
-            ))}
-            {branches.map((b) => (
-              <div
-                key={`label-${b.streamId}`}
-                className="flex items-center gap-1 cursor-pointer mr-3 hover:opacity-80 transition-opacity"
-                onClick={() => router.push(`/${domainId}/${b.streamId}`)}
-                title={`Switch to ${b.name}`}
-              >
-                <span
-                  className="text-[10px] font-mono font-semibold truncate max-w-[80px]"
-                  style={{ color: b.color }}
-                >
-                  {b.name}
-                </span>
-                {b.streamId === currentStreamId && (
-                  <span className="text-[8px] rounded px-1 py-0 font-bold bg-action-primary-bg/15 text-action-primary-bg">
-                    current
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* SVG Graph */}
-          <svg
-            width={SVG_W}
-            height={SVG_H}
-            className="block px-3 pt-2"
-            style={{ minWidth: '100%' }}
-          >
-            {/* Vertical rail lines for each branch */}
-            {branches.map((b) => {
-              const x = b.col * COL_WIDTH + DOT_R + 4;
-              // Find first and last entry for this branch
-              const branchEntries = graphEntries.filter((e) => e.col === b.col);
-              if (branchEntries.length === 0) return null;
-              const firstIdx = graphEntries.indexOf(branchEntries[0]);
-              const lastIdx = graphEntries.indexOf(branchEntries[branchEntries.length - 1]);
-              const y1 = firstIdx * ROW_HEIGHT + 20;
-              const y2 = lastIdx * ROW_HEIGHT + 20;
-
-              return (
-                <line
-                  key={`rail-${b.streamId}`}
-                  x1={x} y1={y1}
-                  x2={x} y2={y2}
-                  stroke={b.color}
-                  strokeWidth={2}
-                  strokeOpacity={b.streamId === currentStreamId ? 0.6 : 0.3}
-                />
-              );
-            })}
-
-            {/* Dots + labels */}
-            {graphEntries.map((entry, i) => {
-              const x = entry.col * COL_WIDTH + DOT_R + 4;
-              const y = i * ROW_HEIGHT + 20;
-              const branch = branches.find((b) => b.streamId === entry.streamId);
-              const color = branch?.color ?? '#94a3b8';
-              const isCurrentStream = entry.streamId === currentStreamId;
-
-              return (
-                <g
-                  key={entry.id}
-                  className="cursor-pointer"
-                  onClick={() => {
-                    if (isCurrentStream) {
-                      onEntryClick?.(entry.streamId, entry.id);
-                    } else {
-                      router.push(`/${domainId}/${entry.streamId}`);
-                    }
-                  }}
-                  onMouseEnter={() => {
-                    const rect = containerRef.current?.getBoundingClientRect();
-                    if (rect) {
-                      setTooltip({
-                        x: rect.left + x + 20,
-                        y: rect.top + y - 10,
-                        entry,
-                      });
-                    }
-                  }}
-                  onMouseLeave={() => setTooltip(null)}
-                >
-                  {/* Outer ring for current stream */}
-                  {isCurrentStream && (
-                    <circle
-                      cx={x} cy={y} r={DOT_R + 3}
-                      fill="none"
-                      stroke={color}
-                      strokeWidth={1}
-                      strokeOpacity={0.3}
-                    />
-                  )}
-
-                  {/* Main dot */}
-                  <circle
-                    cx={x} cy={y} r={DOT_R}
-                    fill={entry.isHead ? color : 'var(--bg-surface-default)'}
-                    stroke={color}
-                    strokeWidth={entry.isHead ? 0 : 2}
-                  />
-
-                  {/* HEAD star */}
-                  {entry.isHead && (
-                    <text x={x} y={y + 1} textAnchor="middle" dominantBaseline="middle" fontSize={7} fill="white" fontWeight="bold">
-                      ★
-                    </text>
-                  )}
-
-                  {/* Short hash */}
-                  <text
-                    x={LABEL_X} y={y - 5}
-                    fontSize={10}
-                    fill={isCurrentStream ? 'var(--text-default)' : 'var(--text-muted)'}
-                    fontFamily="monospace"
-                    fontWeight={entry.isHead ? 700 : 400}
-                  >
-                    {entry.shortHash}
-                  </text>
-
-                  {/* Date */}
-                  <text
-                    x={LABEL_X} y={y + 8}
-                    fontSize={8.5}
-                    fill="var(--text-muted)"
-                    fontFamily="monospace"
-                  >
-                    {entry.date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                    {' '}
-                    {entry.date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
-                  </text>
-
-                  {/* Tag badge */}
-                  {entry.tag && (
-                    <>
-                      <rect
-                        x={LABEL_X + 90} y={y - 10}
-                        width={entry.tag.length * 6 + 8} height={14}
-                        rx={3}
-                        fill="#f59e0b"
-                        fillOpacity={0.15}
-                        stroke="#f59e0b"
-                        strokeWidth={0.5}
-                        strokeOpacity={0.6}
-                      />
-                      <text
-                        x={LABEL_X + 94} y={y - 2}
-                        fontSize={8}
-                        fill="#f59e0b"
-                        fontFamily="monospace"
-                      >
-                        {entry.tag}
-                      </text>
-                    </>
-                  )}
-
-                  {/* HEAD badge */}
-                  {entry.isHead && (
-                    <>
-                      <rect
-                        x={LABEL_X + 90} y={y - 10}
-                        width={42} height={14}
-                        rx={3}
-                        fill="#6366f1"
-                        fillOpacity={0.15}
-                        stroke="#6366f1"
-                        strokeWidth={0.5}
-                        strokeOpacity={0.6}
-                      />
-                      <text
-                        x={LABEL_X + 94} y={y - 2}
-                        fontSize={8}
-                        fill="#6366f1"
-                        fontFamily="monospace"
-                        fontWeight={700}
-                      >
-                        HEAD
-                      </text>
-                    </>
-                  )}
-                </g>
-              );
-            })}
-
-            {/* Cross-branch connectors (visual merge point line) */}
-            {branches.length > 1 && branches.slice(1).map((b) => {
-              const branchEntries = graphEntries.filter((e) => e.col === b.col);
-              if (branchEntries.length === 0) return null;
-              // Draw a curved connector from the last entry of this branch to its peer in main branch
-              const lastEntry = branchEntries[branchEntries.length - 1];
-              const lastIdx = graphEntries.indexOf(lastEntry);
-              const mainX = 0 * COL_WIDTH + DOT_R + 4;
-              const branchX = b.col * COL_WIDTH + DOT_R + 4;
-              const y = lastIdx * ROW_HEIGHT + 20;
-              // Find the closest main entry at or after this entry
-              const mainEntries = graphEntries.filter((e) => e.col === 0);
-              const peer = mainEntries.find((e) => graphEntries.indexOf(e) >= lastIdx);
-              if (!peer) return null;
-              const peerIdx = graphEntries.indexOf(peer);
-              const peerY = peerIdx * ROW_HEIGHT + 20;
-
-              return (
-                <path
-                  key={`connector-${b.streamId}`}
-                  d={`M ${branchX} ${y} C ${branchX} ${(y + peerY) / 2}, ${mainX} ${(y + peerY) / 2}, ${mainX} ${peerY}`}
-                  fill="none"
-                  stroke={b.color}
-                  strokeWidth={1.5}
-                  strokeOpacity={0.3}
-                  strokeDasharray="3 3"
-                />
-              );
-            })}
-          </svg>
-
-          {/* Tooltip */}
-          {tooltip && typeof window !== 'undefined' && (
-            <div
-              className="fixed z-50 pointer-events-none rounded-lg border border-border-strong bg-surface-elevated px-3 py-2 shadow-xl text-xs"
-              style={{ left: tooltip.x, top: tooltip.y }}
+      {/* ── Branch pills header ─────────────────────────────────────────── */}
+      <div className="sticky top-0 z-10 flex items-center flex-wrap gap-x-1.5 gap-y-1 px-3 py-2 border-b border-border-subtle bg-surface-default/90 backdrop-blur-sm">
+        {branches.map((b) => (
+          <button
+            key={b.streamId}
+            className="flex items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-surface-hover"
+            onClick={() => router.push(`/${domainId}/${b.streamId}`)}
+            title={`Switch to ${b.name}`}>
+            <span
+              className="block h-2 w-2 rounded-full shrink-0"
+              style={{ backgroundColor: b.color, boxShadow: `0 0 4px ${b.color}` }}
+            />
+            <span
+              className="text-[10px] font-mono font-semibold"
+              style={{ color: b.color }}
             >
-              <div className="font-mono font-bold text-action-primary-bg">{tooltip.entry.shortHash}</div>
-              <div className="text-text-muted mt-0.5">{tooltip.entry.streamName}</div>
-              <div className="text-text-muted">{tooltip.entry.date.toLocaleString()}</div>
-              {tooltip.entry.tag && (
-                <div className="mt-1 text-amber-500 font-mono text-[10px]">🏷 {tooltip.entry.tag}</div>
+              {b.name}
+            </span>
+            {b.streamId === currentStreamId && (
+              <span
+                className="text-[8px] font-bold rounded px-1 leading-tight"
+                style={{ backgroundColor: `${b.color}22`, color: b.color }}
+              >
+                HEAD
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── SVG Graph ───────────────────────────────────────────────────── */}
+      <svg
+        width={SVG_W}
+        height={SVG_H}
+        style={{ display: 'block', minWidth: '100%', marginTop: 4 }}
+      >
+        <defs>
+          <filter id="cg-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="cg-head-glow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        {/* Edges — drawn beneath dots */}
+        {edges.map((e) => (
+          <path
+            key={e.key}
+            d={e.d}
+            fill="none"
+            stroke={e.color}
+            strokeWidth={e.isFork ? 1.5 : 2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeOpacity={e.isFork ? 0.7 : 0.85}
+          />
+        ))}
+
+        {/* ── Commit dots & labels ─────────────────────────────────────── */}
+        {nodes.map((node) => {
+          const x        = lx(node.col);
+          const y        = ly(node.row);
+          const isActive = node.streamId === currentStreamId;
+          const isHov    = hoveredId === node.id;
+          const dimmed   = hoveredId !== null && !isHov;
+          const r        = node.isHead ? DOT_R + 1.5 : DOT_R;
+          const tagBx    = LABEL_X + (isActive ? 74 : 132);
+
+          return (
+            <g
+              key={node.id}
+              style={{ cursor: 'pointer', opacity: dimmed ? 0.25 : 1, transition: 'opacity 0.12s' }}
+              onClick={() => {
+                if (isActive) onEntryClick?.(node.streamId, node.id);
+                else router.push(`/${domainId}/${node.streamId}`);
+              }}
+              onMouseEnter={() => {
+                setHoveredId(node.id);
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (rect) setTooltip({ x: rect.left + x + 16, y: rect.top + y - 18, node });
+              }}
+              onMouseLeave={() => { setHoveredId(null); setTooltip(null); }}
+            >
+              {/* HEAD animated pulse ring */}
+              {node.isHead && (
+                <circle cx={x} cy={y} r={r + 5} fill="none" stroke={node.color} strokeWidth={1.2}>
+                  <animate attributeName="r"       values={`${r + 5};${r + 14};${r + 5}`} dur="2.6s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.5;0;0.5"                      dur="2.6s" repeatCount="indefinite" />
+                </circle>
               )}
-              {tooltip.entry.isHead && (
-                <div className="mt-1 text-indigo-500 font-mono text-[10px] font-bold">★ HEAD</div>
+
+              {/* Hover halo */}
+              {isHov && !node.isHead && (
+                <circle cx={x} cy={y} r={r + 7} fill={node.color} fillOpacity={0.09} />
               )}
-              <div className="mt-1.5 text-text-muted text-[10px]">
-                {tooltip.entry.streamId === currentStreamId ? 'Click to scroll to entry' : 'Click to switch branch'}
-              </div>
+
+              {/* Opaque bg punches through the edge line so dot looks clean */}
+              <circle cx={x} cy={y} r={r + 1} fill="var(--bg-surface-default, #0d0d0d)" />
+
+              {/* Main dot */}
+              <circle
+                cx={x} cy={y} r={r}
+                fill={isActive ? node.color : 'none'}
+                fillOpacity={isActive ? (node.isHead ? 1 : 0.25) : 0}
+                stroke={node.color}
+                strokeWidth={isActive ? 2 : 1.5}
+                strokeOpacity={isActive ? 1 : 0.65}
+                filter={node.isHead ? 'url(#cg-head-glow)' : isHov ? 'url(#cg-glow)' : undefined}
+              />
+
+              {/* Inner fill for non-active hollow dots */}
+              {!isActive && (
+                <circle cx={x} cy={y} r={r - 1.5} fill={node.color} fillOpacity={0.25} />
+              )}
+
+              {/* HEAD star glyph */}
+              {node.isHead && (
+                <text
+                  x={x} y={y + 0.5}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fontSize={5} fill="var(--color-surface-default, #0d0d0d)" fontWeight="bold"
+                  style={{ pointerEvents: 'none', userSelect: 'none' }}
+                >★</text>
+              )}
+
+              {/* Short hash */}
+              <text
+                x={LABEL_X} y={y - 4}
+                fontSize={10}
+                fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
+                fontWeight={node.isHead ? 700 : isActive ? 500 : 400}
+                fill={isActive ? 'var(--text-default)' : 'var(--text-muted)'}
+              >
+                {node.shortHash}
+              </text>
+
+              {/* Relative timestamp */}
+              <text
+                x={LABEL_X} y={y + 8}
+                fontSize={7.5}
+                fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
+                fill="var(--text-muted)" fillOpacity={0.55}
+              >
+                {relativeTime(node.date)}
+              </text>
+
+              {/* Branch name (non-active only) */}
+              {!isActive && (
+                <text
+                  x={LABEL_X + 52} y={y + 2}
+                  fontSize={8.5}
+                  fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
+                  fill={node.color} fillOpacity={0.85}
+                >
+                  {node.streamName.length > 12 ? `${node.streamName.slice(0, 12)}…` : node.streamName}
+                </text>
+              )}
+
+              {/* Tag badge */}
+              {node.tag && (
+                <g>
+                  <rect
+                    x={tagBx} y={y - 9} width={node.tag.length * 5.5 + 12} height={13} rx={3}
+                    fill="#f59e0b" fillOpacity={0.12} stroke="#f59e0b" strokeWidth={0.7}
+                  />
+                  <text
+                    x={tagBx + 6} y={y - 1} fontSize={7.5}
+                    fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
+                    fill="#f59e0b" fontWeight={600}
+                  >
+                    {node.tag}
+                  </text>
+                </g>
+              )}
+
+              {/* HEAD badge (when no tag) */}
+              {node.isHead && !node.tag && (
+                <g>
+                  <rect
+                    x={LABEL_X + 74} y={y - 9} width={46} height={13} rx={3}
+                    fill={node.color} fillOpacity={0.15} stroke={node.color} strokeWidth={0.7}
+                  />
+                  <text
+                    x={LABEL_X + 81} y={y - 1} fontSize={8}
+                    fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
+                    fill={node.color} fontWeight={700}
+                  >HEAD</text>
+                </g>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* ── Tooltip ─────────────────────────────────────────────────────── */}
+      {tooltip && typeof window !== 'undefined' && (
+        <div
+          className="fixed z-50 pointer-events-none rounded-lg border border-border-strong bg-surface-elevated px-3 py-2 shadow-xl text-xs"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
+          <div className="font-mono font-bold" style={{ color: tooltip.node.color }}>
+            {tooltip.node.shortHash}
+          </div>
+          <div className="text-text-muted mt-0.5 font-mono">{tooltip.node.streamName}</div>
+          <div className="text-text-muted font-mono text-[10px]">{tooltip.node.date.toLocaleString()}</div>
+          {tooltip.node.tag && (
+            <div className="mt-1 text-amber-400 font-mono text-[10px]">🏷 {tooltip.node.tag}</div>
+          )}
+          {tooltip.node.isHead && (
+            <div className="mt-1 font-mono text-[10px] font-bold" style={{ color: tooltip.node.color }}>
+              ★ HEAD
             </div>
           )}
-        </>
+          {tooltip.node.forkParentId && (
+            <div className="mt-1 text-text-muted text-[10px]">forked from main</div>
+          )}
+          <div className="mt-1.5 text-text-muted text-[10px]">
+            {tooltip.node.streamId === currentStreamId
+              ? 'Click to scroll to entry'
+              : 'Click to switch stream'}
+          </div>
+        </div>
       )}
     </div>
   );

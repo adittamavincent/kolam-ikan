@@ -37,7 +37,8 @@ export const useSidebar = create<SidebarState>()(
     }),
     {
       name: 'sidebar-storage',
-      partialize: (state) => ({ width: state.width, visible: state.visible }), // Persist width and visibility
+      partialize: (state) => ({ width: state.width, visible: state.visible }),
+      skipHydration: true,
     }
   )
 );

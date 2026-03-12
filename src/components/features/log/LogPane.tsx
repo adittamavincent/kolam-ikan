@@ -671,7 +671,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       <div className="flex h-full flex-col" style={contentStyle}>
         {/* Header */}
         <div className="border-b border-border-subtle bg-surface-default shrink-0">
-          <div className="px-2 py-1.5">
+          <div className="px-2 py-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 {!sidebarVisible && (
@@ -738,7 +738,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           {/* Toolbar */}
           <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isToolbarOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
             <div className="overflow-hidden">
-              <div className="px-3 pb-3 flex items-center gap-2">
+              <div className="px-3 pb-2 flex items-center gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                   <input
@@ -828,9 +828,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           </div>
         ) : (
         <div className="flex-1 overflow-y-auto overscroll-contain px-3">
-          <div className="pb-5 pt-4">
+          <div className="pb-3 pt-2">
             {sortOrder === 'newest' && (
-              <div className="mb-4 space-y-2">
+              <div className="mb-2 space-y-1.5">
                 <EntryCreator key={streamId} streamId={streamId} />
                 <CanvasDraftCard streamId={streamId} />
               </div>
@@ -845,7 +845,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               <div className="text-center py-10 text-text-muted text-sm">No commits found.</div>
             ) : (
               <>
-                <div className="flex flex-col gap-2.5">
+                <div className="flex flex-col gap-1.5">
                   {timelineItems.map((item) => {
                     if (item.type === 'canvas_snapshot') {
                       return (
@@ -880,7 +880,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                         <div className={`relative group rounded-lg border bg-surface-default transition-all ${isAmending ? 'border-action-primary-bg/50 ring-1 ring-action-primary-bg/40' : 'border-border-subtle hover:border-border-default/50'}`}>
 
                           {/* Commit header — mimics git log --oneline */}
-                          <div className="flex items-center px-2.5 py-1 bg-surface-subtle/40 border-b border-border-subtle/40">
+                          <div className="flex items-center px-2.5 py-0.5 bg-surface-subtle/40 border-b border-border-subtle/40">
                             <div className="flex w-full items-center justify-between gap-2">
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <GitCommitHorizontal className="h-3 w-3 text-text-muted shrink-0" />
@@ -965,7 +965,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                             </div>
                           )}
 
-                          <div className="px-2.5 py-2 flex flex-col gap-1.5">
+                          <div className="px-2.5 py-1.5 flex flex-col gap-1">
                             {entry.sections?.map((section: EntryWithSections['sections'][number]) => (
                               <LogSection
                                 key={section.id}
@@ -989,14 +989,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 </div>
 
                 {sortOrder === 'oldest' && (
-                  <div className="mt-4 space-y-2">
+                  <div className="mt-2 space-y-1.5">
                     <CanvasDraftCard streamId={streamId} />
                     <EntryCreator key={streamId} streamId={streamId} />
                   </div>
                 )}
 
                 {hasNextPage && (
-                  <div className="flex justify-center pt-4 pb-2">
+                  <div className="flex justify-center pt-2 pb-1">
                     <button
                       onClick={() => fetchNextPage()}
                       disabled={isFetchingNextPage}

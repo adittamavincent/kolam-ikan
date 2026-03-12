@@ -4,11 +4,13 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
 import { FileText, Loader2, UploadCloud } from 'lucide-react';
 import { useDocuments } from '@/lib/hooks/useDocuments';
+import { DocumentWithLatestJob } from '@/lib/types';
 
 interface DocumentImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   streamId: string;
+  onSelectDocument?: (document: DocumentWithLatestJob) => void;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -41,7 +43,7 @@ function getStatusTone(status: string) {
   return 'bg-surface-subtle text-text-muted';
 }
 
-export function DocumentImportModal({ isOpen, onClose, streamId }: DocumentImportModalProps) {
+export function DocumentImportModal({ isOpen, onClose, streamId, onSelectDocument }: DocumentImportModalProps) {
   const { documents, isLoading, createImport, cancelImport, cancelAllPendingImports, deleteCanceledDocument } = useDocuments(streamId);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
@@ -302,6 +304,20 @@ export function DocumentImportModal({ isOpen, onClose, streamId }: DocumentImpor
                           className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {cancelImport.isPending ? 'Canceling...' : 'Cancel'}
+                        </button>
+                      </div>
+                    )}
+
+                    {status === 'completed' && onSelectDocument && (
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          onClick={() => {
+                            onSelectDocument(document);
+                            handleClose();
+                          }}
+                          className="rounded-md border border-border-default bg-action-primary-bg px-2.5 py-1 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
+                        >
+                          Attach To Entry
                         </button>
                       </div>
                     )}

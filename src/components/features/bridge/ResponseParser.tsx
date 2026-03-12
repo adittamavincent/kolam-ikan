@@ -779,7 +779,7 @@ export const ResponseParser = forwardRef<ResponseParserHandle, ResponseParserPro
                 </div>
 
                 {/* Actions */}
-                <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle/20 border-t md:border-t-0 md:border-l border-border-subtle/30 min-w-[120px]">
+                <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle/20 border-t md:border-t-0 md:border-l border-border-subtle/30 min-w-30">
                   <button
                     onClick={() => updateDecision(change.id, 'accept')}
                     title="Accept"

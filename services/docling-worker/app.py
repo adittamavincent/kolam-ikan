@@ -72,22 +72,26 @@ def build_docling_converter(enable_table_structure: bool) -> DocumentConverter:
 
 
 def chunk_markdown(markdown: str, chunk_size: int = 1400, overlap: int = 200) -> list[dict[str, Any]]:
-    text = markdown.strip()
-    if not text:
+    markdown_content = markdown.strip()
+    if not markdown_content:
         return []
 
     chunks: list[dict[str, Any]] = []
+    text_len = len(markdown_content)
     start = 0
     index = 0
 
-    while start < len(text):
-        end = min(len(text), start + chunk_size)
-        slice_text = text[start:end]
-        token_count = max(1, math.ceil(len(slice_text.split()) * 1.3))
+    while start < text_len:
+        end = min(text_len, start + chunk_size)
+        # Ensure indices are integers for slicing
+        s_start: int = int(start)
+        s_end: int = int(end)
+        chunk_text = markdown_content[s_start:s_end]  # type: ignore
+        token_count = max(1, math.ceil(len(chunk_text.split()) * 1.3))
         chunks.append(
             {
                 "chunkIndex": index,
-                "chunkMarkdown": slice_text,
+                "chunkMarkdown": chunk_text,
                 "tokenCount": token_count,
                 "metadata": {
                     "charStart": start,
@@ -96,7 +100,7 @@ def chunk_markdown(markdown: str, chunk_size: int = 1400, overlap: int = 200) ->
                 },
             }
         )
-        if end >= len(text):
+        if end >= text_len:
             break
         start = max(0, end - overlap)
         index += 1

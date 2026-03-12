@@ -51,3 +51,6 @@ next-env.d.ts
 /blob-report
 /.auth
 .ctx-state.json
+
+# virtual environment
+.venv

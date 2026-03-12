@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
+import { useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { EntryWithSections } from '@/lib/types';
 import { Json } from '@/lib/types/database.types';
 import { PartialBlock } from '@blocknote/core';
+import { SectionPdfAttachmentInsert } from '@/lib/types';
 
 interface UseEntriesOptions {
   search?: string;
@@ -18,58 +20,137 @@ interface AmendEntryInput {
   }>;
 }
 
+const ENTRIES_SELECT_FULL = `
+  id, stream_id, is_draft, created_at, updated_at, deleted_at,
+  sections!inner (
+    id, entry_id, persona_id, persona_name_snapshot, content_json,
+    section_type, pdf_display_mode, sort_order, updated_at,
+    persona:personas (id, name, icon, color),
+    section_pdf_attachments (
+      id, section_id, document_id, sort_order, title_snapshot,
+      annotation_text, referenced_persona_id, referenced_page,
+      created_at, updated_at,
+      document:documents (id, title)
+    )
+  )
+`;
+
+const ENTRIES_SELECT_LEGACY = `
+  id, stream_id, is_draft, created_at, updated_at, deleted_at,
+  sections!inner (
+    id, entry_id, persona_id, persona_name_snapshot, content_json,
+    sort_order, updated_at,
+    persona:personas (id, name, icon, color)
+  )
+`;
+
+function isMissingColumnError(error: { message?: string; code?: string } | null): boolean {
+  if (!error?.message) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    (msg.includes('column') || msg.includes('relation') || msg.includes('does not exist'))
+    && (msg.includes('section_type') || msg.includes('pdf_display_mode') || msg.includes('section_pdf_attachments'))
+  );
+}
+
 export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { search, personaId, sortOrder = 'newest' } = options;
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = 20;
+
+  const cacheKey = useMemo(
+    () => `kolam_entries_cache_${streamId}_${search ?? ''}_${personaId ?? ''}_${sortOrder}`,
+    [streamId, search, personaId, sortOrder],
+  );
+
+  const cachedEntries = useMemo(() => {
+    if (typeof window === 'undefined' || !streamId) return null;
+
+    try {
+      const raw = sessionStorage.getItem(cacheKey);
+      if (!raw) return null;
+
+      const parsed = JSON.parse(raw) as {
+        items?: EntryWithSections[];
+        updatedAt?: number;
+      };
+
+      const items = Array.isArray(parsed.items) ? parsed.items : null;
+      const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0;
+
+      if (!items || items.length === 0) return null;
+
+      return { items, updatedAt };
+    } catch {
+      return null;
+    }
+  }, [cacheKey, streamId]);
 
   const query = useInfiniteQuery({
     queryKey: ['entries', streamId, search, personaId, sortOrder],
     queryFn: async ({ pageParam = 0, signal }) => {
-      let query = supabase
-        .from('entries')
-        .select(`
-          *,
-          sections!inner (
-            *,
-            persona:personas (*)
-          )
-        `)
-        .eq('stream_id', streamId)
-        .eq('is_draft', false)
-        .is('deleted_at', null);
-
-      if (search) {
-        query = query.ilike('sections.search_text', `%${search}%`);
-      }
-
-      if (personaId) {
-        query = query.eq('sections.persona_id', personaId);
-      }
-
-      // Sort
-      query = query.order('created_at', { ascending: sortOrder === 'oldest' });
-      
-      // Abort signal
-      query = query.abortSignal(signal);
-
-      // Pagination
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
-      
-      const { data, error } = await query.range(from, to);
+
+      const buildQuery = (selectStr: string) => {
+        let q = supabase
+          .from('entries')
+          .select(selectStr)
+          .eq('stream_id', streamId)
+          .eq('is_draft', false)
+          .is('deleted_at', null);
+
+        if (search) q = q.ilike('sections.search_text', `%${search}%`);
+        if (personaId) q = q.eq('sections.persona_id', personaId);
+        q = q.order('created_at', { ascending: sortOrder === 'oldest' });
+        q = q.abortSignal(signal);
+        return q.range(from, to);
+      };
+
+      const { data, error } = await buildQuery(ENTRIES_SELECT_FULL);
+
+      if (error && isMissingColumnError(error)) {
+        const fallback = await buildQuery(ENTRIES_SELECT_LEGACY);
+        if (fallback.error) throw fallback.error;
+        return fallback.data as EntryWithSections[];
+      }
 
       if (error) throw error;
-      
       return data as EntryWithSections[];
     },
     initialPageParam: 0,
+    initialData:
+      cachedEntries
+        ? {
+            pages: [cachedEntries.items],
+            pageParams: [0],
+          }
+        : undefined,
+    initialDataUpdatedAt: cachedEntries?.updatedAt,
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
     },
     enabled: !!streamId,
   });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !streamId || !query.data) return;
+
+    const firstPage = query.data.pages[0] ?? [];
+    if (!firstPage.length) return;
+
+    const payload = {
+      items: firstPage,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+    } catch {
+      // Ignore cache write failures (quota, privacy mode, etc.)
+    }
+  }, [cacheKey, streamId, query.data]);
 
   const createEntry = useMutation({
     mutationFn: async () => {
@@ -240,14 +321,40 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
           content_json: section.content_json,
           persona_id: section.persona_id,
           persona_name_snapshot: section.persona_name_snapshot,
+          section_type: section.section_type,
+          pdf_display_mode: section.pdf_display_mode,
           sort_order: index,
         }));
 
-        const { error: sectionsError } = await supabase
+        const { data: insertedSections, error: sectionsError } = await supabase
           .from('sections')
-          .insert(sectionsToInsert);
+          .insert(sectionsToInsert)
+          .select('id, sort_order');
 
         if (sectionsError) throw sectionsError;
+
+        const attachmentInserts: SectionPdfAttachmentInsert[] = [];
+        insertedSections?.forEach((insertedSection) => {
+          const sourceSection = entry.sections?.[insertedSection.sort_order];
+          sourceSection?.section_pdf_attachments?.forEach((attachment, idx) => {
+            attachmentInserts.push({
+              section_id: insertedSection.id,
+              document_id: attachment.document_id,
+              sort_order: idx,
+              title_snapshot: attachment.title_snapshot,
+              annotation_text: attachment.annotation_text,
+              referenced_persona_id: attachment.referenced_persona_id,
+              referenced_page: attachment.referenced_page,
+            });
+          });
+        });
+
+        if (attachmentInserts.length > 0) {
+          const { error: attachmentsError } = await supabase
+            .from('section_pdf_attachments')
+            .insert(attachmentInserts);
+          if (attachmentsError) throw attachmentsError;
+        }
       }
 
       return newEntry;
@@ -280,14 +387,40 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
           content_json: section.content_json,
           persona_id: section.persona_id,
           persona_name_snapshot: `↩ Revert of ${section.persona_name_snapshot || 'Unknown'} (${revertDate})`,
+          section_type: section.section_type,
+          pdf_display_mode: section.pdf_display_mode,
           sort_order: index,
         }));
 
-        const { error: sectionsError } = await supabase
+        const { data: insertedSections, error: sectionsError } = await supabase
           .from('sections')
-          .insert(sectionsToInsert);
+          .insert(sectionsToInsert)
+          .select('id, sort_order');
 
         if (sectionsError) throw sectionsError;
+
+        const attachmentInserts: SectionPdfAttachmentInsert[] = [];
+        insertedSections?.forEach((insertedSection) => {
+          const sourceSection = entry.sections?.[insertedSection.sort_order];
+          sourceSection?.section_pdf_attachments?.forEach((attachment, idx) => {
+            attachmentInserts.push({
+              section_id: insertedSection.id,
+              document_id: attachment.document_id,
+              sort_order: idx,
+              title_snapshot: attachment.title_snapshot,
+              annotation_text: attachment.annotation_text,
+              referenced_persona_id: attachment.referenced_persona_id,
+              referenced_page: attachment.referenced_page,
+            });
+          });
+        });
+
+        if (attachmentInserts.length > 0) {
+          const { error: attachmentsError } = await supabase
+            .from('section_pdf_attachments')
+            .insert(attachmentInserts);
+          if (attachmentsError) throw attachmentsError;
+        }
       }
 
       return newEntry;
@@ -302,30 +435,28 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   });
 
   const fetchAllEntriesForExport = async () => {
-    let query = supabase
-      .from('entries')
-      .select(`
-        *,
-        sections!inner (
-          *,
-          persona:personas (*)
-        )
-      `)
-      .eq('stream_id', streamId)
-      .eq('is_draft', false)
-      .is('deleted_at', null);
+    const buildExportQuery = (selectStr: string) => {
+      let q = supabase
+        .from('entries')
+        .select(selectStr)
+        .eq('stream_id', streamId)
+        .eq('is_draft', false)
+        .is('deleted_at', null);
 
-    if (search) {
-      query = query.ilike('sections.search_text', `%${search}%`);
+      if (search) q = q.ilike('sections.search_text', `%${search}%`);
+      if (personaId) q = q.eq('sections.persona_id', personaId);
+      q = q.order('created_at', { ascending: sortOrder === 'oldest' });
+      return q;
+    };
+
+    const { data, error } = await buildExportQuery(ENTRIES_SELECT_FULL);
+
+    if (error && isMissingColumnError(error)) {
+      const fallback = await buildExportQuery(ENTRIES_SELECT_LEGACY);
+      if (fallback.error) throw fallback.error;
+      return fallback.data as EntryWithSections[];
     }
 
-    if (personaId) {
-      query = query.eq('sections.persona_id', personaId);
-    }
-
-    query = query.order('created_at', { ascending: sortOrder === 'oldest' });
-
-    const { data, error } = await query;
     if (error) throw error;
     return data as EntryWithSections[];
   };
@@ -333,6 +464,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   return {
     items: query.data?.pages.flat() || [],
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,
     fetchNextPage: query.fetchNextPage,

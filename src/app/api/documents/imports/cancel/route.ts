@@ -113,7 +113,7 @@ export async function POST(request: Request) {
   const { data: document, error: documentFetchError } = await admin
     .from('documents')
     .select('id, stream_id, import_status')
-    .eq('id', body.documentId)
+    .eq('id', body.documentId!)
     .eq('stream_id', body.streamId)
     .single();
 
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
       completed_at: nowIso,
     })
     .eq('stream_id', body.streamId)
-    .eq('document_id', body.documentId)
+    .eq('document_id', body.documentId!)
     .in('status', ['queued', 'processing']);
 
   if (singleJobError && isMissingDocumentSchemaError(singleJobError.message)) {
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
         completed_at: nowIso,
       })
       .eq('stream_id', body.streamId)
-      .eq('document_id', body.documentId)
+      .eq('document_id', body.documentId!)
       .in('status', ['queued', 'processing']);
 
     singleJobError = retryResult.error;
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
     .update({
       import_status: 'canceled',
     })
-    .eq('id', body.documentId)
+    .eq('id', body.documentId!)
     .eq('stream_id', body.streamId)
     .in('import_status', ['queued', 'processing']);
 

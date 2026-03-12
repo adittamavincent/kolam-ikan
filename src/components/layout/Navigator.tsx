@@ -1109,6 +1109,7 @@ export function Navigator({ }: NavigatorProps) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,
+        archived_at: null,
       };
 
       queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
@@ -1175,6 +1176,8 @@ export function Navigator({ }: NavigatorProps) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,
+        archived_at: null,
+        parent_stream_id: null,
       };
 
       queryClient.setQueryData<Stream[]>(['streams', domainId], (old) =>

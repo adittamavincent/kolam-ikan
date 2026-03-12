@@ -28,6 +28,7 @@ const createCabinet = (
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     deleted_at: null,
+    archived_at: null,
 });
 
 const createStream = (
@@ -47,6 +48,8 @@ const createStream = (
     updated_at: new Date().toISOString(),
     deleted_at: null,
     description: null,
+    archived_at: null,
+    parent_stream_id: null,
 });
 
 // ===== DEEP NESTING TESTS (Ibu Sari's lesson hierarchy) =====

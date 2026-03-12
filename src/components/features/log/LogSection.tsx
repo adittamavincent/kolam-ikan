@@ -5,7 +5,7 @@ import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { usePersonaMutations } from '@/lib/hooks/usePersonaMutations';
-import { Check } from 'lucide-react';
+import { Check, FileText, Link as LinkIcon } from 'lucide-react';
 import { PartialBlock } from '@blocknote/core';
 import { useMemo } from 'react';
 
@@ -19,6 +19,7 @@ interface LogSectionProps {
 export function LogSection({ section, highlightTerm, editable = false, onContentChange }: LogSectionProps) {
   const { personas } = usePersonas();
   const { updateSectionPersona } = usePersonaMutations();
+  const isPdfSection = section.section_type === 'PDF';
 
   const currentPersona = section.persona;
   const displayName = section.persona_name_snapshot || currentPersona?.name || 'Unknown';
@@ -90,6 +91,46 @@ export function LogSection({ section, highlightTerm, editable = false, onContent
     const blocks = (section.content_json as unknown as PartialBlock[]) ?? [];
     return Array.isArray(blocks) ? blocks : [];
   }, [section.content_json]);
+
+  if (isPdfSection) {
+    return (
+      <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/40 rounded-md border border-border-subtle">
+        <div className="shrink-0 pt-1">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-subtle text-text-subtle border border-border-subtle">
+            <FileText className="h-4 w-4" />
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-text-default">PDF Section</span>
+            <span className="text-[10px] text-text-muted">
+              • {section.updated_at ? new Date(section.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            {(section.section_pdf_attachments ?? []).map((attachment) => (
+              <div key={attachment.id} className="flex items-start gap-2 rounded border border-border-subtle bg-surface-subtle/40 px-2 py-1.5">
+                <LinkIcon className="mt-0.5 h-3.5 w-3.5 text-text-muted" />
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-medium text-text-default">
+                    {attachment.title_snapshot || attachment.document?.title || 'Attached PDF'}
+                  </div>
+                  {attachment.annotation_text && (
+                    <div className="text-[11px] text-text-muted">{attachment.annotation_text}</div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {(section.section_pdf_attachments ?? []).length === 0 && (
+              <div className="text-[11px] text-text-muted">No PDF attachments in this section.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 rounded-md">

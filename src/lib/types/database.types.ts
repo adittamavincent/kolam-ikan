@@ -647,15 +647,78 @@ export type Database = {
         }
         Relationships: []
       }
+      section_pdf_attachments: {
+        Row: {
+          annotation_text: string | null
+          created_at: string
+          document_id: string
+          id: string
+          referenced_page: number | null
+          referenced_persona_id: string | null
+          section_id: string
+          sort_order: number
+          title_snapshot: string | null
+          updated_at: string
+        }
+        Insert: {
+          annotation_text?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          referenced_page?: number | null
+          referenced_persona_id?: string | null
+          section_id: string
+          sort_order?: number
+          title_snapshot?: string | null
+          updated_at?: string
+        }
+        Update: {
+          annotation_text?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          referenced_page?: number | null
+          referenced_persona_id?: string | null
+          section_id?: string
+          sort_order?: number
+          title_snapshot?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_pdf_attachments_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_pdf_attachments_referenced_persona_id_fkey"
+            columns: ["referenced_persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_pdf_attachments_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sections: {
         Row: {
           content_json: Json
           created_at: string | null
           entry_id: string
           id: string
+          pdf_display_mode: string
           persona_id: string | null
           persona_name_snapshot: string | null
           search_text: string | null
+          section_type: string
           sort_order: number
           updated_at: string | null
         }
@@ -664,9 +727,11 @@ export type Database = {
           created_at?: string | null
           entry_id: string
           id?: string
+          pdf_display_mode?: string
           persona_id?: string | null
           persona_name_snapshot?: string | null
           search_text?: string | null
+          section_type?: string
           sort_order?: number
           updated_at?: string | null
         }
@@ -675,9 +740,11 @@ export type Database = {
           created_at?: string | null
           entry_id?: string
           id?: string
+          pdf_display_mode?: string
           persona_id?: string | null
           persona_name_snapshot?: string | null
           search_text?: string | null
+          section_type?: string
           sort_order?: number
           updated_at?: string | null
         }

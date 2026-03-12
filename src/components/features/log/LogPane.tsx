@@ -298,6 +298,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const {
     items: entryList,
     isLoading: isEntriesLoading,
+    isFetching: isEntriesFetching,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -360,7 +361,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   });
 
   const { data: currentBranchHeadEntry } = useQuery({
-    queryKey: ['branch-head-entry', streamId, currentBranch, branches],
+    queryKey: ['branch-head-entry', streamId, currentBranch, branches, commitBranches],
     queryFn: async () => {
       const branch = branches?.find((b) => b.name === currentBranch);
       if (!branch) return null;
@@ -912,13 +913,13 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 <CanvasDraftCard streamId={streamId} />
               </div>
             )}
-            {isEntriesLoading ? (
+            {(isEntriesLoading || isEntriesFetching) && branchTimelineItems.length === 0 ? (
               <div className="space-y-4 animate-pulse">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="h-28 rounded-lg bg-surface-subtle/50" />
                 ))}
               </div>
-            ) : branchTimelineItems.length === 0 ? (
+            ) : branchTimelineItems.length === 0 && !isEntriesFetching ? (
               <div className="text-center py-10 text-text-muted text-sm">No commits found.</div>
             ) : (
               <>

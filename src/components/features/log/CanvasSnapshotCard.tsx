@@ -33,9 +33,9 @@ export function CanvasSnapshotCard({ version, streamId }: CanvasSnapshotCardProp
     };
 
     return (
-        <div className="relative group rounded-lg border border-dashed border-action-primary-bg/40 bg-action-primary-bg/[0.03] overflow-hidden transition-all hover:border-action-primary-bg/60">
+        <div className="relative group rounded-lg border border-dashed border-action-primary-bg/40 bg-action-primary-bg/3 overflow-hidden transition-all hover:border-action-primary-bg/60">
             {/* Header */}
-            <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/[0.05] border-b border-dashed border-action-primary-bg/20">
+            <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/5 border-b border-dashed border-action-primary-bg/20">
                 <div className="flex w-full items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
                         <Camera className="h-3 w-3 text-action-primary-bg" />

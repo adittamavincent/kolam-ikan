@@ -2,5 +2,7 @@
   "js/ts.tsserver.experimental.enableProjectDiagnostics": false,
   "problems.exclude": {
     "**/node_modules/**": true
-  }
+  },
+  "css.lint.unknownAtRules": "ignore",
+  "python.defaultInterpreterPath": "${workspaceFolder}/services/docling-worker/.venv/bin/python"
 }

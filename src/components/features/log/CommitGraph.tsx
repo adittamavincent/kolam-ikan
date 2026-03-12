@@ -361,7 +361,7 @@ export function CommitGraph({
         {branches.map((b) => (
           <button
             key={b.streamId}
-            className="flex items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-surface-hover"
+            className="flex h-6 items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-surface-hover"
             onClick={() => router.push(`/${domainId}/${b.streamId}`)}
             title={`Switch to ${b.name}`}>
             <span
@@ -369,15 +369,15 @@ export function CommitGraph({
               style={{ backgroundColor: b.color, boxShadow: `0 0 4px ${b.color}` }}
             />
             <span
-              className="text-[10px] font-mono font-semibold"
+              className="self-center text-[10px] font-mono font-semibold leading-none"
               style={{ color: b.color }}
             >
               {b.name}
             </span>
             {b.streamId === currentStreamId && (
               <span
-                className="text-[8px] font-bold rounded px-1 leading-tight"
-                style={{ backgroundColor: `${b.color}22`, color: b.color }}
+                className="inline-flex h-4 min-w-8 items-center justify-center rounded px-1 text-[8px] font-bold leading-none"
+                style={{ backgroundColor: `${b.color}44`, color: b.color }}
               >
                 HEAD
               </span>
@@ -506,7 +506,7 @@ export function CommitGraph({
                 x={LABEL_X} y={y + 8}
                 fontSize={7.5}
                 fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
-                fill="var(--text-muted)" fillOpacity={0.55}
+                fill="var(--text-muted)" fillOpacity={0.8}
               >
                 {relativeTime(node.date)}
               </text>
@@ -517,7 +517,7 @@ export function CommitGraph({
                   x={LABEL_X + 52} y={y + 2}
                   fontSize={8.5}
                   fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
-                  fill={node.color} fillOpacity={0.85}
+                  fill={node.color} fillOpacity={0.95}
                 >
                   {node.streamName.length > 12 ? `${node.streamName.slice(0, 12)}…` : node.streamName}
                 </text>
@@ -528,11 +528,12 @@ export function CommitGraph({
                 <g>
                   <rect
                     x={tagBx} y={y - 9} width={node.tag.length * 5.5 + 12} height={13} rx={3}
-                    fill="#f59e0b" fillOpacity={0.12} stroke="#f59e0b" strokeWidth={0.7}
+                    fill="#f59e0b" fillOpacity={0.2} stroke="#f59e0b" strokeWidth={0.8}
                   />
                   <text
-                    x={tagBx + 6} y={y - 1} fontSize={7.5}
+                    x={tagBx + 6} y={y - 2.5} fontSize={7.5}
                     fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
+                    dominantBaseline="middle"
                     fill="#f59e0b" fontWeight={600}
                   >
                     {node.tag}
@@ -545,11 +546,13 @@ export function CommitGraph({
                 <g>
                   <rect
                     x={LABEL_X + 74} y={y - 9} width={46} height={13} rx={3}
-                    fill={node.color} fillOpacity={0.15} stroke={node.color} strokeWidth={0.7}
+                    fill={node.color} fillOpacity={0.28} stroke={node.color} strokeWidth={0.8}
                   />
                   <text
-                    x={LABEL_X + 81} y={y - 1} fontSize={8}
+                    x={LABEL_X + 97} y={y - 2.5} fontSize={8}
                     fontFamily="ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, monospace"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
                     fill={node.color} fontWeight={700}
                   >HEAD</text>
                 </g>

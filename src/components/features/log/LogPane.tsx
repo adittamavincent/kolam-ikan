@@ -445,6 +445,32 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     };
   }, [contextMenu, recalculateContextMenuPosition]);
 
+  useEffect(() => {
+    if (!contextMenu || typeof window === 'undefined') return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!contextMenuRef.current) return;
+      const targetNode = event.target as Node | null;
+      if (targetNode && !contextMenuRef.current.contains(targetNode)) {
+        setContextMenu(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setContextMenu(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [contextMenu]);
+
   const handleContextMenu = (e: React.MouseEvent, entry: EntryWithSections) => {
     e.preventDefault();
     // Use a close initial estimate so the menu starts near-final position before exact measurement.
@@ -990,83 +1016,80 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
       {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
       {contextMenu && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-50" onClick={() => setContextMenu(null)}>
-          <div
-            ref={contextMenuRef}
-            className="absolute z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border border-border-strong bg-surface-elevated p-1.5 shadow-2xl ring-1 ring-black/10"
-            style={{
-              top: contextMenuPosition.top,
-              left: contextMenuPosition.left,
-              backgroundColor: 'var(--bg-surface-elevated)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-            role="menu"
-          >
-            {/* Hash label */}
-            <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
-              <GitCommitHorizontal className="h-3.5 w-3.5 text-text-muted" />
-              <code className="text-[11px] font-mono text-action-primary-bg/80">{shortHash(contextMenu.entry.id)}</code>
-              <span className="text-[10px] text-text-muted truncate">
-                                {contextMenu.entry.created_at && new Date(contextMenu.entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-              </span>
-            </div>
-            <div className="h-px bg-border-subtle mb-0.5" />
-
-            {/* Inspect / Copy */}
-            <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">inspect</div>
-            <button onClick={() => handleContextAction('copy-sha')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <Copy className="h-3.5 w-3.5 text-text-muted" />
-              Copy SHA
-            </button>
-            <button onClick={() => handleContextAction('copy-content')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <Eye className="h-3.5 w-3.5 text-text-muted" />
-              Copy content
-            </button>
-            <button onClick={() => handleContextAction('diff')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <GitCompare className="h-3.5 w-3.5 text-text-muted" />
-              Diff with previous
-            </button>
-
-            <div className="my-1 h-px bg-border-subtle" />
-
-            {/* Modify */}
-            <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">modify</div>
-            <button onClick={() => handleContextAction('cherry-pick')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <RotateCcw className="h-3.5 w-3.5 text-text-muted rotate-180" />
-              cherry-pick
-            </button>
-            <button onClick={() => handleContextAction('branch')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <GitBranch className="h-3.5 w-3.5 text-text-muted" />
-              branch from here
-            </button>
-            <button onClick={() => handleContextAction('revert')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <Undo2 className="h-3.5 w-3.5 text-text-muted" />
-              revert
-            </button>
-            <button onClick={() => handleContextAction('tag')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <Tag className="h-3.5 w-3.5 text-text-muted" />
-              {tags[contextMenu.entry.id] ? `tag: ${tags[contextMenu.entry.id]}` : 'tag'}
-            </button>
-            <button onClick={() => handleContextAction('stash')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              {stashedIds.has(contextMenu.entry.id)
-                ? <><EyeOff className="h-3.5 w-3.5 text-amber-500" /><span className="text-amber-600 dark:text-amber-400">stash pop</span></>
-                : <><Archive className="h-3.5 w-3.5 text-text-muted" />stash</>
-              }
-            </button>
-
-            <div className="my-1 h-px bg-border-subtle" />
-
-            {/* Danger */}
-            <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">danger</div>
-            <button onClick={() => handleContextAction('reset')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
-              <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-              reset --hard
-            </button>
-            <button onClick={() => handleContextAction('delete')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
-              <Trash2 className="h-3.5 w-3.5" />
-              rm (delete)
-            </button>
+        <div
+          ref={contextMenuRef}
+          className="fixed z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto rounded-xl border border-border-strong bg-surface-elevated p-1.5 shadow-2xl ring-1 ring-black/10"
+          style={{
+            top: contextMenuPosition.top,
+            left: contextMenuPosition.left,
+            backgroundColor: 'var(--bg-surface-elevated)',
+          }}
+          role="menu"
+        >
+          {/* Hash label */}
+          <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
+            <GitCommitHorizontal className="h-3.5 w-3.5 text-text-muted" />
+            <code className="text-[11px] font-mono text-action-primary-bg/80">{shortHash(contextMenu.entry.id)}</code>
+            <span className="text-[10px] text-text-muted truncate">
+                              {contextMenu.entry.created_at && new Date(contextMenu.entry.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            </span>
           </div>
+          <div className="h-px bg-border-subtle mb-0.5" />
+
+          {/* Inspect / Copy */}
+          <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">inspect</div>
+          <button onClick={() => handleContextAction('copy-sha')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <Copy className="h-3.5 w-3.5 text-text-muted" />
+            Copy SHA
+          </button>
+          <button onClick={() => handleContextAction('copy-content')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <Eye className="h-3.5 w-3.5 text-text-muted" />
+            Copy content
+          </button>
+          <button onClick={() => handleContextAction('diff')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <GitCompare className="h-3.5 w-3.5 text-text-muted" />
+            Diff with previous
+          </button>
+
+          <div className="my-1 h-px bg-border-subtle" />
+
+          {/* Modify */}
+          <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">modify</div>
+          <button onClick={() => handleContextAction('cherry-pick')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <RotateCcw className="h-3.5 w-3.5 text-text-muted rotate-180" />
+            cherry-pick
+          </button>
+          <button onClick={() => handleContextAction('branch')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <GitBranch className="h-3.5 w-3.5 text-text-muted" />
+            branch from here
+          </button>
+          <button onClick={() => handleContextAction('revert')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <Undo2 className="h-3.5 w-3.5 text-text-muted" />
+            revert
+          </button>
+          <button onClick={() => handleContextAction('tag')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <Tag className="h-3.5 w-3.5 text-text-muted" />
+            {tags[contextMenu.entry.id] ? `tag: ${tags[contextMenu.entry.id]}` : 'tag'}
+          </button>
+          <button onClick={() => handleContextAction('stash')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            {stashedIds.has(contextMenu.entry.id)
+              ? <><EyeOff className="h-3.5 w-3.5 text-amber-500" /><span className="text-amber-600 dark:text-amber-400">stash pop</span></>
+              : <><Archive className="h-3.5 w-3.5 text-text-muted" />stash</>
+            }
+          </button>
+
+          <div className="my-1 h-px bg-border-subtle" />
+
+          {/* Danger */}
+          <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">danger</div>
+          <button onClick={() => handleContextAction('reset')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle">
+            <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
+            reset --hard
+          </button>
+          <button onClick={() => handleContextAction('delete')} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+            <Trash2 className="h-3.5 w-3.5" />
+            rm (delete)
+          </button>
         </div>,
         document.body
       )}

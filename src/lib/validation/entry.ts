@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // Basic BlockNote block schema
 // We keep it flexible as BlockNote structure can be complex and extensible
@@ -10,7 +10,9 @@ export const BlockSchema = z.object({
   children: z.array(z.any()).optional(),
 });
 
-export const EntryContentSchema = z.array(BlockSchema).min(1, "Entry cannot be empty");
+export const EntryContentSchema = z
+  .array(BlockSchema)
+  .min(1, "Entry cannot be empty");
 
 export const CreateEntrySchema = z.object({
   stream_id: z.string().uuid(),

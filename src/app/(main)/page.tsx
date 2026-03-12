@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useAuth } from '@/lib/hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Domain } from '@/lib/types';
-import { useRouter } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { Domain } from "@/lib/types";
+import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
 import {
   Globe,
   FolderOpen,
@@ -18,8 +18,8 @@ import {
   TrendingUp,
   AlertCircle,
   RefreshCw,
-} from 'lucide-react';
-import { DynamicIcon } from '@/components/shared/DynamicIcon';
+} from "lucide-react";
+import { DynamicIcon } from "@/components/shared/DynamicIcon";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -32,15 +32,30 @@ interface RecentStream {
   updated_at: string | null;
   created_at: string | null;
   cabinet_id: string;
-  cabinet: { id: string; name: string; domain_id: string; domain: { id: string; name: string; icon: string } | null } | null;
+  cabinet: {
+    id: string;
+    name: string;
+    domain_id: string;
+    domain: { id: string; name: string; icon: string } | null;
+  } | null;
 }
 
 interface RecentEntry {
   id: string;
   created_at: string | null;
   updated_at: string | null;
-  stream: { id: string; name: string; cabinet: { domain: { id: string; name: string; icon: string } | null } | null } | null;
-  sections: { id: string; persona_name_snapshot: string | null; search_text: string | null }[];
+  stream: {
+    id: string;
+    name: string;
+    cabinet: {
+      domain: { id: string; name: string; icon: string } | null;
+    } | null;
+  } | null;
+  sections: {
+    id: string;
+    persona_name_snapshot: string | null;
+    search_text: string | null;
+  }[];
 }
 
 interface DomainWithCounts extends Domain {
@@ -109,12 +124,29 @@ function StatCard({
   label: string;
   color: string;
 }) {
-  const colorMap: Record<string, { bg: string; text: string; iconBg: string }> = {
-    blue: { bg: 'bg-blue-500/5', text: 'text-blue-600 dark:text-blue-400', iconBg: 'bg-blue-500/10' },
-    purple: { bg: 'bg-purple-500/5', text: 'text-purple-600 dark:text-purple-400', iconBg: 'bg-purple-500/10' },
-    emerald: { bg: 'bg-emerald-500/5', text: 'text-emerald-600 dark:text-emerald-400', iconBg: 'bg-emerald-500/10' },
-    amber: { bg: 'bg-amber-500/5', text: 'text-amber-600 dark:text-amber-400', iconBg: 'bg-amber-500/10' },
-  };
+  const colorMap: Record<string, { bg: string; text: string; iconBg: string }> =
+    {
+      blue: {
+        bg: "bg-blue-500/5",
+        text: "text-blue-600 dark:text-blue-400",
+        iconBg: "bg-blue-500/10",
+      },
+      purple: {
+        bg: "bg-purple-500/5",
+        text: "text-purple-600 dark:text-purple-400",
+        iconBg: "bg-purple-500/10",
+      },
+      emerald: {
+        bg: "bg-emerald-500/5",
+        text: "text-emerald-600 dark:text-emerald-400",
+        iconBg: "bg-emerald-500/10",
+      },
+      amber: {
+        bg: "bg-amber-500/5",
+        text: "text-amber-600 dark:text-amber-400",
+        iconBg: "bg-amber-500/10",
+      },
+    };
   const c = colorMap[color] ?? colorMap.blue;
 
   return (
@@ -149,7 +181,9 @@ function DomainCard({
             {domain.name}
           </h3>
           {domain.description && (
-            <p className="truncate text-xs text-text-subtle">{domain.description}</p>
+            <p className="truncate text-xs text-text-subtle">
+              {domain.description}
+            </p>
           )}
         </div>
         <ArrowRight className="h-4 w-4 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-action-primary-bg" />
@@ -157,15 +191,16 @@ function DomainCard({
       <div className="flex gap-4 text-xs text-text-muted">
         <span className="flex items-center gap-1">
           <FolderOpen className="h-3.5 w-3.5" />
-          {domain.cabinetCount} {domain.cabinetCount === 1 ? 'cabinet' : 'cabinets'}
+          {domain.cabinetCount}{" "}
+          {domain.cabinetCount === 1 ? "cabinet" : "cabinets"}
         </span>
         <span className="flex items-center gap-1">
           <Layers className="h-3.5 w-3.5" />
-          {domain.streamCount} {domain.streamCount === 1 ? 'stream' : 'streams'}
+          {domain.streamCount} {domain.streamCount === 1 ? "stream" : "streams"}
         </span>
         <span className="flex items-center gap-1">
           <FileText className="h-3.5 w-3.5" />
-          {domain.entryCount} {domain.entryCount === 1 ? 'entry' : 'entries'}
+          {domain.entryCount} {domain.entryCount === 1 ? "entry" : "entries"}
         </span>
       </div>
     </button>
@@ -195,7 +230,9 @@ function RecentActivityItem({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium text-text-default">{title}</p>
+          <p className="truncate text-sm font-medium text-text-default">
+            {title}
+          </p>
         </div>
         <p className="truncate text-xs text-text-subtle">{subtitle}</p>
       </div>
@@ -271,21 +308,21 @@ export default function HomePage() {
     error: domainsError,
     refetch: refetchDomains,
   } = useQuery({
-    queryKey: ['home-domains', userId],
+    queryKey: ["home-domains", userId],
     queryFn: async ({ signal }) => {
       // Parallel fetch: domains and stats
       const [domainsResult, statsResult] = await Promise.all([
         supabase
-          .from('domains')
-          .select('*')
-          .eq('user_id', userId!)
-          .is('deleted_at', null)
-          .order('sort_order', { ascending: true })
+          .from("domains")
+          .select("*")
+          .eq("user_id", userId!)
+          .is("deleted_at", null)
+          .order("sort_order", { ascending: true })
           .abortSignal(signal),
 
         supabase
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .rpc('get_domain_stats' as any, { p_user_id: userId! })
+          .rpc("get_domain_stats" as any, { p_user_id: userId! })
           .abortSignal(signal),
       ]);
 
@@ -326,19 +363,21 @@ export default function HomePage() {
     error: streamsError,
     refetch: refetchStreams,
   } = useQuery({
-    queryKey: ['home-recent-streams', userId],
+    queryKey: ["home-recent-streams", userId],
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
-        .from('streams')
-        .select(`
+        .from("streams")
+        .select(
+          `
           id, name, description, updated_at, created_at, cabinet_id,
           cabinet:cabinets (
             id, name, domain_id,
             domain:domains (id, name, icon)
           )
-        `)
-        .is('deleted_at', null)
-        .order('updated_at', { ascending: false })
+        `,
+        )
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
         .limit(5)
         .abortSignal(signal);
       if (error) throw error;
@@ -355,11 +394,12 @@ export default function HomePage() {
     error: entriesError,
     refetch: refetchEntries,
   } = useQuery({
-    queryKey: ['home-recent-entries', userId],
+    queryKey: ["home-recent-entries", userId],
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
-        .from('entries')
-        .select(`
+        .from("entries")
+        .select(
+          `
           id, created_at, updated_at,
           stream:streams (
             id, name,
@@ -368,9 +408,10 @@ export default function HomePage() {
             )
           ),
           sections (id, persona_name_snapshot, search_text)
-        `)
-        .is('deleted_at', null)
-        .order('updated_at', { ascending: false })
+        `,
+        )
+        .is("deleted_at", null)
+        .order("updated_at", { ascending: false })
         .limit(5)
         .abortSignal(signal);
       if (error) throw error;
@@ -382,37 +423,44 @@ export default function HomePage() {
 
   // ---- Derived stats ----
   const totalDomains = domainsWithCounts?.length ?? 0;
-  const totalCabinets = domainsWithCounts?.reduce((s, d) => s + d.cabinetCount, 0) ?? 0;
-  const totalStreams = domainsWithCounts?.reduce((s, d) => s + d.streamCount, 0) ?? 0;
-  const totalEntries = domainsWithCounts?.reduce((s, d) => s + d.entryCount, 0) ?? 0;
+  const totalCabinets =
+    domainsWithCounts?.reduce((s, d) => s + d.cabinetCount, 0) ?? 0;
+  const totalStreams =
+    domainsWithCounts?.reduce((s, d) => s + d.streamCount, 0) ?? 0;
+  const totalEntries =
+    domainsWithCounts?.reduce((s, d) => s + d.entryCount, 0) ?? 0;
 
   const isLoading = authLoading || domainsLoading;
 
   // ---- Greeting ----
   const hour = new Date().getHours();
   const greeting =
-    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const displayName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'there';
+    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const displayName =
+    user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "there";
 
   // ---- Helpers ----
   function timeAgo(dateStr: string | null) {
-    if (!dateStr) return '';
+    if (!dateStr) return "";
     try {
       return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
     } catch {
-      return '';
+      return "";
     }
   }
 
   function getEntryPreview(entry: RecentEntry) {
     const firstSection = entry.sections?.[0];
     if (firstSection?.search_text) {
-      return firstSection.search_text.slice(0, 80) + (firstSection.search_text.length > 80 ? '...' : '');
+      return (
+        firstSection.search_text.slice(0, 80) +
+        (firstSection.search_text.length > 80 ? "..." : "")
+      );
     }
     if (firstSection?.persona_name_snapshot) {
       return `Section by ${firstSection.persona_name_snapshot}`;
     }
-    return 'Empty entry';
+    return "Empty entry";
   }
 
   return (
@@ -422,13 +470,17 @@ export default function HomePage() {
         <div className="mb-8">
           <div className="flex items-center gap-2 text-action-primary-bg mb-1">
             <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">Dashboard</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">
+              Dashboard
+            </span>
           </div>
           <h1 className="text-2xl font-bold text-text-default md:text-3xl">
-            {greeting}, <span className="text-action-primary-bg">{displayName}</span>
+            {greeting},{" "}
+            <span className="text-action-primary-bg">{displayName}</span>
           </h1>
           <p className="mt-1 text-sm text-text-subtle">
-            Here&apos;s an overview of your workspace. Pick up where you left off.
+            Here&apos;s an overview of your workspace. Pick up where you left
+            off.
           </p>
         </div>
 
@@ -454,10 +506,30 @@ export default function HomePage() {
               </>
             ) : (
               <>
-                <StatCard icon={Globe} value={totalDomains} label="Domains" color="blue" />
-                <StatCard icon={FolderOpen} value={totalCabinets} label="Cabinets" color="purple" />
-                <StatCard icon={Layers} value={totalStreams} label="Streams" color="emerald" />
-                <StatCard icon={FileText} value={totalEntries} label="Entries" color="amber" />
+                <StatCard
+                  icon={Globe}
+                  value={totalDomains}
+                  label="Domains"
+                  color="blue"
+                />
+                <StatCard
+                  icon={FolderOpen}
+                  value={totalCabinets}
+                  label="Cabinets"
+                  color="purple"
+                />
+                <StatCard
+                  icon={Layers}
+                  value={totalStreams}
+                  label="Streams"
+                  color="emerald"
+                />
+                <StatCard
+                  icon={FileText}
+                  value={totalEntries}
+                  label="Entries"
+                  color="amber"
+                />
               </>
             )}
           </div>
@@ -522,7 +594,9 @@ export default function HomePage() {
             ) : totalDomains === 0 ? (
               <div className="rounded-2xl border-2 border-dashed border-border-default bg-surface-default p-10 text-center">
                 <Globe className="mx-auto h-10 w-10 text-text-muted" />
-                <h3 className="mt-3 text-sm font-semibold text-text-default">No domains yet</h3>
+                <h3 className="mt-3 text-sm font-semibold text-text-default">
+                  No domains yet
+                </h3>
                 <p className="mt-1 text-xs text-text-subtle">
                   Create your first domain to start organizing your knowledge.
                 </p>
@@ -566,10 +640,12 @@ export default function HomePage() {
                 <ActivityItemSkeleton />
                 <ActivityItemSkeleton />
               </div>
-            ) : (recentStreams?.length === 0 && recentEntries?.length === 0) ? (
+            ) : recentStreams?.length === 0 && recentEntries?.length === 0 ? (
               <div className="rounded-2xl border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
                 <Clock className="mx-auto h-8 w-8 text-text-muted" />
-                <h3 className="mt-3 text-sm font-semibold text-text-default">No activity yet</h3>
+                <h3 className="mt-3 text-sm font-semibold text-text-default">
+                  No activity yet
+                </h3>
                 <p className="mt-1 text-xs text-text-subtle">
                   Your recent streams and entries will appear here.
                 </p>
@@ -578,15 +654,15 @@ export default function HomePage() {
               <div className="space-y-2">
                 {/* Recent streams */}
                 {recentStreams?.slice(0, 3).map((stream) => {
-                  const domainIcon = stream.cabinet?.domain?.icon ?? '📁';
-                  const domainName = stream.cabinet?.domain?.name ?? 'Unknown';
+                  const domainIcon = stream.cabinet?.domain?.icon ?? "📁";
+                  const domainName = stream.cabinet?.domain?.name ?? "Unknown";
                   const domainId = stream.cabinet?.domain_id;
                   return (
                     <RecentActivityItem
                       key={`stream-${stream.id}`}
                       icon={<DynamicIcon name={domainIcon} />}
                       title={stream.name}
-                      subtitle={`${domainName} — ${stream.cabinet?.name ?? ''}`}
+                      subtitle={`${domainName} — ${stream.cabinet?.name ?? ""}`}
                       time={timeAgo(stream.updated_at)}
                       onClick={() => {
                         if (domainId) router.push(`/${domainId}/${stream.id}`);
@@ -596,20 +672,22 @@ export default function HomePage() {
                 })}
 
                 {/* Divider */}
-                {(recentStreams?.length ?? 0) > 0 && (recentEntries?.length ?? 0) > 0 && (
-                  <div className="flex items-center gap-2 py-1">
-                    <div className="h-px flex-1 bg-border-subtle" />
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-text-subtle">
-                      Entries
-                    </span>
-                    <div className="h-px flex-1 bg-border-subtle" />
-                  </div>
-                )}
+                {(recentStreams?.length ?? 0) > 0 &&
+                  (recentEntries?.length ?? 0) > 0 && (
+                    <div className="flex items-center gap-2 py-1">
+                      <div className="h-px flex-1 bg-border-subtle" />
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-text-subtle">
+                        Entries
+                      </span>
+                      <div className="h-px flex-1 bg-border-subtle" />
+                    </div>
+                  )}
 
                 {/* Recent entries */}
                 {recentEntries?.slice(0, 4).map((entry) => {
-                  const domainIcon = entry.stream?.cabinet?.domain?.icon ?? '📄';
-                  const streamName = entry.stream?.name ?? 'Unknown stream';
+                  const domainIcon =
+                    entry.stream?.cabinet?.domain?.icon ?? "📄";
+                  const streamName = entry.stream?.name ?? "Unknown stream";
                   const domainId = entry.stream?.cabinet?.domain?.id;
                   const streamId = entry.stream?.id;
                   return (
@@ -620,7 +698,8 @@ export default function HomePage() {
                       subtitle={streamName}
                       time={timeAgo(entry.updated_at ?? entry.created_at)}
                       onClick={() => {
-                        if (domainId && streamId) router.push(`/${domainId}/${streamId}`);
+                        if (domainId && streamId)
+                          router.push(`/${domainId}/${streamId}`);
                       }}
                     />
                   );
@@ -633,7 +712,9 @@ export default function HomePage() {
         {/* ---- Footer tip ---- */}
         <div className="mt-10 rounded-xl bg-action-primary-bg/10 px-5 py-4 text-center">
           <p className="text-xs text-text-default">
-            <span className="font-semibold text-action-primary-bg">Tip:</span> Use the sidebar to quickly switch between domains, or click any card above to jump in.
+            <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
+            Use the sidebar to quickly switch between domains, or click any card
+            above to jump in.
           </p>
         </div>
       </div>

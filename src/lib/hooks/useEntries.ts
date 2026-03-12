@@ -1,15 +1,20 @@
-import { useInfiniteQuery, useMutation, useQueryClient, InfiniteData } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { EntryWithSections } from '@/lib/types';
-import { Json } from '@/lib/types/database.types';
-import { PartialBlock } from '@blocknote/core';
-import { SectionPdfAttachmentInsert } from '@/lib/types';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+  InfiniteData,
+} from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { EntryWithSections } from "@/lib/types";
+import { Json } from "@/lib/types/database.types";
+import { PartialBlock } from "@blocknote/core";
+import { SectionPdfAttachmentInsert } from "@/lib/types";
 
 interface UseEntriesOptions {
   search?: string;
   personaId?: string | null;
-  sortOrder?: 'newest' | 'oldest';
+  sortOrder?: "newest" | "oldest";
 }
 
 interface AmendEntryInput {
@@ -44,28 +49,35 @@ const ENTRIES_SELECT_LEGACY = `
   )
 `;
 
-function isMissingColumnError(error: { message?: string; code?: string } | null): boolean {
+function isMissingColumnError(
+  error: { message?: string; code?: string } | null,
+): boolean {
   if (!error?.message) return false;
   const msg = error.message.toLowerCase();
   return (
-    (msg.includes('column') || msg.includes('relation') || msg.includes('does not exist'))
-    && (msg.includes('section_type') || msg.includes('pdf_display_mode') || msg.includes('section_pdf_attachments'))
+    (msg.includes("column") ||
+      msg.includes("relation") ||
+      msg.includes("does not exist")) &&
+    (msg.includes("section_type") ||
+      msg.includes("pdf_display_mode") ||
+      msg.includes("section_pdf_attachments"))
   );
 }
 
 export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const { search, personaId, sortOrder = 'newest' } = options;
+  const { search, personaId, sortOrder = "newest" } = options;
   const PAGE_SIZE = 20;
 
   const cacheKey = useMemo(
-    () => `kolam_entries_cache_${streamId}_${search ?? ''}_${personaId ?? ''}_${sortOrder}`,
+    () =>
+      `kolam_entries_cache_${streamId}_${search ?? ""}_${personaId ?? ""}_${sortOrder}`,
     [streamId, search, personaId, sortOrder],
   );
 
   const cachedEntries = useMemo(() => {
-    if (typeof window === 'undefined' || !streamId) return null;
+    if (typeof window === "undefined" || !streamId) return null;
 
     try {
       const raw = sessionStorage.getItem(cacheKey);
@@ -77,7 +89,8 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       };
 
       const items = Array.isArray(parsed.items) ? parsed.items : null;
-      const updatedAt = typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0;
+      const updatedAt =
+        typeof parsed.updatedAt === "number" ? parsed.updatedAt : 0;
 
       if (!items || items.length === 0) return null;
 
@@ -88,22 +101,22 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   }, [cacheKey, streamId]);
 
   const query = useInfiniteQuery({
-    queryKey: ['entries', streamId, search, personaId, sortOrder],
+    queryKey: ["entries", streamId, search, personaId, sortOrder],
     queryFn: async ({ pageParam = 0, signal }) => {
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
       const buildQuery = (selectStr: string) => {
         let q = supabase
-          .from('entries')
+          .from("entries")
           .select(selectStr)
-          .eq('stream_id', streamId)
-          .eq('is_draft', false)
-          .is('deleted_at', null);
+          .eq("stream_id", streamId)
+          .eq("is_draft", false)
+          .is("deleted_at", null);
 
-        if (search) q = q.ilike('sections.search_text', `%${search}%`);
-        if (personaId) q = q.eq('sections.persona_id', personaId);
-        q = q.order('created_at', { ascending: sortOrder === 'oldest' });
+        if (search) q = q.ilike("sections.search_text", `%${search}%`);
+        if (personaId) q = q.eq("sections.persona_id", personaId);
+        q = q.order("created_at", { ascending: sortOrder === "oldest" });
         q = q.abortSignal(signal);
         return q.range(from, to);
       };
@@ -120,13 +133,12 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       return data as EntryWithSections[];
     },
     initialPageParam: 0,
-    initialData:
-      cachedEntries
-        ? {
-            pages: [cachedEntries.items],
-            pageParams: [0],
-          }
-        : undefined,
+    initialData: cachedEntries
+      ? {
+          pages: [cachedEntries.items],
+          pageParams: [0],
+        }
+      : undefined,
     initialDataUpdatedAt: cachedEntries?.updatedAt,
     getNextPageParam: (lastPage, allPages) => {
       return lastPage.length === PAGE_SIZE ? allPages.length : undefined;
@@ -135,7 +147,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   });
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !streamId || !query.data) return;
+    if (typeof window === "undefined" || !streamId || !query.data) return;
 
     const firstPage = query.data.pages[0] ?? [];
     if (!firstPage.length) return;
@@ -155,7 +167,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   const createEntry = useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase
-        .from('entries')
+        .from("entries")
         .insert({ stream_id: streamId })
         .select()
         .single();
@@ -164,25 +176,33 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
     },
   });
 
   const amendEntry = useMutation({
     onMutate: async ({ entryId, sections }) => {
-      await queryClient.cancelQueries({ queryKey: ['entries', streamId] });
+      await queryClient.cancelQueries({ queryKey: ["entries", streamId] });
 
-      const previousQueries = queryClient.getQueriesData<InfiniteData<EntryWithSections[]>>({
-        queryKey: ['entries', streamId],
+      const previousQueries = queryClient.getQueriesData<
+        InfiniteData<EntryWithSections[]>
+      >({
+        queryKey: ["entries", streamId],
       });
 
       const nextUpdatedAt = new Date().toISOString();
-      const sectionContentMap = new Map(sections.map((section) => [section.sectionId, section.content]));
+      const sectionContentMap = new Map(
+        sections.map((section) => [section.sectionId, section.content]),
+      );
 
       previousQueries.forEach(([queryKey, queryData]) => {
         if (!queryData) return;
@@ -220,18 +240,18 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     },
     mutationFn: async ({ entryId, sections }: AmendEntryInput) => {
       if (!sections.length) {
-        throw new Error('No amended sections to save');
+        throw new Error("No amended sections to save");
       }
 
       const nowIso = new Date().toISOString();
       const updates = sections.map(({ sectionId, content }) =>
         supabase
-          .from('sections')
+          .from("sections")
           .update({
             content_json: content as unknown as Json,
             updated_at: nowIso,
           })
-          .eq('id', sectionId),
+          .eq("id", sectionId),
       );
 
       const results = await Promise.all(updates);
@@ -239,9 +259,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       if (failed?.error) throw failed.error;
 
       const { error: entryError } = await supabase
-        .from('entries')
+        .from("entries")
         .update({ updated_at: nowIso })
-        .eq('id', entryId);
+        .eq("id", entryId);
 
       if (entryError) throw entryError;
       return { entryId };
@@ -252,32 +272,40 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
     },
   });
 
   const deleteEntry = useMutation({
     mutationFn: async (entryId: string) => {
       const { error } = await supabase
-        .from('entries')
+        .from("entries")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', entryId);
+        .eq("id", entryId);
 
       if (error) throw error;
       return { entryId };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['graph-entries'] });
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
     },
   });
 
@@ -285,21 +313,25 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     mutationFn: async (entry: EntryWithSections) => {
       // Mark all entries newer than this one in the same stream as deleted
       const { error } = await supabase
-        .from('entries')
+        .from("entries")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('stream_id', streamId)
-        .gt('created_at', entry.created_at || '')
-        .is('deleted_at', null);
+        .eq("stream_id", streamId)
+        .gt("created_at", entry.created_at || "")
+        .is("deleted_at", null);
 
       if (error) throw error;
       return { entryId: entry.id };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
     },
   });
 
@@ -307,7 +339,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     mutationFn: async (entry: EntryWithSections) => {
       // Create a new entry
       const { data: newEntry, error: entryError } = await supabase
-        .from('entries')
+        .from("entries")
         .insert({ stream_id: streamId })
         .select()
         .single();
@@ -327,9 +359,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         }));
 
         const { data: insertedSections, error: sectionsError } = await supabase
-          .from('sections')
+          .from("sections")
           .insert(sectionsToInsert)
-          .select('id, sort_order');
+          .select("id, sort_order");
 
         if (sectionsError) throw sectionsError;
 
@@ -351,7 +383,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
         if (attachmentInserts.length > 0) {
           const { error: attachmentsError } = await supabase
-            .from('section_pdf_attachments')
+            .from("section_pdf_attachments")
             .insert(attachmentInserts);
           if (attachmentsError) throw attachmentsError;
         }
@@ -360,18 +392,22 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       return newEntry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
     },
   });
 
   const revertEntry = useMutation({
     mutationFn: async (entry: EntryWithSections) => {
       const { data: newEntry, error: entryError } = await supabase
-        .from('entries')
+        .from("entries")
         .insert({ stream_id: streamId })
         .select()
         .single();
@@ -386,16 +422,16 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
           entry_id: newEntry.id,
           content_json: section.content_json,
           persona_id: section.persona_id,
-          persona_name_snapshot: `↩ Revert of ${section.persona_name_snapshot || 'Unknown'} (${revertDate})`,
+          persona_name_snapshot: `↩ Revert of ${section.persona_name_snapshot || "Unknown"} (${revertDate})`,
           section_type: section.section_type,
           pdf_display_mode: section.pdf_display_mode,
           sort_order: index,
         }));
 
         const { data: insertedSections, error: sectionsError } = await supabase
-          .from('sections')
+          .from("sections")
           .insert(sectionsToInsert)
-          .select('id, sort_order');
+          .select("id, sort_order");
 
         if (sectionsError) throw sectionsError;
 
@@ -417,7 +453,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
         if (attachmentInserts.length > 0) {
           const { error: attachmentsError } = await supabase
-            .from('section_pdf_attachments')
+            .from("section_pdf_attachments")
             .insert(attachmentInserts);
           if (attachmentsError) throw attachmentsError;
         }
@@ -426,26 +462,30 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       return newEntry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['latest-entry-id', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['entries-xml', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-entries', streamId] });
-      queryClient.invalidateQueries({ queryKey: ['bridge-token-entries', streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
     },
   });
 
   const fetchAllEntriesForExport = async () => {
     const buildExportQuery = (selectStr: string) => {
       let q = supabase
-        .from('entries')
+        .from("entries")
         .select(selectStr)
-        .eq('stream_id', streamId)
-        .eq('is_draft', false)
-        .is('deleted_at', null);
+        .eq("stream_id", streamId)
+        .eq("is_draft", false)
+        .is("deleted_at", null);
 
-      if (search) q = q.ilike('sections.search_text', `%${search}%`);
-      if (personaId) q = q.eq('sections.persona_id', personaId);
-      q = q.order('created_at', { ascending: sortOrder === 'oldest' });
+      if (search) q = q.ilike("sections.search_text", `%${search}%`);
+      if (personaId) q = q.eq("sections.persona_id", personaId);
+      q = q.order("created_at", { ascending: sortOrder === "oldest" });
       return q;
     };
 

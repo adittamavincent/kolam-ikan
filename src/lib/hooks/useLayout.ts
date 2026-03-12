@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-export type LayoutMode = 'log-only' | 'balanced' | 'canvas-only';
+export type LayoutMode = "log-only" | "balanced" | "canvas-only";
 
 interface LayoutState {
   mode: LayoutMode;
@@ -18,15 +18,15 @@ interface LayoutState {
 export const useLayout = create<LayoutState>()(
   persist(
     (set) => ({
-      mode: 'balanced',
+      mode: "balanced",
       logWidth: 50,
       canvasWidth: 50,
       previousWidths: { log: 50, canvas: 50 },
       setMode: (mode) => {
         const widths = {
-          'log-only': { log: 100, canvas: 0 },
+          "log-only": { log: 100, canvas: 0 },
           balanced: { log: 50, canvas: 50 },
-          'canvas-only': { log: 0, canvas: 100 },
+          "canvas-only": { log: 0, canvas: 100 },
         };
         set({
           mode,
@@ -36,15 +36,23 @@ export const useLayout = create<LayoutState>()(
         });
       },
       setCustomWidths: (logWidth, canvasWidth) =>
-        set({ logWidth, canvasWidth, mode: 'balanced', previousWidths: { log: logWidth, canvas: canvasWidth } }),
+        set({
+          logWidth,
+          canvasWidth,
+          mode: "balanced",
+          previousWidths: { log: logWidth, canvas: canvasWidth },
+        }),
       toggleLogCollapse: () =>
         set((state) => {
           if (state.logWidth > 0) {
             return {
               logWidth: 0,
               canvasWidth: 100,
-              mode: 'canvas-only',
-              previousWidths: { log: state.logWidth, canvas: state.canvasWidth },
+              mode: "canvas-only",
+              previousWidths: {
+                log: state.logWidth,
+                canvas: state.canvasWidth,
+              },
             };
           }
 
@@ -52,13 +60,18 @@ export const useLayout = create<LayoutState>()(
           return {
             logWidth: next.log,
             canvasWidth: next.canvas,
-            mode: next.log === 0 ? 'canvas-only' : next.canvas === 0 ? 'log-only' : 'balanced',
+            mode:
+              next.log === 0
+                ? "canvas-only"
+                : next.canvas === 0
+                  ? "log-only"
+                  : "balanced",
           };
         }),
     }),
     {
-      name: 'kolam-layout-state',
+      name: "kolam-layout-state",
       skipHydration: true,
-    }
-  )
+    },
+  ),
 );

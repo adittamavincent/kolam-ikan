@@ -16,11 +16,11 @@ export type CabinetUpdate = Database["public"]["Tables"]["cabinets"]["Update"];
 export type Stream = Database["public"]["Tables"]["streams"]["Row"];
 export type StreamInsert = Database["public"]["Tables"]["streams"]["Insert"];
 export type StreamUpdate = Database["public"]["Tables"]["streams"]["Update"];
-export type StreamKind = 'GLOBAL' | 'REGULAR';
+export type StreamKind = "GLOBAL" | "REGULAR";
 
 export const STREAM_KIND = {
-  GLOBAL: 'GLOBAL' as StreamKind,
-  REGULAR: 'REGULAR' as StreamKind,
+  GLOBAL: "GLOBAL" as StreamKind,
+  REGULAR: "REGULAR" as StreamKind,
 };
 
 export type Entry = Database["public"]["Tables"]["entries"]["Row"];
@@ -28,28 +28,42 @@ export type EntryInsert = Database["public"]["Tables"]["entries"]["Insert"];
 export type EntryUpdate = Database["public"]["Tables"]["entries"]["Update"];
 
 export type Document = Database["public"]["Tables"]["documents"]["Row"];
-export type DocumentInsert = Database["public"]["Tables"]["documents"]["Insert"];
-export type DocumentUpdate = Database["public"]["Tables"]["documents"]["Update"];
+export type DocumentInsert =
+  Database["public"]["Tables"]["documents"]["Insert"];
+export type DocumentUpdate =
+  Database["public"]["Tables"]["documents"]["Update"];
 
-export type DocumentImportJob = Database["public"]["Tables"]["document_import_jobs"]["Row"];
-export type DocumentImportJobInsert = Database["public"]["Tables"]["document_import_jobs"]["Insert"];
-export type DocumentImportJobUpdate = Database["public"]["Tables"]["document_import_jobs"]["Update"];
+export type DocumentImportJob =
+  Database["public"]["Tables"]["document_import_jobs"]["Row"];
+export type DocumentImportJobInsert =
+  Database["public"]["Tables"]["document_import_jobs"]["Insert"];
+export type DocumentImportJobUpdate =
+  Database["public"]["Tables"]["document_import_jobs"]["Update"];
 
-export type DocumentChunk = Database["public"]["Tables"]["document_chunks"]["Row"];
-export type DocumentChunkInsert = Database["public"]["Tables"]["document_chunks"]["Insert"];
-export type DocumentChunkUpdate = Database["public"]["Tables"]["document_chunks"]["Update"];
+export type DocumentChunk =
+  Database["public"]["Tables"]["document_chunks"]["Row"];
+export type DocumentChunkInsert =
+  Database["public"]["Tables"]["document_chunks"]["Insert"];
+export type DocumentChunkUpdate =
+  Database["public"]["Tables"]["document_chunks"]["Update"];
 
-export type DocumentEntryLink = Database["public"]["Tables"]["document_entry_links"]["Row"];
-export type DocumentEntryLinkInsert = Database["public"]["Tables"]["document_entry_links"]["Insert"];
-export type DocumentEntryLinkUpdate = Database["public"]["Tables"]["document_entry_links"]["Update"];
+export type DocumentEntryLink =
+  Database["public"]["Tables"]["document_entry_links"]["Row"];
+export type DocumentEntryLinkInsert =
+  Database["public"]["Tables"]["document_entry_links"]["Insert"];
+export type DocumentEntryLinkUpdate =
+  Database["public"]["Tables"]["document_entry_links"]["Update"];
 
 export type Section = Database["public"]["Tables"]["sections"]["Row"];
 export type SectionInsert = Database["public"]["Tables"]["sections"]["Insert"];
 export type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
 
-export type SectionPdfAttachment = Database["public"]["Tables"]["section_pdf_attachments"]["Row"];
-export type SectionPdfAttachmentInsert = Database["public"]["Tables"]["section_pdf_attachments"]["Insert"];
-export type SectionPdfAttachmentUpdate = Database["public"]["Tables"]["section_pdf_attachments"]["Update"];
+export type SectionPdfAttachment =
+  Database["public"]["Tables"]["section_pdf_attachments"]["Row"];
+export type SectionPdfAttachmentInsert =
+  Database["public"]["Tables"]["section_pdf_attachments"]["Insert"];
+export type SectionPdfAttachmentUpdate =
+  Database["public"]["Tables"]["section_pdf_attachments"]["Update"];
 
 export type Canvas = Database["public"]["Tables"]["canvases"]["Row"];
 export type CanvasInsert = Database["public"]["Tables"]["canvases"]["Insert"];
@@ -58,7 +72,12 @@ export type CanvasUpdate = Database["public"]["Tables"]["canvases"]["Update"];
 export type CanvasVersion =
   Database["public"]["Tables"]["canvas_versions"]["Row"];
 
-export type DocumentImportStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'canceled';
+export type DocumentImportStatus =
+  | "queued"
+  | "processing"
+  | "completed"
+  | "failed"
+  | "canceled";
 
 export interface DocumentWithLatestJob extends Document {
   latestJob?: DocumentImportJob | null;
@@ -102,9 +121,12 @@ export interface EntryWithSections extends Entry {
   sections: SectionWithPersona[];
 }
 
-export interface SectionWithPersona extends Omit<Section, 'section_type' | 'pdf_display_mode'> {
-  section_type?: Section['section_type'];
-  pdf_display_mode?: Section['pdf_display_mode'];
+export interface SectionWithPersona extends Omit<
+  Section,
+  "section_type" | "pdf_display_mode"
+> {
+  section_type?: Section["section_type"];
+  pdf_display_mode?: Section["pdf_display_mode"];
   persona?: Persona;
   section_pdf_attachments?: SectionPdfAttachmentWithDocument[];
 }

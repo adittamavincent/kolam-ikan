@@ -26,11 +26,11 @@
   --color-primary-950: #082f49;
 
   /* Domain Colors */
-  --color-programming: #3B82F6;
-  --color-internship: #8B5CF6;
-  --color-gym: #EF4444;
-  --color-scholarship: #10B981;
-  --color-hima: #F59E0B;
+  --color-programming: #3b82f6;
+  --color-internship: #8b5cf6;
+  --color-gym: #ef4444;
+  --color-scholarship: #10b981;
+  --color-hima: #f59e0b;
 
   /* -------------------------------------------------------------------------- */
   /*  SEMANTIC TOKENS (Theming System)                                         */
@@ -273,9 +273,15 @@ body {
 }
 
 /* Scale down headings proportionally */
-.blocknote-editor h1.bn-inline-content { font-size: 1.5rem !important; }
-.blocknote-editor h2.bn-inline-content { font-size: 1.25rem !important; }
-.blocknote-editor h3.bn-inline-content { font-size: 1.125rem !important; }
+.blocknote-editor h1.bn-inline-content {
+  font-size: 1.5rem !important;
+}
+.blocknote-editor h2.bn-inline-content {
+  font-size: 1.25rem !important;
+}
+.blocknote-editor h3.bn-inline-content {
+  font-size: 1.125rem !important;
+}
 
 /* Scale down UI elements slightly (toolbar, menus) to feel more compact */
 .blocknote-editor .bn-toolbar,

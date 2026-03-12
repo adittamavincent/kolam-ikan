@@ -1,14 +1,17 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import { FileText } from 'lucide-react';
+import { useEffect, useRef, useState } from "react";
+import { FileText } from "lucide-react";
 
 interface PdfAttachmentThumbnailProps {
   url?: string | null;
   title: string;
 }
 
-export function PdfAttachmentThumbnail({ url, title }: PdfAttachmentThumbnailProps) {
+export function PdfAttachmentThumbnail({
+  url,
+  title,
+}: PdfAttachmentThumbnailProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [hasRendered, setHasRendered] = useState(false);
 
@@ -22,7 +25,7 @@ export function PdfAttachmentThumbnail({ url, title }: PdfAttachmentThumbnailPro
       }
 
       try {
-        const pdfjs = await import('pdfjs-dist');
+        const pdfjs = await import("pdfjs-dist");
         pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
         const loadingTask = pdfjs.getDocument({ url });
@@ -35,7 +38,7 @@ export function PdfAttachmentThumbnail({ url, title }: PdfAttachmentThumbnailPro
         }
 
         const viewport = page.getViewport({ scale: 0.35 });
-        const context = canvasRef.current.getContext('2d');
+        const context = canvasRef.current.getContext("2d");
         if (!context) {
           await pdf.destroy();
           return;

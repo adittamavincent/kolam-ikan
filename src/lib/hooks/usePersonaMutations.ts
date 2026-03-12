@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Persona } from '@/lib/types';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { Persona } from "@/lib/types";
 
 export function usePersonaMutations() {
   const supabase = createClient();
@@ -13,110 +13,137 @@ export function usePersonaMutations() {
   };
 
   const createPersona = useMutation({
-    mutationFn: async (newPersona: Omit<Persona, 'id' | 'created_at' | 'updated_at' | 'deleted_at' | 'is_system' | 'user_id'>) => {
+    mutationFn: async (
+      newPersona: Omit<
+        Persona,
+        | "id"
+        | "created_at"
+        | "updated_at"
+        | "deleted_at"
+        | "is_system"
+        | "user_id"
+      >,
+    ) => {
       // Need to get current user to assign user_id
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
-      const { error } = await supabase
-        .from('personas')
-        .insert({
-          ...newPersona,
-          user_id: user.id,
-          is_system: false,
-          type: 'HUMAN', // Default to HUMAN for user-created personas
-        });
+      const { error } = await supabase.from("personas").insert({
+        ...newPersona,
+        user_id: user.id,
+        is_system: false,
+        type: "HUMAN", // Default to HUMAN for user-created personas
+      });
 
       if (error) throw error;
       return null;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['personas'] });
+      queryClient.invalidateQueries({ queryKey: ["personas"] });
     },
   });
 
   const updatePersona = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Persona> }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: Partial<Persona>;
+    }) => {
       const { error } = await supabase
-        .from('personas')
+        .from("personas")
         .update(updates)
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
       return null;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['personas'] });
+      queryClient.invalidateQueries({ queryKey: ["personas"] });
     },
   });
 
   const deletePersona = useMutation({
-    mutationFn: async ({ id, transferToId, transferToName }: DeletePersonaParams) => {
+    mutationFn: async ({
+      id,
+      transferToId,
+      transferToName,
+    }: DeletePersonaParams) => {
       if (transferToId) {
         const { error: transferError } = await supabase
-          .from('sections')
+          .from("sections")
           .update({
             persona_id: transferToId,
             persona_name_snapshot: transferToName ?? null,
           })
-          .eq('persona_id', id);
+          .eq("persona_id", id);
 
         if (transferError) throw transferError;
       }
 
       // Soft delete
       const { error } = await supabase
-        .from('personas')
+        .from("personas")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['personas'] });
-      queryClient.invalidateQueries({ queryKey: ['entries'] });
+      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({ queryKey: ["entries"] });
     },
   });
 
   const hardDeletePersona = useMutation({
-    mutationFn: async ({ id, transferToId, transferToName }: DeletePersonaParams) => {
+    mutationFn: async ({
+      id,
+      transferToId,
+      transferToName,
+    }: DeletePersonaParams) => {
       if (transferToId) {
         const { error: transferError } = await supabase
-          .from('sections')
+          .from("sections")
           .update({
             persona_id: transferToId,
             persona_name_snapshot: transferToName ?? null,
           })
-          .eq('persona_id', id);
+          .eq("persona_id", id);
 
         if (transferError) throw transferError;
       }
 
-      const { error } = await supabase
-        .from('personas')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.from("personas").delete().eq("id", id);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['personas'] });
-      queryClient.invalidateQueries({ queryKey: ['entries'] });
+      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({ queryKey: ["entries"] });
     },
   });
 
   const updateSectionPersona = useMutation({
-    mutationFn: async ({ sectionId, personaId }: { sectionId: string; personaId: string }) => {
+    mutationFn: async ({
+      sectionId,
+      personaId,
+    }: {
+      sectionId: string;
+      personaId: string;
+    }) => {
       const { error } = await supabase
-        .from('sections')
+        .from("sections")
         .update({ persona_id: personaId })
-        .eq('id', sectionId);
+        .eq("id", sectionId);
 
       if (error) throw error;
       return null;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['entries'] });
+      queryClient.invalidateQueries({ queryKey: ["entries"] });
     },
   });
 

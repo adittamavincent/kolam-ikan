@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const DOCUMENT_SCHEMA_BOOTSTRAP_SQL = `
 create or replace function public.user_can_access_stream(p_stream_id uuid)
@@ -248,23 +248,27 @@ grant all on table public.document_entry_links to service_role;
 `;
 
 export function isMissingDocumentSchemaError(message?: string | null) {
-  const text = (message ?? '').toLowerCase();
-  return text.includes("could not find the table 'public.documents'")
-    || text.includes("could not find the table 'public.document_import_jobs'")
-    || text.includes("could not find the 'eta_seconds' column")
-    || text.includes("could not find the 'progress_percent' column")
-    || text.includes("could not find the 'progress_message' column")
-    || text.includes('relation "public.documents" does not exist')
-    || text.includes('relation "public.document_import_jobs" does not exist')
-    || text.includes('column "eta_seconds" does not exist')
-    || text.includes('column "progress_percent" does not exist')
-    || text.includes('column "progress_message" does not exist')
-    || text.includes('schema cache');
+  const text = (message ?? "").toLowerCase();
+  return (
+    text.includes("could not find the table 'public.documents'") ||
+    text.includes("could not find the table 'public.document_import_jobs'") ||
+    text.includes("could not find the 'eta_seconds' column") ||
+    text.includes("could not find the 'progress_percent' column") ||
+    text.includes("could not find the 'progress_message' column") ||
+    text.includes('relation "public.documents" does not exist') ||
+    text.includes('relation "public.document_import_jobs" does not exist') ||
+    text.includes('column "eta_seconds" does not exist') ||
+    text.includes('column "progress_percent" does not exist') ||
+    text.includes('column "progress_message" does not exist') ||
+    text.includes("schema cache")
+  );
 }
 
 export async function ensureDocumentSchema() {
   const admin = createAdminClient();
-  const { error } = await admin.rpc('exec_sql', { sql: DOCUMENT_SCHEMA_BOOTSTRAP_SQL });
+  const { error } = await admin.rpc("exec_sql", {
+    sql: DOCUMENT_SCHEMA_BOOTSTRAP_SQL,
+  });
 
   if (error) {
     throw error;

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useLayout } from '@/lib/hooks/useLayout';
-import { PanelLeft, PanelRight, Columns } from 'lucide-react';
+import { useLayout } from "@/lib/hooks/useLayout";
+import { PanelLeft, PanelRight, Columns } from "lucide-react";
 
 export function LayoutControls() {
   const { setMode, logWidth, canvasWidth } = useLayout();
@@ -14,11 +14,11 @@ export function LayoutControls() {
   return (
     <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-lg border border-border-default bg-surface-default p-2">
       <button
-        onClick={() => setMode('log-only')}
+        onClick={() => setMode("log-only")}
         className={`rounded p-2 transition-colors ${
           isLogMaximized
-            ? 'bg-action-primary-bg/10 text-action-primary-bg'
-            : 'text-text-muted hover:bg-surface-hover'
+            ? "bg-action-primary-bg/10 text-action-primary-bg"
+            : "text-text-muted hover:bg-surface-hover"
         }`}
         title="Maximize Log (⌘J)"
       >
@@ -26,11 +26,11 @@ export function LayoutControls() {
       </button>
 
       <button
-        onClick={() => setMode('balanced')}
+        onClick={() => setMode("balanced")}
         className={`rounded p-2 transition-colors ${
           isBalanced
-            ? 'bg-action-primary-bg/10 text-action-primary-bg'
-            : 'text-text-muted hover:bg-surface-hover'
+            ? "bg-action-primary-bg/10 text-action-primary-bg"
+            : "text-text-muted hover:bg-surface-hover"
         }`}
         title="Reset Layout (⌘K)"
       >
@@ -38,11 +38,11 @@ export function LayoutControls() {
       </button>
 
       <button
-        onClick={() => setMode('canvas-only')}
+        onClick={() => setMode("canvas-only")}
         className={`rounded p-2 transition-colors ${
           isCanvasMaximized
-            ? 'bg-action-primary-bg/10 text-action-primary-bg'
-            : 'text-text-muted hover:bg-surface-hover'
+            ? "bg-action-primary-bg/10 text-action-primary-bg"
+            : "text-text-muted hover:bg-surface-hover"
         }`}
         title="Maximize Canvas (⌘L)"
       >

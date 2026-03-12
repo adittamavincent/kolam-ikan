@@ -1,20 +1,20 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Cabinet, CabinetInsert, CabinetUpdate } from '@/lib/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { Cabinet, CabinetInsert, CabinetUpdate } from "@/lib/types";
 
 export function useCabinets(domainId: string) {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['cabinets', domainId],
+    queryKey: ["cabinets", domainId],
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
-        .from('cabinets')
-        .select('*')
-        .eq('domain_id', domainId)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true })
+        .from("cabinets")
+        .select("*")
+        .eq("domain_id", domainId)
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true })
         .abortSignal(signal);
 
       if (error) throw error;
@@ -26,7 +26,7 @@ export function useCabinets(domainId: string) {
   const createCabinet = useMutation({
     mutationFn: async (cabinet: CabinetInsert) => {
       const { data, error } = await supabase
-        .from('cabinets')
+        .from("cabinets")
         .insert(cabinet)
         .select()
         .single();
@@ -35,15 +35,18 @@ export function useCabinets(domainId: string) {
       return data as Cabinet;
     },
     onMutate: async (newCabinet) => {
-      await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
-      const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["cabinets", domainId] });
+      const previousCabinets = queryClient.getQueryData<Cabinet[]>([
+        "cabinets",
+        domainId,
+      ]);
 
       if (previousCabinets) {
-        queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) => [
+        queryClient.setQueryData<Cabinet[]>(["cabinets", domainId], (old) => [
           ...(old || []),
           {
             ...newCabinet,
-            id: 'temp-' + Date.now(),
+            id: "temp-" + Date.now(),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             deleted_at: null,
@@ -55,20 +58,29 @@ export function useCabinets(domainId: string) {
     },
     onError: (err, newCabinet, context) => {
       if (context?.previousCabinets) {
-        queryClient.setQueryData(['cabinets', domainId], context.previousCabinets);
+        queryClient.setQueryData(
+          ["cabinets", domainId],
+          context.previousCabinets,
+        );
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cabinets', domainId] });
+      queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
     },
   });
 
   const updateCabinet = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: CabinetUpdate }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: CabinetUpdate;
+    }) => {
       const { data, error } = await supabase
-        .from('cabinets')
+        .from("cabinets")
         .update(updates)
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
 
@@ -76,12 +88,17 @@ export function useCabinets(domainId: string) {
       return data as Cabinet;
     },
     onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
-      const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["cabinets", domainId] });
+      const previousCabinets = queryClient.getQueryData<Cabinet[]>([
+        "cabinets",
+        domainId,
+      ]);
 
       if (previousCabinets) {
-        queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
-          old?.map((cabinet) => (cabinet.id === id ? { ...cabinet, ...updates } : cabinet))
+        queryClient.setQueryData<Cabinet[]>(["cabinets", domainId], (old) =>
+          old?.map((cabinet) =>
+            cabinet.id === id ? { ...cabinet, ...updates } : cabinet,
+          ),
         );
       }
 
@@ -89,30 +106,36 @@ export function useCabinets(domainId: string) {
     },
     onError: (err, variables, context) => {
       if (context?.previousCabinets) {
-        queryClient.setQueryData(['cabinets', domainId], context.previousCabinets);
+        queryClient.setQueryData(
+          ["cabinets", domainId],
+          context.previousCabinets,
+        );
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cabinets', domainId] });
+      queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
     },
   });
 
   const deleteCabinet = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('cabinets')
+        .from("cabinets")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
     },
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
-      const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["cabinets", domainId] });
+      const previousCabinets = queryClient.getQueryData<Cabinet[]>([
+        "cabinets",
+        domainId,
+      ]);
 
       if (previousCabinets) {
-        queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
-          old?.filter((cabinet) => cabinet.id !== id)
+        queryClient.setQueryData<Cabinet[]>(["cabinets", domainId], (old) =>
+          old?.filter((cabinet) => cabinet.id !== id),
         );
       }
 
@@ -120,11 +143,14 @@ export function useCabinets(domainId: string) {
     },
     onError: (err, id, context) => {
       if (context?.previousCabinets) {
-        queryClient.setQueryData(['cabinets', domainId], context.previousCabinets);
+        queryClient.setQueryData(
+          ["cabinets", domainId],
+          context.previousCabinets,
+        );
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['cabinets', domainId] });
+      queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
     },
   });
 

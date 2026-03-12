@@ -1,25 +1,31 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Stream, StreamInsert, StreamKind, StreamUpdate, STREAM_KIND } from '@/lib/types';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Stream,
+  StreamInsert,
+  StreamKind,
+  StreamUpdate,
+  STREAM_KIND,
+} from "@/lib/types";
 
 export function useStreams(cabinetId: string | null) {
   const supabase = createClient();
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ['streams', cabinetId],
+    queryKey: ["streams", cabinetId],
     queryFn: async ({ signal }) => {
       let query = supabase
-        .from('streams')
-        .select('*')
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true })
+        .from("streams")
+        .select("*")
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true })
         .abortSignal(signal);
 
       if (cabinetId) {
-        query = query.eq('cabinet_id', cabinetId);
+        query = query.eq("cabinet_id", cabinetId);
       } else {
-        query = query.is('cabinet_id', null);
+        query = query.is("cabinet_id", null);
       }
 
       const { data, error } = await query;
@@ -33,7 +39,7 @@ export function useStreams(cabinetId: string | null) {
   const createStream = useMutation({
     mutationFn: async (stream: StreamInsert) => {
       const { data, error } = await supabase
-        .from('streams')
+        .from("streams")
         .insert(stream)
         .select()
         .single();
@@ -42,16 +48,20 @@ export function useStreams(cabinetId: string | null) {
       return data as Stream;
     },
     onMutate: async (newStream) => {
-      await queryClient.cancelQueries({ queryKey: ['streams', cabinetId] });
-      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', cabinetId]);
+      await queryClient.cancelQueries({ queryKey: ["streams", cabinetId] });
+      const previousStreams = queryClient.getQueryData<Stream[]>([
+        "streams",
+        cabinetId,
+      ]);
 
       if (previousStreams) {
-        queryClient.setQueryData<Stream[]>(['streams', cabinetId], (old) => [
+        queryClient.setQueryData<Stream[]>(["streams", cabinetId], (old) => [
           ...(old || []),
           {
             ...newStream,
-            id: 'temp-' + Date.now(),
-            stream_kind: (newStream.stream_kind as StreamKind) ?? STREAM_KIND.REGULAR,
+            id: "temp-" + Date.now(),
+            stream_kind:
+              (newStream.stream_kind as StreamKind) ?? STREAM_KIND.REGULAR,
             is_system_global: newStream.is_system_global ?? false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -64,21 +74,30 @@ export function useStreams(cabinetId: string | null) {
     },
     onError: (err, newStream, context) => {
       if (context?.previousStreams) {
-        queryClient.setQueryData(['streams', cabinetId], context.previousStreams);
+        queryClient.setQueryData(
+          ["streams", cabinetId],
+          context.previousStreams,
+        );
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['streams', cabinetId] });
-      queryClient.invalidateQueries({ queryKey: ['streams'] });
+      queryClient.invalidateQueries({ queryKey: ["streams", cabinetId] });
+      queryClient.invalidateQueries({ queryKey: ["streams"] });
     },
   });
 
   const updateStream = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: StreamUpdate }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: StreamUpdate;
+    }) => {
       const { data, error } = await supabase
-        .from('streams')
+        .from("streams")
         .update(updates)
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
 
@@ -86,12 +105,17 @@ export function useStreams(cabinetId: string | null) {
       return data as Stream;
     },
     onMutate: async ({ id, updates }) => {
-      await queryClient.cancelQueries({ queryKey: ['streams', cabinetId] });
-      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', cabinetId]);
+      await queryClient.cancelQueries({ queryKey: ["streams", cabinetId] });
+      const previousStreams = queryClient.getQueryData<Stream[]>([
+        "streams",
+        cabinetId,
+      ]);
 
       if (previousStreams) {
-        queryClient.setQueryData<Stream[]>(['streams', cabinetId], (old) =>
-          old?.map((stream) => (stream.id === id ? { ...stream, ...updates } : stream))
+        queryClient.setQueryData<Stream[]>(["streams", cabinetId], (old) =>
+          old?.map((stream) =>
+            stream.id === id ? { ...stream, ...updates } : stream,
+          ),
         );
       }
 
@@ -99,31 +123,37 @@ export function useStreams(cabinetId: string | null) {
     },
     onError: (err, variables, context) => {
       if (context?.previousStreams) {
-        queryClient.setQueryData(['streams', cabinetId], context.previousStreams);
+        queryClient.setQueryData(
+          ["streams", cabinetId],
+          context.previousStreams,
+        );
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['streams', cabinetId] });
-      queryClient.invalidateQueries({ queryKey: ['streams'] });
+      queryClient.invalidateQueries({ queryKey: ["streams", cabinetId] });
+      queryClient.invalidateQueries({ queryKey: ["streams"] });
     },
   });
 
   const deleteStream = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('streams')
+        .from("streams")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
     },
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['streams', cabinetId] });
-      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', cabinetId]);
+      await queryClient.cancelQueries({ queryKey: ["streams", cabinetId] });
+      const previousStreams = queryClient.getQueryData<Stream[]>([
+        "streams",
+        cabinetId,
+      ]);
 
       if (previousStreams) {
-        queryClient.setQueryData<Stream[]>(['streams', cabinetId], (old) =>
-          old?.filter((stream) => stream.id !== id)
+        queryClient.setQueryData<Stream[]>(["streams", cabinetId], (old) =>
+          old?.filter((stream) => stream.id !== id),
         );
       }
 
@@ -131,12 +161,15 @@ export function useStreams(cabinetId: string | null) {
     },
     onError: (err, id, context) => {
       if (context?.previousStreams) {
-        queryClient.setQueryData(['streams', cabinetId], context.previousStreams);
+        queryClient.setQueryData(
+          ["streams", cabinetId],
+          context.previousStreams,
+        );
       }
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['streams', cabinetId] });
-      queryClient.invalidateQueries({ queryKey: ['streams'] });
+      queryClient.invalidateQueries({ queryKey: ["streams", cabinetId] });
+      queryClient.invalidateQueries({ queryKey: ["streams"] });
     },
   });
 

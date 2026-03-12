@@ -1,11 +1,17 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-export const DocumentImportStatusSchema = z.enum(['queued', 'processing', 'completed', 'failed', 'canceled']);
+export const DocumentImportStatusSchema = z.enum([
+  "queued",
+  "processing",
+  "completed",
+  "failed",
+  "canceled",
+]);
 
 export const CreateDocumentImportSchema = z.object({
   streamId: z.string().uuid(),
   title: z.string().trim().min(1).max(200).optional(),
-  flavor: z.enum(['lattice', 'stream']).default('lattice'),
+  flavor: z.enum(["lattice", "stream"]).default("lattice"),
   enableTableStructure: z.boolean().default(true),
   debugDoclingTables: z.boolean().default(false),
 });
@@ -34,5 +40,9 @@ export const DocumentImportCallbackSchema = z.object({
   chunks: z.array(DocumentChunkPayloadSchema).optional(),
 });
 
-export type CreateDocumentImportInput = z.infer<typeof CreateDocumentImportSchema>;
-export type DocumentImportCallbackInput = z.infer<typeof DocumentImportCallbackSchema>;
+export type CreateDocumentImportInput = z.infer<
+  typeof CreateDocumentImportSchema
+>;
+export type DocumentImportCallbackInput = z.infer<
+  typeof DocumentImportCallbackSchema
+>;

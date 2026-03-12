@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { ArrowUpRight, Check } from 'lucide-react';
-import { BlockNoteBlock } from '@/lib/types';
-import { useBlockPromotion } from '@/lib/hooks/useBlockPromotion';
+import { useState } from "react";
+import { ArrowUpRight, Check } from "lucide-react";
+import { BlockNoteBlock } from "@/lib/types";
+import { useBlockPromotion } from "@/lib/hooks/useBlockPromotion";
 
 interface PromotableBlockProps {
   block: BlockNoteBlock;
@@ -44,12 +44,16 @@ export function PromotableBlock({
           disabled={wasPromoted}
           className={`absolute right-2 top-2 rounded p-1 transition-colors ${
             wasPromoted
-              ? 'bg-status-success-bg text-status-success-text'
-              : 'bg-surface-default text-text-muted hover:bg-surface-hover'
+              ? "bg-status-success-bg text-status-success-text"
+              : "bg-surface-default text-text-muted hover:bg-surface-hover"
           }`}
-          title={wasPromoted ? 'Promoted to Canvas' : 'Promote to Canvas'}
+          title={wasPromoted ? "Promoted to Canvas" : "Promote to Canvas"}
         >
-          {wasPromoted ? <Check className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+          {wasPromoted ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <ArrowUpRight className="h-4 w-4" />
+          )}
         </button>
       )}
     </div>

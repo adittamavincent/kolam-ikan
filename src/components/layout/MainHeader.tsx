@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import { Fragment, useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { useSidebar } from '@/lib/hooks/useSidebar';
-import { useStream } from '@/lib/hooks/useStream';
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
+import { Fragment, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useSidebar } from "@/lib/hooks/useSidebar";
+import { useStream } from "@/lib/hooks/useStream";
+import {
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  Transition,
+} from "@headlessui/react";
 import {
   PanelLeft,
   Globe,
@@ -20,7 +26,7 @@ import {
   Check,
   ChevronDown,
   Plus,
-} from 'lucide-react';
+} from "lucide-react";
 
 type LogHeaderState = {
   streamId: string;
@@ -29,7 +35,7 @@ type LogHeaderState = {
   showStash: boolean;
   stashCount: number;
   graphView: boolean;
-  sortOrder: 'newest' | 'oldest';
+  sortOrder: "newest" | "oldest";
   searchTerm: string;
   branchNames: string[];
 };
@@ -46,24 +52,26 @@ export function MainHeader() {
   const { visible: sidebarVisible, show: showSidebar } = useSidebar();
 
   // Extract streamId from pathname if we are on a stream page
-  const parts = pathname?.split('/').filter(Boolean) || [];
+  const parts = pathname?.split("/").filter(Boolean) || [];
   const streamId = parts.length === 2 ? parts[1] : null;
 
-  const { stream } = useStream(streamId || '');
+  const { stream } = useStream(streamId || "");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [snapshotName, setSnapshotName] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [snapshotName, setSnapshotName] = useState("");
   const [logState, setLogState] = useState<LogHeaderState | null>(null);
-  const [canvasState, setCanvasState] = useState<CanvasHeaderState | null>(null);
+  const [canvasState, setCanvasState] = useState<CanvasHeaderState | null>(
+    null,
+  );
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const onLogState = (event: Event) => {
       const detail = (event as CustomEvent<LogHeaderState>).detail;
       if (detail?.streamId === streamId) {
         setLogState(detail);
-        setSearchTerm(detail.searchTerm ?? '');
+        setSearchTerm(detail.searchTerm ?? "");
       }
     };
 
@@ -74,17 +82,26 @@ export function MainHeader() {
       }
     };
 
-    window.addEventListener('kolam_log_state', onLogState as EventListener);
-    window.addEventListener('kolam_canvas_state', onCanvasState as EventListener);
+    window.addEventListener("kolam_log_state", onLogState as EventListener);
+    window.addEventListener(
+      "kolam_canvas_state",
+      onCanvasState as EventListener,
+    );
 
     return () => {
-      window.removeEventListener('kolam_log_state', onLogState as EventListener);
-      window.removeEventListener('kolam_canvas_state', onCanvasState as EventListener);
+      window.removeEventListener(
+        "kolam_log_state",
+        onLogState as EventListener,
+      );
+      window.removeEventListener(
+        "kolam_canvas_state",
+        onCanvasState as EventListener,
+      );
     };
   }, [streamId]);
 
   const emit = (eventName: string, detail?: Record<string, unknown>) => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
   };
 
@@ -112,7 +129,7 @@ export function MainHeader() {
             {stream.name}
           </span>
 
-          {stream.stream_kind === 'GLOBAL' && (
+          {stream.stream_kind === "GLOBAL" && (
             <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
               <Globe className="h-3 w-3" />
               Global
@@ -126,8 +143,8 @@ export function MainHeader() {
           <>
             <button
               onClick={() => setIsSearchOpen((prev) => !prev)}
-              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isSearchOpen ? 'bg-surface-subtle text-text-default' : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-              title={isSearchOpen ? 'Hide search' : 'Show search'}
+              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+              title={isSearchOpen ? "Hide search" : "Show search"}
             >
               <Search className="h-4 w-4" />
             </button>
@@ -141,7 +158,7 @@ export function MainHeader() {
                   onChange={(event) => {
                     const term = event.target.value;
                     setSearchTerm(term);
-                    emit('kolam_header_log_search_term', { term });
+                    emit("kolam_header_log_search_term", { term });
                   }}
                   placeholder="Search commits..."
                   className="w-full rounded-md border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
@@ -150,7 +167,7 @@ export function MainHeader() {
             )}
 
             <button
-              onClick={() => emit('kolam_header_documents_import')}
+              onClick={() => emit("kolam_header_documents_import")}
               className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
               title="Import PDF"
             >
@@ -158,7 +175,7 @@ export function MainHeader() {
             </button>
 
             <button
-              onClick={() => emit('kolam_header_log_export')}
+              onClick={() => emit("kolam_header_log_export")}
               className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
               title="Export to Markdown"
             >
@@ -166,25 +183,33 @@ export function MainHeader() {
             </button>
 
             <button
-              onClick={() => emit('kolam_header_log_toggle_stash')}
-              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.showStash ? 'bg-amber-500/15 text-amber-500' : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-              title={logState.showStash ? 'Hide stashed entries' : `Show stash (${logState.stashCount})`}
+              onClick={() => emit("kolam_header_log_toggle_stash")}
+              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+              title={
+                logState.showStash
+                  ? "Hide stashed entries"
+                  : `Show stash (${logState.stashCount})`
+              }
             >
               <Archive className="h-4 w-4" />
             </button>
 
             <button
-              onClick={() => emit('kolam_header_log_toggle_sort')}
+              onClick={() => emit("kolam_header_log_toggle_sort")}
               className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
-              title={`Sort: ${logState.sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}`}
+              title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
             >
-              <ArrowUpDown className={`h-4 w-4 transition-transform ${logState.sortOrder === 'oldest' ? 'rotate-180' : ''}`} />
+              <ArrowUpDown
+                className={`h-4 w-4 transition-transform ${logState.sortOrder === "oldest" ? "rotate-180" : ""}`}
+              />
             </button>
 
             <button
-              onClick={() => emit('kolam_header_log_toggle_graph')}
-              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.graphView ? 'bg-action-primary-bg/15 text-action-primary-bg' : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-              title={logState.graphView ? 'Back to commit list' : 'Show commit graph'}
+              onClick={() => emit("kolam_header_log_toggle_graph")}
+              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+              title={
+                logState.graphView ? "Back to commit list" : "Show commit graph"
+              }
             >
               <Network className="h-4 w-4" />
             </button>
@@ -205,7 +230,7 @@ export function MainHeader() {
                 leaveTo="transform opacity-0 scale-95"
               >
                 <MenuItems
-                  anchor={{ to: 'bottom end', gap: 6 }}
+                  anchor={{ to: "bottom end", gap: 6 }}
                   portal
                   className="z-9999 w-44 overflow-hidden rounded-xl border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
                 >
@@ -216,14 +241,18 @@ export function MainHeader() {
                     <MenuItem key={branchName}>
                       {({ active }) => (
                         <button
-                          onClick={() => emit('kolam_header_log_set_branch', { branchName })}
-                          className={`${active ? 'bg-surface-subtle text-text-default' : 'text-text-subtle'} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
+                          onClick={() =>
+                            emit("kolam_header_log_set_branch", { branchName })
+                          }
+                          className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
                         >
                           <span className="flex items-center gap-1.5">
                             <GitBranch className="h-3 w-3" />
                             {branchName}
                           </span>
-                          {logState.currentBranch === branchName && <Check className="h-3 w-3 text-action-primary-bg" />}
+                          {logState.currentBranch === branchName && (
+                            <Check className="h-3 w-3 text-action-primary-bg" />
+                          )}
                         </button>
                       )}
                     </MenuItem>
@@ -231,14 +260,17 @@ export function MainHeader() {
                   <div className="my-1 h-px bg-border-subtle" />
                   <button
                     onClick={() => {
-                      const requested = window.prompt('Branch name', `${logState.currentBranch || 'main'}-new`);
+                      const requested = window.prompt(
+                        "Branch name",
+                        `${logState.currentBranch || "main"}-new`,
+                      );
                       if (requested === null) return;
                       const branchName = requested.trim();
                       if (!branchName) {
-                        window.alert('Branch name is required.');
+                        window.alert("Branch name is required.");
                         return;
                       }
-                      emit('kolam_header_log_create_branch', { branchName });
+                      emit("kolam_header_log_create_branch", { branchName });
                     }}
                     className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
                   >
@@ -264,19 +296,23 @@ export function MainHeader() {
               onChange={(event) => {
                 const name = event.target.value;
                 setSnapshotName(name);
-                emit('kolam_header_canvas_snapshot_name', { name });
+                emit("kolam_header_canvas_snapshot_name", { name });
               }}
               placeholder="Snapshot name..."
               className="w-36 rounded-md border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
             />
             <button
-              onClick={() => emit('kolam_header_canvas_save_snapshot', { name: snapshotName })}
+              onClick={() =>
+                emit("kolam_header_canvas_save_snapshot", {
+                  name: snapshotName,
+                })
+              }
               disabled={canvasState.isSavingSnapshot}
               className="inline-flex items-center gap-1 rounded-md bg-action-primary-bg px-2 py-1 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-60"
               title="Save Snapshot"
             >
               <Save className="h-3.5 w-3.5" />
-              {canvasState.isSavingSnapshot ? 'Saving...' : 'Snapshot'}
+              {canvasState.isSavingSnapshot ? "Saving..." : "Snapshot"}
             </button>
           </div>
         )}

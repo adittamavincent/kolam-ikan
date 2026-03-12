@@ -1,14 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { Dialog, DialogPanel, DialogTitle, DialogBackdrop } from '@headlessui/react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Globe } from 'lucide-react';
-import { InteractionSwitcher } from './InteractionSwitcher';
-import { ContextBag } from './ContextBag';
-import { XMLGenerator } from './XMLGenerator';
-import { ResponseParser, type ResponseParserHandle } from './ResponseParser';
+import { useState, useRef } from "react";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  DialogBackdrop,
+} from "@headlessui/react";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { Globe } from "lucide-react";
+import { InteractionSwitcher } from "./InteractionSwitcher";
+import { ContextBag } from "./ContextBag";
+import { XMLGenerator } from "./XMLGenerator";
+import { ResponseParser, type ResponseParserHandle } from "./ResponseParser";
 
 interface BridgeModalProps {
   isOpen: boolean;
@@ -18,14 +23,17 @@ interface BridgeModalProps {
 
 export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const supabase = createClient();
-  const [interactionMode, setInteractionMode] = useState<'ASK' | 'GO' | 'BOTH'>('ASK');
+  const [interactionMode, setInteractionMode] = useState<"ASK" | "GO" | "BOTH">(
+    "ASK",
+  );
   const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
   const [includeCanvas, setIncludeCanvas] = useState(true);
-  const [userGlobalStreamChoice, setUserGlobalStreamChoice] = useState<boolean>(true);
-  const [userInput, setUserInput] = useState('');
+  const [userGlobalStreamChoice, setUserGlobalStreamChoice] =
+    useState<boolean>(true);
+  const [userInput, setUserInput] = useState("");
   const [tokenOverLimit, setTokenOverLimit] = useState(false);
-  const [generatedXML, setGeneratedXML] = useState('');
-  const [pastedXML, setPastedXML] = useState('');
+  const [generatedXML, setGeneratedXML] = useState("");
+  const [pastedXML, setPastedXML] = useState("");
   const [parserStatus, setParserStatus] = useState({
     isApplying: false,
     canApply: false,
@@ -36,12 +44,12 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const parserRef = useRef<ResponseParserHandle>(null);
 
   const { data: streamMeta, isLoading: isStreamMetaLoading } = useQuery({
-    queryKey: ['bridge-stream-meta', streamId],
+    queryKey: ["bridge-stream-meta", streamId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('streams')
-        .select('*')
-        .eq('id', streamId)
+        .from("streams")
+        .select("*")
+        .eq("id", streamId)
         .single();
       if (error) throw error;
       return data;
@@ -49,25 +57,31 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     enabled: !!streamId,
   });
 
-  const { data: domainGlobalStreamsData, isLoading: isGlobalStreamLoading } = useQuery({
-    queryKey: ['streams', streamMeta?.domain_id],
-    queryFn: async () => {
-      if (!streamMeta?.domain_id) return [];
-      const { data, error } = await supabase
-        .from('streams')
-        .select('*')
-        .eq('domain_id', streamMeta.domain_id)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-    placeholderData: [],
-    enabled: !!streamMeta?.domain_id,
-  });
+  const { data: domainGlobalStreamsData, isLoading: isGlobalStreamLoading } =
+    useQuery({
+      queryKey: ["streams", streamMeta?.domain_id],
+      queryFn: async () => {
+        if (!streamMeta?.domain_id) return [];
+        const { data, error } = await supabase
+          .from("streams")
+          .select("*")
+          .eq("domain_id", streamMeta.domain_id)
+          .is("deleted_at", null)
+          .order("sort_order", { ascending: true });
+        if (error) throw error;
+        return data ?? [];
+      },
+      placeholderData: [],
+      enabled: !!streamMeta?.domain_id,
+    });
 
-  const isGlobal = (s: { stream_kind: string; cabinet_id: string | null; sort_order: number }) =>
-    s.stream_kind === 'GLOBAL' || (s.cabinet_id === null && s.sort_order === -100);
+  const isGlobal = (s: {
+    stream_kind: string;
+    cabinet_id: string | null;
+    sort_order: number;
+  }) =>
+    s.stream_kind === "GLOBAL" ||
+    (s.cabinet_id === null && s.sort_order === -100);
 
   const currentStreamIsGlobal = streamMeta ? isGlobal(streamMeta) : false;
   const allDomainStreams = domainGlobalStreamsData ?? [];
@@ -75,16 +89,17 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const domainGlobalStreamIds = domainGlobalStreams.map((stream) => stream.id);
   const includeGlobalAvailable = domainGlobalStreamIds.length > 0;
   const includeGlobalStream = includeGlobalAvailable && userGlobalStreamChoice;
-  const globalStreamName = domainGlobalStreams.length === 1
-    ? domainGlobalStreams[0]?.name ?? null
-    : domainGlobalStreams.length > 1
-      ? `${domainGlobalStreams.length} global streams`
-      : null;
+  const globalStreamName =
+    domainGlobalStreams.length === 1
+      ? (domainGlobalStreams[0]?.name ?? null)
+      : domainGlobalStreams.length > 1
+        ? `${domainGlobalStreams.length} global streams`
+        : null;
 
   const handleCopyXML = async () => {
     if (!generatedXML) return;
     await navigator.clipboard.writeText(generatedXML);
-    // You could add a toast or local feedback here if needed, 
+    // You could add a toast or local feedback here if needed,
     // but the button in InteractionSwitcher also gives feedback via its click.
   };
 
@@ -99,21 +114,25 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
         }, 50);
       }
     } catch (err) {
-      console.error('Failed to read clipboard', err);
+      console.error("Failed to read clipboard", err);
     }
   };
 
   const handleParse = () => parserRef.current?.parse();
   const handleApply = () => parserRef.current?.apply();
   const handleReset = () => {
-    if (confirm('Clear all inputs and results?')) {
-      setUserInput('');
+    if (confirm("Clear all inputs and results?")) {
+      setUserInput("");
       parserRef.current?.reset();
     }
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-50 transition duration-300 ease-out data-closed:opacity-0">
+    <Dialog
+      open={isOpen}
+      onClose={onClose}
+      className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
+    >
       {/* Backdrop */}
       <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
 
@@ -125,12 +144,16 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
               <DialogTitle className="text-2xl font-bold bg-linear-to-r from-text-default to-text-muted bg-clip-text text-transparent">
                 The Bridge
               </DialogTitle>
-              <p className="text-sm text-text-muted mt-1.5">Configure instructions and context for the AI model.</p>
+              <p className="text-sm text-text-muted mt-1.5">
+                Configure instructions and context for the AI model.
+              </p>
             </div>
             {streamMeta?.name && (
               <div className="flex items-center gap-2 text-text-muted text-sm mt-1">
                 <span>on</span>
-                <span className="font-semibold text-text-default">{streamMeta.name}</span>
+                <span className="font-semibold text-text-default">
+                  {streamMeta.name}
+                </span>
                 {currentStreamIsGlobal && (
                   <div className="flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                     <Globe className="h-3 w-3" />
@@ -142,9 +165,9 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
           </div>
 
           {/* Interaction Mode */}
-          <InteractionSwitcher 
-            value={interactionMode} 
-            onChange={setInteractionMode} 
+          <InteractionSwitcher
+            value={interactionMode}
+            onChange={setInteractionMode}
             onCopy={handleCopyXML}
             onPaste={handlePasteResult}
             onParse={handleParse}
@@ -156,11 +179,15 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             includeCanvas={includeCanvas}
             streamId={streamId}
             includeGlobalStream={includeGlobalStream}
-            globalStreamIds={includeGlobalAvailable ? domainGlobalStreamIds : []}
+            globalStreamIds={
+              includeGlobalAvailable ? domainGlobalStreamIds : []
+            }
             onTokenUpdate={(count, over) => {
               setTokenOverLimit(over);
             }}
-            onReduceSelection={() => setSelectedEntries((prev) => prev.slice(0, 5))}
+            onReduceSelection={() =>
+              setSelectedEntries((prev) => prev.slice(0, 5))
+            }
             onAutoSummarize={() => setIncludeCanvas(false)}
           />
 
@@ -174,17 +201,22 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             includeGlobalStream={userGlobalStreamChoice}
             onIncludeGlobalStreamChange={setUserGlobalStreamChoice}
             globalStreamName={globalStreamName}
-            globalStreamDisabled={currentStreamIsGlobal || !includeGlobalAvailable}
+            globalStreamDisabled={
+              currentStreamIsGlobal || !includeGlobalAvailable
+            }
             globalStreamLoading={isStreamMetaLoading || isGlobalStreamLoading}
             currentStreamIsGlobal={currentStreamIsGlobal}
             disableSelectAll={tokenOverLimit}
           />
 
-
           {/* User Input */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-text-default">Bridge Instruction</label>
-            <p className="text-xs text-text-muted mb-1">Describe the outcome you want from ASK, GO, or BOTH mode.</p>
+            <label className="text-sm font-semibold text-text-default">
+              Bridge Instruction
+            </label>
+            <p className="text-xs text-text-muted mb-1">
+              Describe the outcome you want from ASK, GO, or BOTH mode.
+            </p>
             <textarea
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
@@ -200,7 +232,9 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             selectedEntries={selectedEntries}
             includeCanvas={includeCanvas}
             includeGlobalStream={includeGlobalStream}
-            globalStreamIds={includeGlobalAvailable ? domainGlobalStreamIds : []}
+            globalStreamIds={
+              includeGlobalAvailable ? domainGlobalStreamIds : []
+            }
             globalStreamName={globalStreamName}
             userInput={userInput}
             streamId={streamId}
@@ -208,10 +242,10 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
           />
 
           {/* Parse Response */}
-          <ResponseParser 
+          <ResponseParser
             ref={parserRef}
-            streamId={streamId} 
-            interactionMode={interactionMode} 
+            streamId={streamId}
+            interactionMode={interactionMode}
             pastedXML={pastedXML}
             onPastedXMLChange={setPastedXML}
             onStatusChange={setParserStatus}

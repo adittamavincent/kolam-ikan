@@ -6,7 +6,7 @@ const REMEMBER_ME_COOKIE = "kolam-remember-me";
 
 export const createClient = async () => {
   const cookieStore = await cookies();
-  
+
   // Read rememberMe preference from cookie
   const rememberMeCookie = cookieStore.get(REMEMBER_ME_COOKIE);
   const rememberMe = rememberMeCookie?.value === "false" ? false : true;
@@ -14,7 +14,8 @@ export const createClient = async () => {
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) {
@@ -22,12 +23,12 @@ export const createClient = async () => {
         },
         set(name: string, value: string, options: CookieOptions) {
           try {
-            cookieStore.set({ 
-              name, 
-              value, 
+            cookieStore.set({
+              name,
+              value,
               ...options,
               maxAge: options.maxAge ?? cookieMaxAge,
-              secure: process.env.NODE_ENV === 'production',
+              secure: process.env.NODE_ENV === "production",
             });
           } catch {
             // The `set` method was called from a Server Component.
@@ -37,11 +38,11 @@ export const createClient = async () => {
         },
         remove(name: string, options: CookieOptions) {
           try {
-            cookieStore.set({ 
-              name, 
-              value: "", 
+            cookieStore.set({
+              name,
+              value: "",
               ...options,
-              secure: process.env.NODE_ENV === 'production',
+              secure: process.env.NODE_ENV === "production",
             });
           } catch {
             // The `delete` method was called from a Server Component.

@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   clearAuthClientStorage,
   clearDevAuthCookie,
   getDevSessionFlag,
   isDevelopmentHost,
   getRememberMe,
-} from '@/lib/utils/authStorage';
+} from "@/lib/utils/authStorage";
 
 export function DevAuthGuard() {
   useEffect(() => {
@@ -17,7 +17,7 @@ export function DevAuthGuard() {
     }
 
     const flagKey = getDevSessionFlag();
-    const alreadyCleared = window.sessionStorage.getItem(flagKey) === '1';
+    const alreadyCleared = window.sessionStorage.getItem(flagKey) === "1";
     if (alreadyCleared) {
       return;
     }
@@ -26,7 +26,7 @@ export function DevAuthGuard() {
     // even if it's a new browser session (tab/window).
     const rememberMe = getRememberMe();
     if (rememberMe) {
-      window.sessionStorage.setItem(flagKey, '1');
+      window.sessionStorage.setItem(flagKey, "1");
       return;
     }
 
@@ -34,13 +34,13 @@ export function DevAuthGuard() {
 
     const clearDevAuth = async () => {
       try {
-        await supabase.auth.signOut({ scope: 'global' });
+        await supabase.auth.signOut({ scope: "global" });
       } catch (error) {
-        console.error('Dev auth guard sign-out failed.', error);
+        console.error("Dev auth guard sign-out failed.", error);
       } finally {
         clearAuthClientStorage();
         clearDevAuthCookie();
-        window.sessionStorage.setItem(flagKey, '1');
+        window.sessionStorage.setItem(flagKey, "1");
       }
     };
 

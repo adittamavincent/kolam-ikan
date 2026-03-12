@@ -1,10 +1,13 @@
-import { Fragment, useState, useEffect } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { X, Globe, Check, Loader2, AlertCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useDomains } from '@/lib/hooks/useDomains';
-import { DynamicIcon } from '@/components/shared/DynamicIcon';
-import { DEFAULT_DOMAIN_ICON, DOMAIN_ICON_OPTIONS } from '@/lib/constants/domainIcons';
+import { Fragment, useState, useEffect } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { X, Globe, Check, Loader2, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useDomains } from "@/lib/hooks/useDomains";
+import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import {
+  DEFAULT_DOMAIN_ICON,
+  DOMAIN_ICON_OPTIONS,
+} from "@/lib/constants/domainIcons";
 
 interface CreateDomainModalProps {
   isOpen: boolean;
@@ -14,21 +17,25 @@ interface CreateDomainModalProps {
 
 /**
  * Modal for creating a new domain (workspace).
- * 
+ *
  * Features:
  * - Instant creation with optimistic updates (handled by useDomains)
  * - Name validation (required, unique check)
  * - Automatic redirect to new domain
  * - Keyboard accessible
  * - Mobile responsive
- * 
+ *
  * Future improvements:
  * - Analytics tracking (on success)
  * - Custom icon selection
  * - Advanced settings (e.g. description, public/private)
  */
-export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModalProps) {
-  const [name, setName] = useState('');
+export function CreateDomainModal({
+  isOpen,
+  onClose,
+  userId,
+}: CreateDomainModalProps) {
+  const [name, setName] = useState("");
   const [icon, setIcon] = useState(DEFAULT_DOMAIN_ICON);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +45,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setName('');
+      setName("");
       setIcon(DEFAULT_DOMAIN_ICON);
       setError(null);
       setIsSubmitting(false);
@@ -47,19 +54,19 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    
+
     if (!name.trim()) {
-      setError('Domain name cannot be empty');
+      setError("Domain name cannot be empty");
       return;
     }
 
     // Check for duplicates (case insensitive)
     const isDuplicate = domains?.some(
-      (d) => d.name.toLowerCase() === name.trim().toLowerCase()
+      (d) => d.name.toLowerCase() === name.trim().toLowerCase(),
     );
 
     if (isDuplicate) {
-      setError('A domain with this name already exists');
+      setError("A domain with this name already exists");
       return;
     }
 
@@ -72,7 +79,7 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
         name: name.trim(),
         user_id: userId,
         icon,
-        settings: { root_restriction: 'mixed' }, // Default settings
+        settings: { root_restriction: "mixed" }, // Default settings
         sort_order: (domains?.length || 0) + 1,
       });
 
@@ -80,14 +87,14 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
       router.push(`/${newDomain.id}`);
       onClose();
     } catch (err) {
-      console.error('Failed to create domain:', err);
-      setError('Failed to create domain. Please try again.');
+      console.error("Failed to create domain:", err);
+      setError("Failed to create domain. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const suggestions = ['Personal', 'Work', 'Study', 'Projects', 'Ideas'];
+  const suggestions = ["Personal", "Work", "Study", "Projects", "Ideas"];
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -137,14 +144,14 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                     <p className="text-sm text-text-muted mb-4">
                       Create a new workspace for your content.
                     </p>
-                    
+
                     <div className="relative">
                       <input
                         type="text"
                         className={`block w-full rounded-lg border px-4 py-3 text-text-default placeholder-text-muted focus:outline-none focus:ring-2 transition-all ${
-                          error 
-                            ? 'border-status-error-text focus:border-status-error-text focus:ring-status-error-bg' 
-                            : 'border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/20'
+                          error
+                            ? "border-status-error-text focus:border-status-error-text focus:ring-status-error-bg"
+                            : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/20"
                         }`}
                         placeholder="e.g., My Knowledge Base"
                         value={name}
@@ -166,10 +173,11 @@ export function CreateDomainModal({ isOpen, onClose, userId }: CreateDomainModal
                             key={option}
                             type="button"
                             onClick={() => setIcon(option)}
-                            className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${icon === option
-                              ? 'border-action-primary-bg bg-action-primary-bg/10 text-action-primary-bg'
-                              : 'border-border-subtle text-text-muted hover:bg-surface-subtle hover:text-text-default'
-                              }`}
+                            className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${
+                              icon === option
+                                ? "border-action-primary-bg bg-action-primary-bg/10 text-action-primary-bg"
+                                : "border-border-subtle text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                            }`}
                             aria-label={`Select ${option} icon`}
                           >
                             <DynamicIcon name={option} className="h-4 w-4" />

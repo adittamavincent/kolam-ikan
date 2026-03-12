@@ -1,9 +1,16 @@
-import { Copy, ClipboardPaste, Check, RotateCcw, Play, Zap } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { encode } from 'gpt-tokenizer';
-import { BlockNoteBlock, EntryWithSections } from '@/lib/types';
+import {
+  Copy,
+  ClipboardPaste,
+  Check,
+  RotateCcw,
+  Play,
+  Zap,
+} from "lucide-react";
+import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { encode } from "gpt-tokenizer";
+import { BlockNoteBlock, EntryWithSections } from "@/lib/types";
 
 function blocksToText(blocks: BlockNoteBlock[]): string {
   return blocks
@@ -11,12 +18,14 @@ function blocksToText(blocks: BlockNoteBlock[]): string {
       const content = Array.isArray(block.content) ? block.content : [];
       return content
         .map((item) =>
-          typeof (item as { text?: unknown }).text === 'string' ? (item as { text: string }).text : ''
+          typeof (item as { text?: unknown }).text === "string"
+            ? (item as { text: string }).text
+            : "",
         )
-        .join('');
+        .join("");
     })
     .filter(Boolean)
-    .join('\n');
+    .join("\n");
 }
 
 export function InteractionSwitcher({
@@ -27,7 +36,12 @@ export function InteractionSwitcher({
   onParse,
   onApply,
   onReset,
-  status = { isApplying: false, canApply: false, canParse: false, hasParsed: false },
+  status = {
+    isApplying: false,
+    canApply: false,
+    canParse: false,
+    hasParsed: false,
+  },
   // Token props
   selectedEntries,
   includeCanvas,
@@ -39,8 +53,8 @@ export function InteractionSwitcher({
   onReduceSelection,
   onAutoSummarize,
 }: {
-  value: 'ASK' | 'GO' | 'BOTH';
-  onChange: (value: 'ASK' | 'GO' | 'BOTH') => void;
+  value: "ASK" | "GO" | "BOTH";
+  onChange: (value: "ASK" | "GO" | "BOTH") => void;
   onCopy?: () => void;
   onPaste?: () => void;
   onParse?: () => void;
@@ -64,18 +78,20 @@ export function InteractionSwitcher({
   onAutoSummarize?: () => void;
 }) {
   const supabase = createClient();
-  const additionalGlobalStreamIds = (globalStreamIds ?? []).filter((id) => id !== streamId);
+  const additionalGlobalStreamIds = (globalStreamIds ?? []).filter(
+    (id) => id !== streamId,
+  );
 
   // Fetching data for token calculation (mirrored from TokenCounter)
   const { data: entries } = useQuery({
-    queryKey: ['bridge-token-entries', streamId, selectedEntries],
+    queryKey: ["bridge-token-entries", streamId, selectedEntries],
     queryFn: async () => {
       if (selectedEntries.length === 0) return [];
       const { data, error } = await supabase
-        .from('entries')
-        .select('id, created_at, sections(content_json, persona_name_snapshot)')
-        .in('id', selectedEntries)
-        .order('created_at', { ascending: true });
+        .from("entries")
+        .select("id, created_at, sections(content_json, persona_name_snapshot)")
+        .in("id", selectedEntries)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data as unknown as EntryWithSections[];
     },
@@ -83,13 +99,13 @@ export function InteractionSwitcher({
   });
 
   const { data: canvas } = useQuery({
-    queryKey: ['bridge-token-canvas', streamId, includeCanvas],
+    queryKey: ["bridge-token-canvas", streamId, includeCanvas],
     queryFn: async () => {
       if (!includeCanvas) return null;
       const { data, error } = await supabase
-        .from('canvases')
-        .select('content_json')
-        .eq('stream_id', streamId)
+        .from("canvases")
+        .select("content_json")
+        .eq("stream_id", streamId)
         .single();
       if (error) throw error;
       return data;
@@ -98,15 +114,20 @@ export function InteractionSwitcher({
   });
 
   const { data: globalEntries } = useQuery({
-    queryKey: ['bridge-token-global-entries', additionalGlobalStreamIds, includeGlobalStream],
+    queryKey: [
+      "bridge-token-global-entries",
+      additionalGlobalStreamIds,
+      includeGlobalStream,
+    ],
     queryFn: async () => {
-      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0)
+        return [];
       const { data, error } = await supabase
-        .from('entries')
-        .select('id, created_at, sections(content_json, persona_name_snapshot)')
-        .in('stream_id', additionalGlobalStreamIds)
-        .eq('is_draft', false)
-        .order('created_at', { ascending: true });
+        .from("entries")
+        .select("id, created_at, sections(content_json, persona_name_snapshot)")
+        .in("stream_id", additionalGlobalStreamIds)
+        .eq("is_draft", false)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return data as unknown as EntryWithSections[];
     },
@@ -114,13 +135,18 @@ export function InteractionSwitcher({
   });
 
   const { data: globalCanvases } = useQuery({
-    queryKey: ['bridge-token-global-canvas', additionalGlobalStreamIds, includeGlobalStream],
+    queryKey: [
+      "bridge-token-global-canvas",
+      additionalGlobalStreamIds,
+      includeGlobalStream,
+    ],
     queryFn: async () => {
-      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0)
+        return [];
       const { data, error } = await supabase
-        .from('canvases')
-        .select('content_json')
-        .in('stream_id', additionalGlobalStreamIds);
+        .from("canvases")
+        .select("content_json")
+        .in("stream_id", additionalGlobalStreamIds);
       if (error) throw error;
       return data ?? [];
     },
@@ -128,20 +154,60 @@ export function InteractionSwitcher({
   });
 
   const tokens = useMemo(() => {
-    const entryText = entries?.map((entry) => 
-      entry.sections?.map((section) => blocksToText(section.content_json as unknown as BlockNoteBlock[])).join('\n') ?? ''
-    ) ?? [];
-    const canvasText = includeCanvas ? blocksToText((canvas?.content_json as unknown as BlockNoteBlock[]) ?? []) : '';
-    const globalEntryText = includeGlobalStream && additionalGlobalStreamIds.length > 0
-      ? (globalEntries?.map((entry) => entry.sections?.map((section) => blocksToText(section.content_json as unknown as BlockNoteBlock[])).join('\n') ?? '') ?? [])
-      : [];
-    const globalCanvasText = includeGlobalStream && additionalGlobalStreamIds.length > 0
-      ? (globalCanvases?.map((canvasItem) => blocksToText((canvasItem.content_json as unknown as BlockNoteBlock[]) ?? [])) ?? [])
-      : [];
+    const entryText =
+      entries?.map(
+        (entry) =>
+          entry.sections
+            ?.map((section) =>
+              blocksToText(section.content_json as unknown as BlockNoteBlock[]),
+            )
+            .join("\n") ?? "",
+      ) ?? [];
+    const canvasText = includeCanvas
+      ? blocksToText(
+          (canvas?.content_json as unknown as BlockNoteBlock[]) ?? [],
+        )
+      : "";
+    const globalEntryText =
+      includeGlobalStream && additionalGlobalStreamIds.length > 0
+        ? (globalEntries?.map(
+            (entry) =>
+              entry.sections
+                ?.map((section) =>
+                  blocksToText(
+                    section.content_json as unknown as BlockNoteBlock[],
+                  ),
+                )
+                .join("\n") ?? "",
+          ) ?? [])
+        : [];
+    const globalCanvasText =
+      includeGlobalStream && additionalGlobalStreamIds.length > 0
+        ? (globalCanvases?.map((canvasItem) =>
+            blocksToText(
+              (canvasItem.content_json as unknown as BlockNoteBlock[]) ?? [],
+            ),
+          ) ?? [])
+        : [];
 
-    const combined = [...entryText, canvasText, ...globalEntryText, ...globalCanvasText].filter(Boolean).join('\n');
+    const combined = [
+      ...entryText,
+      canvasText,
+      ...globalEntryText,
+      ...globalCanvasText,
+    ]
+      .filter(Boolean)
+      .join("\n");
     return encode(combined).length;
-  }, [entries, canvas, globalEntries, globalCanvases, includeCanvas, includeGlobalStream, additionalGlobalStreamIds.length]);
+  }, [
+    entries,
+    canvas,
+    globalEntries,
+    globalCanvases,
+    includeCanvas,
+    includeGlobalStream,
+    additionalGlobalStreamIds.length,
+  ]);
 
   const overLimit = tokens > tokenLimit;
 
@@ -153,14 +219,14 @@ export function InteractionSwitcher({
     <div className="flex flex-wrap items-center gap-4">
       {/* Interaction Mode Toggle */}
       <div className="flex w-full max-w-sm rounded-[10px] bg-surface-subtle/50 p-1 shadow-inner border border-border-subtle/30 backdrop-blur-sm">
-        {(['ASK', 'GO', 'BOTH'] as const).map((mode) => (
+        {(["ASK", "GO", "BOTH"] as const).map((mode) => (
           <button
             key={mode}
             onClick={() => onChange(mode)}
             className={`relative flex-1 rounded-md py-2.5 text-xs font-bold tracking-widest transition-all duration-300 ease-out ${
               value === mode
-                ? 'bg-surface-elevated text-action-primary-bg shadow-sm ring-1 ring-border-subtle/50 z-10'
-                : 'text-text-muted hover:text-text-default hover:bg-surface-hover/50'
+                ? "bg-surface-elevated text-action-primary-bg shadow-sm ring-1 ring-border-subtle/50 z-10"
+                : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
             }`}
           >
             {mode}
@@ -169,21 +235,31 @@ export function InteractionSwitcher({
       </div>
 
       {/* Token Indicator */}
-      <div className={`flex items-center gap-3 px-3 py-1.5 rounded-lg border shadow-xs transition-all ${overLimit ? 'bg-status-error-bg/5 border-status-error-border/30' : 'bg-surface-subtle/30 border-border-subtle/30'}`}>
+      <div
+        className={`flex items-center gap-3 px-3 py-1.5 rounded-lg border shadow-xs transition-all ${overLimit ? "bg-status-error-bg/5 border-status-error-border/30" : "bg-surface-subtle/30 border-border-subtle/30"}`}
+      >
         <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-text-muted uppercase leading-none tracking-tight">Tokens</span>
+          <span className="text-[10px] font-bold text-text-muted uppercase leading-none tracking-tight">
+            Tokens
+          </span>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className={`text-sm font-bold tabular-nums ${overLimit ? 'text-status-error-text' : 'text-action-primary-bg'}`}>
+            <span
+              className={`text-sm font-bold tabular-nums ${overLimit ? "text-status-error-text" : "text-action-primary-bg"}`}
+            >
               {tokens.toLocaleString()}
             </span>
-            <span className="text-[10px] text-text-muted opacity-50">/ {tokenLimit.toLocaleString()}</span>
+            <span className="text-[10px] text-text-muted opacity-50">
+              / {tokenLimit.toLocaleString()}
+            </span>
           </div>
         </div>
-        
+
         {overLimit && (
           <div className="flex items-center gap-1.5 ml-1 animate-pulse">
             <div className="h-2 w-2 rounded-full bg-status-error-text" />
-            <span className="text-[10px] font-bold text-status-error-text uppercase">Limit</span>
+            <span className="text-[10px] font-bold text-status-error-text uppercase">
+              Limit
+            </span>
           </div>
         )}
       </div>
@@ -199,7 +275,7 @@ export function InteractionSwitcher({
             <Copy className="h-3.5 w-3.5 text-text-muted group-hover:text-action-primary-bg transition-colors" />
             <span>Copy XML</span>
           </button>
-          
+
           <div className="w-px h-4 bg-border-subtle/30 mx-0.5" />
 
           <button
@@ -219,7 +295,9 @@ export function InteractionSwitcher({
             title="Parse Response"
             className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Play className={`h-3.5 w-3.5 ${status.canParse ? 'text-text-muted group-hover:text-action-primary-bg' : 'text-text-muted'} transition-colors`} />
+            <Play
+              className={`h-3.5 w-3.5 ${status.canParse ? "text-text-muted group-hover:text-action-primary-bg" : "text-text-muted"} transition-colors`}
+            />
             <span>Parse</span>
           </button>
 
@@ -228,13 +306,13 @@ export function InteractionSwitcher({
             disabled={!status.canApply || status.isApplying}
             title="Apply Changes"
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-              status.canApply 
-                ? 'bg-action-primary-bg/10 text-action-primary-bg hover:bg-action-primary-bg hover:text-white' 
-                : 'text-text-muted hover:bg-surface-hover'
+              status.canApply
+                ? "bg-action-primary-bg/10 text-action-primary-bg hover:bg-action-primary-bg hover:text-white"
+                : "text-text-muted hover:bg-surface-hover"
             }`}
           >
             <Check className="h-3.5 w-3.5" />
-            <span>{status.isApplying ? 'Applying...' : 'Apply'}</span>
+            <span>{status.isApplying ? "Applying..." : "Apply"}</span>
           </button>
 
           <div className="w-px h-4 bg-border-subtle/30 mx-0.5" />

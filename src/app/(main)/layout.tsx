@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { ClientMainLayout } from '@/components/layout/ClientMainLayout';
-import { KeyboardShortcutsProvider } from '@/components/shared/KeyboardShortcutsProvider';
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { ClientMainLayout } from "@/components/layout/ClientMainLayout";
+import { KeyboardShortcutsProvider } from "@/components/shared/KeyboardShortcutsProvider";
 
 export default async function MainLayout({
   children,
@@ -15,14 +15,12 @@ export default async function MainLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login');
+    redirect("/login");
   }
 
   return (
     <KeyboardShortcutsProvider>
-      <ClientMainLayout userId={user.id}>
-        {children}
-      </ClientMainLayout>
+      <ClientMainLayout userId={user.id}>{children}</ClientMainLayout>
     </KeyboardShortcutsProvider>
   );
 }

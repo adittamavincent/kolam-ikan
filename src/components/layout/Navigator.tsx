@@ -1,13 +1,44 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { useParams, useRouter, usePathname } from 'next/navigation';
-import { ChevronRight, ChevronDown, Folder, FileText, Trash2, Pencil, Copy, Move, Info, X, FilePlus, FolderPlus, PanelLeftClose, Globe } from 'lucide-react';
-import { Fragment, useState, useEffect, useLayoutEffect, useRef, useTransition } from 'react';
-import { createPortal } from 'react-dom';
-import { Cabinet, CabinetInsert, CabinetUpdate, Stream, StreamInsert, StreamKind, StreamUpdate, STREAM_KIND } from '@/lib/types';
-import { useSidebar } from '@/lib/hooks/useSidebar';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { useParams, useRouter, usePathname } from "next/navigation";
+import {
+  ChevronRight,
+  ChevronDown,
+  Folder,
+  FileText,
+  Trash2,
+  Pencil,
+  Copy,
+  Move,
+  Info,
+  X,
+  FilePlus,
+  FolderPlus,
+  PanelLeftClose,
+  Globe,
+} from "lucide-react";
+import {
+  Fragment,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useTransition,
+} from "react";
+import { createPortal } from "react-dom";
+import {
+  Cabinet,
+  CabinetInsert,
+  CabinetUpdate,
+  Stream,
+  StreamInsert,
+  StreamKind,
+  StreamUpdate,
+  STREAM_KIND,
+} from "@/lib/types";
+import { useSidebar } from "@/lib/hooks/useSidebar";
 import {
   applyOptimisticCabinetCreation,
   applyOptimisticStreamCreation,
@@ -15,32 +46,37 @@ import {
   getVisibleActiveNodeId,
   resolveCreationTarget,
   isCreationAllowed,
-} from '@/lib/utils/navigation';
-import { useKeyboard } from '@/lib/hooks/useKeyboard';
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
+} from "@/lib/utils/navigation";
+import { useKeyboard } from "@/lib/hooks/useKeyboard";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
 
 type CreationItem = {
-  type: 'cabinet' | 'stream';
+  type: "cabinet" | "stream";
   parentId: string | null;
 };
 
-type NavItemType = 'cabinet' | 'stream';
+type NavItemType = "cabinet" | "stream";
 
 type Disambiguation = {
   index: number;
   total: number;
 };
 
-function buildDisambiguationMap<T extends { id: string; name: string; sort_order: number }>(
-  items: T[] | undefined,
-  getParentId: (item: T) => string | null
-) {
+function buildDisambiguationMap<
+  T extends { id: string; name: string; sort_order: number },
+>(items: T[] | undefined, getParentId: (item: T) => string | null) {
   const map = new Map<string, Disambiguation>();
   if (!items?.length) return map;
 
   const groups = new Map<string, T[]>();
   items.forEach((item) => {
-    const key = `${getParentId(item) ?? 'root'}::${item.name}`;
+    const key = `${getParentId(item) ?? "root"}::${item.name}`;
     const list = groups.get(key) ?? [];
     list.push(item);
     groups.set(key, list);
@@ -62,52 +98,64 @@ function buildDisambiguationMap<T extends { id: string; name: string; sort_order
 
 const ALIGNMENT_COLUMN_REM = 1.5;
 const POSITION_GROUP_CENTER_REM = [
-  0.75,
-  2.25,
-  3.75,
-  5.25,
-  6.75,
-  8.25,
-  9.75,
-  11.25,
+  0.75, 2.25, 3.75, 5.25, 6.75, 8.25, 9.75, 11.25,
 ];
 const getPositionGroupCenterRem = (groupIndex: number) =>
-  POSITION_GROUP_CENTER_REM[groupIndex - 1] ?? (groupIndex - 0.5) * ALIGNMENT_COLUMN_REM;
+  POSITION_GROUP_CENTER_REM[groupIndex - 1] ??
+  (groupIndex - 0.5) * ALIGNMENT_COLUMN_REM;
 const getCabinetPaddingRem = (depth: number) => depth * ALIGNMENT_COLUMN_REM;
-const getStreamPaddingRem = (depth: number) => (depth + 1) * ALIGNMENT_COLUMN_REM;
-const getBorderCenterRem = (depth: number) => getPositionGroupCenterRem(depth + 1);
+const getStreamPaddingRem = (depth: number) =>
+  (depth + 1) * ALIGNMENT_COLUMN_REM;
+const getBorderCenterRem = (depth: number) =>
+  getPositionGroupCenterRem(depth + 1);
 const LEGACY_GLOBAL_STREAM_SORT_ORDER = -100;
 
 const getStreamKind = (stream: Stream): StreamKind =>
   (stream.stream_kind as StreamKind) === STREAM_KIND.GLOBAL ||
-    // Backward compatibility: before migration, the default global row is identified by reserved root sort order.
-    (stream.cabinet_id === null && stream.sort_order === LEGACY_GLOBAL_STREAM_SORT_ORDER)
+  // Backward compatibility: before migration, the default global row is identified by reserved root sort order.
+  (stream.cabinet_id === null &&
+    stream.sort_order === LEGACY_GLOBAL_STREAM_SORT_ORDER)
     ? STREAM_KIND.GLOBAL
     : STREAM_KIND.REGULAR;
 
-const isGlobalStream = (stream: Stream) => getStreamKind(stream) === STREAM_KIND.GLOBAL;
-const isSystemGlobalStream = (stream: Stream) => isGlobalStream(stream) && stream.is_system_global;
+const isGlobalStream = (stream: Stream) =>
+  getStreamKind(stream) === STREAM_KIND.GLOBAL;
+const isSystemGlobalStream = (stream: Stream) =>
+  isGlobalStream(stream) && stream.is_system_global;
 
 const canDeleteStream = (stream: Stream, allStreams: Stream[] | undefined) => {
   if (!isGlobalStream(stream)) return true;
-  const globalCount = (allStreams ?? []).filter((candidate) => isGlobalStream(candidate)).length;
+  const globalCount = (allStreams ?? []).filter((candidate) =>
+    isGlobalStream(candidate),
+  ).length;
   return globalCount > 1;
 };
 
-const isMissingGlobalStreamColumnsError = (error: { message?: string } | null) => {
-  const message = error?.message ?? '';
-  return message.includes('stream_kind') || message.includes('is_system_global');
+const isMissingGlobalStreamColumnsError = (
+  error: { message?: string } | null,
+) => {
+  const message = error?.message ?? "";
+  return (
+    message.includes("stream_kind") || message.includes("is_system_global")
+  );
 };
 
 interface CreationInputProps {
-  type: 'cabinet' | 'stream';
+  type: "cabinet" | "stream";
   depth: number;
   onConfirm: (name: string) => void;
   onCancel: () => void;
 }
 
-const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps) => {
-  const [name, setName] = useState(type === 'cabinet' ? 'New Cabinet' : 'New Stream');
+const CreationInput = ({
+  type,
+  depth,
+  onConfirm,
+  onCancel,
+}: CreationInputProps) => {
+  const [name, setName] = useState(
+    type === "cabinet" ? "New Cabinet" : "New Stream",
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -118,22 +166,23 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       e.stopPropagation();
       if (name.trim()) {
         onConfirm(name.trim());
       }
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
       onCancel();
     }
   };
 
-  const paddingLeftRem = type === 'cabinet'
-    ? getCabinetPaddingRem(depth)
-    : getStreamPaddingRem(depth);
+  const paddingLeftRem =
+    type === "cabinet"
+      ? getCabinetPaddingRem(depth)
+      : getStreamPaddingRem(depth);
 
   return (
     <div className="mb-0.5">
@@ -141,7 +190,7 @@ const CreationInput = ({ type, depth, onConfirm, onCancel }: CreationInputProps)
         className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm"
         style={{ marginLeft: `${paddingLeftRem}rem` }}
       >
-        {type === 'cabinet' ? (
+        {type === "cabinet" ? (
           <div
             className="grid shrink-0"
             style={{
@@ -188,7 +237,10 @@ interface NavigatorProps {
 interface CabinetNodeProps {
   cabinet: Cabinet;
   depth?: number;
-  cabinetTree: { roots: Cabinet[]; getChildren: (parentId: string) => Cabinet[] };
+  cabinetTree: {
+    roots: Cabinet[];
+    getChildren: (parentId: string) => Cabinet[];
+  };
   streams: Stream[] | undefined;
   cabinetDisambiguation: Map<string, Disambiguation>;
   streamDisambiguation: Map<string, Disambiguation>;
@@ -198,15 +250,32 @@ interface CabinetNodeProps {
   editingName: string;
   editInputRef: React.RefObject<HTMLInputElement | null>;
   setEditingName: (name: string) => void;
-  handleKeyDown: (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => void;
-  handleRename: (id: string, newName: string, type: 'cabinet' | 'stream') => void;
-  handleItemClick: (id: string, type: 'cabinet' | 'stream', name: string, isActive: boolean) => void;
+  handleKeyDown: (
+    e: React.KeyboardEvent,
+    id: string,
+    type: "cabinet" | "stream",
+  ) => void;
+  handleRename: (
+    id: string,
+    newName: string,
+    type: "cabinet" | "stream",
+  ) => void;
+  handleItemClick: (
+    id: string,
+    type: "cabinet" | "stream",
+    name: string,
+    isActive: boolean,
+  ) => void;
   toggleCabinet: (id: string) => void;
   router: ReturnType<typeof useRouter>;
   domainId: string;
   handleCreateStream: (id: string) => void;
   handleCreateCabinet: (id: string) => void;
-  handleContextMenu: (event: React.MouseEvent, id: string, type: NavItemType) => void;
+  handleContextMenu: (
+    event: React.MouseEvent,
+    id: string,
+    type: NavItemType,
+  ) => void;
   isStreamNewlyCreated: (id: string) => boolean;
   setEditingItemId: (id: string | null) => void;
   creatingItem: CreationItem | null;
@@ -232,10 +301,27 @@ interface StreamNodeProps {
   editingName: string;
   editInputRef: React.RefObject<HTMLInputElement | null>;
   setEditingName: (name: string) => void;
-  handleKeyDown: (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => void;
-  handleRename: (id: string, newName: string, type: 'cabinet' | 'stream') => void;
-  handleItemClick: (id: string, type: 'cabinet' | 'stream', name: string, isActive: boolean) => void;
-  handleContextMenu: (event: React.MouseEvent, id: string, type: NavItemType) => void;
+  handleKeyDown: (
+    e: React.KeyboardEvent,
+    id: string,
+    type: "cabinet" | "stream",
+  ) => void;
+  handleRename: (
+    id: string,
+    newName: string,
+    type: "cabinet" | "stream",
+  ) => void;
+  handleItemClick: (
+    id: string,
+    type: "cabinet" | "stream",
+    name: string,
+    isActive: boolean,
+  ) => void;
+  handleContextMenu: (
+    event: React.MouseEvent,
+    id: string,
+    type: NavItemType,
+  ) => void;
   isNewlyCreated: boolean;
   onDragStart: (e: React.DragEvent, id: string, type: NavItemType) => void;
   onDragOver: (e: React.DragEvent, id: string | null) => void;
@@ -270,18 +356,22 @@ const StreamNode = ({
   draggedItem,
   dragOverId,
 }: StreamNodeProps) => {
-  const isStreamActive = activeNode?.type === 'stream' && activeNode.id === stream.id;
+  const isStreamActive =
+    activeNode?.type === "stream" && activeNode.id === stream.id;
   const isStreamEditing = editingItemId === stream.id;
-  const isDragged = draggedItem?.type === 'stream' && draggedItem.id === stream.id;
+  const isDragged =
+    draggedItem?.type === "stream" && draggedItem.id === stream.id;
   const isDragOver = dragOverId === stream.id;
-  const disambiguationLabel = disambiguation ? `#${disambiguation.index}` : null;
+  const disambiguationLabel = disambiguation
+    ? `#${disambiguation.index}`
+    : null;
   const ariaLabel = disambiguation
     ? `${displayName} (${disambiguation.index} of ${disambiguation.total})`
     : displayName;
 
   return (
     <div
-      className={`group relative flex items-center transition-opacity duration-200 ${isDragged ? 'opacity-40' : 'opacity-100'}`}
+      className={`group relative flex items-center transition-opacity duration-200 ${isDragged ? "opacity-40" : "opacity-100"}`}
       role="treeitem"
       aria-selected={isStreamActive}
       aria-label={ariaLabel}
@@ -300,30 +390,31 @@ const StreamNode = ({
     >
       <div
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
-            ${isStreamActive
-            ? 'bg-action-primary-bg/10 text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20'
-            : 'text-text-subtle hover:bg-surface-subtle hover:text-text-default'
-          } ${!isStreamActive && isNewlyCreated ? 'bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30' : ''}
-            ${isDragOver ? 'ring-2 ring-action-primary-bg ring-inset' : ''}`}
+            ${
+              isStreamActive
+                ? "bg-action-primary-bg/10 text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20"
+                : "text-text-subtle hover:bg-surface-subtle hover:text-text-default"
+            } ${!isStreamActive && isNewlyCreated ? "bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30" : ""}
+            ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
         style={{ marginLeft: `${getStreamPaddingRem(depth)}rem` }}
         draggable={!isStreamEditing}
         onDragStart={(e) => {
           e.stopPropagation();
-          onDragStart(e, stream.id, 'stream');
+          onDragStart(e, stream.id, "stream");
         }}
         onDragEnd={onDragEnd}
         onClick={(e) => {
           e.stopPropagation();
           if (!isStreamEditing) {
-            handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
+            handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
           }
         }}
-        onContextMenu={(event) => handleContextMenu(event, stream.id, 'stream')}
+        onContextMenu={(event) => handleContextMenu(event, stream.id, "stream")}
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             e.preventDefault();
-            handleItemClick(stream.id, 'stream', stream.name, !!isStreamActive);
+            handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
           }
         }}
       >
@@ -332,8 +423,11 @@ const StreamNode = ({
           style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
         >
           <FileText
-            className={`h-4 w-4 transition-colors ${isStreamActive ? 'text-action-primary-bg' : 'text-text-muted group-hover:text-text-subtle'
-              }`}
+            className={`h-4 w-4 transition-colors ${
+              isStreamActive
+                ? "text-action-primary-bg"
+                : "text-text-muted group-hover:text-text-subtle"
+            }`}
           />
         </div>
 
@@ -343,8 +437,8 @@ const StreamNode = ({
             type="text"
             value={editingName}
             onChange={(e) => setEditingName(e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, stream.id, 'stream')}
-            onBlur={() => handleRename(stream.id, editingName, 'stream')}
+            onKeyDown={(e) => handleKeyDown(e, stream.id, "stream")}
+            onBlur={() => handleRename(stream.id, editingName, "stream")}
             className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg rounded-sm"
             onClick={(e) => e.stopPropagation()}
             autoFocus
@@ -406,22 +500,27 @@ const CabinetNode = ({
   dragOverId,
 }: CabinetNodeProps) => {
   const children = cabinetTree.getChildren(cabinet.id);
-  const cabinetStreams = streams?.filter((s) => s.cabinet_id === cabinet.id) || [];
+  const cabinetStreams =
+    streams?.filter((s) => s.cabinet_id === cabinet.id) || [];
   const isExpanded = expandedCabinets.has(cabinet.id);
 
-  const isActive = activeNode?.type === 'cabinet' && activeNode.id === cabinet.id;
+  const isActive =
+    activeNode?.type === "cabinet" && activeNode.id === cabinet.id;
   const isEditing = editingItemId === cabinet.id;
-  const isDragged = draggedItem?.type === 'cabinet' && draggedItem.id === cabinet.id;
+  const isDragged =
+    draggedItem?.type === "cabinet" && draggedItem.id === cabinet.id;
   const isDragOver = dragOverId === cabinet.id;
   const disambiguation = cabinetDisambiguation.get(cabinet.id);
-  const disambiguationLabel = disambiguation ? `#${disambiguation.index}` : null;
+  const disambiguationLabel = disambiguation
+    ? `#${disambiguation.index}`
+    : null;
   const ariaLabel = disambiguation
     ? `${cabinet.name} (${disambiguation.index} of ${disambiguation.total})`
     : cabinet.name;
 
   return (
     <div
-      className={`mb-0.5 transition-opacity duration-200 ${isDragged ? 'opacity-40' : 'opacity-100'}`}
+      className={`mb-0.5 transition-opacity duration-200 ${isDragged ? "opacity-40" : "opacity-100"}`}
       role="treeitem"
       aria-expanded={isExpanded}
       aria-selected={isActive}
@@ -441,33 +540,36 @@ const CabinetNode = ({
     >
       <div
         className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
-            ${isActive
-            ? 'bg-action-primary-bg/10 text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium'
-            : 'text-text-subtle hover:bg-surface-subtle'
-          } ${isDragOver ? 'ring-2 ring-action-primary-bg ring-inset' : ''}`}
+            ${
+              isActive
+                ? "bg-action-primary-bg/10 text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium"
+                : "text-text-subtle hover:bg-surface-subtle"
+            } ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
         style={{ marginLeft: `${getCabinetPaddingRem(depth)}rem` }}
         draggable={!isEditing}
         onDragStart={(e) => {
           e.stopPropagation();
-          onDragStart(e, cabinet.id, 'cabinet');
+          onDragStart(e, cabinet.id, "cabinet");
         }}
         onDragEnd={onDragEnd}
         onClick={(e) => {
           e.stopPropagation();
-          handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
+          handleItemClick(cabinet.id, "cabinet", cabinet.name, !!isActive);
         }}
-        onContextMenu={(event) => handleContextMenu(event, cabinet.id, 'cabinet')}
+        onContextMenu={(event) =>
+          handleContextMenu(event, cabinet.id, "cabinet")
+        }
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
+          if (e.key === "Enter") {
             e.preventDefault();
-            handleItemClick(cabinet.id, 'cabinet', cabinet.name, !!isActive);
+            handleItemClick(cabinet.id, "cabinet", cabinet.name, !!isActive);
           }
-          if (e.key === 'ArrowRight' && !isExpanded) {
+          if (e.key === "ArrowRight" && !isExpanded) {
             e.preventDefault();
             toggleCabinet(cabinet.id);
           }
-          if (e.key === 'ArrowLeft' && isExpanded) {
+          if (e.key === "ArrowLeft" && isExpanded) {
             e.preventDefault();
             toggleCabinet(cabinet.id);
           }
@@ -488,11 +590,17 @@ const CabinetNode = ({
               className="text-text-muted hover:text-text-subtle p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-action-primary-bg"
               aria-label={isExpanded ? "Collapse cabinet" : "Expand cabinet"}
             >
-              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </button>
           </div>
           <div className="flex items-center justify-center">
-            <Folder className={`h-4 w-4 ${isActive ? 'text-action-primary-bg' : 'text-text-muted'}`} />
+            <Folder
+              className={`h-4 w-4 ${isActive ? "text-action-primary-bg" : "text-text-muted"}`}
+            />
           </div>
         </div>
 
@@ -502,8 +610,8 @@ const CabinetNode = ({
             type="text"
             value={editingName}
             onChange={(e) => setEditingName(e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, cabinet.id, 'cabinet')}
-            onBlur={() => handleRename(cabinet.id, editingName, 'cabinet')}
+            onKeyDown={(e) => handleKeyDown(e, cabinet.id, "cabinet")}
+            onBlur={() => handleRename(cabinet.id, editingName, "cabinet")}
             className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg rounded-sm"
             onClick={(e) => e.stopPropagation()}
             autoFocus
@@ -527,8 +635,8 @@ const CabinetNode = ({
             className="pointer-events-none absolute inset-y-0 w-0 border-border-subtle"
             style={{
               left: `${getBorderCenterRem(depth) + 0.5}rem`,
-              borderLeftWidth: '0.0625rem',
-              borderLeftStyle: 'solid',
+              borderLeftWidth: "0.0625rem",
+              borderLeftStyle: "solid",
             }}
           />
           {/* Render Sub-Cabinets */}
@@ -571,14 +679,15 @@ const CabinetNode = ({
             />
           ))}
 
-          {creatingItem?.parentId === cabinet.id && creatingItem.type === 'cabinet' && (
-            <CreationInput
-              type="cabinet"
-              depth={depth + 1}
-              onConfirm={handleCreationConfirm}
-              onCancel={handleCreationCancel}
-            />
-          )}
+          {creatingItem?.parentId === cabinet.id &&
+            creatingItem.type === "cabinet" && (
+              <CreationInput
+                type="cabinet"
+                depth={depth + 1}
+                onConfirm={handleCreationConfirm}
+                onCancel={handleCreationCancel}
+              />
+            )}
 
           {/* Render Streams */}
           {cabinetStreams.map((stream) => (
@@ -608,23 +717,22 @@ const CabinetNode = ({
             />
           ))}
 
-          {creatingItem?.parentId === cabinet.id && creatingItem.type === 'stream' && (
-            <CreationInput
-              type="stream"
-              depth={depth + 1}
-              onConfirm={handleCreationConfirm}
-              onCancel={handleCreationCancel}
-            />
-          )}
-
-
+          {creatingItem?.parentId === cabinet.id &&
+            creatingItem.type === "stream" && (
+              <CreationInput
+                type="stream"
+                depth={depth + 1}
+                onConfirm={handleCreationConfirm}
+                onCancel={handleCreationCancel}
+              />
+            )}
         </div>
       )}
     </div>
   );
 };
 
-export function Navigator({ }: NavigatorProps) {
+export function Navigator({}: NavigatorProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const params = useParams();
@@ -635,29 +743,55 @@ export function Navigator({ }: NavigatorProps) {
   const activeStreamId = params?.stream as string | undefined;
   const { hide: hideSidebar } = useSidebar();
 
-  const [draggedItem, setDraggedItem] = useState<{ id: string; type: NavItemType } | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{
+    id: string;
+    type: NavItemType;
+  } | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const autoExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Track expanded cabinets
-  const [expandedCabinets, setExpandedCabinets] = useState<Set<string>>(new Set());
-  const [manualActiveNode, setManualActiveNode] = useState<{ id: string; type: 'cabinet' | 'stream' } | null>(null);
+  const [expandedCabinets, setExpandedCabinets] = useState<Set<string>>(
+    new Set(),
+  );
+  const [manualActiveNode, setManualActiveNode] = useState<{
+    id: string;
+    type: "cabinet" | "stream";
+  } | null>(null);
   // Track the last stream ID that triggered an auto-expand to prevent re-expanding on refresh/update
   const lastAutoExpandedStreamRef = useRef<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState('');
+  const [editingName, setEditingName] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
   const [creatingItem, setCreatingItem] = useState<CreationItem | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ id: string; type: NavItemType; x: number; y: number } | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; type: NavItemType } | null>(null);
-  const [moveTarget, setMoveTarget] = useState<{ id: string; type: NavItemType } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    id: string;
+    type: NavItemType;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    type: NavItemType;
+  } | null>(null);
+  const [moveTarget, setMoveTarget] = useState<{
+    id: string;
+    type: NavItemType;
+  } | null>(null);
   const [moveDestination, setMoveDestination] = useState<string | null>(null);
-  const [propertiesTarget, setPropertiesTarget] = useState<{ id: string; type: NavItemType } | null>(null);
+  const [propertiesTarget, setPropertiesTarget] = useState<{
+    id: string;
+    type: NavItemType;
+  } | null>(null);
 
-  const handleDragStart = (e: React.DragEvent, id: string, type: NavItemType) => {
+  const handleDragStart = (
+    e: React.DragEvent,
+    id: string,
+    type: NavItemType,
+  ) => {
     setDraggedItem({ id, type });
-    e.dataTransfer.setData('application/kolam-ikan-nav-item', id);
-    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData("application/kolam-ikan-nav-item", id);
+    e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent, id: string | null) => {
@@ -670,7 +804,7 @@ export function Navigator({ }: NavigatorProps) {
       return;
     }
 
-    if (draggedItem.type === 'cabinet' && id) {
+    if (draggedItem.type === "cabinet" && id) {
       const descendants = getDescendantIds(draggedItem.id);
       if (descendants.has(id)) {
         if (dragOverId !== null) setDragOverId(null);
@@ -695,7 +829,7 @@ export function Navigator({ }: NavigatorProps) {
       }
     }
 
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = "move";
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -727,27 +861,40 @@ export function Navigator({ }: NavigatorProps) {
     const { id, type } = draggedItem;
     if (id === targetId) return;
 
-    if (type === 'cabinet' && targetId) {
+    if (type === "cabinet" && targetId) {
       const descendants = getDescendantIds(id);
       if (descendants.has(targetId)) return;
     }
 
     let finalTargetId = targetId;
-    const targetStream = streams?.find(s => s.id === targetId);
+    const targetStream = streams?.find((s) => s.id === targetId);
     if (targetStream) {
       finalTargetId = targetStream.cabinet_id ?? null;
     }
 
-    if (type === 'cabinet') {
+    if (type === "cabinet") {
       if (id === finalTargetId) return;
-      updateCabinetMutation.mutate({ id, updates: { parent_id: finalTargetId || null } });
-      if (finalTargetId) setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
+      updateCabinetMutation.mutate({
+        id,
+        updates: { parent_id: finalTargetId || null },
+      });
+      if (finalTargetId)
+        setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
     } else {
       if (isCabinetOnly && finalTargetId === null) return;
       const draggedStream = streams?.find((stream) => stream.id === id);
-      if (draggedStream && isGlobalStream(draggedStream) && finalTargetId !== null) return;
-      updateStreamMutation.mutate({ id, updates: { cabinet_id: finalTargetId || null } });
-      if (finalTargetId) setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
+      if (
+        draggedStream &&
+        isGlobalStream(draggedStream) &&
+        finalTargetId !== null
+      )
+        return;
+      updateStreamMutation.mutate({
+        id,
+        updates: { cabinet_id: finalTargetId || null },
+      });
+      if (finalTargetId)
+        setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
     }
     setDraggedItem(null);
   };
@@ -758,13 +905,16 @@ export function Navigator({ }: NavigatorProps) {
     if (autoExpandTimerRef.current) clearTimeout(autoExpandTimerRef.current);
   };
 
-  const [justCreatedStreamId, setJustCreatedStreamId] = useState<string | null>(null);
+  const [justCreatedStreamId, setJustCreatedStreamId] = useState<string | null>(
+    null,
+  );
 
   const handleCreationConfirm = (name: string) => {
     if (!creatingItem || !domainId) return;
 
-    if (creatingItem.type === 'cabinet') {
-      const siblings = cabinets?.filter((c) => c.parent_id === creatingItem.parentId) || [];
+    if (creatingItem.type === "cabinet") {
+      const siblings =
+        cabinets?.filter((c) => c.parent_id === creatingItem.parentId) || [];
       const sortOrder = getNextSortOrder(siblings);
 
       createCabinetMutation.mutate({
@@ -775,7 +925,8 @@ export function Navigator({ }: NavigatorProps) {
       });
     } else {
       const parentId = creatingItem.parentId ?? null;
-      const cabinetStreams = streams?.filter((s) => s.cabinet_id === parentId) || [];
+      const cabinetStreams =
+        streams?.filter((s) => s.cabinet_id === parentId) || [];
       const sortOrder = getNextSortOrder(cabinetStreams);
 
       createStreamMutation.mutate({
@@ -791,7 +942,6 @@ export function Navigator({ }: NavigatorProps) {
   const handleCreationCancel = () => {
     setCreatingItem(null);
   };
-
 
   // Focus input when editing starts
   useEffect(() => {
@@ -811,29 +961,29 @@ export function Navigator({ }: NavigatorProps) {
     if (!contextMenu) return;
     const handleClick = () => setContextMenu(null);
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setContextMenu(null);
+      if (event.key === "Escape") setContextMenu(null);
     };
-    window.addEventListener('click', handleClick);
-    window.addEventListener('contextmenu', handleClick);
-    window.addEventListener('scroll', handleClick, true);
-    window.addEventListener('keydown', handleKey);
+    window.addEventListener("click", handleClick);
+    window.addEventListener("contextmenu", handleClick);
+    window.addEventListener("scroll", handleClick, true);
+    window.addEventListener("keydown", handleKey);
     return () => {
-      window.removeEventListener('click', handleClick);
-      window.removeEventListener('contextmenu', handleClick);
-      window.removeEventListener('scroll', handleClick, true);
-      window.removeEventListener('keydown', handleKey);
+      window.removeEventListener("click", handleClick);
+      window.removeEventListener("contextmenu", handleClick);
+      window.removeEventListener("scroll", handleClick, true);
+      window.removeEventListener("keydown", handleKey);
     };
   }, [contextMenu]);
 
   // Fetch current domain details (for settings)
   const { data: domain } = useQuery({
-    queryKey: ['domain', domainId],
+    queryKey: ["domain", domainId],
     queryFn: async () => {
       if (!domainId) return null;
       const { data, error } = await supabase
-        .from('domains')
-        .select('*')
-        .eq('id', domainId)
+        .from("domains")
+        .select("*")
+        .eq("id", domainId)
         .single();
 
       if (error) throw error;
@@ -844,15 +994,15 @@ export function Navigator({ }: NavigatorProps) {
 
   // Fetch cabinets for current domain
   const { data: cabinets } = useQuery({
-    queryKey: ['cabinets', domainId],
+    queryKey: ["cabinets", domainId],
     queryFn: async () => {
       if (!domainId) return [];
       const { data, error } = await supabase
-        .from('cabinets')
-        .select('*')
-        .eq('domain_id', domainId)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
+        .from("cabinets")
+        .select("*")
+        .eq("domain_id", domainId)
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
       return data;
@@ -862,15 +1012,15 @@ export function Navigator({ }: NavigatorProps) {
 
   // Fetch streams for current domain
   const { data: streams, isFetched: areStreamsFetched } = useQuery({
-    queryKey: ['streams', domainId],
+    queryKey: ["streams", domainId],
     queryFn: async () => {
       if (!domainId) return [];
       const { data, error } = await supabase
-        .from('streams')
-        .select('*, cabinet:cabinets(*)')
-        .eq('domain_id', domainId)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true });
+        .from("streams")
+        .select("*, cabinet:cabinets(*)")
+        .eq("domain_id", domainId)
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
       return data;
@@ -893,40 +1043,40 @@ export function Navigator({ }: NavigatorProps) {
 
     ensuredGlobalRef.current = domainId;
     void (async () => {
-      let { error } = await supabase
-        .from('streams')
-        .insert({
-          domain_id: domainId,
-          cabinet_id: null,
-          name: 'Global User Entry',
-          description: 'Core storyline and foundational user context for this domain.',
-          sort_order: LEGACY_GLOBAL_STREAM_SORT_ORDER,
-          stream_kind: STREAM_KIND.GLOBAL,
-          is_system_global: true,
-        });
+      let { error } = await supabase.from("streams").insert({
+        domain_id: domainId,
+        cabinet_id: null,
+        name: "Global User Entry",
+        description:
+          "Core storyline and foundational user context for this domain.",
+        sort_order: LEGACY_GLOBAL_STREAM_SORT_ORDER,
+        stream_kind: STREAM_KIND.GLOBAL,
+        is_system_global: true,
+      });
 
       if (error && isMissingGlobalStreamColumnsError(error)) {
-        const fallback = await supabase
-          .from('streams')
-          .insert({
-            domain_id: domainId,
-            cabinet_id: null,
-            name: 'Global User Entry',
-            description: 'Core storyline and foundational user context for this domain.',
-            sort_order: LEGACY_GLOBAL_STREAM_SORT_ORDER,
-          });
+        const fallback = await supabase.from("streams").insert({
+          domain_id: domainId,
+          cabinet_id: null,
+          name: "Global User Entry",
+          description:
+            "Core storyline and foundational user context for this domain.",
+          sort_order: LEGACY_GLOBAL_STREAM_SORT_ORDER,
+        });
         error = fallback.error;
       }
 
       if (!error) {
-        queryClient.invalidateQueries({ queryKey: ['streams', domainId] });
+        queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
       }
     })();
   }, [domainId, streams, areStreamsFetched, supabase, queryClient]);
 
-  const settings = domain?.settings as { root_restriction?: string } | undefined;
-  const isCabinetOnly = settings?.root_restriction === 'cabinet-only';
-  const currentDomainName = domain?.name?.trim() || 'Navigator';
+  const settings = domain?.settings as
+    | { root_restriction?: string }
+    | undefined;
+  const isCabinetOnly = settings?.root_restriction === "cabinet-only";
+  const currentDomainName = domain?.name?.trim() || "Navigator";
 
   // Auto-expand cabinet containing the active stream
   useLayoutEffect(() => {
@@ -952,11 +1102,17 @@ export function Navigator({ }: NavigatorProps) {
   }, [activeStreamId, streams]);
 
   const updateCabinetMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: CabinetUpdate }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: CabinetUpdate;
+    }) => {
       const { data, error } = await supabase
-        .from('cabinets')
+        .from("cabinets")
         .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
 
@@ -965,33 +1121,45 @@ export function Navigator({ }: NavigatorProps) {
     },
     onMutate: async ({ id, updates }) => {
       if (!domainId) return;
-      await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
-      const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["cabinets", domainId] });
+      const previousCabinets = queryClient.getQueryData<Cabinet[]>([
+        "cabinets",
+        domainId,
+      ]);
 
-      queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
-        old?.map((c) => (c.id === id ? { ...c, ...updates } : c))
+      queryClient.setQueryData<Cabinet[]>(["cabinets", domainId], (old) =>
+        old?.map((c) => (c.id === id ? { ...c, ...updates } : c)),
       );
 
       return { previousCabinets };
     },
     onError: (error, _, context) => {
       if (context?.previousCabinets && domainId) {
-        queryClient.setQueryData(['cabinets', domainId], context.previousCabinets);
+        queryClient.setQueryData(
+          ["cabinets", domainId],
+          context.previousCabinets,
+        );
       }
     },
     onSettled: () => {
       if (domainId) {
-        queryClient.invalidateQueries({ queryKey: ['cabinets', domainId] });
+        queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
       }
     },
   });
 
   const updateStreamMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: StreamUpdate }) => {
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: StreamUpdate;
+    }) => {
       const { data, error } = await supabase
-        .from('streams')
+        .from("streams")
         .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id)
+        .eq("id", id)
         .select()
         .single();
 
@@ -1000,23 +1168,29 @@ export function Navigator({ }: NavigatorProps) {
     },
     onMutate: async ({ id, updates }) => {
       if (!domainId) return;
-      await queryClient.cancelQueries({ queryKey: ['streams', domainId] });
-      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["streams", domainId] });
+      const previousStreams = queryClient.getQueryData<Stream[]>([
+        "streams",
+        domainId,
+      ]);
 
-      queryClient.setQueryData<Stream[]>(['streams', domainId], (old) =>
-        old?.map((s) => (s.id === id ? { ...s, ...updates } : s))
+      queryClient.setQueryData<Stream[]>(["streams", domainId], (old) =>
+        old?.map((s) => (s.id === id ? { ...s, ...updates } : s)),
       );
 
       return { previousStreams };
     },
     onError: (error, _, context) => {
       if (context?.previousStreams && domainId) {
-        queryClient.setQueryData(['streams', domainId], context.previousStreams);
+        queryClient.setQueryData(
+          ["streams", domainId],
+          context.previousStreams,
+        );
       }
     },
     onSettled: () => {
       if (domainId) {
-        queryClient.invalidateQueries({ queryKey: ['streams', domainId] });
+        queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
       }
     },
   });
@@ -1024,31 +1198,37 @@ export function Navigator({ }: NavigatorProps) {
   const deleteCabinetMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('cabinets')
+        .from("cabinets")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
     },
     onMutate: async (id) => {
       if (!domainId) return;
-      await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
-      const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["cabinets", domainId] });
+      const previousCabinets = queryClient.getQueryData<Cabinet[]>([
+        "cabinets",
+        domainId,
+      ]);
 
-      queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
-        old?.filter((cabinet) => cabinet.id !== id)
+      queryClient.setQueryData<Cabinet[]>(["cabinets", domainId], (old) =>
+        old?.filter((cabinet) => cabinet.id !== id),
       );
 
       return { previousCabinets };
     },
     onError: (error, _, context) => {
       if (context?.previousCabinets && domainId) {
-        queryClient.setQueryData(['cabinets', domainId], context.previousCabinets);
+        queryClient.setQueryData(
+          ["cabinets", domainId],
+          context.previousCabinets,
+        );
       }
     },
     onSettled: () => {
       if (domainId) {
-        queryClient.invalidateQueries({ queryKey: ['cabinets', domainId] });
+        queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
       }
     },
   });
@@ -1056,31 +1236,37 @@ export function Navigator({ }: NavigatorProps) {
   const deleteStreamMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from('streams')
+        .from("streams")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
     },
     onMutate: async (id) => {
       if (!domainId) return;
-      await queryClient.cancelQueries({ queryKey: ['streams', domainId] });
-      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["streams", domainId] });
+      const previousStreams = queryClient.getQueryData<Stream[]>([
+        "streams",
+        domainId,
+      ]);
 
-      queryClient.setQueryData<Stream[]>(['streams', domainId], (old) =>
-        old?.filter((stream) => stream.id !== id)
+      queryClient.setQueryData<Stream[]>(["streams", domainId], (old) =>
+        old?.filter((stream) => stream.id !== id),
       );
 
       return { previousStreams };
     },
     onError: (error, _, context) => {
       if (context?.previousStreams && domainId) {
-        queryClient.setQueryData(['streams', domainId], context.previousStreams);
+        queryClient.setQueryData(
+          ["streams", domainId],
+          context.previousStreams,
+        );
       }
     },
     onSettled: () => {
       if (domainId) {
-        queryClient.invalidateQueries({ queryKey: ['streams', domainId] });
+        queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
       }
     },
   });
@@ -1088,7 +1274,7 @@ export function Navigator({ }: NavigatorProps) {
   const createCabinetMutation = useMutation({
     mutationFn: async (cabinet: CabinetInsert) => {
       const { data, error } = await supabase
-        .from('cabinets')
+        .from("cabinets")
         .insert(cabinet)
         .select()
         .single();
@@ -1098,8 +1284,11 @@ export function Navigator({ }: NavigatorProps) {
     },
     onMutate: async (newCabinet) => {
       if (!domainId) return;
-      await queryClient.cancelQueries({ queryKey: ['cabinets', domainId] });
-      const previousCabinets = queryClient.getQueryData<Cabinet[]>(['cabinets', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["cabinets", domainId] });
+      const previousCabinets = queryClient.getQueryData<Cabinet[]>([
+        "cabinets",
+        domainId,
+      ]);
       const optimisticCabinet: Cabinet = {
         id: `temp-${Date.now()}`,
         name: newCabinet.name,
@@ -1112,20 +1301,23 @@ export function Navigator({ }: NavigatorProps) {
         archived_at: null,
       };
 
-      queryClient.setQueryData<Cabinet[]>(['cabinets', domainId], (old) =>
-        applyOptimisticCabinetCreation(old, optimisticCabinet)
+      queryClient.setQueryData<Cabinet[]>(["cabinets", domainId], (old) =>
+        applyOptimisticCabinetCreation(old, optimisticCabinet),
       );
 
       return { previousCabinets, optimisticId: optimisticCabinet.id };
     },
     onError: (error, newCabinet, context) => {
       if (context?.previousCabinets && domainId) {
-        queryClient.setQueryData(['cabinets', domainId], context.previousCabinets);
+        queryClient.setQueryData(
+          ["cabinets", domainId],
+          context.previousCabinets,
+        );
       }
     },
     onSettled: () => {
       if (domainId) {
-        queryClient.invalidateQueries({ queryKey: ['cabinets', domainId] });
+        queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
       }
     },
   });
@@ -1133,7 +1325,7 @@ export function Navigator({ }: NavigatorProps) {
   const createStreamMutation = useMutation({
     mutationFn: async (stream: StreamInsert) => {
       let { data, error } = await supabase
-        .from('streams')
+        .from("streams")
         .insert(stream)
         .select()
         .single();
@@ -1148,7 +1340,7 @@ export function Navigator({ }: NavigatorProps) {
         };
 
         const fallback = await supabase
-          .from('streams')
+          .from("streams")
           .insert(legacyStream)
           .select()
           .single();
@@ -1162,8 +1354,11 @@ export function Navigator({ }: NavigatorProps) {
     },
     onMutate: async (newStream) => {
       if (!domainId) return;
-      await queryClient.cancelQueries({ queryKey: ['streams', domainId] });
-      const previousStreams = queryClient.getQueryData<Stream[]>(['streams', domainId]);
+      await queryClient.cancelQueries({ queryKey: ["streams", domainId] });
+      const previousStreams = queryClient.getQueryData<Stream[]>([
+        "streams",
+        domainId,
+      ]);
       const optimisticStream: Stream = {
         id: `temp-${Date.now()}`,
         name: newStream.name,
@@ -1171,7 +1366,8 @@ export function Navigator({ }: NavigatorProps) {
         domain_id: newStream.domain_id,
         sort_order: newStream.sort_order ?? 0,
         description: newStream.description ?? null,
-        stream_kind: (newStream.stream_kind as StreamKind) ?? STREAM_KIND.REGULAR,
+        stream_kind:
+          (newStream.stream_kind as StreamKind) ?? STREAM_KIND.REGULAR,
         is_system_global: newStream.is_system_global ?? false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -1180,13 +1376,15 @@ export function Navigator({ }: NavigatorProps) {
         parent_stream_id: null,
       };
 
-      queryClient.setQueryData<Stream[]>(['streams', domainId], (old) =>
-        applyOptimisticStreamCreation(old, optimisticStream)
+      queryClient.setQueryData<Stream[]>(["streams", domainId], (old) =>
+        applyOptimisticStreamCreation(old, optimisticStream),
       );
 
       setJustCreatedStreamId(optimisticStream.id);
       if (optimisticStream.cabinet_id) {
-        setExpandedCabinets((prev) => new Set(prev).add(optimisticStream.cabinet_id as string));
+        setExpandedCabinets((prev) =>
+          new Set(prev).add(optimisticStream.cabinet_id as string),
+        );
       }
 
       return { previousStreams, optimisticId: optimisticStream.id };
@@ -1195,18 +1393,23 @@ export function Navigator({ }: NavigatorProps) {
       if (!domainId || !data) return;
       setJustCreatedStreamId(data.id);
       if (data.cabinet_id) {
-        setExpandedCabinets((prev) => new Set(prev).add(data.cabinet_id as string));
+        setExpandedCabinets((prev) =>
+          new Set(prev).add(data.cabinet_id as string),
+        );
       }
       router.push(`/${domainId}/${data.id}`);
     },
     onError: (error, newStream, context) => {
       if (context?.previousStreams && domainId) {
-        queryClient.setQueryData(['streams', domainId], context.previousStreams);
+        queryClient.setQueryData(
+          ["streams", domainId],
+          context.previousStreams,
+        );
       }
     },
     onSettled: () => {
       if (domainId) {
-        queryClient.invalidateQueries({ queryKey: ['streams', domainId] });
+        queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
       }
     },
   });
@@ -1224,15 +1427,21 @@ export function Navigator({ }: NavigatorProps) {
   };
 
   // Organize cabinets into a tree
-  const roots = cabinets?.filter(c => !c.parent_id) ?? [];
+  const roots = cabinets?.filter((c) => !c.parent_id) ?? [];
   const getChildren = (parentId: string): Cabinet[] =>
-    cabinets?.filter(c => c.parent_id === parentId) ?? [];
+    cabinets?.filter((c) => c.parent_id === parentId) ?? [];
 
   // cabinetTree object will be automatically memoized by the React Compiler
   const cabinetTree = { roots, getChildren };
 
-  const cabinetDisambiguation = buildDisambiguationMap(cabinets, (cabinet) => cabinet.parent_id ?? null);
-  const streamDisambiguation = buildDisambiguationMap(streams, (stream) => stream.cabinet_id ?? null);
+  const cabinetDisambiguation = buildDisambiguationMap(
+    cabinets,
+    (cabinet) => cabinet.parent_id ?? null,
+  );
+  const streamDisambiguation = buildDisambiguationMap(
+    streams,
+    (stream) => stream.cabinet_id ?? null,
+  );
   const cabinetChildrenMap = new Map<string, Cabinet[]>();
   cabinets?.forEach((cabinet) => {
     if (!cabinet.parent_id) return;
@@ -1242,9 +1451,14 @@ export function Navigator({ }: NavigatorProps) {
   });
 
   // Determine the effective highlight node
-  const routeActiveNode = getVisibleActiveNodeId(activeStreamId, streams, cabinets, expandedCabinets);
+  const routeActiveNode = getVisibleActiveNodeId(
+    activeStreamId,
+    streams,
+    cabinets,
+    expandedCabinets,
+  );
   const validManualActiveNode = manualActiveNode
-    ? manualActiveNode.type === 'cabinet'
+    ? manualActiveNode.type === "cabinet"
       ? cabinets?.some((cabinet) => cabinet.id === manualActiveNode.id)
         ? manualActiveNode
         : null
@@ -1256,12 +1470,18 @@ export function Navigator({ }: NavigatorProps) {
 
   const isStreamNewlyCreated = (id: string) => id === justCreatedStreamId;
 
-  const getCabinetById = (id: string) => cabinets?.find((cabinet) => cabinet.id === id);
-  const getStreamById = (id: string) => streams?.find((stream) => stream.id === id);
+  const getCabinetById = (id: string) =>
+    cabinets?.find((cabinet) => cabinet.id === id);
+  const getStreamById = (id: string) =>
+    streams?.find((stream) => stream.id === id);
   const getItemById = (id: string, type: NavItemType) =>
-    type === 'cabinet' ? getCabinetById(id) : getStreamById(id);
+    type === "cabinet" ? getCabinetById(id) : getStreamById(id);
 
-  const handleContextMenu = (event: React.MouseEvent, id: string, type: NavItemType) => {
+  const handleContextMenu = (
+    event: React.MouseEvent,
+    id: string,
+    type: NavItemType,
+  ) => {
     event.preventDefault();
     event.stopPropagation();
     setContextMenu({ id, type, x: event.clientX, y: event.clientY });
@@ -1269,29 +1489,29 @@ export function Navigator({ }: NavigatorProps) {
 
   useKeyboard([
     {
-      key: 'delete',
+      key: "delete",
       handler: () => {
         const active = document.activeElement;
         if (
-          active?.tagName === 'INPUT' ||
-          active?.tagName === 'TEXTAREA' ||
-          active?.getAttribute('contenteditable') === 'true'
+          active?.tagName === "INPUT" ||
+          active?.tagName === "TEXTAREA" ||
+          active?.getAttribute("contenteditable") === "true"
         ) {
           return;
         }
         if (!activeNode) return;
         setDeleteTarget({ id: activeNode.id, type: activeNode.type });
       },
-      description: 'Delete navigation item',
+      description: "Delete navigation item",
     },
     {
-      key: 'f2',
+      key: "f2",
       handler: () => {
         const active = document.activeElement;
         if (
-          active?.tagName === 'INPUT' ||
-          active?.tagName === 'TEXTAREA' ||
-          active?.getAttribute('contenteditable') === 'true'
+          active?.tagName === "INPUT" ||
+          active?.tagName === "TEXTAREA" ||
+          active?.getAttribute("contenteditable") === "true"
         ) {
           return;
         }
@@ -1301,18 +1521,22 @@ export function Navigator({ }: NavigatorProps) {
         setEditingItemId(item.id);
         setEditingName(item.name);
       },
-      description: 'Rename navigation item',
+      description: "Rename navigation item",
     },
   ]);
 
-  const handleRename = (id: string, newName: string, type: 'cabinet' | 'stream') => {
+  const handleRename = (
+    id: string,
+    newName: string,
+    type: "cabinet" | "stream",
+  ) => {
     const trimmedName = newName.trim();
     if (!trimmedName) {
       setEditingItemId(null);
       return;
     }
 
-    if (type === 'cabinet') {
+    if (type === "cabinet") {
       const cabinet = cabinets?.find((c) => c.id === id);
       if (cabinet && cabinet.name !== trimmedName) {
         updateCabinetMutation.mutate({ id, updates: { name: trimmedName } });
@@ -1326,10 +1550,14 @@ export function Navigator({ }: NavigatorProps) {
     setEditingItemId(null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, id: string, type: 'cabinet' | 'stream') => {
-    if (e.key === 'Enter') {
+  const handleKeyDown = (
+    e: React.KeyboardEvent,
+    id: string,
+    type: "cabinet" | "stream",
+  ) => {
+    if (e.key === "Enter") {
       handleRename(id, editingName, type);
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setEditingItemId(null);
     }
   };
@@ -1338,13 +1566,16 @@ export function Navigator({ }: NavigatorProps) {
     if (!domainId) return;
 
     const { parentCabinetId } = resolveCreationTarget({
-      kind: 'cabinet',
+      kind: "cabinet",
       buttonCabinetId: buttonParentId,
       activeStreamId,
       streams,
     });
 
-    if (parentCabinetId && !cabinets?.some((cabinet) => cabinet.id === parentCabinetId)) {
+    if (
+      parentCabinetId &&
+      !cabinets?.some((cabinet) => cabinet.id === parentCabinetId)
+    ) {
       return;
     }
 
@@ -1352,14 +1583,14 @@ export function Navigator({ }: NavigatorProps) {
       setExpandedCabinets((prev) => new Set(prev).add(parentCabinetId));
     }
 
-    setCreatingItem({ type: 'cabinet', parentId: parentCabinetId ?? null });
+    setCreatingItem({ type: "cabinet", parentId: parentCabinetId ?? null });
   };
 
   const handleCreateStream = (buttonCabinetId: string | null | undefined) => {
     if (!domainId) return;
 
     const target = resolveCreationTarget({
-      kind: 'stream',
+      kind: "stream",
       buttonCabinetId,
       activeStreamId,
       streams,
@@ -1368,9 +1599,9 @@ export function Navigator({ }: NavigatorProps) {
     if (target.error) return;
 
     if (!isCreationAllowed(target, settings)) {
-      // Ideally show a toast or error message here. 
+      // Ideally show a toast or error message here.
       // For now, we simply return to block creation.
-      console.warn('Root streams are disabled for this domain.');
+      console.warn("Root streams are disabled for this domain.");
       return;
     }
 
@@ -1381,13 +1612,15 @@ export function Navigator({ }: NavigatorProps) {
       setExpandedCabinets((prev) => new Set(prev).add(targetCabinetId));
     }
 
-    setCreatingItem({ type: 'stream', parentId: targetCabinetId ?? null });
+    setCreatingItem({ type: "stream", parentId: targetCabinetId ?? null });
   };
 
   const getSelectedCreationCabinetId = () => {
     if (!activeNode) return null;
-    if (activeNode.type === 'cabinet') return activeNode.id;
-    return streams?.find((stream) => stream.id === activeNode.id)?.cabinet_id ?? null;
+    if (activeNode.type === "cabinet") return activeNode.id;
+    return (
+      streams?.find((stream) => stream.id === activeNode.id)?.cabinet_id ?? null
+    );
   };
 
   const handleHeaderCreateStream = () => {
@@ -1402,7 +1635,10 @@ export function Navigator({ }: NavigatorProps) {
 
   const lastClickRef = useRef<{ id: string; time: number } | null>(null);
   const lastNavigatedPathRef = useRef<string | null>(null);
-  const pendingStreamNavigationRef = useRef<{ path: string; startedAt: number } | null>(null);
+  const pendingStreamNavigationRef = useRef<{
+    path: string;
+    startedAt: number;
+  } | null>(null);
 
   useEffect(() => {
     lastNavigatedPathRef.current = null;
@@ -1412,9 +1648,9 @@ export function Navigator({ }: NavigatorProps) {
   // Click handling logic
   const handleItemClick = (
     id: string,
-    type: 'cabinet' | 'stream',
+    type: "cabinet" | "stream",
     name: string,
-    isActive: boolean
+    isActive: boolean,
   ) => {
     // Block interaction if a navigation is already pending
     if (isPending) return;
@@ -1422,12 +1658,12 @@ export function Navigator({ }: NavigatorProps) {
     const now = Date.now();
     const lastClick = lastClickRef.current;
 
-    if (type === 'cabinet') {
-      setManualActiveNode({ id, type: 'cabinet' });
+    if (type === "cabinet") {
+      setManualActiveNode({ id, type: "cabinet" });
       // Cabinet logic (applied to ALL cabinets, highlighted or not):
       // 1. Rapid successive clicks (< 500ms) -> Rename
       // 2. Single click / Slow click -> Toggle Expand/Collapse
-      if (lastClick && lastClick.id === id && (now - lastClick.time < 500)) {
+      if (lastClick && lastClick.id === id && now - lastClick.time < 500) {
         setEditingItemId(id);
         setEditingName(name);
         lastClickRef.current = null;
@@ -1440,7 +1676,7 @@ export function Navigator({ }: NavigatorProps) {
 
       // Block interaction with optimistic (temp) streams — the onSuccess
       // callback will auto-navigate once the real ID is available.
-      if (id.startsWith('temp-')) {
+      if (id.startsWith("temp-")) {
         lastClickRef.current = { id, time: now };
         return;
       }
@@ -1457,7 +1693,12 @@ export function Navigator({ }: NavigatorProps) {
         pendingStreamNavigationRef.current = null;
       }
 
-      if (isActive && lastClick && lastClick.id === id && (now - lastClick.time > 500)) {
+      if (
+        isActive &&
+        lastClick &&
+        lastClick.id === id &&
+        now - lastClick.time > 500
+      ) {
         setEditingItemId(id);
         setEditingName(name);
         lastClickRef.current = null; // Reset
@@ -1465,16 +1706,23 @@ export function Navigator({ }: NavigatorProps) {
       }
 
       // Prevent rapid double-click navigation
-      if (lastClick && lastClick.id === id && (now - lastClick.time < 500)) {
+      if (lastClick && lastClick.id === id && now - lastClick.time < 500) {
         return;
       }
 
       const targetPath = `/${domainId}/${id}`;
-      if (pathname === targetPath || lastNavigatedPathRef.current === targetPath) return;
+      if (
+        pathname === targetPath ||
+        lastNavigatedPathRef.current === targetPath
+      )
+        return;
 
       startTransition(() => {
         lastNavigatedPathRef.current = targetPath;
-        pendingStreamNavigationRef.current = { path: targetPath, startedAt: now };
+        pendingStreamNavigationRef.current = {
+          path: targetPath,
+          startedAt: now,
+        };
         router.push(targetPath);
       });
     }
@@ -1509,11 +1757,14 @@ export function Navigator({ }: NavigatorProps) {
 
   const handleDeleteConfirm = () => {
     if (!deleteTarget) return;
-    if (deleteTarget.type === 'cabinet') {
+    if (deleteTarget.type === "cabinet") {
       deleteCabinetMutation.mutate(deleteTarget.id);
     } else {
       const stream = getStreamById(deleteTarget.id);
-      if (stream && (!canDeleteStream(stream, streams) || isSystemGlobalStream(stream))) {
+      if (
+        stream &&
+        (!canDeleteStream(stream, streams) || isSystemGlobalStream(stream))
+      ) {
         setDeleteTarget(null);
         return;
       }
@@ -1528,8 +1779,11 @@ export function Navigator({ }: NavigatorProps) {
   const handleMoveConfirm = () => {
     if (!moveTarget) return;
     const normalizedTarget = moveDestination || null;
-    if (moveTarget.type === 'cabinet') {
-      updateCabinetMutation.mutate({ id: moveTarget.id, updates: { parent_id: normalizedTarget } });
+    if (moveTarget.type === "cabinet") {
+      updateCabinetMutation.mutate({
+        id: moveTarget.id,
+        updates: { parent_id: normalizedTarget },
+      });
       if (normalizedTarget) {
         setExpandedCabinets((prev) => new Set(prev).add(normalizedTarget));
       }
@@ -1543,7 +1797,10 @@ export function Navigator({ }: NavigatorProps) {
         closeMoveDialog();
         return;
       }
-      updateStreamMutation.mutate({ id: moveTarget.id, updates: { cabinet_id: normalizedTarget } });
+      updateStreamMutation.mutate({
+        id: moveTarget.id,
+        updates: { cabinet_id: normalizedTarget },
+      });
       if (normalizedTarget) {
         setExpandedCabinets((prev) => new Set(prev).add(normalizedTarget));
       }
@@ -1553,10 +1810,11 @@ export function Navigator({ }: NavigatorProps) {
 
   const handleDuplicate = (id: string, type: NavItemType) => {
     if (!domainId) return;
-    if (type === 'cabinet') {
+    if (type === "cabinet") {
       const cabinet = getCabinetById(id);
       if (!cabinet) return;
-      const siblings = cabinets?.filter((c) => c.parent_id === cabinet.parent_id) || [];
+      const siblings =
+        cabinets?.filter((c) => c.parent_id === cabinet.parent_id) || [];
       const sortOrder = getNextSortOrder(siblings);
       createCabinetMutation.mutate({
         domain_id: domainId,
@@ -1567,7 +1825,8 @@ export function Navigator({ }: NavigatorProps) {
     } else {
       const stream = getStreamById(id);
       if (!stream) return;
-      const siblings = streams?.filter((s) => s.cabinet_id === stream.cabinet_id) || [];
+      const siblings =
+        streams?.filter((s) => s.cabinet_id === stream.cabinet_id) || [];
       const sortOrder = getNextSortOrder(siblings);
       createStreamMutation.mutate({
         cabinet_id: stream.cabinet_id,
@@ -1579,27 +1838,33 @@ export function Navigator({ }: NavigatorProps) {
     }
   };
 
-  const handleContextAction = (action: 'rename' | 'delete' | 'duplicate' | 'move' | 'properties') => {
+  const handleContextAction = (
+    action: "rename" | "delete" | "duplicate" | "move" | "properties",
+  ) => {
     if (!contextMenu) return;
     const { id, type } = contextMenu;
-    const stream = type === 'stream' ? getStreamById(id) : null;
-    const blockedForSystemGlobal = stream ? isSystemGlobalStream(stream) : false;
-    const blockedDeleteForMinimumGlobal = stream ? !canDeleteStream(stream, streams) : false;
+    const stream = type === "stream" ? getStreamById(id) : null;
+    const blockedForSystemGlobal = stream
+      ? isSystemGlobalStream(stream)
+      : false;
+    const blockedDeleteForMinimumGlobal = stream
+      ? !canDeleteStream(stream, streams)
+      : false;
     setContextMenu(null);
-    if (action === 'rename') {
+    if (action === "rename") {
       openRename(id, type);
-    } else if (action === 'delete') {
+    } else if (action === "delete") {
       if (blockedForSystemGlobal || blockedDeleteForMinimumGlobal) return;
       setDeleteTarget({ id, type });
-    } else if (action === 'duplicate') {
+    } else if (action === "duplicate") {
       handleDuplicate(id, type);
-    } else if (action === 'move') {
+    } else if (action === "move") {
       if (blockedForSystemGlobal) return;
       const item = getItemById(id, type);
       const destination =
-        type === 'cabinet'
-          ? (item as Cabinet | undefined)?.parent_id ?? null
-          : (item as Stream | undefined)?.cabinet_id ?? null;
+        type === "cabinet"
+          ? ((item as Cabinet | undefined)?.parent_id ?? null)
+          : ((item as Stream | undefined)?.cabinet_id ?? null);
       setMoveDestination(destination);
       setMoveTarget({ id, type });
     } else {
@@ -1607,19 +1872,28 @@ export function Navigator({ }: NavigatorProps) {
     }
   };
 
-  const rootGlobalStreams = streams?.filter((stream) => !stream.cabinet_id && isGlobalStream(stream)) || [];
-  const rootRegularStreams = streams?.filter((stream) => !stream.cabinet_id && !isGlobalStream(stream)) || [];
-  const hasNonGlobalTreeItems = (cabinetTree.roots?.length ?? 0) > 0 || rootRegularStreams.length > 0;
+  const rootGlobalStreams =
+    streams?.filter((stream) => !stream.cabinet_id && isGlobalStream(stream)) ||
+    [];
+  const rootRegularStreams =
+    streams?.filter(
+      (stream) => !stream.cabinet_id && !isGlobalStream(stream),
+    ) || [];
+  const hasNonGlobalTreeItems =
+    (cabinetTree.roots?.length ?? 0) > 0 || rootRegularStreams.length > 0;
   const selectedCreationCabinetId = getSelectedCreationCabinetId();
   const selectedStreamTarget = resolveCreationTarget({
-    kind: 'stream',
+    kind: "stream",
     buttonCabinetId: selectedCreationCabinetId,
     activeStreamId,
     streams,
   });
-  const canCreateStreamFromSelection = isCreationAllowed(selectedStreamTarget, settings);
-  const isCreatingStream = creatingItem?.type === 'stream';
-  const isCreatingCabinet = creatingItem?.type === 'cabinet';
+  const canCreateStreamFromSelection = isCreationAllowed(
+    selectedStreamTarget,
+    settings,
+  );
+  const isCreatingStream = creatingItem?.type === "stream";
+  const isCreatingCabinet = creatingItem?.type === "cabinet";
   const isCreateStreamDisabled =
     isPending ||
     createStreamMutation.isPending ||
@@ -1631,22 +1905,34 @@ export function Navigator({ }: NavigatorProps) {
     createCabinetMutation.isPending ||
     createStreamMutation.isPending ||
     isCreatingCabinet;
-  const deleteItem = deleteTarget ? getItemById(deleteTarget.id, deleteTarget.type) : null;
-  const moveItem = moveTarget ? getItemById(moveTarget.id, moveTarget.type) : null;
-  const propertiesItem = propertiesTarget ? getItemById(propertiesTarget.id, propertiesTarget.type) : null;
+  const deleteItem = deleteTarget
+    ? getItemById(deleteTarget.id, deleteTarget.type)
+    : null;
+  const moveItem = moveTarget
+    ? getItemById(moveTarget.id, moveTarget.type)
+    : null;
+  const propertiesItem = propertiesTarget
+    ? getItemById(propertiesTarget.id, propertiesTarget.type)
+    : null;
   const contextMenuStream =
-    contextMenu?.type === 'stream' ? getStreamById(contextMenu.id) : null;
-  const contextMenuIsSystemGlobal = contextMenuStream ? isSystemGlobalStream(contextMenuStream) : false;
+    contextMenu?.type === "stream" ? getStreamById(contextMenu.id) : null;
+  const contextMenuIsSystemGlobal = contextMenuStream
+    ? isSystemGlobalStream(contextMenuStream)
+    : false;
   const contextMenuDeleteBlockedByMinimumGlobal = contextMenuStream
     ? !canDeleteStream(contextMenuStream, streams)
     : false;
-  const moveExcluded = moveTarget?.type === 'cabinet' ? getDescendantIds(moveTarget.id) : new Set<string>();
+  const moveExcluded =
+    moveTarget?.type === "cabinet"
+      ? getDescendantIds(moveTarget.id)
+      : new Set<string>();
   const moveCabinetOptions =
-    moveTarget?.type === 'cabinet'
+    moveTarget?.type === "cabinet"
       ? (cabinets ?? []).filter(
-        (cabinet) => cabinet.id !== moveTarget.id && !moveExcluded.has(cabinet.id)
-      )
-      : cabinets ?? [];
+          (cabinet) =>
+            cabinet.id !== moveTarget.id && !moveExcluded.has(cabinet.id),
+        )
+      : (cabinets ?? []);
 
   if (!domainId) {
     return (
@@ -1658,11 +1944,16 @@ export function Navigator({ }: NavigatorProps) {
 
   return (
     <>
-      <div className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? 'opacity-70 pointer-events-none' : ''}`}>
+      <div
+        className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? "opacity-70 pointer-events-none" : ""}`}
+      >
         {/* Header */}
         <div className="border-b border-border-subtle px-3 py-2">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="truncate text-sm font-semibold text-text-default" title={currentDomainName}>
+            <h2
+              className="truncate text-sm font-semibold text-text-default"
+              title={currentDomainName}
+            >
               {currentDomainName}
             </h2>
             <div className="flex items-center gap-0.5">
@@ -1672,7 +1963,11 @@ export function Navigator({ }: NavigatorProps) {
                   onClick={handleHeaderCreateStream}
                   disabled={isCreateStreamDisabled}
                   aria-label="New stream"
-                  title={canCreateStreamFromSelection ? 'New Stream' : 'New Stream (Root is restricted)'}
+                  title={
+                    canCreateStreamFromSelection
+                      ? "New Stream"
+                      : "New Stream (Root is restricted)"
+                  }
                   className="rounded p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
                 >
                   <FilePlus className="h-4 w-4" />
@@ -1703,7 +1998,7 @@ export function Navigator({ }: NavigatorProps) {
 
         {/* Tree View */}
         <div
-          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? 'bg-action-primary-bg/5' : ''}`}
+          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-action-primary-bg/5" : ""}`}
           role="tree"
           onDragOver={(e) => handleDragOver(e, null)}
           onDrop={(e) => handleDrop(e, null)}
@@ -1745,7 +2040,11 @@ export function Navigator({ }: NavigatorProps) {
           )}
 
           {rootGlobalStreams.length > 0 && hasNonGlobalTreeItems && (
-            <div className="my-2 border-t border-border-subtle" role="separator" aria-label="Global stream separator" />
+            <div
+              className="my-2 border-t border-border-subtle"
+              role="separator"
+              aria-label="Global stream separator"
+            />
           )}
 
           {cabinetTree.roots.map((cabinet) => (
@@ -1767,7 +2066,7 @@ export function Navigator({ }: NavigatorProps) {
               handleItemClick={handleItemClick}
               toggleCabinet={toggleCabinet}
               router={router}
-              domainId={domainId || ''}
+              domainId={domainId || ""}
               handleCreateStream={handleCreateStream}
               handleCreateCabinet={handleCreateCabinet}
               handleContextMenu={handleContextMenu}
@@ -1813,91 +2112,114 @@ export function Navigator({ }: NavigatorProps) {
             />
           ))}
 
-          {creatingItem?.type === 'cabinet' && creatingItem.parentId === null && (
-            <CreationInput
-              type="cabinet"
-              depth={0}
-              onConfirm={handleCreationConfirm}
-              onCancel={handleCreationCancel}
-            />
-          )}
+          {creatingItem?.type === "cabinet" &&
+            creatingItem.parentId === null && (
+              <CreationInput
+                type="cabinet"
+                depth={0}
+                onConfirm={handleCreationConfirm}
+                onCancel={handleCreationCancel}
+              />
+            )}
 
-          {creatingItem?.type === 'stream' && creatingItem.parentId === null && (
-            <CreationInput
-              type="stream"
-              depth={0}
-              onConfirm={handleCreationConfirm}
-              onCancel={handleCreationCancel}
-            />
-          )}
-
+          {creatingItem?.type === "stream" &&
+            creatingItem.parentId === null && (
+              <CreationInput
+                type="stream"
+                depth={0}
+                onConfirm={handleCreationConfirm}
+                onCancel={handleCreationCancel}
+              />
+            )}
         </div>
       </div>
 
-      {contextMenu && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-100" onClick={() => setContextMenu(null)}>
+      {contextMenu &&
+        typeof window !== "undefined" &&
+        createPortal(
           <div
-            className="absolute w-48 rounded-lg border border-border-strong bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 z-100"
-            style={{
-              top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 200 : contextMenu.y),
-              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 200 : contextMenu.x),
-              backgroundColor: 'var(--bg-surface-elevated)',
-              opacity: 1
-            }}
-            onClick={(event) => event.stopPropagation()}
-            role="menu"
+            className="fixed inset-0 z-100"
+            onClick={() => setContextMenu(null)}
           >
-            <button
-              onClick={() => handleContextAction('rename')}
-              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+            <div
+              className="absolute w-48 rounded-lg border border-border-strong bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 z-100"
+              style={{
+                top: Math.min(
+                  contextMenu.y,
+                  typeof window !== "undefined"
+                    ? window.innerHeight - 200
+                    : contextMenu.y,
+                ),
+                left: Math.min(
+                  contextMenu.x,
+                  typeof window !== "undefined"
+                    ? window.innerWidth - 200
+                    : contextMenu.x,
+                ),
+                backgroundColor: "var(--bg-surface-elevated)",
+                opacity: 1,
+              }}
+              onClick={(event) => event.stopPropagation()}
+              role="menu"
             >
-              <span className="flex items-center gap-2">
-                <Pencil className="h-4 w-4 text-text-muted" />
-                Rename
-              </span>
-              <span className="text-[10px] text-text-muted">F2</span>
-            </button>
-            <button
-              onClick={() => handleContextAction('duplicate')}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <Copy className="h-4 w-4 text-text-muted" />
-              Duplicate
-            </button>
-            <button
-              onClick={() => handleContextAction('move')}
-              disabled={contextMenuIsSystemGlobal}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <Move className="h-4 w-4 text-text-muted" />
-              Move
-            </button>
-            <button
-              onClick={() => handleContextAction('properties')}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <Info className="h-4 w-4 text-text-muted" />
-              Properties
-            </button>
-            <div className="my-1 h-px bg-border-subtle" />
-            <button
-              onClick={() => handleContextAction('delete')}
-              disabled={contextMenuIsSystemGlobal || contextMenuDeleteBlockedByMinimumGlobal}
-              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-rose-500/10"
-            >
-              <span className="flex items-center gap-2">
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </span>
-              <span className="text-[10px] text-rose-400">Del</span>
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
+              <button
+                onClick={() => handleContextAction("rename")}
+                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              >
+                <span className="flex items-center gap-2">
+                  <Pencil className="h-4 w-4 text-text-muted" />
+                  Rename
+                </span>
+                <span className="text-[10px] text-text-muted">F2</span>
+              </button>
+              <button
+                onClick={() => handleContextAction("duplicate")}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              >
+                <Copy className="h-4 w-4 text-text-muted" />
+                Duplicate
+              </button>
+              <button
+                onClick={() => handleContextAction("move")}
+                disabled={contextMenuIsSystemGlobal}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              >
+                <Move className="h-4 w-4 text-text-muted" />
+                Move
+              </button>
+              <button
+                onClick={() => handleContextAction("properties")}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              >
+                <Info className="h-4 w-4 text-text-muted" />
+                Properties
+              </button>
+              <div className="my-1 h-px bg-border-subtle" />
+              <button
+                onClick={() => handleContextAction("delete")}
+                disabled={
+                  contextMenuIsSystemGlobal ||
+                  contextMenuDeleteBlockedByMinimumGlobal
+                }
+                className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-rose-500/10"
+              >
+                <span className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </span>
+                <span className="text-[10px] text-rose-400">Del</span>
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       <Transition appear show={!!deleteTarget} as={Fragment}>
-        <Dialog as="div" className="relative z-100" onClose={() => setDeleteTarget(null)}>
+        <Dialog
+          as="div"
+          className="relative z-100"
+          onClose={() => setDeleteTarget(null)}
+        >
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
@@ -1922,7 +2244,8 @@ export function Navigator({ }: NavigatorProps) {
               <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-sm font-semibold text-text-default">
-                    Delete {deleteTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
+                    Delete{" "}
+                    {deleteTarget?.type === "cabinet" ? "Cabinet" : "Stream"}
                   </DialogTitle>
                   <button
                     onClick={() => setDeleteTarget(null)}
@@ -1932,7 +2255,11 @@ export function Navigator({ }: NavigatorProps) {
                   </button>
                 </div>
                 <p className="mt-2 text-xs text-text-subtle">
-                  This will remove <span className="font-semibold text-text-default">{deleteItem?.name ?? 'this item'}</span>.
+                  This will remove{" "}
+                  <span className="font-semibold text-text-default">
+                    {deleteItem?.name ?? "this item"}
+                  </span>
+                  .
                 </p>
                 <div className="mt-4 flex justify-end gap-2">
                   <button
@@ -1980,7 +2307,7 @@ export function Navigator({ }: NavigatorProps) {
               <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-sm font-semibold text-text-default">
-                    Move {moveTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
+                    Move {moveTarget?.type === "cabinet" ? "Cabinet" : "Stream"}
                   </DialogTitle>
                   <button
                     onClick={closeMoveDialog}
@@ -1992,21 +2319,34 @@ export function Navigator({ }: NavigatorProps) {
                 <div className="mt-3 space-y-2 text-xs text-text-subtle">
                   <div className="flex items-center justify-between">
                     <span>Item</span>
-                    <span className="text-text-default">{moveItem?.name ?? '-'}</span>
+                    <span className="text-text-default">
+                      {moveItem?.name ?? "-"}
+                    </span>
                   </div>
                   <div className="flex flex-col gap-2">
                     <span>Destination</span>
                     <select
-                      value={moveDestination ?? ''}
-                      onChange={(event) => setMoveDestination(event.target.value || null)}
+                      value={moveDestination ?? ""}
+                      onChange={(event) =>
+                        setMoveDestination(event.target.value || null)
+                      }
                       className="rounded-lg border border-border-default bg-surface-default px-2 py-1.5 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                     >
-                      <option value="" disabled={moveTarget?.type === 'stream' && isCabinetOnly}>
+                      <option
+                        value=""
+                        disabled={
+                          moveTarget?.type === "stream" && isCabinetOnly
+                        }
+                      >
                         Root level
                       </option>
                       {moveCabinetOptions.map((cabinet) => {
-                        const disambiguation = cabinetDisambiguation.get(cabinet.id);
-                        const suffix = disambiguation ? ` (#${disambiguation.index})` : '';
+                        const disambiguation = cabinetDisambiguation.get(
+                          cabinet.id,
+                        );
+                        const suffix = disambiguation
+                          ? ` (#${disambiguation.index})`
+                          : "";
                         return (
                           <option key={cabinet.id} value={cabinet.id}>
                             {cabinet.name}
@@ -2027,13 +2367,16 @@ export function Navigator({ }: NavigatorProps) {
                   <button
                     onClick={handleMoveConfirm}
                     disabled={
-                      moveTarget?.type === 'stream'
+                      moveTarget?.type === "stream"
                         ? ((moveItem as Stream | undefined)
-                          ? isSystemGlobalStream(moveItem as Stream)
-                          : false) ||
-                        (isCabinetOnly && (moveDestination ?? null) === null) ||
-                        (moveDestination ?? null) === (moveItem as Stream | undefined)?.cabinet_id
-                        : (moveDestination ?? null) === (moveItem as Cabinet | undefined)?.parent_id
+                            ? isSystemGlobalStream(moveItem as Stream)
+                            : false) ||
+                          (isCabinetOnly &&
+                            (moveDestination ?? null) === null) ||
+                          (moveDestination ?? null) ===
+                            (moveItem as Stream | undefined)?.cabinet_id
+                        : (moveDestination ?? null) ===
+                          (moveItem as Cabinet | undefined)?.parent_id
                     }
                     className="rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -2047,7 +2390,11 @@ export function Navigator({ }: NavigatorProps) {
       </Transition>
 
       <Transition appear show={!!propertiesTarget} as={Fragment}>
-        <Dialog as="div" className="relative z-100" onClose={() => setPropertiesTarget(null)}>
+        <Dialog
+          as="div"
+          className="relative z-100"
+          onClose={() => setPropertiesTarget(null)}
+        >
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
@@ -2071,7 +2418,9 @@ export function Navigator({ }: NavigatorProps) {
             >
               <DialogPanel className="w-full max-w-sm rounded-2xl border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
-                  <DialogTitle className="text-sm font-semibold text-text-default">Properties</DialogTitle>
+                  <DialogTitle className="text-sm font-semibold text-text-default">
+                    Properties
+                  </DialogTitle>
                   <button
                     onClick={() => setPropertiesTarget(null)}
                     className="rounded-md p-1 text-text-muted hover:bg-surface-subtle"
@@ -2082,41 +2431,51 @@ export function Navigator({ }: NavigatorProps) {
                 <div className="mt-3 space-y-2 text-xs text-text-subtle">
                   <div className="flex items-center justify-between">
                     <span>Name</span>
-                    <span className="text-text-default">{propertiesItem?.name ?? '-'}</span>
+                    <span className="text-text-default">
+                      {propertiesItem?.name ?? "-"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Type</span>
                     <span className="text-text-default">
-                      {propertiesTarget?.type === 'cabinet' ? 'Cabinet' : 'Stream'}
+                      {propertiesTarget?.type === "cabinet"
+                        ? "Cabinet"
+                        : "Stream"}
                     </span>
                   </div>
-                  {propertiesTarget?.type === 'stream' && (
+                  {propertiesTarget?.type === "stream" && (
                     <div className="flex items-center justify-between">
                       <span>Kind</span>
                       <span className="text-text-default">
                         {(propertiesItem as Stream | undefined)
                           ? isGlobalStream(propertiesItem as Stream)
-                            ? 'Global'
-                            : 'Regular'
-                          : '-'}
+                            ? "Global"
+                            : "Regular"
+                          : "-"}
                       </span>
                     </div>
                   )}
                   <div className="flex items-center justify-between">
                     <span>Location</span>
                     <span className="text-text-default">
-                      {propertiesTarget?.type === 'cabinet'
+                      {propertiesTarget?.type === "cabinet"
                         ? (propertiesItem as Cabinet | undefined)?.parent_id
-                          ? getCabinetById((propertiesItem as Cabinet).parent_id as string)?.name ?? 'Unknown'
-                          : 'Root level'
+                          ? (getCabinetById(
+                              (propertiesItem as Cabinet).parent_id as string,
+                            )?.name ?? "Unknown")
+                          : "Root level"
                         : (propertiesItem as Stream | undefined)?.cabinet_id
-                          ? getCabinetById((propertiesItem as Stream).cabinet_id as string)?.name ?? 'Unknown'
-                          : 'Root level'}
+                          ? (getCabinetById(
+                              (propertiesItem as Stream).cabinet_id as string,
+                            )?.name ?? "Unknown")
+                          : "Root level"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>ID</span>
-                    <span className="truncate text-text-default">{propertiesItem?.id ?? '-'}</span>
+                    <span className="truncate text-text-default">
+                      {propertiesItem?.id ?? "-"}
+                    </span>
                   </div>
                 </div>
                 <div className="mt-4 flex justify-end">

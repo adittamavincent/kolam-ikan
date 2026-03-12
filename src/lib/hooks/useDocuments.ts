@@ -1,22 +1,26 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { PostgrestError } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
-import { DocumentWithLatestJob } from '@/lib/types';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PostgrestError } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
+import { DocumentWithLatestJob } from "@/lib/types";
 
 function isMissingDocumentSchemaError(error: PostgrestError | null) {
-  const message = (error?.message ?? '').toLowerCase();
-  return message.includes("could not find the table 'public.documents'")
-    || message.includes("could not find the table 'public.document_import_jobs'")
-    || message.includes('schema cache')
-    || message.includes('does not exist');
+  const message = (error?.message ?? "").toLowerCase();
+  return (
+    message.includes("could not find the table 'public.documents'") ||
+    message.includes(
+      "could not find the table 'public.document_import_jobs'",
+    ) ||
+    message.includes("schema cache") ||
+    message.includes("does not exist")
+  );
 }
 
 interface CreateDocumentImportArgs {
   file: File;
   title?: string;
-  flavor: 'lattice' | 'stream';
+  flavor: "lattice" | "stream";
   enableTableStructure: boolean;
   debugDoclingTables: boolean;
 }
@@ -26,14 +30,14 @@ export function useDocuments(streamId: string) {
   const queryClient = useQueryClient();
 
   const documentsQuery = useQuery({
-    queryKey: ['documents', streamId],
+    queryKey: ["documents", streamId],
     queryFn: async () => {
       const { data: documents, error } = await supabase
-        .from('documents')
-        .select('*')
-        .eq('stream_id', streamId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false });
+        .from("documents")
+        .select("*")
+        .eq("stream_id", streamId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
 
       if (error) {
         if (isMissingDocumentSchemaError(error)) {
@@ -43,10 +47,10 @@ export function useDocuments(streamId: string) {
       }
 
       const { data: jobs, error: jobError } = await supabase
-        .from('document_import_jobs')
-        .select('*')
-        .eq('stream_id', streamId)
-        .order('created_at', { ascending: false });
+        .from("document_import_jobs")
+        .select("*")
+        .eq("stream_id", streamId)
+        .order("created_at", { ascending: false });
 
       if (jobError) {
         if (isMissingDocumentSchemaError(jobError)) {
@@ -72,10 +76,11 @@ export function useDocuments(streamId: string) {
     },
     enabled: !!streamId,
     refetchInterval: (query) => {
-      const documents = (query.state.data as DocumentWithLatestJob[] | undefined) ?? [];
+      const documents =
+        (query.state.data as DocumentWithLatestJob[] | undefined) ?? [];
       const hasActiveJob = documents.some((document) => {
         const status = document.latestJob?.status ?? document.import_status;
-        return status === 'queued' || status === 'processing';
+        return status === "queued" || status === "processing";
       });
 
       return hasActiveJob ? 2000 : false;
@@ -84,97 +89,111 @@ export function useDocuments(streamId: string) {
   });
 
   const createImport = useMutation({
-    mutationFn: async ({ file, title, flavor, enableTableStructure, debugDoclingTables }: CreateDocumentImportArgs) => {
+    mutationFn: async ({
+      file,
+      title,
+      flavor,
+      enableTableStructure,
+      debugDoclingTables,
+    }: CreateDocumentImportArgs) => {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('streamId', streamId);
+      formData.append("file", file);
+      formData.append("streamId", streamId);
       if (title?.trim()) {
-        formData.append('title', title.trim());
+        formData.append("title", title.trim());
       }
-      formData.append('flavor', flavor);
-      formData.append('enableTableStructure', String(enableTableStructure));
-      formData.append('debugDoclingTables', String(debugDoclingTables));
+      formData.append("flavor", flavor);
+      formData.append("enableTableStructure", String(enableTableStructure));
+      formData.append("debugDoclingTables", String(debugDoclingTables));
 
-      const response = await fetch('/api/documents/imports', {
-        method: 'POST',
+      const response = await fetch("/api/documents/imports", {
+        method: "POST",
         body: formData,
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!response.ok) {
-        throw new Error(payload?.error ?? 'Failed to queue document import');
+        throw new Error(payload?.error ?? "Failed to queue document import");
       }
 
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents', streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
     },
   });
 
   const cancelImport = useMutation({
     mutationFn: async ({ documentId }: { documentId: string }) => {
-      const response = await fetch('/api/documents/imports/cancel', {
-        method: 'POST',
+      const response = await fetch("/api/documents/imports/cancel", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ streamId, documentId }),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!response.ok) {
-        throw new Error(payload?.error ?? 'Failed to cancel import');
+        throw new Error(payload?.error ?? "Failed to cancel import");
       }
 
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents', streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
     },
   });
 
   const cancelAllPendingImports = useMutation({
     mutationFn: async () => {
-      const response = await fetch('/api/documents/imports/cancel', {
-        method: 'POST',
+      const response = await fetch("/api/documents/imports/cancel", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ streamId, cancelAll: true }),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!response.ok) {
-        throw new Error(payload?.error ?? 'Failed to cancel pending imports');
+        throw new Error(payload?.error ?? "Failed to cancel pending imports");
       }
 
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents', streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
     },
   });
 
   const deleteCanceledDocument = useMutation({
     mutationFn: async ({ documentId }: { documentId: string }) => {
-      const response = await fetch('/api/documents/imports/delete', {
-        method: 'POST',
+      const response = await fetch("/api/documents/imports/delete", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ streamId, documentId }),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
       if (!response.ok) {
-        throw new Error(payload?.error ?? 'Failed to delete canceled document');
+        throw new Error(payload?.error ?? "Failed to delete canceled document");
       }
 
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['documents', streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
     },
   });
 

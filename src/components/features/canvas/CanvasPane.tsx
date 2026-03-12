@@ -1,16 +1,19 @@
-'use client';
+"use client";
 
-import { useLayout } from '@/lib/hooks/useLayout';
-import { useCanvas } from '@/lib/hooks/useCanvas';
-import { useCanvasScroll } from '@/lib/hooks/useCanvasScroll';
-import { useCanvasDraft } from '@/lib/hooks/useCanvasDraft';
-import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import debounce from 'lodash/debounce';
-import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
-import { Json } from '@/lib/types/database.types';
-import { createClient } from '@/lib/supabase/client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useLayout } from "@/lib/hooks/useLayout";
+import { useCanvas } from "@/lib/hooks/useCanvas";
+import { useCanvasScroll } from "@/lib/hooks/useCanvasScroll";
+import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
+import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import debounce from "lodash/debounce";
+import {
+  PartialBlock,
+  BlockNoteEditor as BlockNoteEditorType,
+} from "@blocknote/core";
+import { Json } from "@/lib/types/database.types";
+import { createClient } from "@/lib/supabase/client";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface CanvasPaneProps {
   streamId: string;
@@ -22,7 +25,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const { targetBlockId, setTargetBlockId } = useCanvasScroll();
   const [editor, setEditor] = useState<BlockNoteEditorType | null>(null);
   const [highlightTerm] = useState<string | null>(null);
-  const [snapshotName, setSnapshotName] = useState('');
+  const [snapshotName, setSnapshotName] = useState("");
   const markDirty = useCanvasDraft((s) => s.markDirty);
   const markClean = useCanvasDraft((s) => s.markClean);
   const hasReceivedFirstChange = useRef(false);
@@ -34,23 +37,28 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   // Calculate smooth animation - slides in from right with decompression
   const containerStyle = {
     width: `${canvasWidth}%`,
-    minWidth: '0px',
+    minWidth: "0px",
     opacity: isVisible ? 1 : 0,
-    transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: "all 400ms cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
   const contentStyle = {
-    transform: isVisible ? 'translateX(0) scaleX(1)' : 'translateX(100%) scaleX(0.95)',
-    transformOrigin: 'left center',
-    transition: 'transform 400ms cubic-bezier(0.4, 0, 0.2, 1)',
+    transform: isVisible
+      ? "translateX(0) scaleX(1)"
+      : "translateX(100%) scaleX(0.95)",
+    transformOrigin: "left center",
+    transition: "transform 400ms cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
   const debouncedUpdate = useMemo(
     () =>
       debounce((id: string, blocks: PartialBlock[]) => {
-        updateCanvas.mutate({ id, updates: { content_json: blocks as unknown as Json } });
+        updateCanvas.mutate({
+          id,
+          updates: { content_json: blocks as unknown as Json },
+        });
       }, 2000),
-    [updateCanvas]
+    [updateCanvas],
   );
 
   const handleContentChange = useCallback(
@@ -65,7 +73,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         debouncedUpdate(canvas.id, blocks);
       }
     },
-    [canvas, debouncedUpdate, markDirty, streamId]
+    [canvas, debouncedUpdate, markDirty, streamId],
   );
 
   // Reset first-change flag when canvas key changes (e.g., after restore)
@@ -76,9 +84,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const saveSnapshotMutation = useMutation({
     mutationFn: async (nameOverride?: string) => {
       if (!canvas) return;
-      const name = (nameOverride ?? snapshotName).trim() || `Snapshot ${new Date().toLocaleString()}`;
+      const name =
+        (nameOverride ?? snapshotName).trim() ||
+        `Snapshot ${new Date().toLocaleString()}`;
       const { data: userData } = await supabase.auth.getUser();
-      const { error } = await supabase.from('canvas_versions').insert({
+      const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
         content_json: canvas.content_json as unknown as Json,
@@ -88,9 +98,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       if (error) throw error;
     },
     onSuccess: () => {
-      setSnapshotName('');
+      setSnapshotName("");
       markClean(streamId);
-      queryClient.invalidateQueries({ queryKey: ['canvas-versions', streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas-versions", streamId],
+      });
     },
   });
 
@@ -111,7 +123,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
         if (block) {
           // Set selection to the block
-          editor.setTextCursorPosition(targetBlockId, 'end');
+          editor.setTextCursorPosition(targetBlockId, "end");
 
           // Clear the target
           setTargetBlockId(null);
@@ -123,11 +135,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   }, [targetBlockId, editor, canvas, setTargetBlockId]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
 
     const onSnapshotName = (event: Event) => {
       const detail = (event as CustomEvent<{ name?: string }>).detail;
-      if (typeof detail?.name === 'string') {
+      if (typeof detail?.name === "string") {
         setSnapshotName(detail.name);
       }
     };
@@ -137,19 +149,31 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       handleSaveSnapshot(detail?.name);
     };
 
-    window.addEventListener('kolam_header_canvas_snapshot_name', onSnapshotName as EventListener);
-    window.addEventListener('kolam_header_canvas_save_snapshot', onSaveSnapshot as EventListener);
+    window.addEventListener(
+      "kolam_header_canvas_snapshot_name",
+      onSnapshotName as EventListener,
+    );
+    window.addEventListener(
+      "kolam_header_canvas_save_snapshot",
+      onSaveSnapshot as EventListener,
+    );
 
     return () => {
-      window.removeEventListener('kolam_header_canvas_snapshot_name', onSnapshotName as EventListener);
-      window.removeEventListener('kolam_header_canvas_save_snapshot', onSaveSnapshot as EventListener);
+      window.removeEventListener(
+        "kolam_header_canvas_snapshot_name",
+        onSnapshotName as EventListener,
+      );
+      window.removeEventListener(
+        "kolam_header_canvas_save_snapshot",
+        onSaveSnapshot as EventListener,
+      );
     };
   }, [handleSaveSnapshot]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     window.dispatchEvent(
-      new CustomEvent('kolam_canvas_state', {
+      new CustomEvent("kolam_canvas_state", {
         detail: {
           streamId,
           hasCanvas: Boolean(canvas),
@@ -160,12 +184,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     );
   }, [streamId, canvas, snapshotName, saveSnapshotMutation.isPending]);
 
-
-
   return (
     <div
-      className={`bg-surface-default relative overflow-hidden z-20 ${isVisible ? '' : 'pointer-events-none'
-        }`}
+      className={`bg-surface-default relative overflow-hidden z-20 ${
+        isVisible ? "" : "pointer-events-none"
+      }`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
@@ -173,7 +196,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-24">
           {canvas ? (
             <BlockNoteEditor
-              key={`canvas-${canvas.id}-${canvas.updated_at ?? 'na'}`}
+              key={`canvas-${canvas.id}-${canvas.updated_at ?? "na"}`}
               initialContent={canvas.content_json as unknown as PartialBlock[]}
               onChange={handleContentChange}
               onEditorReady={setEditor}
@@ -182,7 +205,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
             />
           ) : (
             <div className="flex h-full items-center justify-center text-text-muted text-sm">
-              {isLoading ? 'Loading canvas...' : 'No canvas found'}
+              {isLoading ? "Loading canvas..." : "No canvas found"}
             </div>
           )}
         </div>

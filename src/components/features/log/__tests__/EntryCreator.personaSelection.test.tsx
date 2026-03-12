@@ -1,49 +1,59 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react';
-import { EntryCreator } from '../EntryCreator';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import React from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+  within,
+} from "@testing-library/react";
+import { EntryCreator } from "../EntryCreator";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
 
 // Mock dependencies
 const mockSupabase = {
   auth: {
-    getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }),
+    getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }),
   },
   rpc: vi.fn(),
   from: vi.fn(),
 };
 
-vi.mock('@/lib/supabase/client', () => ({
+vi.mock("@/lib/supabase/client", () => ({
   createClient: () => mockSupabase,
 }));
 
 const mockPersonas = [
-  { id: 'persona-a', name: 'Persona A', icon: 'user', color: '#0ea5e9' },
-  { id: 'persona-b', name: 'Persona B', icon: 'brain', color: '#8b5cf6' },
-  { id: 'persona-c', name: 'Persona C', icon: 'heart', color: '#ec4899' },
+  { id: "persona-a", name: "Persona A", icon: "user", color: "#0ea5e9" },
+  { id: "persona-b", name: "Persona B", icon: "brain", color: "#8b5cf6" },
+  { id: "persona-c", name: "Persona C", icon: "heart", color: "#ec4899" },
 ];
 
-vi.mock('@/lib/hooks/usePersonas', () => ({
+vi.mock("@/lib/hooks/usePersonas", () => ({
   usePersonas: () => ({
     personas: mockPersonas,
     isLoading: false,
   }),
 }));
 
-vi.mock('@/lib/hooks/useKeyboard', () => ({
+vi.mock("@/lib/hooks/useKeyboard", () => ({
   useKeyboard: vi.fn(),
 }));
 
 // Mock BlockNoteEditor
-const mockEditors: Record<string, { content: unknown[]; onChange: (c: unknown[]) => void }> = {};
+const mockEditors: Record<
+  string,
+  { content: unknown[]; onChange: (c: unknown[]) => void }
+> = {};
 
-vi.mock('@/components/shared/BlockNoteEditor', () => ({
-  BlockNoteEditor: ({ 
-    initialContent, 
-    onChange, 
-    onEditorReady, 
-    placeholder 
+vi.mock("@/components/shared/BlockNoteEditor", () => ({
+  BlockNoteEditor: ({
+    initialContent,
+    onChange,
+    onEditorReady,
+    placeholder,
   }: {
     initialContent?: unknown[];
     onChange: (content: unknown[]) => void;
@@ -51,13 +61,13 @@ vi.mock('@/components/shared/BlockNoteEditor', () => ({
     placeholder?: string;
   }) => {
     const editorId = React.useId();
-    
+
     React.useEffect(() => {
       mockEditors[editorId] = {
         content: initialContent || [],
         onChange,
       };
-      
+
       if (onEditorReady) {
         onEditorReady({
           focus: vi.fn(),
@@ -68,21 +78,25 @@ vi.mock('@/components/shared/BlockNoteEditor', () => ({
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    return React.createElement('div', {
-      'data-testid': `editor-${Object.keys(mockEditors).length}`,
-      'data-placeholder': placeholder,
-    }, React.createElement('textarea', {
-      'data-testid': 'editor-input',
-      onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const content = [{ type: 'paragraph', content: e.target.value }];
-        onChange(content);
+    return React.createElement(
+      "div",
+      {
+        "data-testid": `editor-${Object.keys(mockEditors).length}`,
+        "data-placeholder": placeholder,
       },
-      placeholder,
-    }));
+      React.createElement("textarea", {
+        "data-testid": "editor-input",
+        onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+          const content = [{ type: "paragraph", content: e.target.value }];
+          onChange(content);
+        },
+        placeholder,
+      }),
+    );
   },
 }));
 
-vi.mock('lodash/debounce', () => ({
+vi.mock("lodash/debounce", () => ({
   default: (fn: (...args: unknown[]) => unknown) => {
     const debounced = (...args: unknown[]) => fn(...args);
     debounced.cancel = vi.fn();
@@ -91,25 +105,30 @@ vi.mock('lodash/debounce', () => ({
   },
 }));
 
-describe('EntryCreator - Persona Selection Integration Tests', () => {
+describe("EntryCreator - Persona Selection Integration Tests", () => {
   let queryClient: QueryClient;
 
   const openAddPersonaMenu = async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Add Persona' }));
+    fireEvent.click(screen.getByRole("button", { name: "Add Persona" }));
     await waitFor(() => {
-      expect(screen.getByText('Add Author Section')).toBeInTheDocument();
+      expect(screen.getByText("Add Author Section")).toBeInTheDocument();
     });
   };
 
   const clickPersonaInOpenMenu = (personaName: string) => {
-    const menu = screen.getByRole('menu');
-    fireEvent.click(within(menu).getByRole('menuitem', { name: personaName }));
+    const menu = screen.getByRole("menu");
+    fireEvent.click(within(menu).getByRole("menuitem", { name: personaName }));
   };
 
   const getSectionPersonaButton = (personaName: string) => {
-    const candidates = screen.getAllByRole('button', { name: new RegExp(personaName, 'i') });
-    const sectionButton = candidates.find((el) => !el.getAttribute('title')?.startsWith('Quick add'));
-    if (!sectionButton) throw new Error(`Section persona button not found for ${personaName}`);
+    const candidates = screen.getAllByRole("button", {
+      name: new RegExp(personaName, "i"),
+    });
+    const sectionButton = candidates.find(
+      (el) => !el.getAttribute("title")?.startsWith("Quick add"),
+    );
+    if (!sectionButton)
+      throw new Error(`Section persona button not found for ${personaName}`);
     return sectionButton;
   };
 
@@ -123,11 +142,11 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
 
     vi.clearAllMocks();
     localStorage.clear();
-    Object.keys(mockEditors).forEach(key => delete mockEditors[key]);
+    Object.keys(mockEditors).forEach((key) => delete mockEditors[key]);
 
     // Default mock responses
     mockSupabase.from = vi.fn((table: string) => {
-      if (table === 'entries') {
+      if (table === "entries") {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
@@ -136,13 +155,15 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
           update: vi.fn().mockReturnThis(),
         };
       }
-      if (table === 'sections') {
+      if (table === "sections") {
         return {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           update: vi.fn().mockReturnThis(),
           insert: vi.fn().mockReturnThis(),
-          single: vi.fn().mockResolvedValue({ data: { id: 'section-1' }, error: null }),
+          single: vi
+            .fn()
+            .mockResolvedValue({ data: { id: "section-1" }, error: null }),
           delete: vi.fn().mockReturnThis(),
           in: vi.fn().mockResolvedValue({ error: null }),
         };
@@ -155,8 +176,8 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
 
     mockSupabase.rpc = vi.fn().mockResolvedValue({
       data: {
-        id: 'entry-1',
-        sections: [{ id: 'section-1' }],
+        id: "entry-1",
+        sections: [{ id: "section-1" }],
       },
       error: null,
     });
@@ -171,57 +192,61 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
     render(
       <QueryClientProvider client={queryClient}>
         <EntryCreator streamId="stream-1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByText('Add Persona')).toBeInTheDocument();
+      expect(screen.getByText("Add Persona")).toBeInTheDocument();
     });
 
     // Click "Add Persona" button
     await openAddPersonaMenu();
-    clickPersonaInOpenMenu('Persona A');
+    clickPersonaInOpenMenu("Persona A");
 
     // Verify section is added
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('What would Persona A say?')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("What would Persona A say?"),
+      ).toBeInTheDocument();
     });
   });
 
-  it('should change persona when dropdown is used', async () => {
+  it("should change persona when dropdown is used", async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <EntryCreator streamId="stream-1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Add Persona')).toBeInTheDocument();
+      expect(screen.getByText("Add Persona")).toBeInTheDocument();
     });
 
     // Add Persona A
     await openAddPersonaMenu();
-    clickPersonaInOpenMenu('Persona A');
+    clickPersonaInOpenMenu("Persona A");
 
     // Wait for section to appear
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('What would Persona A say?')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("What would Persona A say?"),
+      ).toBeInTheDocument();
     });
 
     // Type some content
-    const input = screen.getByPlaceholderText('What would Persona A say?');
-    fireEvent.change(input, { target: { value: 'Test content' } });
+    const input = screen.getByPlaceholderText("What would Persona A say?");
+    fireEvent.change(input, { target: { value: "Test content" } });
 
     // Setup mock for section update
     const mockUpdate = vi.fn().mockReturnThis();
     const mockEq = vi.fn().mockResolvedValue({ error: null });
-    
+
     mockSupabase.from = vi.fn((table: string) => {
-      if (table === 'sections') {
+      if (table === "sections") {
         return { update: mockUpdate, eq: mockEq };
       }
-      if (table === 'entries') {
+      if (table === "entries") {
         return {
           update: vi.fn().mockReturnThis(),
           eq: vi.fn().mockResolvedValue({ error: null }),
@@ -231,56 +256,62 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
     });
 
     // Open persona dropdown (click on the persona name)
-    const personaButton = getSectionPersonaButton('Persona A');
+    const personaButton = getSectionPersonaButton("Persona A");
     fireEvent.click(personaButton);
 
     // Wait for dropdown and select Persona B
-    await waitFor(() => screen.getByText('Switch to...'));
-    clickPersonaInOpenMenu('Persona B');
+    await waitFor(() => screen.getByText("Switch to..."));
+    clickPersonaInOpenMenu("Persona B");
 
     // Verify placeholder changed
     await waitFor(() => {
-      expect(screen.getByPlaceholderText('What would Persona B say?')).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("What would Persona B say?"),
+      ).toBeInTheDocument();
     });
 
     // Verify persona switched in UI
-    expect(screen.getByPlaceholderText('What would Persona B say?')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("What would Persona B say?"),
+    ).toBeInTheDocument();
   });
 
-  it('should only commit the visible persona section', async () => {
+  it("should only commit the visible persona section", async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <EntryCreator streamId="stream-1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
-    await waitFor(() => screen.getByText('Add Persona'));
+    await waitFor(() => screen.getByText("Add Persona"));
 
     // Add Persona A
     await openAddPersonaMenu();
-    clickPersonaInOpenMenu('Persona A');
+    clickPersonaInOpenMenu("Persona A");
 
-    await waitFor(() => screen.getByPlaceholderText('What would Persona A say?'));
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona A say?"),
+    );
 
     // Type content
-    const input = screen.getByPlaceholderText('What would Persona A say?');
-    fireEvent.change(input, { target: { value: 'Final content' } });
+    const input = screen.getByPlaceholderText("What would Persona A say?");
+    fireEvent.change(input, { target: { value: "Final content" } });
 
     // Change to Persona B
     const mockUpdate = vi.fn().mockReturnThis();
     const mockEq = vi.fn().mockResolvedValue({ error: null });
-    
+
     mockSupabase.from = vi.fn((table: string) => {
-      if (table === 'sections') {
-        return { 
-          update: mockUpdate, 
+      if (table === "sections") {
+        return {
+          update: mockUpdate,
           eq: mockEq,
           select: vi.fn().mockReturnThis(),
           delete: vi.fn().mockReturnThis(),
           in: vi.fn().mockResolvedValue({ error: null }),
         };
       }
-      if (table === 'entries') {
+      if (table === "entries") {
         return {
           update: vi.fn().mockReturnThis(),
           eq: vi.fn().mockResolvedValue({ error: null }),
@@ -289,40 +320,44 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
       return {};
     });
 
-    fireEvent.click(getSectionPersonaButton('Persona A'));
-    await waitFor(() => screen.getByText('Switch to...'));
-    clickPersonaInOpenMenu('Persona B');
+    fireEvent.click(getSectionPersonaButton("Persona A"));
+    await waitFor(() => screen.getByText("Switch to..."));
+    clickPersonaInOpenMenu("Persona B");
 
-    await waitFor(() => screen.getByPlaceholderText('What would Persona B say?'));
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona B say?"),
+    );
 
     // Commit
-    const commitButton = screen.getByText('Commit Entry');
+    const commitButton = screen.getByText("Commit Entry");
     fireEvent.click(commitButton);
 
     // Verify commit action is still available after switching persona
     await waitFor(() => {
-      expect(screen.getByText('Commit Entry')).toBeInTheDocument();
+      expect(screen.getByText("Commit Entry")).toBeInTheDocument();
     });
   });
 
-  it('should handle multiple rapid persona changes', async () => {
+  it("should handle multiple rapid persona changes", async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <EntryCreator streamId="stream-1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
-    await waitFor(() => screen.getByText('Add Persona'));
+    await waitFor(() => screen.getByText("Add Persona"));
 
     // Add Persona A
     await openAddPersonaMenu();
-    clickPersonaInOpenMenu('Persona A');
+    clickPersonaInOpenMenu("Persona A");
 
-    await waitFor(() => screen.getByPlaceholderText('What would Persona A say?'));
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona A say?"),
+    );
 
     // Type content
-    fireEvent.change(screen.getByPlaceholderText('What would Persona A say?'), {
-      target: { value: 'Content' },
+    fireEvent.change(screen.getByPlaceholderText("What would Persona A say?"), {
+      target: { value: "Content" },
     });
 
     // Setup mock for updates
@@ -335,10 +370,10 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
     });
 
     mockSupabase.from = vi.fn((table: string) => {
-      if (table === 'sections') {
+      if (table === "sections") {
         return { update: mockUpdate };
       }
-      if (table === 'entries') {
+      if (table === "entries") {
         return {
           update: vi.fn().mockReturnThis(),
           eq: vi.fn().mockResolvedValue({ error: null }),
@@ -348,39 +383,47 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
     });
 
     // Rapidly change personas: A -> B -> C
-    fireEvent.click(getSectionPersonaButton('Persona A'));
-    await waitFor(() => screen.getByText('Switch to...'));
-    clickPersonaInOpenMenu('Persona B');
+    fireEvent.click(getSectionPersonaButton("Persona A"));
+    await waitFor(() => screen.getByText("Switch to..."));
+    clickPersonaInOpenMenu("Persona B");
 
-    await waitFor(() => screen.getByPlaceholderText('What would Persona B say?'));
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona B say?"),
+    );
 
-    fireEvent.click(getSectionPersonaButton('Persona B'));
-    await waitFor(() => screen.getByText('Switch to...'));
-    clickPersonaInOpenMenu('Persona C');
+    fireEvent.click(getSectionPersonaButton("Persona B"));
+    await waitFor(() => screen.getByText("Switch to..."));
+    clickPersonaInOpenMenu("Persona C");
 
-    await waitFor(() => screen.getByPlaceholderText('What would Persona C say?'));
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona C say?"),
+    );
 
     // Verify final persona in UI is Persona C
-    expect(screen.getByPlaceholderText('What would Persona C say?')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("What would Persona C say?"),
+    ).toBeInTheDocument();
   });
 
-  it('should remove section when X button is clicked (if multiple sections)', async () => {
+  it("should remove section when X button is clicked (if multiple sections)", async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <EntryCreator streamId="stream-1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
-    await waitFor(() => screen.getByText('Add Persona'));
+    await waitFor(() => screen.getByText("Add Persona"));
 
     // Add two personas
     await openAddPersonaMenu();
-    clickPersonaInOpenMenu('Persona A');
+    clickPersonaInOpenMenu("Persona A");
 
-    await waitFor(() => screen.getByPlaceholderText('What would Persona A say?'));
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona A say?"),
+    );
 
     await openAddPersonaMenu();
-    clickPersonaInOpenMenu('Persona B');
+    clickPersonaInOpenMenu("Persona B");
 
     // Now we should have 2 sections, and X buttons should appear
     await waitFor(() => {
@@ -389,7 +432,7 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
     });
 
     // Look for X buttons (they should be rendered when sections.length > 1)
-    const xButtons = screen.getAllByTitle('Remove this section');
+    const xButtons = screen.getAllByTitle("Remove this section");
     expect(xButtons.length).toBeGreaterThan(0);
 
     // Click first X button
@@ -405,25 +448,27 @@ describe('EntryCreator - Persona Selection Integration Tests', () => {
     expect(screen.getAllByTestId(/^editor-\d+$/).length).toBe(1);
   });
 
-  it('should not commit if no content is present', async () => {
+  it("should not commit if no content is present", async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <EntryCreator streamId="stream-1" />
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
-    await waitFor(() => screen.getByText('Add Persona'));
+    await waitFor(() => screen.getByText("Add Persona"));
 
     // Add persona but don't type anything
     await openAddPersonaMenu();
-    clickPersonaInOpenMenu('Persona A');
+    clickPersonaInOpenMenu("Persona A");
 
-    await waitFor(() => screen.getByPlaceholderText('What would Persona A say?'));
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona A say?"),
+    );
 
     // Try to commit without content
-    const commitButton = screen.getByText('Commit Entry');
-    
+    const commitButton = screen.getByText("Commit Entry");
+
     // Button should be disabled
-    expect(commitButton).toHaveClass('cursor-not-allowed');
+    expect(commitButton).toHaveClass("cursor-not-allowed");
   });
 });

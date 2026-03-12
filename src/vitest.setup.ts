@@ -1,6 +1,6 @@
-import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import "@testing-library/jest-dom/vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach, vi } from "vitest";
 
 // Automatically cleanup after each test
 afterEach(() => {
@@ -8,12 +8,14 @@ afterEach(() => {
 });
 
 // Mock ResizeObserver
-if (typeof window !== 'undefined') {
-  window.ResizeObserver = window.ResizeObserver || class {
-    observe = vi.fn();
-    unobserve = vi.fn();
-    disconnect = vi.fn();
-  };
+if (typeof window !== "undefined") {
+  window.ResizeObserver =
+    window.ResizeObserver ||
+    class {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    };
 }
 
 // Mock localStorage
@@ -26,14 +28,14 @@ const localStorageMock = {
   length: 0,
 };
 
-if (typeof window !== 'undefined') {
-  Object.defineProperty(window, 'localStorage', { 
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "localStorage", {
     value: localStorageMock,
-    writable: true 
+    writable: true,
   });
 } else {
-  Object.defineProperty(global, 'localStorage', {
+  Object.defineProperty(global, "localStorage", {
     value: localStorageMock,
-    writable: true
+    writable: true,
   });
 }

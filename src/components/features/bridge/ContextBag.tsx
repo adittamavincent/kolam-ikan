@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Globe } from 'lucide-react';
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { Globe } from "lucide-react";
 
 export function ContextBag({
   streamId,
@@ -35,14 +35,16 @@ export function ContextBag({
   const isGlobalToggleDisabled = globalStreamDisabled || !!globalStreamLoading;
 
   const { data: entries, isLoading: isEntriesLoading } = useQuery({
-    queryKey: ['bridge-entries', streamId],
+    queryKey: ["bridge-entries", streamId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('entries')
-        .select('id, created_at, sections(id, persona_name_snapshot, search_text)')
-        .eq('stream_id', streamId)
-        .eq('is_draft', false)
-        .order('created_at', { ascending: false });
+        .from("entries")
+        .select(
+          "id, created_at, sections(id, persona_name_snapshot, search_text)",
+        )
+        .eq("stream_id", streamId)
+        .eq("is_draft", false)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -53,17 +55,19 @@ export function ContextBag({
   const groupedEntries = (() => {
     const groups: Record<string, typeof entries> = {};
     (entries ?? []).forEach((entry) => {
-      const dateKey = entry.created_at ? new Date(entry.created_at).toDateString() : 'Unknown Date';
+      const dateKey = entry.created_at
+        ? new Date(entry.created_at).toDateString()
+        : "Unknown Date";
       groups[dateKey] = groups[dateKey] || [];
       // Avoid duplicates if any
-      if (!groups[dateKey]?.some(e => e.id === entry.id)) {
+      if (!groups[dateKey]?.some((e) => e.id === entry.id)) {
         groups[dateKey]?.push(entry);
       }
     });
-    
+
     // Sort groups by date descending
-    return Object.entries(groups).sort((a, b) => 
-      new Date(b[0]).getTime() - new Date(a[0]).getTime()
+    return Object.entries(groups).sort(
+      (a, b) => new Date(b[0]).getTime() - new Date(a[0]).getTime(),
     );
   })();
 
@@ -77,7 +81,9 @@ export function ContextBag({
 
   const selectAll = () => {
     if (disableSelectAll) return;
-    const allIds = groupedEntries.flatMap(([, group]) => (group ?? []).map((entry) => entry.id));
+    const allIds = groupedEntries.flatMap(([, group]) =>
+      (group ?? []).map((entry) => entry.id),
+    );
     onSelectionChange(Array.from(new Set(allIds)));
   };
 
@@ -116,8 +122,8 @@ export function ContextBag({
           <label
             className={`flex items-center gap-2 text-sm select-none ${
               isGlobalToggleDisabled
-                ? 'cursor-not-allowed opacity-60'
-                : 'cursor-pointer'
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer"
             }`}
           >
             <input
@@ -128,26 +134,34 @@ export function ContextBag({
               className="accent-action-primary-bg"
             />
             <span className="flex items-center gap-1.5 text-text-default">
-              <Globe className={`h-3.5 w-3.5 ${
-                includeGlobalStream && !isGlobalToggleDisabled ? 'text-action-primary-bg' : 'text-text-muted'
-              }`} />
+              <Globe
+                className={`h-3.5 w-3.5 ${
+                  includeGlobalStream && !isGlobalToggleDisabled
+                    ? "text-action-primary-bg"
+                    : "text-text-muted"
+                }`}
+              />
               Include Domain Global Stream
             </span>
             {globalStreamLoading && (
               <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-text-muted border-t-transparent" />
             )}
           </label>
-          {!globalStreamLoading && globalStreamName && !globalStreamDisabled && (
-            <p className="ml-7 text-[11px] text-text-muted">{globalStreamName}</p>
-          )}
+          {!globalStreamLoading &&
+            globalStreamName &&
+            !globalStreamDisabled && (
+              <p className="ml-7 text-[11px] text-text-muted">
+                {globalStreamName}
+              </p>
+            )}
           <p className="ml-7 text-[11px] text-text-muted">
             {globalStreamLoading
-              ? 'Checking global stream for this domain...'
+              ? "Checking global stream for this domain..."
               : currentStreamIsGlobal
-              ? 'Current stream is already global — its context is included by default.'
-              : globalStreamDisabled
-                ? 'No global stream found in this domain.'
-                : 'Carries domain-wide backstory into bridge prompts.'}
+                ? "Current stream is already global — its context is included by default."
+                : globalStreamDisabled
+                  ? "No global stream found in this domain."
+                  : "Carries domain-wide backstory into bridge prompts."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs mt-1">
@@ -174,7 +188,9 @@ export function ContextBag({
         </div>
         <div className="max-h-56 space-y-3 overflow-y-auto rounded-lg border border-border-subtle/50 bg-surface-default/50 p-3 text-xs shadow-inner">
           {isLoadingEntries ? (
-            <div className="text-text-muted animate-pulse">Loading entries...</div>
+            <div className="text-text-muted animate-pulse">
+              Loading entries...
+            </div>
           ) : groupedEntries.length === 0 ? (
             <div className="text-text-muted">No entries yet.</div>
           ) : (
@@ -187,9 +203,12 @@ export function ContextBag({
                   const preview =
                     entry.sections?.[0]?.search_text ||
                     entry.sections?.[0]?.persona_name_snapshot ||
-                    'Empty entry';
+                    "Empty entry";
                   return (
-                      <label key={entry.id} className="flex items-start gap-3 rounded-md p-1.5 hover:bg-surface-subtle transition-colors cursor-pointer select-none">
+                    <label
+                      key={entry.id}
+                      className="flex items-start gap-3 rounded-md p-1.5 hover:bg-surface-subtle transition-colors cursor-pointer select-none"
+                    >
                       <input
                         type="checkbox"
                         className="mt-0.5 accent-action-primary-bg"
@@ -197,9 +216,13 @@ export function ContextBag({
                         onChange={() => toggleEntry(entry.id)}
                       />
                       <div>
-                        <div className="text-[12px] font-medium text-text-default leading-snug">{preview.slice(0, 80)}</div>
+                        <div className="text-[12px] font-medium text-text-default leading-snug">
+                          {preview.slice(0, 80)}
+                        </div>
                         <div className="text-[10px] text-text-muted mt-0.5">
-                          {entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown time'}
+                          {entry.created_at
+                            ? new Date(entry.created_at).toLocaleString()
+                            : "Unknown time"}
                         </div>
                       </div>
                     </label>

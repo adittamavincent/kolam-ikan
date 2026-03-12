@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { LogPane } from '@/components/features/log/LogPane';
-import { CanvasPane } from '@/components/features/canvas/CanvasPane';
-import { BridgeModal } from '@/components/features/bridge/BridgeModal';
-import { DocumentImportModal } from '@/components/features/documents/DocumentImportModal';
-import { useRealtimeEntries } from '@/lib/hooks/useRealtimeEntries';
-import { useLayout } from '@/lib/hooks/useLayout';
-import { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { LogPane } from "@/components/features/log/LogPane";
+import { CanvasPane } from "@/components/features/canvas/CanvasPane";
+import { BridgeModal } from "@/components/features/bridge/BridgeModal";
+import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
+import { useRealtimeEntries } from "@/lib/hooks/useRealtimeEntries";
+import { useLayout } from "@/lib/hooks/useLayout";
+import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
@@ -17,10 +17,16 @@ export function StreamView({ streamId }: { streamId: string }) {
 
   useEffect(() => {
     const onOpenDocumentImport = () => setIsDocumentImportOpen(true);
-    window.addEventListener('kolam_header_documents_import', onOpenDocumentImport);
+    window.addEventListener(
+      "kolam_header_documents_import",
+      onOpenDocumentImport,
+    );
 
     return () => {
-      window.removeEventListener('kolam_header_documents_import', onOpenDocumentImport);
+      window.removeEventListener(
+        "kolam_header_documents_import",
+        onOpenDocumentImport,
+      );
     };
   }, []);
 
@@ -32,7 +38,7 @@ export function StreamView({ streamId }: { streamId: string }) {
       {/* Bridge Trigger Button */}
       <button
         onClick={() => {
-          window.dispatchEvent(new Event('kolam_flush_drafts'));
+          window.dispatchEvent(new Event("kolam_flush_drafts"));
           setIsBridgeOpen(true);
         }}
         className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-action-primary-bg px-4 py-2 text-action-primary-text hover:opacity-90 transition-opacity"

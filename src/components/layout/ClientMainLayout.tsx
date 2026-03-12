@@ -1,17 +1,29 @@
-'use client';
+"use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { Menu as MenuIcon, X, PanelLeft, PanelRight, Columns } from 'lucide-react';
-import { DomainSwitcher } from '@/components/layout/DomainSwitcher';
-import { Navigator } from '@/components/layout/Navigator';
-import { MainHeader } from '@/components/layout/MainHeader';
-import { useAuth } from '@/lib/hooks/useAuth';
-import { useSidebar } from '@/lib/hooks/useSidebar';
-import { useLayout } from '@/lib/hooks/useLayout';
-import { createClient } from '@/lib/supabase/client';
-import { useKeyboard } from '@/lib/hooks/useKeyboard';
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import {
+  Menu as MenuIcon,
+  X,
+  PanelLeft,
+  PanelRight,
+  Columns,
+} from "lucide-react";
+import { DomainSwitcher } from "@/components/layout/DomainSwitcher";
+import { Navigator } from "@/components/layout/Navigator";
+import { MainHeader } from "@/components/layout/MainHeader";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useSidebar } from "@/lib/hooks/useSidebar";
+import { useLayout } from "@/lib/hooks/useLayout";
+import { createClient } from "@/lib/supabase/client";
+import { useKeyboard } from "@/lib/hooks/useKeyboard";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
 
 interface ClientMainLayoutProps {
   children: React.ReactNode;
@@ -22,9 +34,16 @@ const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 500;
 const MAIN_CONTENT_MIN_WIDTH = 520;
 
-function clampSidebarWidth(proposedWidth: number, sidebarLeft: number, layoutRight: number) {
+function clampSidebarWidth(
+  proposedWidth: number,
+  sidebarLeft: number,
+  layoutRight: number,
+) {
   const maxByLayout = layoutRight - sidebarLeft - MAIN_CONTENT_MIN_WIDTH;
-  const dynamicMax = Math.min(SIDEBAR_MAX_WIDTH, Math.max(SIDEBAR_MIN_WIDTH, maxByLayout));
+  const dynamicMax = Math.min(
+    SIDEBAR_MAX_WIDTH,
+    Math.max(SIDEBAR_MIN_WIDTH, maxByLayout),
+  );
   return Math.min(Math.max(proposedWidth, SIDEBAR_MIN_WIDTH), dynamicMax);
 }
 
@@ -43,7 +62,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     width: sidebarWidth,
     setWidth: setSidebarWidth,
     isResizing,
-    setIsResizing
+    setIsResizing,
   } = useSidebar();
 
   const { setMode, logWidth, canvasWidth } = useLayout();
@@ -51,10 +70,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const isBalanced = logWidth === 50 && canvasWidth === 50;
   const isCanvasMaximized = logWidth === 0 && canvasWidth === 100;
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<
     {
-      type: 'section' | 'canvas';
+      type: "section" | "canvas";
       id: string;
       streamId: string;
       streamName: string;
@@ -72,7 +91,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const supabase = createClient();
 
   // Show layout controls only on stream pages (domain/stream)
-  const parts = pathname?.split('/').filter(Boolean) || [];
+  const parts = pathname?.split("/").filter(Boolean) || [];
   const showLayoutControls = parts.length === 2;
 
   // Track whether we want the slide-out animation vs. a hard cut
@@ -104,7 +123,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       const layoutRect = layoutRootRef.current?.getBoundingClientRect();
       const layoutRight = layoutRect?.right ?? window.innerWidth;
       const newWidth = latestClientX - sidebarRect.left;
-      const clampedWidth = clampSidebarWidth(newWidth, sidebarRect.left, layoutRight);
+      const clampedWidth = clampSidebarWidth(
+        newWidth,
+        sidebarRect.left,
+        layoutRight,
+      );
 
       pendingSidebarWidthRef.current = clampedWidth;
       sidebarRef.current.style.width = `${clampedWidth}px`;
@@ -125,23 +148,23 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       setSidebarWidth(pendingSidebarWidthRef.current);
       setIsResizing(false);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none'; // Prevent text selection while dragging
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none"; // Prevent text selection while dragging
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
       if (frameId !== null) {
         cancelAnimationFrame(frameId);
       }
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
     };
   }, [isResizing, setSidebarWidth, setIsResizing]);
 
@@ -152,7 +175,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       const sidebarRect = sidebarRef.current.getBoundingClientRect();
       const layoutRect = layoutRootRef.current?.getBoundingClientRect();
       const layoutRight = layoutRect?.right ?? window.innerWidth;
-      const clamped = clampSidebarWidth(sidebarWidth, sidebarRect.left, layoutRight);
+      const clamped = clampSidebarWidth(
+        sidebarWidth,
+        sidebarRect.left,
+        layoutRight,
+      );
 
       pendingSidebarWidthRef.current = clamped;
       if (sidebarVisible) {
@@ -164,12 +191,13 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     };
 
     syncSidebarWidthToViewport();
-    window.addEventListener('resize', syncSidebarWidthToViewport);
-    return () => window.removeEventListener('resize', syncSidebarWidthToViewport);
+    window.addEventListener("resize", syncSidebarWidthToViewport);
+    return () =>
+      window.removeEventListener("resize", syncSidebarWidthToViewport);
   }, [sidebarVisible, sidebarWidth, setSidebarWidth]);
 
   // Detect "home" route — the root path with no domain param
-  const isHomeRoute = pathname === '/';
+  const isHomeRoute = pathname === "/";
 
   // ---------- Route-based auto-show / auto-hide ----------
   const prevPathRef = useRef(pathname);
@@ -178,7 +206,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     prevPathRef.current = pathname;
 
     if (isHomeRoute) {
-      if (prev !== '/') {
+      if (prev !== "/") {
         hideSidebar();
       } else {
         setSidebarVisible(false);
@@ -190,25 +218,25 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
   useKeyboard([
     {
-      key: 'k',
+      key: "k",
       metaKey: true,
       shiftKey: true,
       handler: () => setSearchOpen(true),
-      description: 'Open Search',
+      description: "Open Search",
     },
     {
-      key: 'k',
+      key: "k",
       ctrlKey: true,
       shiftKey: true,
       handler: () => setSearchOpen(true),
-      description: 'Open Search',
+      description: "Open Search",
     },
   ]);
 
   // ----- Auth redirect -----
   useEffect(() => {
-    if (!loading && status === 'signed_out') {
-      router.push('/login');
+    if (!loading && status === "signed_out") {
+      router.push("/login");
     }
   }, [loading, router, status]);
 
@@ -219,8 +247,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     const emojiMatch = raw.match(/^\p{Extended_Pictographic}/u);
     const domainEmoji = emojiMatch?.[0] ?? null;
     const cleaned = raw
-      .replace(/@[\w-]+/g, '')
-      .replace(/^\p{Extended_Pictographic}/u, '')
+      .replace(/@[\w-]+/g, "")
+      .replace(/^\p{Extended_Pictographic}/u, "")
       .trim();
     return { cleaned, personaFilter, domainEmoji };
   }, [searchTerm]);
@@ -236,23 +264,23 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       setSearchLoading(true);
       try {
         const { data: sectionData } = await supabase
-          .from('sections')
+          .from("sections")
           .select(
-            `id, search_text, created_at, entry:entries(id, stream_id, created_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon))) ), persona:personas(name)`
+            `id, search_text, created_at, entry:entries(id, stream_id, created_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon))) ), persona:personas(name)`,
           )
-          .ilike('search_text', `%${cleaned}%`)
+          .ilike("search_text", `%${cleaned}%`)
           .limit(25);
 
         const { data: canvasData } = await supabase
-          .from('canvases')
+          .from("canvases")
           .select(
-            `id, search_text, updated_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon)))`
+            `id, search_text, updated_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon)))`,
           )
-          .ilike('search_text', `%${cleaned}%`)
+          .ilike("search_text", `%${cleaned}%`)
           .limit(15);
 
         const results: {
-          type: 'section' | 'canvas';
+          type: "section" | "canvas";
           id: string;
           streamId: string;
           streamName: string;
@@ -279,7 +307,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         const queryTrigrams = toTrigrams(cleaned);
         const similarity = (value: string) => {
           const target = toTrigrams(value);
-          const intersection = [...queryTrigrams].filter((tri) => target.has(tri)).length;
+          const intersection = [...queryTrigrams].filter((tri) =>
+            target.has(tri),
+          ).length;
           const union = new Set([...queryTrigrams, ...target]).size || 1;
           return intersection / union;
         };
@@ -287,12 +317,12 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         sectionData?.forEach((section) => {
           const stream = section.entry?.stream;
           const domain = stream?.cabinet?.domain;
-          const preview = section.search_text?.slice(0, 120) ?? '';
+          const preview = section.search_text?.slice(0, 120) ?? "";
           results.push({
-            type: 'section',
+            type: "section",
             id: section.id,
-            streamId: stream?.id ?? '',
-            streamName: stream?.name ?? 'Untitled Stream',
+            streamId: stream?.id ?? "",
+            streamName: stream?.name ?? "Untitled Stream",
             domainId: domain?.id ?? null,
             domainName: domain?.name ?? null,
             domainIcon: domain?.icon ?? null,
@@ -307,12 +337,12 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         canvasData?.forEach((canvas) => {
           const stream = canvas.stream;
           const domain = stream?.cabinet?.domain;
-          const preview = canvas.search_text?.slice(0, 140) ?? '';
+          const preview = canvas.search_text?.slice(0, 140) ?? "";
           results.push({
-            type: 'canvas',
+            type: "canvas",
             id: canvas.id,
-            streamId: stream?.id ?? '',
-            streamName: stream?.name ?? 'Untitled Stream',
+            streamId: stream?.id ?? "",
+            streamName: stream?.name ?? "Untitled Stream",
             domainId: domain?.id ?? null,
             domainName: domain?.name ?? null,
             domainIcon: domain?.icon ?? null,
@@ -324,16 +354,20 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
         const filtered = results
           .filter((result) => {
-            if (parsedSearch.domainEmoji && result.domainIcon !== parsedSearch.domainEmoji) {
+            if (
+              parsedSearch.domainEmoji &&
+              result.domainIcon !== parsedSearch.domainEmoji
+            ) {
               return false;
             }
-            if (parsedSearch.personaFilter && result.type === 'section') {
+            if (parsedSearch.personaFilter && result.type === "section") {
               return (
-                result.personaName?.toLowerCase().includes(parsedSearch.personaFilter.toLowerCase()) ??
-                false
+                result.personaName
+                  ?.toLowerCase()
+                  .includes(parsedSearch.personaFilter.toLowerCase()) ?? false
               );
             }
-            if (parsedSearch.personaFilter && result.type === 'canvas') {
+            if (parsedSearch.personaFilter && result.type === "canvas") {
               return false;
             }
             return true;
@@ -366,13 +400,20 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   };
 
   return (
-    <div ref={layoutRootRef} className="flex h-dvh overflow-hidden overscroll-none bg-surface-subtle">
+    <div
+      ref={layoutRootRef}
+      className="flex h-dvh overflow-hidden overscroll-none bg-surface-subtle"
+    >
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         className="fixed left-4 top-4 z-50 rounded-lg bg-surface-default p-2 md:hidden text-text-default"
       >
-        {mobileMenuOpen ? <X className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+        {mobileMenuOpen ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <MenuIcon className="h-6 w-6" />
+        )}
       </button>
 
       {/* ---- Mobile Overlay ---- */}
@@ -385,31 +426,41 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
       {/* ====== RIBBON (DomainSwitcher) — always visible ====== */}
       <div
-        className={`fixed inset-y-0 left-0 z-40 flex transform transition-transform md:relative md:translate-x-0 ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-          }`}
+        className={`fixed inset-y-0 left-0 z-40 flex transform transition-transform md:relative md:translate-x-0 ${
+          mobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:translate-x-0"
+        }`}
       >
-        <DomainSwitcher userId={userId} onOpenGlobalSearch={() => setSearchOpen(true)} />
+        <DomainSwitcher
+          userId={userId}
+          onOpenGlobalSearch={() => setSearchOpen(true)}
+        />
       </div>
 
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}
       <div
         ref={sidebarRef}
-        className={`hidden md:flex overflow-hidden relative z-30 group h-full ${isResizing ? 'transition-none' : 'transition-[width] duration-300 ease-in-out'}`}
+        className={`hidden md:flex overflow-hidden relative z-30 group h-full ${isResizing ? "transition-none" : "transition-[width] duration-300 ease-in-out"}`}
         style={{ width: sidebarVisible ? sidebarWidth : 0 }}
       >
         <div
-          className={`flex-1 overflow-hidden h-full transition-all duration-300 ease-in-out ${sidebarVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-2 pointer-events-none'
-            }`}
+          className={`flex-1 overflow-hidden h-full transition-all duration-300 ease-in-out ${
+            sidebarVisible
+              ? "opacity-100 translate-x-0"
+              : "opacity-0 -translate-x-2 pointer-events-none"
+          }`}
         >
           <Navigator userId={userId} />
         </div>
 
         {/* Resize Handle */}
         <div
-          className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors z-50 ${sidebarVisible
-            ? 'hover:bg-action-primary-bg/50 active:bg-action-primary-bg'
-            : 'pointer-events-none'
-            } ${isResizing ? 'bg-action-primary-bg w-1' : 'bg-transparent'}`}
+          className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors z-50 ${
+            sidebarVisible
+              ? "hover:bg-action-primary-bg/50 active:bg-action-primary-bg"
+              : "pointer-events-none"
+          } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
           onMouseDown={handleMouseDown}
         />
       </div>
@@ -434,33 +485,36 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         {showLayoutControls && (
           <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-full border border-border-subtle bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all hover:scale-105">
             <button
-              onClick={() => setMode('log-only')}
-              className={`rounded-full p-2 transition-all ${isLogMaximized
-                ? 'bg-action-primary-bg text-white shadow-md'
-                : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-                }`}
+              onClick={() => setMode("log-only")}
+              className={`rounded-full p-2 transition-all ${
+                isLogMaximized
+                  ? "bg-action-primary-bg text-white shadow-md"
+                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+              }`}
               title="Maximize Log (⌘J)"
             >
               <PanelLeft className="h-4 w-4" />
             </button>
 
             <button
-              onClick={() => setMode('balanced')}
-              className={`rounded-full p-2 transition-all ${isBalanced
-                ? 'bg-action-primary-bg text-white shadow-md'
-                : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-                }`}
+              onClick={() => setMode("balanced")}
+              className={`rounded-full p-2 transition-all ${
+                isBalanced
+                  ? "bg-action-primary-bg text-white shadow-md"
+                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+              }`}
               title="Reset Layout (⌘K)"
             >
               <Columns className="h-4 w-4" />
             </button>
 
             <button
-              onClick={() => setMode('canvas-only')}
-              className={`rounded-full p-2 transition-all ${isCanvasMaximized
-                ? 'bg-action-primary-bg text-white shadow-md'
-                : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-                }`}
+              onClick={() => setMode("canvas-only")}
+              className={`rounded-full p-2 transition-all ${
+                isCanvasMaximized
+                  ? "bg-action-primary-bg text-white shadow-md"
+                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+              }`}
               title="Maximize Canvas (⌘L)"
             >
               <PanelRight className="h-4 w-4" />
@@ -470,7 +524,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       </div>
 
       <Transition appear show={searchOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setSearchOpen(false)}>
+        <Dialog
+          as="div"
+          className="relative z-50"
+          onClose={() => setSearchOpen(false)}
+        >
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-200"
@@ -493,7 +551,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveTo="opacity-0 scale-95"
             >
               <DialogPanel className="w-full max-w-2xl rounded-2xl border border-border-default bg-surface-default p-5 shadow-2xl">
-                <DialogTitle className="text-sm font-semibold text-text-default">Search</DialogTitle>
+                <DialogTitle className="text-sm font-semibold text-text-default">
+                  Search
+                </DialogTitle>
                 <div className="mt-3">
                   <input
                     value={searchTerm}
@@ -520,7 +580,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                     <div className="text-xs text-text-muted">Searching...</div>
                   )}
                   {!searchLoading && searchResults.length === 0 && (
-                    <div className="text-xs text-text-muted">No results yet</div>
+                    <div className="text-xs text-text-muted">
+                      No results yet
+                    </div>
                   )}
                   {searchResults.map((result) => (
                     <button
@@ -529,11 +591,14 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                         if (!result.domainId) return;
                         const payload = {
                           term: parsedSearch.cleaned,
-                          target: result.type === 'canvas' ? 'canvas' : 'log',
+                          target: result.type === "canvas" ? "canvas" : "log",
                           entryId: result.entryId ?? null,
                           streamId: result.streamId,
                         };
-                        sessionStorage.setItem('kolam_search_highlight', JSON.stringify(payload));
+                        sessionStorage.setItem(
+                          "kolam_search_highlight",
+                          JSON.stringify(payload),
+                        );
                         setSearchOpen(false);
                         router.push(`/${result.domainId}/${result.streamId}`);
                       }}
@@ -544,10 +609,17 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                           <span>{result.domainIcon}</span>
                           <span className="truncate">{result.streamName}</span>
                         </span>
-                        <span>{result.type === 'canvas' ? 'Canvas' : result.personaName}</span>
+                        <span>
+                          {result.type === "canvas"
+                            ? "Canvas"
+                            : result.personaName}
+                        </span>
                       </div>
                       <div className="mt-1 text-xs text-text-default">
-                        {renderHighlightedText(result.contentPreview ?? '', parsedSearch.cleaned)}
+                        {renderHighlightedText(
+                          result.contentPreview ?? "",
+                          parsedSearch.cleaned,
+                        )}
                       </div>
                     </button>
                   ))}

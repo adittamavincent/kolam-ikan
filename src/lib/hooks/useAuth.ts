@@ -72,13 +72,18 @@ export function useAuth() {
     const { data, error: sessionError } = await supabase.auth.getSession();
     if (sessionError) {
       // If the session is invalid (e.g. DB reset), force sign out
-      if (sessionError.message.includes("Invalid Refresh Token") || 
-          sessionError.message.includes("Refresh Token Not Found")) {
-        console.warn("[Auth] Session invalid, forcing sign out:", sessionError.message);
+      if (
+        sessionError.message.includes("Invalid Refresh Token") ||
+        sessionError.message.includes("Refresh Token Not Found")
+      ) {
+        console.warn(
+          "[Auth] Session invalid, forcing sign out:",
+          sessionError.message,
+        );
         await signOut();
         return;
       }
-      
+
       setError("Unable to refresh session. Check your network and try again.");
       setLoading(false);
       return;
@@ -86,7 +91,7 @@ export function useAuth() {
 
     if (!data.session) {
       // Ensure local state is cleared if no session exists
-      if (status === 'signed_in') {
+      if (status === "signed_in") {
         await signOut();
       } else {
         handleSessionUpdate(null);
@@ -103,7 +108,9 @@ export function useAuth() {
     supabase.auth.getSession().then(({ data, error: sessionError }) => {
       if (cancelled) return;
       if (sessionError) {
-        setError("Unable to refresh session. Check your network and try again.");
+        setError(
+          "Unable to refresh session. Check your network and try again.",
+        );
         setLoading(false);
         return;
       }

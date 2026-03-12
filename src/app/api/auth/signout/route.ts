@@ -10,9 +10,9 @@ export async function POST() {
 
   // 1. Terminate Supabase session globally
   try {
-    await supabase.auth.signOut({ scope: 'global' });
+    await supabase.auth.signOut({ scope: "global" });
   } catch (e) {
-    console.error('Supabase session termination error:', e);
+    console.error("Supabase session termination error:", e);
   }
 
   const response = NextResponse.json({ ok: true });
@@ -29,7 +29,7 @@ export async function POST() {
         value: "",
         maxAge: 0,
         path: "/",
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.NODE_ENV === "production",
       });
     }
   }

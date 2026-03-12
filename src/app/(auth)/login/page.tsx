@@ -4,8 +4,24 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { isDevelopmentHost, setDevAuthCookie, setRememberMe, getRememberMe } from "@/lib/utils/authStorage";
-import { Loader2, AlertCircle, ChevronRight, FlaskConical, Lock, Mail, CheckCircle, User, Eye, EyeOff } from "lucide-react";
+import {
+  isDevelopmentHost,
+  setDevAuthCookie,
+  setRememberMe,
+  getRememberMe,
+} from "@/lib/utils/authStorage";
+import {
+  Loader2,
+  AlertCircle,
+  ChevronRight,
+  FlaskConical,
+  Lock,
+  Mail,
+  CheckCircle,
+  User,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import Link from "next/link";
 
 import { loginAction } from "./actions";
@@ -32,12 +48,18 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldError>({});
-  const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set<string>());
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(
+    new Set<string>(),
+  );
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const passwordVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const confirmPasswordVisibilityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const passwordVisibilityTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+  const confirmPasswordVisibilityTimerRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,7 +75,7 @@ function LoginForm() {
       // middleware redirects back to login because the cookie is missing.
       if (isDevelopmentHost()) {
         setDevAuthCookie();
-         setDevSessionFlag();
+        setDevSessionFlag();
       }
 
       const next = searchParams.get("next") || "/";
@@ -64,25 +86,29 @@ function LoginForm() {
   // Auto-hide password after 3 seconds
   useEffect(() => {
     if (showPassword) {
-      if (passwordVisibilityTimerRef.current) clearTimeout(passwordVisibilityTimerRef.current);
+      if (passwordVisibilityTimerRef.current)
+        clearTimeout(passwordVisibilityTimerRef.current);
       passwordVisibilityTimerRef.current = setTimeout(() => {
         setShowPassword(false);
       }, 3000);
     }
     return () => {
-      if (passwordVisibilityTimerRef.current) clearTimeout(passwordVisibilityTimerRef.current);
+      if (passwordVisibilityTimerRef.current)
+        clearTimeout(passwordVisibilityTimerRef.current);
     };
   }, [showPassword]);
 
   useEffect(() => {
     if (showConfirmPassword) {
-      if (confirmPasswordVisibilityTimerRef.current) clearTimeout(confirmPasswordVisibilityTimerRef.current);
+      if (confirmPasswordVisibilityTimerRef.current)
+        clearTimeout(confirmPasswordVisibilityTimerRef.current);
       confirmPasswordVisibilityTimerRef.current = setTimeout(() => {
         setShowConfirmPassword(false);
       }, 3000);
     }
     return () => {
-      if (confirmPasswordVisibilityTimerRef.current) clearTimeout(confirmPasswordVisibilityTimerRef.current);
+      if (confirmPasswordVisibilityTimerRef.current)
+        clearTimeout(confirmPasswordVisibilityTimerRef.current);
     };
   }, [showConfirmPassword]);
 
@@ -105,65 +131,79 @@ function LoginForm() {
   }, []);
 
   // Field validation
-  const validateField = useCallback((field: string, value: string): string | undefined => {
-    switch (field) {
-      case "email":
-        if (!value) return "Email is required";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          return "Please enter a valid email address";
-        }
-        return undefined;
-      case "password":
-        if (!value) return "Password is required";
-        if (mode === "signup" && value.length < 8) {
-          return "Password must be at least 8 characters";
-        }
-        if (mode === "signup" && !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
-          return "Password must contain uppercase, lowercase, and number";
-        }
-        return undefined;
-      case "confirmPassword":
-        if (mode === "signup") {
-          if (!value) return "Please confirm your password";
-          if (value !== password) return "Passwords do not match";
-        }
-        return undefined;
-      case "fullName":
-        if (mode === "signup" && !value) return "Full name is required";
-        if (mode === "signup" && value.length < 2) return "Full name must be at least 2 characters";
-        return undefined;
-      default:
-        return undefined;
-    }
-  }, [mode, password]);
+  const validateField = useCallback(
+    (field: string, value: string): string | undefined => {
+      switch (field) {
+        case "email":
+          if (!value) return "Email is required";
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            return "Please enter a valid email address";
+          }
+          return undefined;
+        case "password":
+          if (!value) return "Password is required";
+          if (mode === "signup" && value.length < 8) {
+            return "Password must be at least 8 characters";
+          }
+          if (
+            mode === "signup" &&
+            !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)
+          ) {
+            return "Password must contain uppercase, lowercase, and number";
+          }
+          return undefined;
+        case "confirmPassword":
+          if (mode === "signup") {
+            if (!value) return "Please confirm your password";
+            if (value !== password) return "Passwords do not match";
+          }
+          return undefined;
+        case "fullName":
+          if (mode === "signup" && !value) return "Full name is required";
+          if (mode === "signup" && value.length < 2)
+            return "Full name must be at least 2 characters";
+          return undefined;
+        default:
+          return undefined;
+      }
+    },
+    [mode, password],
+  );
 
   // Debounced validation
-  const validateFieldDebounced = useCallback((field: string, value: string) => {
-    if (validationTimerRef.current) {
-      clearTimeout(validationTimerRef.current);
-    }
-
-    validationTimerRef.current = setTimeout(() => {
-      if (touchedFields.has(field)) {
-        const error = validateField(field, value);
-        setFieldErrors(prev => ({
-          ...prev,
-          [field]: error
-        }));
+  const validateFieldDebounced = useCallback(
+    (field: string, value: string) => {
+      if (validationTimerRef.current) {
+        clearTimeout(validationTimerRef.current);
       }
-    }, 300);
-  }, [touchedFields, validateField]);
+
+      validationTimerRef.current = setTimeout(() => {
+        if (touchedFields.has(field)) {
+          const error = validateField(field, value);
+          setFieldErrors((prev) => ({
+            ...prev,
+            [field]: error,
+          }));
+        }
+      }, 300);
+    },
+    [touchedFields, validateField],
+  );
 
   const handleFieldBlur = (field: string, value: string) => {
-    setTouchedFields(prev => new Set(prev).add(field));
+    setTouchedFields((prev) => new Set(prev).add(field));
     const error = validateField(field, value);
-    setFieldErrors(prev => ({
+    setFieldErrors((prev) => ({
       ...prev,
-      [field]: error
+      [field]: error,
     }));
   };
 
-  const handleLogin = async (e?: React.FormEvent, providedEmail?: string, providedPassword?: string) => {
+  const handleLogin = async (
+    e?: React.FormEvent,
+    providedEmail?: string,
+    providedPassword?: string,
+  ) => {
     e?.preventDefault();
 
     // Use provided values (from quick login) or current state
@@ -205,11 +245,17 @@ function LoginForm() {
 
         // Specific error handling for better UX
         if (errorMessage.includes("Invalid login credentials")) {
-          setError("Incorrect email or password. Please try again or sign up if you don't have an account.");
+          setError(
+            "Incorrect email or password. Please try again or sign up if you don't have an account.",
+          );
         } else if (errorMessage.includes("Email not confirmed")) {
-          setError("Please verify your email address before signing in. Check your inbox for the confirmation link.");
+          setError(
+            "Please verify your email address before signing in. Check your inbox for the confirmation link.",
+          );
         } else if (errorMessage.includes("User not found")) {
-          setError("No account found with this email address. Please sign up first.");
+          setError(
+            "No account found with this email address. Please sign up first.",
+          );
         } else {
           setError(errorMessage);
         }
@@ -233,7 +279,7 @@ function LoginForm() {
         const next = searchParams.get("next") || "/";
 
         // Small delay to ensure cookies are properly propagated
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Navigate directly instead of relying on useEffect
         // Use replace to prevent back-button redirect loop issues
@@ -247,7 +293,9 @@ function LoginForm() {
       if (err instanceof Error && err.name === "AbortError") {
         return; // Request was cancelled
       }
-      setError("A network error occurred. Please check your connection and try again.");
+      setError(
+        "A network error occurred. Please check your connection and try again.",
+      );
     }
   };
 
@@ -255,12 +303,17 @@ function LoginForm() {
     e?.preventDefault();
 
     // Mark all fields as touched
-    setTouchedFields(new Set(["email", "password", "confirmPassword", "fullName"]));
+    setTouchedFields(
+      new Set(["email", "password", "confirmPassword", "fullName"]),
+    );
 
     // Validate all fields
     const emailError = validateField("email", email);
     const passwordError = validateField("password", password);
-    const confirmPasswordError = validateField("confirmPassword", confirmPassword);
+    const confirmPasswordError = validateField(
+      "confirmPassword",
+      confirmPassword,
+    );
     const fullNameError = validateField("fullName", fullName);
 
     if (emailError || passwordError || confirmPasswordError || fullNameError) {
@@ -268,7 +321,7 @@ function LoginForm() {
         email: emailError,
         password: passwordError,
         confirmPassword: confirmPasswordError,
-        fullName: fullNameError
+        fullName: fullNameError,
       });
       return;
     }
@@ -297,16 +350,25 @@ function LoginForm() {
       if (authError) {
         setLoading(false);
 
-        if (authError.message.includes("already registered") || authError.message.includes("already exists")) {
-          setError("An account with this email already exists. Please sign in instead.");
+        if (
+          authError.message.includes("already registered") ||
+          authError.message.includes("already exists")
+        ) {
+          setError(
+            "An account with this email already exists. Please sign in instead.",
+          );
         } else if (authError.message.includes("Password should be")) {
-          setError("Password does not meet security requirements. Please use a stronger password.");
+          setError(
+            "Password does not meet security requirements. Please use a stronger password.",
+          );
         } else {
           setError(authError.message);
         }
       } else {
         setLoading(false);
-        setSuccessMessage("Account created successfully! Please check your email to verify your account.");
+        setSuccessMessage(
+          "Account created successfully! Please check your email to verify your account.",
+        );
 
         // Clear password fields for security
         setPassword("");
@@ -320,7 +382,9 @@ function LoginForm() {
       if (err instanceof Error && err.name === "AbortError") {
         return;
       }
-      setError("A network error occurred. Please check your connection and try again.");
+      setError(
+        "A network error occurred. Please check your connection and try again.",
+      );
     }
   };
 
@@ -337,12 +401,27 @@ function LoginForm() {
 
   // Development Helpers (Completely stripped in production)
   const testAccounts = [
-    { label: "Default Test User", email: "test@kolamikan.local", pass: "KolamTest2026!", role: "User" },
-    { label: "Admin Account", email: "admin@kolamikan.local", pass: "KolamTest2026!", role: "Admin" },
-    { label: "Empty Account", email: "new@kolamikan.local", pass: "KolamTest2026!", role: "Demo" },
+    {
+      label: "Default Test User",
+      email: "test@kolamikan.local",
+      pass: "KolamTest2026!",
+      role: "User",
+    },
+    {
+      label: "Admin Account",
+      email: "admin@kolamikan.local",
+      pass: "KolamTest2026!",
+      role: "Admin",
+    },
+    {
+      label: "Empty Account",
+      email: "new@kolamikan.local",
+      pass: "KolamTest2026!",
+      role: "Demo",
+    },
   ];
 
-  const quickLogin = async (acc: typeof testAccounts[0]) => {
+  const quickLogin = async (acc: (typeof testAccounts)[0]) => {
     setMode("signin");
     setEmail(acc.email);
     setPassword(acc.pass);
@@ -355,7 +434,7 @@ function LoginForm() {
     await handleLogin(undefined, acc.email, acc.pass);
   };
 
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = process.env.NODE_ENV === "development";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle p-4 font-sans text-text-default">
@@ -371,8 +450,7 @@ function LoginForm() {
           <p className="mt-2 text-sm text-text-subtle">
             {mode === "signin"
               ? "Log in to your thinking environment"
-              : "Create your thinking environment"
-            }
+              : "Create your thinking environment"}
           </p>
         </div>
 
@@ -383,26 +461,31 @@ function LoginForm() {
             <button
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${mode === "signin"
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+                mode === "signin"
                   ? "bg-surface-default text-text-default"
                   : "text-text-subtle hover:text-text-default"
-                }`}
+              }`}
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => mode === "signin" && toggleMode()}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${mode === "signup"
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+                mode === "signup"
                   ? "bg-surface-default text-text-default"
                   : "text-text-subtle hover:text-text-default"
-                }`}
+              }`}
             >
               Sign Up
             </button>
           </div>
 
-          <form className="space-y-6" onSubmit={mode === "signin" ? handleLogin : handleSignup}>
+          <form
+            className="space-y-6"
+            onSubmit={mode === "signin" ? handleLogin : handleSignup}
+          >
             {error && (
               <div className="flex items-start gap-3 rounded-lg bg-status-error-bg p-4 text-sm text-status-error-text border border-status-error-border animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-5 w-5 shrink-0 text-status-error-text" />
@@ -420,7 +503,10 @@ function LoginForm() {
             <div className="space-y-4">
               {mode === "signup" && (
                 <div>
-                  <label className="block text-sm font-medium text-text-default mb-1" htmlFor="fullName">
+                  <label
+                    className="block text-sm font-medium text-text-default mb-1"
+                    htmlFor="fullName"
+                  >
                     Full Name
                   </label>
                   <div className="relative">
@@ -436,22 +522,30 @@ function LoginForm() {
                         setFullName(e.target.value);
                         validateFieldDebounced("fullName", e.target.value);
                       }}
-                      onBlur={(e) => handleFieldBlur("fullName", e.target.value)}
-                      className={`block w-full rounded-lg border ${fieldErrors.fullName && touchedFields.has("fullName")
+                      onBlur={(e) =>
+                        handleFieldBlur("fullName", e.target.value)
+                      }
+                      className={`block w-full rounded-lg border ${
+                        fieldErrors.fullName && touchedFields.has("fullName")
                           ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
                           : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                        } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                      } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                       placeholder="John Doe"
                     />
                   </div>
                   {fieldErrors.fullName && touchedFields.has("fullName") && (
-                    <p className="mt-1 text-xs text-status-error-text">{fieldErrors.fullName}</p>
+                    <p className="mt-1 text-xs text-status-error-text">
+                      {fieldErrors.fullName}
+                    </p>
                   )}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-text-default mb-1" htmlFor="email">
+                <label
+                  className="block text-sm font-medium text-text-default mb-1"
+                  htmlFor="email"
+                >
                   Email Address
                 </label>
                 <div className="relative">
@@ -468,21 +562,27 @@ function LoginForm() {
                       validateFieldDebounced("email", e.target.value);
                     }}
                     onBlur={(e) => handleFieldBlur("email", e.target.value)}
-                    className={`block w-full rounded-lg border ${fieldErrors.email && touchedFields.has("email")
+                    className={`block w-full rounded-lg border ${
+                      fieldErrors.email && touchedFields.has("email")
                         ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
                         : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                      } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                    } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                     placeholder="name@example.com"
                   />
                 </div>
                 {fieldErrors.email && touchedFields.has("email") && (
-                  <p className="mt-1 text-xs text-status-error-text">{fieldErrors.email}</p>
+                  <p className="mt-1 text-xs text-status-error-text">
+                    {fieldErrors.email}
+                  </p>
                 )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-text-default" htmlFor="password">
+                  <label
+                    className="block text-sm font-medium text-text-default"
+                    htmlFor="password"
+                  >
                     Password
                   </label>
                   {mode === "signin" && (
@@ -500,28 +600,36 @@ function LoginForm() {
                     id="password"
                     name="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                    autoComplete={
+                      mode === "signin" ? "current-password" : "new-password"
+                    }
                     required
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
                       validateFieldDebounced("password", e.target.value);
                       if (mode === "signup" && confirmPassword) {
-                        validateFieldDebounced("confirmPassword", confirmPassword);
+                        validateFieldDebounced(
+                          "confirmPassword",
+                          confirmPassword,
+                        );
                       }
                     }}
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
-                    className={`block w-full rounded-lg border ${fieldErrors.password && touchedFields.has("password")
+                    className={`block w-full rounded-lg border ${
+                      fieldErrors.password && touchedFields.has("password")
                         ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
                         : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                      } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                    } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus:outline-none focus:text-text-subtle"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -531,7 +639,9 @@ function LoginForm() {
                   </button>
                 </div>
                 {fieldErrors.password && touchedFields.has("password") && (
-                  <p className="mt-1 text-xs text-status-error-text">{fieldErrors.password}</p>
+                  <p className="mt-1 text-xs text-status-error-text">
+                    {fieldErrors.password}
+                  </p>
                 )}
                 {mode === "signup" && !fieldErrors.password && (
                   <p className="mt-1 text-xs text-text-muted">
@@ -542,7 +652,10 @@ function LoginForm() {
 
               {mode === "signup" && (
                 <div>
-                  <label className="block text-sm font-medium text-text-default mb-1" htmlFor="confirmPassword">
+                  <label
+                    className="block text-sm font-medium text-text-default mb-1"
+                    htmlFor="confirmPassword"
+                  >
                     Confirm Password
                   </label>
                   <div className="relative">
@@ -556,20 +669,33 @@ function LoginForm() {
                       value={confirmPassword}
                       onChange={(e) => {
                         setConfirmPassword(e.target.value);
-                        validateFieldDebounced("confirmPassword", e.target.value);
+                        validateFieldDebounced(
+                          "confirmPassword",
+                          e.target.value,
+                        );
                       }}
-                      onBlur={(e) => handleFieldBlur("confirmPassword", e.target.value)}
-                      className={`block w-full rounded-lg border ${fieldErrors.confirmPassword && touchedFields.has("confirmPassword")
+                      onBlur={(e) =>
+                        handleFieldBlur("confirmPassword", e.target.value)
+                      }
+                      className={`block w-full rounded-lg border ${
+                        fieldErrors.confirmPassword &&
+                        touchedFields.has("confirmPassword")
                           ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
                           : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                        } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                      } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
                       placeholder="••••••••"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus:outline-none focus:text-text-subtle"
-                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      aria-label={
+                        showConfirmPassword
+                          ? "Hide confirm password"
+                          : "Show confirm password"
+                      }
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -578,9 +704,12 @@ function LoginForm() {
                       )}
                     </button>
                   </div>
-                  {fieldErrors.confirmPassword && touchedFields.has("confirmPassword") && (
-                    <p className="mt-1 text-xs text-status-error-text">{fieldErrors.confirmPassword}</p>
-                  )}
+                  {fieldErrors.confirmPassword &&
+                    touchedFields.has("confirmPassword") && (
+                      <p className="mt-1 text-xs text-status-error-text">
+                        {fieldErrors.confirmPassword}
+                      </p>
+                    )}
                 </div>
               )}
             </div>
@@ -595,7 +724,10 @@ function LoginForm() {
                   onChange={(e) => setRememberMeState(e.target.checked)}
                   className="h-4 w-4 rounded border-border-default text-action-primary-bg focus:ring-action-primary-bg"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-text-subtle">
+                <label
+                  htmlFor="remember-me"
+                  className="ml-2 block text-sm text-text-subtle"
+                >
                   Keep me logged in
                 </label>
               </div>
@@ -650,7 +782,9 @@ function LoginForm() {
           <div className="rounded-xl border-2 border-dashed border-border-default bg-surface-subtle p-6 animate-in fade-in duration-1000">
             <div className="mb-4 flex items-center gap-2 text-text-default">
               <FlaskConical className="h-5 w-5" />
-              <h3 className="text-sm font-bold uppercase tracking-wider">Dev Toolbox: Speed Login</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider">
+                Dev Toolbox: Speed Login
+              </h3>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {testAccounts.map((acc) => (
@@ -661,8 +795,12 @@ function LoginForm() {
                   className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-default p-3 text-left transition-all hover:border-action-primary-bg group"
                 >
                   <div>
-                    <div className="text-xs font-bold text-text-default">{acc.label}</div>
-                    <div className="text-[10px] text-text-subtle uppercase font-medium">{acc.role}</div>
+                    <div className="text-xs font-bold text-text-default">
+                      {acc.label}
+                    </div>
+                    <div className="text-[10px] text-text-subtle uppercase font-medium">
+                      {acc.role}
+                    </div>
                   </div>
                   <ChevronRight className="h-4 w-4 text-text-muted group-hover:translate-x-1 transition-transform" />
                 </button>
@@ -677,11 +815,13 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
-        <Loader2 className="h-8 w-8 animate-spin text-action-primary-bg" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
+          <Loader2 className="h-8 w-8 animate-spin text-action-primary-bg" />
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );

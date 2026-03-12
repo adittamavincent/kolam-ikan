@@ -1,20 +1,26 @@
-import { Fragment, useState } from 'react';
-import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react';
-import { X, Plus, Pencil, Trash2, Loader2, AlertCircle } from 'lucide-react';
-import { usePersonas } from '@/lib/hooks/usePersonas';
-import { usePersonaMutations } from '@/lib/hooks/usePersonaMutations';
-import { DynamicIcon } from '@/components/shared/DynamicIcon';
-import { Persona } from '@/lib/types';
-import { createClient } from '@/lib/supabase/client';
-import { useAuth } from '@/lib/hooks/useAuth';
+import { Fragment, useState } from "react";
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Transition,
+  TransitionChild,
+} from "@headlessui/react";
+import { X, Plus, Pencil, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { usePersonas } from "@/lib/hooks/usePersonas";
+import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
+import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import { Persona } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/useAuth";
 
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
-  if (typeof error === 'object' && error !== null && 'message' in error) {
+  if (typeof error === "object" && error !== null && "message" in error) {
     const message = (error as { message?: unknown }).message;
-    if (typeof message === 'string' && message.length > 0) return message;
+    if (typeof message === "string" && message.length > 0) return message;
   }
-  return 'Failed to save persona';
+  return "Failed to save persona";
 };
 
 interface PersonaManagerProps {
@@ -23,45 +29,57 @@ interface PersonaManagerProps {
 }
 
 const PRESET_ICONS = [
-  'user', 'brain', 'cloud-rain', 'heart', 'coffee', 'code', 'zap', 'feather', 'target', 'shield', 'star', 'smile'
+  "user",
+  "brain",
+  "cloud-rain",
+  "heart",
+  "coffee",
+  "code",
+  "zap",
+  "feather",
+  "target",
+  "shield",
+  "star",
+  "smile",
 ];
 
 const PRESET_COLORS = [
-  '#0ea5e9', // Sky
-  '#64748b', // Slate
-  '#8b5cf6', // Violet
-  '#ef4444', // Red
-  '#f59e0b', // Amber
-  '#10b981', // Emerald
-  '#ec4899', // Pink
-  '#6366f1', // Indigo
+  "#0ea5e9", // Sky
+  "#64748b", // Slate
+  "#8b5cf6", // Violet
+  "#ef4444", // Red
+  "#f59e0b", // Amber
+  "#10b981", // Emerald
+  "#ec4899", // Pink
+  "#6366f1", // Indigo
 ];
 
 export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const supabase = createClient();
   const { user } = useAuth();
   const { personas, isLoading } = usePersonas({ includeDeleted: true });
-  const { createPersona, updatePersona, deletePersona, hardDeletePersona } = usePersonaMutations();
-  
+  const { createPersona, updatePersona, deletePersona, hardDeletePersona } =
+    usePersonaMutations();
+
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [deletingPersona, setDeletingPersona] = useState<Persona | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isPreparingDelete, setIsPreparingDelete] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
   const [deleteUsageCount, setDeleteUsageCount] = useState(0);
-  const [transferPersonaId, setTransferPersonaId] = useState('');
+  const [transferPersonaId, setTransferPersonaId] = useState("");
   const [isPermanent, setIsPermanent] = useState(false);
-  
+
   // Form state
-  const [name, setName] = useState('');
-  const [icon, setIcon] = useState('user');
-  const [color, setColor] = useState('#0ea5e9');
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState("user");
+  const [color, setColor] = useState("#0ea5e9");
   const [error, setError] = useState<string | null>(null);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Name is required');
+      setError("Name is required");
       return;
     }
 
@@ -69,7 +87,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
       if (editingPersona) {
         await updatePersona.mutateAsync({
           id: editingPersona.id,
-          updates: { name, icon, color }
+          updates: { name, icon, color },
         });
         setEditingPersona(null);
       } else {
@@ -77,7 +95,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
           name,
           icon,
           color,
-          type: 'HUMAN',
+          type: "HUMAN",
         });
         setIsCreating(false);
       }
@@ -96,9 +114,11 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
 
     try {
       const { data: usageRows, error: usageError } = await supabase
-        .from('sections')
-        .select('id, entries(id, is_draft, deleted_at, streams(id, deleted_at, domains(id, deleted_at)))')
-        .eq('persona_id', persona.id);
+        .from("sections")
+        .select(
+          "id, entries(id, is_draft, deleted_at, streams(id, deleted_at, domains(id, deleted_at)))",
+        )
+        .eq("persona_id", persona.id);
 
       if (usageError) throw usageError;
 
@@ -128,7 +148,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
 
       setDeletingPersona(persona);
       setDeleteUsageCount(activeUsageCount);
-      setTransferPersonaId(nextTransferCandidates[0]?.id ?? '');
+      setTransferPersonaId(nextTransferCandidates[0]?.id ?? "");
       setIsPermanent(!!persona.deleted_at);
     } catch (deleteError) {
       setError(getErrorMessage(deleteError));
@@ -142,16 +162,21 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     const usePermanent = permanent ?? isPermanent;
 
     if (deleteUsageCount > 0 && !transferPersonaId) {
-      setError('Select a transfer target to migrate used sections before deleting.');
+      setError(
+        "Select a transfer target to migrate used sections before deleting.",
+      );
       return;
     }
 
     try {
-      const transferPersona = transferCandidates.find((candidate) => candidate.id === transferPersonaId);
+      const transferPersona = transferCandidates.find(
+        (candidate) => candidate.id === transferPersonaId,
+      );
       const params = {
         id: deletingPersona.id,
         transferToId: deleteUsageCount > 0 ? transferPersonaId : undefined,
-        transferToName: deleteUsageCount > 0 ? transferPersona?.name ?? null : undefined,
+        transferToName:
+          deleteUsageCount > 0 ? (transferPersona?.name ?? null) : undefined,
       };
 
       if (usePermanent) {
@@ -162,7 +187,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
 
       setDeletingPersona(null);
       setDeleteUsageCount(0);
-      setTransferPersonaId('');
+      setTransferPersonaId("");
       setIsPermanent(false);
       setError(null);
     } catch (deleteError) {
@@ -198,10 +223,16 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
             >
               <DialogPanel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
                 <div className="flex items-center justify-between mb-6">
-                  <DialogTitle as="h3" className="text-lg font-medium leading-6 text-text-default">
+                  <DialogTitle
+                    as="h3"
+                    className="text-lg font-medium leading-6 text-text-default"
+                  >
                     Manage Personas
                   </DialogTitle>
-                  <button onClick={onClose} className="rounded-full p-1 hover:bg-surface-subtle transition-colors text-text-muted hover:text-text-default">
+                  <button
+                    onClick={onClose}
+                    className="rounded-full p-1 hover:bg-surface-subtle transition-colors text-text-muted hover:text-text-default"
+                  >
                     <X className="h-5 w-5" />
                   </button>
                 </div>
@@ -210,27 +241,52 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   <div className="space-y-4">
                     <div>
                       <h4 className="text-sm font-medium text-text-default">
-                        {isPermanent ? 'Permanently Delete Persona' : 'Delete Persona'}
+                        {isPermanent
+                          ? "Permanently Delete Persona"
+                          : "Delete Persona"}
                       </h4>
                       <p className="mt-1 text-xs text-text-muted">
-                        You are deleting <span className="font-medium text-text-default">{deletingPersona.name}</span>.
-                        {isPermanent && <span className="text-status-error-text"> This action cannot be undone.</span>}
+                        You are deleting{" "}
+                        <span className="font-medium text-text-default">
+                          {deletingPersona.name}
+                        </span>
+                        .
+                        {isPermanent && (
+                          <span className="text-status-error-text">
+                            {" "}
+                            This action cannot be undone.
+                          </span>
+                        )}
                       </p>
                     </div>
 
                     <div className="rounded-lg border border-border-subtle bg-surface-subtle p-3">
                       <p className="text-xs text-text-subtle">
                         {deleteUsageCount === 0 ? (
-                          <span>This persona is <span className="font-semibold text-text-default">not used</span> in any active sections.</span>
+                          <span>
+                            This persona is{" "}
+                            <span className="font-semibold text-text-default">
+                              not used
+                            </span>{" "}
+                            in any active sections.
+                          </span>
                         ) : (
-                          <span>This persona is currently used in <span className="font-semibold text-text-default">{deleteUsageCount}</span> active section{deleteUsageCount === 1 ? '' : 's'}.</span>
+                          <span>
+                            This persona is currently used in{" "}
+                            <span className="font-semibold text-text-default">
+                              {deleteUsageCount}
+                            </span>{" "}
+                            active section{deleteUsageCount === 1 ? "" : "s"}.
+                          </span>
                         )}
                       </p>
                     </div>
 
                     {deleteUsageCount > 0 && (
                       <div>
-                        <label className="block text-sm font-medium text-text-subtle mb-1">Transfer sections to</label>
+                        <label className="block text-sm font-medium text-text-subtle mb-1">
+                          Transfer sections to
+                        </label>
                         <select
                           value={transferPersonaId}
                           onChange={(e) => setTransferPersonaId(e.target.value)}
@@ -245,7 +301,8 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         </select>
                         {transferCandidates.length === 0 && (
                           <p className="mt-2 text-xs text-status-error-text">
-                            Create another active persona first, then retry deletion.
+                            Create another active persona first, then retry
+                            deletion.
                           </p>
                         )}
                       </div>
@@ -264,7 +321,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         onClick={() => {
                           setDeletingPersona(null);
                           setDeleteUsageCount(0);
-                          setTransferPersonaId('');
+                          setTransferPersonaId("");
                           setIsPermanent(false);
                           setError(null);
                         }}
@@ -276,10 +333,16 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         <button
                           type="button"
                           onClick={() => handleDelete(true)}
-                          disabled={hardDeletePersona.isPending || (deleteUsageCount > 0 && transferCandidates.length === 0)}
+                          disabled={
+                            hardDeletePersona.isPending ||
+                            (deleteUsageCount > 0 &&
+                              transferCandidates.length === 0)
+                          }
                           className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
-                          {hardDeletePersona.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                          {hardDeletePersona.isPending && (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          )}
                           Delete Permanently
                         </button>
                       ) : (
@@ -291,18 +354,28 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                               disabled={hardDeletePersona.isPending}
                               className="px-4 py-2 text-sm font-medium border border-status-error-text/30 text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                             >
-                              {hardDeletePersona.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                              {hardDeletePersona.isPending && (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              )}
                               Delete Permanently
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => handleDelete(false)}
-                            disabled={deletePersona.isPending || (deleteUsageCount > 0 && transferCandidates.length === 0)}
+                            disabled={
+                              deletePersona.isPending ||
+                              (deleteUsageCount > 0 &&
+                                transferCandidates.length === 0)
+                            }
                             className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                           >
-                            {deletePersona.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {deleteUsageCount > 0 ? 'Delete & Transfer' : 'Soft Delete'}
+                            {deletePersona.isPending && (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            )}
+                            {deleteUsageCount > 0
+                              ? "Delete & Transfer"
+                              : "Soft Delete"}
                           </button>
                         </>
                       )}
@@ -311,7 +384,9 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                 ) : isCreating || editingPersona ? (
                   <form onSubmit={handleSave} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-text-subtle mb-1">Name</label>
+                      <label className="block text-sm font-medium text-text-subtle mb-1">
+                        Name
+                      </label>
                       <input
                         type="text"
                         value={name}
@@ -323,14 +398,16 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-text-subtle mb-1">Color</label>
+                      <label className="block text-sm font-medium text-text-subtle mb-1">
+                        Color
+                      </label>
                       <div className="flex gap-2 flex-wrap">
                         {PRESET_COLORS.map((c) => (
                           <button
                             key={c}
                             type="button"
                             onClick={() => setColor(c)}
-                            className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? 'border-text-default' : 'border-transparent'}`}
+                            className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? "border-text-default" : "border-transparent"}`}
                             style={{ backgroundColor: c }}
                           />
                         ))}
@@ -338,14 +415,16 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-text-subtle mb-1">Icon</label>
+                      <label className="block text-sm font-medium text-text-subtle mb-1">
+                        Icon
+                      </label>
                       <div className="grid grid-cols-6 gap-2">
                         {PRESET_ICONS.map((ic) => (
                           <button
                             key={ic}
                             type="button"
                             onClick={() => setIcon(ic)}
-                            className={`flex items-center justify-center p-2 rounded-lg border transition-colors ${icon === ic ? 'bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg' : 'border-border-subtle hover:bg-surface-subtle text-text-subtle'}`}
+                            className={`flex items-center justify-center p-2 rounded-lg border transition-colors ${icon === ic ? "bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg" : "border-border-subtle hover:bg-surface-subtle text-text-subtle"}`}
                           >
                             <DynamicIcon name={ic} className="h-5 w-5" />
                           </button>
@@ -363,17 +442,25 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     <div className="flex justify-end gap-2 mt-6">
                       <button
                         type="button"
-                        onClick={() => { setIsCreating(false); setEditingPersona(null); }}
+                        onClick={() => {
+                          setIsCreating(false);
+                          setEditingPersona(null);
+                        }}
                         className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
-                        disabled={createPersona.isPending || updatePersona.isPending}
+                        disabled={
+                          createPersona.isPending || updatePersona.isPending
+                        }
                         className="px-4 py-2 text-sm font-medium bg-action-primary-bg text-white hover:bg-action-primary-hover rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
                       >
-                        {(createPersona.isPending || updatePersona.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {(createPersona.isPending ||
+                          updatePersona.isPending) && (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        )}
                         Save Persona
                       </button>
                     </div>
@@ -384,9 +471,9 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                       <button
                         onClick={() => {
                           setIsCreating(true);
-                          setName('');
-                          setIcon('user');
-                          setColor('#0ea5e9');
+                          setName("");
+                          setIcon("user");
+                          setColor("#0ea5e9");
                           setError(null);
                         }}
                         className="flex items-center gap-2 rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
@@ -416,92 +503,122 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         </div>
                       ) : (
                         personas
-                          ?.filter((persona) => (showDeleted ? true : !persona.deleted_at))
+                          ?.filter((persona) =>
+                            showDeleted ? true : !persona.deleted_at,
+                          )
                           .map((persona) => (
-                          <div
-                            key={persona.id}
-                            className={`flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? 'opacity-60' : ''}`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="h-10 w-10 rounded-lg flex items-center justify-center"
-                                style={{ backgroundColor: `${persona.color}20`, color: persona.color }}
-                              >
-                                <DynamicIcon name={persona.icon} className="h-5 w-5" />
+                            <div
+                              key={persona.id}
+                              className={`flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="h-10 w-10 rounded-lg flex items-center justify-center"
+                                  style={{
+                                    backgroundColor: `${persona.color}20`,
+                                    color: persona.color,
+                                  }}
+                                >
+                                  <DynamicIcon
+                                    name={persona.icon}
+                                    className="h-5 w-5"
+                                  />
+                                </div>
+                                <div>
+                                  <h4 className="font-medium text-text-default flex items-center gap-2">
+                                    {persona.name}
+                                    {persona.is_system && (
+                                      <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 rounded border border-border-subtle uppercase tracking-wider">
+                                        System
+                                      </span>
+                                    )}
+                                    {persona.deleted_at && (
+                                      <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 rounded border border-status-error-text/20 uppercase tracking-wider">
+                                        Deleted
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <p className="text-xs text-text-muted capitalize">
+                                    {persona.type.toLowerCase()}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <h4 className="font-medium text-text-default flex items-center gap-2">
-                                  {persona.name}
-                                  {persona.is_system && (
-                                    <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 rounded border border-border-subtle uppercase tracking-wider">
-                                      System
-                                    </span>
-                                  )}
-                                  {persona.deleted_at && (
-                                    <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 rounded border border-status-error-text/20 uppercase tracking-wider">
-                                      Deleted
-                                    </span>
-                                  )}
-                                </h4>
-                                <p className="text-xs text-text-muted capitalize">{persona.type.toLowerCase()}</p>
-                              </div>
-                            </div>
-                            
-                            {!persona.is_system && persona.user_id === user?.id && persona.type === 'HUMAN' && (
-                              <div className="flex items-center gap-1">
-                                {persona.deleted_at ? (
-                                  <>
-                                    <button
-                                      onClick={async () => {
-                                        await updatePersona.mutateAsync({
-                                          id: persona.id,
-                                          updates: { deleted_at: null },
-                                        });
-                                      }}
-                                      className="px-2 py-1 text-xs text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
-                                      title="Restore"
-                                    >
-                                      Restore
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteRequest(persona)}
-                                      disabled={isPreparingDelete || hardDeletePersona.isPending}
-                                      className="px-2 py-1 text-xs text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors"
-                                      title="Delete permanently"
-                                    >
-                                      {isPreparingDelete ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Delete Permanently'}
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      onClick={() => {
-                                        setEditingPersona(persona);
-                                        setDeletingPersona(null);
-                                        setName(persona.name);
-                                        setIcon(persona.icon);
-                                        setColor(persona.color);
-                                        setError(null);
-                                      }}
-                                      className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
-                                      title="Edit"
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteRequest(persona)}
-                                      disabled={isPreparingDelete || deletePersona.isPending}
-                                      className="p-2 text-text-muted hover:text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors"
-                                      title="Delete"
-                                    >
-                                      {isPreparingDelete ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                    </button>
-                                  </>
+
+                              {!persona.is_system &&
+                                persona.user_id === user?.id &&
+                                persona.type === "HUMAN" && (
+                                  <div className="flex items-center gap-1">
+                                    {persona.deleted_at ? (
+                                      <>
+                                        <button
+                                          onClick={async () => {
+                                            await updatePersona.mutateAsync({
+                                              id: persona.id,
+                                              updates: { deleted_at: null },
+                                            });
+                                          }}
+                                          className="px-2 py-1 text-xs text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
+                                          title="Restore"
+                                        >
+                                          Restore
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleDeleteRequest(persona)
+                                          }
+                                          disabled={
+                                            isPreparingDelete ||
+                                            hardDeletePersona.isPending
+                                          }
+                                          className="px-2 py-1 text-xs text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors"
+                                          title="Delete permanently"
+                                        >
+                                          {isPreparingDelete ? (
+                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                          ) : (
+                                            "Delete Permanently"
+                                          )}
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            setEditingPersona(persona);
+                                            setDeletingPersona(null);
+                                            setName(persona.name);
+                                            setIcon(persona.icon);
+                                            setColor(persona.color);
+                                            setError(null);
+                                          }}
+                                          className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
+                                          title="Edit"
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleDeleteRequest(persona)
+                                          }
+                                          disabled={
+                                            isPreparingDelete ||
+                                            deletePersona.isPending
+                                          }
+                                          className="p-2 text-text-muted hover:text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors"
+                                          title="Delete"
+                                        >
+                                          {isPreparingDelete ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-4 w-4" />
+                                          )}
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 )}
-                              </div>
-                            )}
-                          </div>
-                        ))
+                            </div>
+                          ))
                       )}
                     </div>
                   </>

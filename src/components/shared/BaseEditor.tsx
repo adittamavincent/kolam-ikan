@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { BlockNoteView } from '@blocknote/mantine';
-import '@blocknote/mantine/style.css';
-import { useCreateBlockNote } from '@blocknote/react';
-import { BlockNoteEditor, PartialBlock } from '@blocknote/core';
-import { useEffect } from 'react';
-import { useTheme } from '@/lib/hooks/useTheme';
+import { BlockNoteView } from "@blocknote/mantine";
+import "@blocknote/mantine/style.css";
+import { useCreateBlockNote } from "@blocknote/react";
+import { BlockNoteEditor, PartialBlock } from "@blocknote/core";
+import { useEffect } from "react";
+import { useTheme } from "@/lib/hooks/useTheme";
 
 export interface BaseEditorProps {
   initialContent?: PartialBlock[];
@@ -25,7 +25,8 @@ export default function BaseEditor({
 }: BaseEditorProps) {
   const theme = useTheme();
   const editor = useCreateBlockNote({
-    initialContent: initialContent && initialContent.length > 0 ? initialContent : undefined,
+    initialContent:
+      initialContent && initialContent.length > 0 ? initialContent : undefined,
   });
 
   useEffect(() => {
@@ -40,12 +41,16 @@ export default function BaseEditor({
     const target = editor.document.find((block) => {
       const content = Array.isArray(block.content) ? block.content : [];
       const text = content
-        .map((item) => (typeof (item as { text?: unknown }).text === 'string' ? (item as { text: string }).text : ''))
-        .join('');
+        .map((item) =>
+          typeof (item as { text?: unknown }).text === "string"
+            ? (item as { text: string }).text
+            : "",
+        )
+        .join("");
       return text.toLowerCase().includes(term);
     });
     if (target) {
-      editor.setTextCursorPosition(target.id, 'start');
+      editor.setTextCursorPosition(target.id, "start");
       editor.focus();
     }
   }, [editor, highlightTerm]);

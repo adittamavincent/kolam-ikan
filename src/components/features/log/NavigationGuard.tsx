@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 
 export function NavigationGuard({ onFlush }: { onFlush: () => void }) {
   const pathname = usePathname();
@@ -11,13 +11,13 @@ export function NavigationGuard({ onFlush }: { onFlush: () => void }) {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       onFlush();
       e.preventDefault();
-      e.returnValue = '';
+      e.returnValue = "";
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [onFlush]);
 
@@ -28,6 +28,6 @@ export function NavigationGuard({ onFlush }: { onFlush: () => void }) {
     }
     prevPathRef.current = pathname;
   }, [pathname, onFlush]);
-  
+
   return null;
 }

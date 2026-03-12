@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface SidebarState {
   /** Whether the sidebar (Navigator) is visible */
@@ -36,9 +36,9 @@ export const useSidebar = create<SidebarState>()(
       setIsResizing: (isResizing) => set({ isResizing }),
     }),
     {
-      name: 'sidebar-storage',
+      name: "sidebar-storage",
       partialize: (state) => ({ width: state.width, visible: state.visible }),
       skipHydration: true,
-    }
-  )
+    },
+  ),
 );

@@ -1,10 +1,14 @@
-'use client';
+"use client";
 
-import { Copy, Check } from 'lucide-react';
-import { useMemo, useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { BlockNoteBlock, EntryWithSections, SectionWithPersona } from '@/lib/types';
+import { Copy, Check } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import {
+  BlockNoteBlock,
+  EntryWithSections,
+  SectionWithPersona,
+} from "@/lib/types";
 
 interface XMLGeneratorProps {
   streamId: string;
@@ -34,37 +38,37 @@ export function XMLGenerator({
 
   // Fetch data
   const { data: stream } = useQuery({
-    queryKey: ['stream', streamId],
+    queryKey: ["stream", streamId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('streams')
-        .select('*, domain:domains(*)')
-        .eq('id', streamId)
+        .from("streams")
+        .select("*, domain:domains(*)")
+        .eq("id", streamId)
         .single();
       return data;
     },
   });
 
   const { data: entries } = useQuery({
-    queryKey: ['entries-xml', streamId, selectedEntries],
+    queryKey: ["entries-xml", streamId, selectedEntries],
     queryFn: async () => {
       const { data } = await supabase
-        .from('entries')
-        .select('*, sections(*)')
-        .in('id', selectedEntries)
-        .order('created_at', { ascending: true });
+        .from("entries")
+        .select("*, sections(*)")
+        .in("id", selectedEntries)
+        .order("created_at", { ascending: true });
       return data as unknown as EntryWithSections[];
     },
     enabled: selectedEntries.length > 0,
   });
 
   const { data: canvas } = useQuery({
-    queryKey: ['canvas', streamId],
+    queryKey: ["canvas", streamId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('canvases')
-        .select('*')
-        .eq('stream_id', streamId)
+        .from("canvases")
+        .select("*")
+        .eq("stream_id", streamId)
         .single();
       return data;
     },
@@ -73,63 +77,89 @@ export function XMLGenerator({
 
   const additionalGlobalStreamIds = useMemo(
     () => (globalStreamIds ?? []).filter((id) => id !== streamId),
-    [globalStreamIds, streamId]
+    [globalStreamIds, streamId],
   );
 
   const { data: globalStreamsMeta } = useQuery({
-    queryKey: ['global-streams-meta-xml', additionalGlobalStreamIds],
+    queryKey: ["global-streams-meta-xml", additionalGlobalStreamIds],
     queryFn: async () => {
       if (additionalGlobalStreamIds.length === 0) return [];
       const { data } = await supabase
-        .from('streams')
-        .select('id, name')
-        .in('id', additionalGlobalStreamIds);
+        .from("streams")
+        .select("id, name")
+        .in("id", additionalGlobalStreamIds);
       return data ?? [];
     },
     enabled: additionalGlobalStreamIds.length > 0,
   });
 
   const { data: globalEntries } = useQuery({
-    queryKey: ['global-entries-xml', additionalGlobalStreamIds, includeGlobalStream],
+    queryKey: [
+      "global-entries-xml",
+      additionalGlobalStreamIds,
+      includeGlobalStream,
+    ],
     queryFn: async () => {
-      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0)
+        return [];
       const { data } = await supabase
-        .from('entries')
-        .select('*, sections(*)')
-        .in('stream_id', additionalGlobalStreamIds)
-        .eq('is_draft', false)
-        .order('created_at', { ascending: true });
+        .from("entries")
+        .select("*, sections(*)")
+        .in("stream_id", additionalGlobalStreamIds)
+        .eq("is_draft", false)
+        .order("created_at", { ascending: true });
       return data as unknown as EntryWithSections[];
     },
     enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
   const { data: globalCanvases } = useQuery({
-    queryKey: ['global-canvas-xml', additionalGlobalStreamIds, includeGlobalStream],
+    queryKey: [
+      "global-canvas-xml",
+      additionalGlobalStreamIds,
+      includeGlobalStream,
+    ],
     queryFn: async () => {
-      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0)
+        return [];
       const { data } = await supabase
-        .from('canvases')
-        .select('*')
-        .in('stream_id', additionalGlobalStreamIds);
+        .from("canvases")
+        .select("*")
+        .in("stream_id", additionalGlobalStreamIds);
       return data ?? [];
     },
     enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
   const currentXML = useMemo(() => {
-    const domainName = stream?.domain?.name || '';
-    const isGlobal = stream?.stream_kind === 'GLOBAL' || (stream?.cabinet_id === null && stream?.sort_order === -100);
-    const streamNameById = new Map((globalStreamsMeta ?? []).map((globalStream) => [globalStream.id, globalStream.name || globalStream.id]));
-    const canvasUpdatedAt = (canvas as Record<string, unknown>)?.updated_at as string | undefined;
-    const canvasContent = (canvas?.content_json as unknown as BlockNoteBlock[]) || [];
-    const canvasIsEmpty = canvasContent.length === 0 || canvasContent.every(b => !extractText(b).trim());
+    const domainName = stream?.domain?.name || "";
+    const isGlobal =
+      stream?.stream_kind === "GLOBAL" ||
+      (stream?.cabinet_id === null && stream?.sort_order === -100);
+    const streamNameById = new Map(
+      (globalStreamsMeta ?? []).map((globalStream) => [
+        globalStream.id,
+        globalStream.name || globalStream.id,
+      ]),
+    );
+    const canvasUpdatedAt = (canvas as Record<string, unknown>)?.updated_at as
+      | string
+      | undefined;
+    const canvasContent =
+      (canvas?.content_json as unknown as BlockNoteBlock[]) || [];
+    const canvasIsEmpty =
+      canvasContent.length === 0 ||
+      canvasContent.every((b) => !extractText(b).trim());
 
-    const responseFormatDirective = buildResponseDirective(interactionMode, canvasUpdatedAt, canvasIsEmpty);
+    const responseFormatDirective = buildResponseDirective(
+      interactionMode,
+      canvasUpdatedAt,
+      canvasIsEmpty,
+    );
 
     return `<system_directive>
 Target: ${interactionMode}
-Stream: ${stream?.name || ''} ${isGlobal ? '(Global)' : ''}
+Stream: ${stream?.name || ""} ${isGlobal ? "(Global)" : ""}
 Domain: ${domainName}
 
 ${responseFormatDirective}
@@ -140,27 +170,28 @@ ${
     ? `<canvas_state>
 ${canvasToMarkdown((canvas?.content_json as unknown as BlockNoteBlock[]) || [])}
 </canvas_state>`
-    : ''
+    : ""
 }
 
 <log_context>
-${entries?.map((entry) => entryToMarkdown(entry)).join('\n\n') || ''}
+${entries?.map((entry) => entryToMarkdown(entry)).join("\n\n") || ""}
 </log_context>
 
 ${
   includeGlobalStream && additionalGlobalStreamIds.length > 0
     ? `<global_context>
-${globalStreamName || 'Domain Global Streams'}
+${globalStreamName || "Domain Global Streams"}
 
 <global_canvases>
 ${(globalCanvases ?? [])
   .map((canvasItem) => {
-    const streamName = streamNameById.get(canvasItem.stream_id) || canvasItem.stream_id;
+    const streamName =
+      streamNameById.get(canvasItem.stream_id) || canvasItem.stream_id;
     return `<global_canvas stream="${streamName}">
 ${canvasToMarkdown((canvasItem.content_json as unknown as BlockNoteBlock[]) || [])}
 </global_canvas>`;
   })
-  .join('\n\n')}
+  .join("\n\n")}
 </global_canvases>
 
 <global_entries>
@@ -172,17 +203,30 @@ ${
 ${entryToMarkdown(entry)}
 </global_entry>`;
     })
-    .join('\n\n') || ''
+    .join("\n\n") || ""
 }
 </global_entries>
 </global_context>`
-    : ''
+    : ""
 }
 
 <instruction>
 ${userInput}
 </instruction>`;
-  }, [stream, interactionMode, includeCanvas, canvas, entries, includeGlobalStream, additionalGlobalStreamIds, globalStreamsMeta, globalCanvases, globalEntries, globalStreamName, userInput]);
+  }, [
+    stream,
+    interactionMode,
+    includeCanvas,
+    canvas,
+    entries,
+    includeGlobalStream,
+    additionalGlobalStreamIds,
+    globalStreamsMeta,
+    globalCanvases,
+    globalEntries,
+    globalStreamName,
+    userInput,
+  ]);
 
   useEffect(() => {
     onXMLGenerated?.(currentXML);
@@ -197,8 +241,13 @@ ${userInput}
   return (
     <div className="mt-6 space-y-3">
       <div>
-        <label className="text-sm font-semibold text-text-default">Generated Bridge Payload</label>
-        <p className="text-xs text-text-muted mt-0.5 mb-2">Review and copy this payload to your model before generating a response.</p>
+        <label className="text-sm font-semibold text-text-default">
+          Generated Bridge Payload
+        </label>
+        <p className="text-xs text-text-muted mt-0.5 mb-2">
+          Review and copy this payload to your model before generating a
+          response.
+        </p>
       </div>
 
       <div className="relative group rounded-lg border border-border-default/50 bg-[#0d1117] shadow-inner overflow-hidden">
@@ -213,12 +262,16 @@ ${userInput}
             onClick={copyToClipboard}
             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold backdrop-blur-md transition-all ${
               copied
-                ? 'bg-status-success-bg/20 text-status-success-text border border-status-success-bg/30'
-                : 'bg-white/10 text-white border border-white/20 hover:bg-white/20 opacity-0 group-hover:opacity-100'
+                ? "bg-status-success-bg/20 text-status-success-text border border-status-success-bg/30"
+                : "bg-white/10 text-white border border-white/20 hover:bg-white/20 opacity-0 group-hover:opacity-100"
             }`}
           >
-            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? (
+              <Check className="h-3.5 w-3.5" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+            {copied ? "Copied!" : "Copy"}
           </button>
         </div>
       </div>
@@ -229,16 +282,16 @@ ${userInput}
 // Helper functions
 function canvasToMarkdown(blocks: BlockNoteBlock[]): string {
   // Convert BlockNote blocks to markdown
-  return blocks.map(blockToMarkdown).join('\n\n');
+  return blocks.map(blockToMarkdown).join("\n\n");
 }
 
 function blockToMarkdown(block: BlockNoteBlock): string {
   // Implementation depends on block type
-  if (block.type === 'heading') {
+  if (block.type === "heading") {
     const level = (block.props?.level as number) || 1;
-    return '#'.repeat(level) + ' ' + extractText(block);
+    return "#".repeat(level) + " " + extractText(block);
   }
-  if (block.type === 'paragraph') {
+  if (block.type === "paragraph") {
     return extractText(block);
   }
   // ... handle other types
@@ -246,17 +299,23 @@ function blockToMarkdown(block: BlockNoteBlock): string {
 }
 
 function extractText(block: BlockNoteBlock): string {
-  return block.content?.map((c) => c.text).join('') || '';
+  return block.content?.map((c) => c.text).join("") || "";
 }
 
 function entryToMarkdown(entry: EntryWithSections): string {
-  return `Entry #${entry.id} - ${entry.created_at ? new Date(entry.created_at).toLocaleString() : ''}
+  return `Entry #${entry.id} - ${entry.created_at ? new Date(entry.created_at).toLocaleString() : ""}
 ${entry.sections
-  .map((s: SectionWithPersona) => canvasToMarkdown(s.content_json as unknown as BlockNoteBlock[]))
-  .join('\n')}`;
+  .map((s: SectionWithPersona) =>
+    canvasToMarkdown(s.content_json as unknown as BlockNoteBlock[]),
+  )
+  .join("\n")}`;
 }
 
-function buildResponseDirective(mode: string, canvasUpdatedAt?: string, canvasIsEmpty?: boolean): string {
+function buildResponseDirective(
+  mode: string,
+  canvasUpdatedAt?: string,
+  canvasIsEmpty?: boolean,
+): string {
   // --- Shared core blocks ---
 
   const askCore = `You MUST include a <thought_log> tag containing your analysis, reasoning, or answer.
@@ -307,7 +366,7 @@ Wrap the above inside <canvas_update>...</canvas_update> (no \`\`\`diff fences i
 
 ${canvasRules}
 
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ''}
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ""}
 
 CRITICAL FORMATTING RULES:
 - Every line inside <canvas_update> MUST begin with \`+ \`, \`- \`, or \` \` (space). NO EXCEPTIONS.
@@ -344,7 +403,7 @@ Example response:
 + 
 + - Example bullet
 </canvas_update>
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ''}
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ""}
 </response>
 </response_format_go>`;
 
@@ -365,7 +424,7 @@ Your reasoning goes here.
 + - Task one
 + - Task two
 </canvas_update>
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ''}
+${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ""}
 </response>
 </response_format_both>`;
 
@@ -381,8 +440,8 @@ Your response MUST be wrapped in a <response> root tag and follow the structured
 Do NOT output any text outside the <response> tags. The system parses your XML response programmatically.
 
 The user's interaction mode is: ${mode}
-${mode === 'ASK' ? '- ASK mode: Generate a thought log entry only (left pillar / log).' : ''}${mode === 'GO' ? '- GO mode: Generate a canvas update only (right pillar / canvas).' : ''}${mode === 'BOTH' ? '- BOTH mode: Generate both a thought log entry AND a canvas update.' : ''}
+${mode === "ASK" ? "- ASK mode: Generate a thought log entry only (left pillar / log)." : ""}${mode === "GO" ? "- GO mode: Generate a canvas update only (right pillar / canvas)." : ""}${mode === "BOTH" ? "- BOTH mode: Generate both a thought log entry AND a canvas update." : ""}
 
-${modeDirectives[mode] || modeDirectives['ASK']}
+${modeDirectives[mode] || modeDirectives["ASK"]}
 </response_instructions>`;
 }

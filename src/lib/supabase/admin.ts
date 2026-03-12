@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '@/lib/types/database.types';
+import { createClient } from "@supabase/supabase-js";
+import { Database } from "@/lib/types/database.types";
 
 let adminClient: ReturnType<typeof createClient<Database>> | null = null;
 
@@ -10,7 +10,7 @@ export function createAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
-    throw new Error('Missing Supabase admin configuration');
+    throw new Error("Missing Supabase admin configuration");
   }
 
   adminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {

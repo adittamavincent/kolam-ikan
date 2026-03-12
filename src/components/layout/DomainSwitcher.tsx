@@ -1,27 +1,49 @@
-'use client';
+"use client";
 
-import { Domain } from '@/lib/types';
-import { useRef, useState } from 'react';
-import { Home, Plus, RefreshCw, AlertCircle, LogOut, Settings, Search, Users } from 'lucide-react';
-import { useRouter, useParams, usePathname } from 'next/navigation';
-import Image from 'next/image';
-import { Fragment } from 'react';
-import { Menu, MenuButton, MenuItem, MenuItems, Transition, TransitionChild, Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
-import { DynamicIcon } from '@/components/shared/DynamicIcon';
-import { useSidebar } from '@/lib/hooks/useSidebar';
-import { useAuth } from '@/lib/hooks/useAuth';
-import { CreateDomainModal } from './CreateDomainModal';
-import { useKeyboard } from '@/lib/hooks/useKeyboard';
-import { useDomains } from '@/lib/hooks/useDomains';
-import { EditDomainModal } from './EditDomainModal';
-import { PersonaManager } from '@/components/features/persona/PersonaManager';
+import { Domain } from "@/lib/types";
+import { useRef, useState } from "react";
+import {
+  Home,
+  Plus,
+  RefreshCw,
+  AlertCircle,
+  LogOut,
+  Settings,
+  Search,
+  Users,
+} from "lucide-react";
+import { useRouter, useParams, usePathname } from "next/navigation";
+import Image from "next/image";
+import { Fragment } from "react";
+import {
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  Transition,
+  TransitionChild,
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+} from "@headlessui/react";
+import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import { useSidebar } from "@/lib/hooks/useSidebar";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { CreateDomainModal } from "./CreateDomainModal";
+import { useKeyboard } from "@/lib/hooks/useKeyboard";
+import { useDomains } from "@/lib/hooks/useDomains";
+import { EditDomainModal } from "./EditDomainModal";
+import { PersonaManager } from "@/components/features/persona/PersonaManager";
 
 interface DomainSwitcherProps {
   userId: string;
   onOpenGlobalSearch?: () => void;
 }
 
-export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherProps) {
+export function DomainSwitcher({
+  userId,
+  onOpenGlobalSearch,
+}: DomainSwitcherProps) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
@@ -30,7 +52,10 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
   const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [hoveredDomainTooltip, setHoveredDomainTooltip] = useState<{ name: string; top: number } | null>(null);
+  const [hoveredDomainTooltip, setHoveredDomainTooltip] = useState<{
+    name: string;
+    top: number;
+  } | null>(null);
   const switcherRef = useRef<HTMLDivElement>(null);
   const { user, status, loading, signOut } = useAuth();
   const { hide: hideSidebar } = useSidebar();
@@ -39,30 +64,38 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
     setSigningOut(true);
     try {
       await signOut();
-      router.replace('/login');
+      router.replace("/login");
     } finally {
       setSigningOut(false);
     }
   };
 
-  const displayName = user?.user_metadata?.full_name ?? user?.email?.split('@')[0] ?? 'Account';
-  const avatarUrl = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null;
-  const initials = displayName.split(' ').filter(Boolean).slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join('') || 'U';
+  const displayName =
+    user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? "Account";
+  const avatarUrl =
+    user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? null;
+  const initials =
+    displayName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p: string) => p[0]?.toUpperCase())
+      .join("") || "U";
   const profileMenuIdBase = `profile-menu-${userId}`;
 
   // Keyboard shortcut to open create modal
   useKeyboard([
     {
-      key: 'd',
+      key: "d",
       metaKey: true,
       handler: () => setIsCreateModalOpen(true),
-      description: 'Create Domain',
+      description: "Create Domain",
     },
     {
-      key: 'd',
+      key: "d",
       ctrlKey: true,
       handler: () => setIsCreateModalOpen(true),
-      description: 'Create Domain',
+      description: "Create Domain",
     },
   ]);
 
@@ -70,7 +103,10 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
 
   const currentDomainId = params?.domain as string;
 
-  const showDomainTooltip = (event: React.MouseEvent<HTMLButtonElement>, name: string) => {
+  const showDomainTooltip = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    name: string,
+  ) => {
     const root = switcherRef.current;
     if (!root) return;
     const buttonRect = event.currentTarget.getBoundingClientRect();
@@ -82,17 +118,21 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
   };
 
   return (
-    <div ref={switcherRef} className="relative flex h-full w-16 flex-col items-center bg-surface-default py-4 border-r border-border-subtle shadow-sm z-50">
+    <div
+      ref={switcherRef}
+      className="relative flex h-full w-16 flex-col items-center bg-surface-default py-4 border-r border-border-subtle shadow-sm z-50"
+    >
       {/* Home / Root */}
       <button
         onClick={() => {
           hideSidebar();
-          router.push('/');
+          router.push("/");
         }}
-        className={`group relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${pathname === '/'
-            ? 'bg-action-primary-bg text-white shadow-md scale-105'
-            : 'bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105'
-          }`}
+        className={`group relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
+          pathname === "/"
+            ? "bg-action-primary-bg text-white shadow-md scale-105"
+            : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
+        }`}
       >
         <Home className="h-5 w-5" />
         <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
@@ -148,22 +188,23 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
               router.push(`/${domain.id}`);
             }}
             onMouseEnter={(event) => showDomainTooltip(event, domain.name)}
-              onDoubleClick={() => {
-                setHoveredDomainTooltip(null);
-                setEditingDomain(domain);
-              }}
-              onContextMenu={(event) => {
-                event.preventDefault();
-                setHoveredDomainTooltip(null);
-                setEditingDomain(domain);
-              }}
+            onDoubleClick={() => {
+              setHoveredDomainTooltip(null);
+              setEditingDomain(domain);
+            }}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setHoveredDomainTooltip(null);
+              setEditingDomain(domain);
+            }}
             onMouseLeave={() => setHoveredDomainTooltip(null)}
             title={`${domain.name} (double-click to edit)`}
             aria-label={domain.name}
-            className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${currentDomainId === domain.id
-                ? 'bg-action-primary-bg text-white shadow-md scale-105'
-                : 'bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105'
-              }`}
+            className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
+              currentDomainId === domain.id
+                ? "bg-action-primary-bg text-white shadow-md scale-105"
+                : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
+            }`}
           >
             {domain.icon ? (
               <DynamicIcon name={domain.icon} className="h-5 w-5" />
@@ -203,7 +244,10 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
       {/* User Menu / Profile at bottom */}
       <div className="mt-auto flex flex-col items-center gap-4 pt-4 border-t border-border-subtle w-full">
         <Menu as="div" className="relative">
-          <MenuButton id={`${profileMenuIdBase}-button`} className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm">
+          <MenuButton
+            id={`${profileMenuIdBase}-button`}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm"
+          >
             {avatarUrl ? (
               <Image
                 src={avatarUrl}
@@ -228,18 +272,27 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <MenuItems id={`${profileMenuIdBase}-items`} className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none">
+            <MenuItems
+              id={`${profileMenuIdBase}-items`}
+              className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+            >
               <div className="px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">Signed in as</p>
-                <p className="truncate text-xs font-medium text-text-default">{displayName}</p>
-                <p className="truncate text-[10px] text-text-muted">{user?.email ?? userId}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                  Signed in as
+                </p>
+                <p className="truncate text-xs font-medium text-text-default">
+                  {displayName}
+                </p>
+                <p className="truncate text-[10px] text-text-muted">
+                  {user?.email ?? userId}
+                </p>
               </div>
               <div className="my-1 h-px bg-border-subtle" />
               <MenuItem>
                 {({ focus }: { focus: boolean }) => (
                   <button
                     onClick={() => setProfileOpen(true)}
-                    className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default`}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default`}
                   >
                     <Settings className="h-4 w-4 text-text-muted" />
                     Profile settings
@@ -251,11 +304,11 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
                   <button
                     type="button"
                     onClick={handleSignOut}
-                    disabled={loading || signingOut || status !== 'signed_in'}
-                    className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default disabled:opacity-50`}
+                    disabled={loading || signingOut || status !== "signed_in"}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default disabled:opacity-50`}
                   >
                     <LogOut className="h-4 w-4 text-text-muted" />
-                    {signingOut ? 'Signing out...' : 'Sign out'}
+                    {signingOut ? "Signing out..." : "Sign out"}
                   </button>
                 )}
               </MenuItem>
@@ -271,7 +324,7 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
       />
 
       <EditDomainModal
-        key={editingDomain?.id ?? 'domain-editor'}
+        key={editingDomain?.id ?? "domain-editor"}
         isOpen={Boolean(editingDomain)}
         onClose={() => setEditingDomain(null)}
         userId={userId}
@@ -279,13 +332,17 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
         onDeleteSuccess={(deletedDomainId) => {
           if (deletedDomainId === currentDomainId) {
             hideSidebar();
-            router.push('/');
+            router.push("/");
           }
         }}
       />
 
       <Transition appear show={profileOpen} as={Fragment}>
-        <Dialog as="div" className="relative z-50" onClose={() => setProfileOpen(false)}>
+        <Dialog
+          as="div"
+          className="relative z-50"
+          onClose={() => setProfileOpen(false)}
+        >
           <TransitionChild
             as={Fragment}
             enter="ease-out duration-300"
@@ -310,7 +367,10 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
                 leaveTo="opacity-0 scale-95"
               >
                 <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
-                  <DialogTitle as="h3" className="text-lg font-semibold leading-6 text-text-default">
+                  <DialogTitle
+                    as="h3"
+                    className="text-lg font-semibold leading-6 text-text-default"
+                  >
                     Profile Settings
                   </DialogTitle>
                   <div className="mt-4 space-y-4">
@@ -330,21 +390,29 @@ export function DomainSwitcher({ userId, onOpenGlobalSearch }: DomainSwitcherPro
                         </div>
                       )}
                       <div>
-                        <p className="font-semibold text-text-default">{displayName}</p>
+                        <p className="font-semibold text-text-default">
+                          {displayName}
+                        </p>
                         <p className="text-sm text-text-muted">{user?.email}</p>
                       </div>
                     </div>
 
                     <div className="rounded-lg bg-surface-subtle p-4 border border-border-subtle">
-                      <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">Account Details</p>
+                      <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">
+                        Account Details
+                      </p>
                       <div className="space-y-2">
                         <div className="flex justify-between text-xs">
                           <span className="text-text-muted">User ID</span>
-                          <span className="font-mono text-text-default">{userId.slice(0, 8)}...</span>
+                          <span className="font-mono text-text-default">
+                            {userId.slice(0, 8)}...
+                          </span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-text-muted">Auth Status</span>
-                          <span className="capitalize text-status-success-text">{status.replace('_', ' ')}</span>
+                          <span className="capitalize text-status-success-text">
+                            {status.replace("_", " ")}
+                          </span>
                         </div>
                       </div>
                     </div>

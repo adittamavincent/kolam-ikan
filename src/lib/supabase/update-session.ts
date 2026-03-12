@@ -17,7 +17,9 @@ function isDevelopmentRequest(request: NextRequest) {
 }
 
 function shouldBypassDevGuard(pathname: string) {
-  return pathname.startsWith("/login") || pathname.startsWith("/api/auth/signout");
+  return (
+    pathname.startsWith("/login") || pathname.startsWith("/api/auth/signout")
+  );
 }
 
 function clearAuthCookies(request: NextRequest, response: NextResponse) {
@@ -49,9 +51,9 @@ export async function updateSession(request: NextRequest) {
   const hasDevAuth = request.cookies.get(DEV_AUTH_COOKIE)?.value === "1";
 
   // Check if user has valid Supabase session cookies (auth in progress)
-  const hasSupabaseAuth = request.cookies.getAll().some(
-    cookie => cookie.name.startsWith('sb-') && cookie.value
-  );
+  const hasSupabaseAuth = request.cookies
+    .getAll()
+    .some((cookie) => cookie.name.startsWith("sb-") && cookie.value);
 
   if (isDev && !hasDevAuth && !shouldBypassDevGuard(pathname)) {
     // If user has Supabase session cookies but no dev cookie yet,
@@ -76,7 +78,8 @@ export async function updateSession(request: NextRequest) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) {
@@ -97,7 +100,7 @@ export async function updateSession(request: NextRequest) {
             value,
             ...options,
             maxAge: options.maxAge ?? cookieMaxAge,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.NODE_ENV === "production",
           });
         },
         remove(name: string, options: CookieOptions) {
@@ -114,32 +117,37 @@ export async function updateSession(request: NextRequest) {
             name,
             value: "",
             ...options,
-            secure: process.env.NODE_ENV === 'production',
+            secure: process.env.NODE_ENV === "production",
           });
         },
       },
     },
   );
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   // 3. Validate session against database
   // If session is invalid (DB reset, deleted user) but we have cookies, force cleanup
   if (error || !user) {
     if (hasSupabaseAuth || hasDevAuth) {
-      console.warn(`[Auth] Invalid session detected for ${pathname}. Clearing cookies.`);
-      
+      console.warn(
+        `[Auth] Invalid session detected for ${pathname}. Clearing cookies.`,
+      );
+
       // If we are already on a public page (like login), just clear cookies and proceed
       if (shouldBypassDevGuard(pathname)) {
         clearAuthCookies(request, response);
         return response;
       }
-      
+
       // Otherwise redirect to login with cleanup
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("reason", "session_expired");
-      
+
       const redirectResponse = NextResponse.redirect(loginUrl);
       clearAuthCookies(request, redirectResponse);
       return redirectResponse;

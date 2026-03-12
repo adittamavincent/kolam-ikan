@@ -1,29 +1,33 @@
-'use client';
+"use client";
 
-import { useLayout } from '@/lib/hooks/useLayout';
-import { useKeyboard } from '@/lib/hooks/useKeyboard';
+import { useLayout } from "@/lib/hooks/useLayout";
+import { useKeyboard } from "@/lib/hooks/useKeyboard";
 
-export function KeyboardShortcutsProvider({ children }: { children: React.ReactNode }) {
+export function KeyboardShortcutsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { setMode } = useLayout();
 
   useKeyboard([
     {
-      key: 'j',
+      key: "j",
       metaKey: true,
-      handler: () => setMode('log-only'),
-      description: 'Maximize Log',
+      handler: () => setMode("log-only"),
+      description: "Maximize Log",
     },
     {
-      key: 'k',
+      key: "k",
       metaKey: true,
-      handler: () => setMode('balanced'),
-      description: 'Reset Layout',
+      handler: () => setMode("balanced"),
+      description: "Reset Layout",
     },
     {
-      key: 'l',
+      key: "l",
       metaKey: true,
-      handler: () => setMode('canvas-only'),
-      description: 'Maximize Canvas',
+      handler: () => setMode("canvas-only"),
+      description: "Maximize Canvas",
     },
   ]);
 

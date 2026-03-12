@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
-import { Stream } from '@/lib/types';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { Stream } from "@/lib/types";
 
 export function useUpdateStream(streamId: string) {
   const supabase = createClient();
@@ -9,9 +9,9 @@ export function useUpdateStream(streamId: string) {
   return useMutation({
     mutationFn: async (name: string) => {
       const { data, error } = await supabase
-        .from('streams')
+        .from("streams")
         .update({ name })
-        .eq('id', streamId)
+        .eq("id", streamId)
         .select()
         .single();
 
@@ -19,8 +19,8 @@ export function useUpdateStream(streamId: string) {
       return data as Stream;
     },
     onSuccess: (updatedStream) => {
-      queryClient.setQueryData(['stream', streamId], updatedStream);
-      queryClient.invalidateQueries({ queryKey: ['streams'] });
+      queryClient.setQueryData(["stream", streamId], updatedStream);
+      queryClient.invalidateQueries({ queryKey: ["streams"] });
     },
   });
 }

@@ -1,10 +1,13 @@
-import { Fragment, useState } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import { Check, AlertCircle, Loader2, Pencil, X, Trash2 } from 'lucide-react';
-import { useDomains } from '@/lib/hooks/useDomains';
-import { DynamicIcon } from '@/components/shared/DynamicIcon';
-import { DEFAULT_DOMAIN_ICON, DOMAIN_ICON_OPTIONS } from '@/lib/constants/domainIcons';
-import { Domain } from '@/lib/types';
+import { Fragment, useState } from "react";
+import { Dialog, Transition } from "@headlessui/react";
+import { Check, AlertCircle, Loader2, Pencil, X, Trash2 } from "lucide-react";
+import { useDomains } from "@/lib/hooks/useDomains";
+import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import {
+  DEFAULT_DOMAIN_ICON,
+  DOMAIN_ICON_OPTIONS,
+} from "@/lib/constants/domainIcons";
+import { Domain } from "@/lib/types";
 
 interface EditDomainModalProps {
   isOpen: boolean;
@@ -14,9 +17,15 @@ interface EditDomainModalProps {
   onDeleteSuccess?: (deletedDomainId: string) => void;
 }
 
-export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSuccess }: EditDomainModalProps) {
+export function EditDomainModal({
+  isOpen,
+  onClose,
+  userId,
+  domain,
+  onDeleteSuccess,
+}: EditDomainModalProps) {
   const { updateDomain, deleteDomain, domains } = useDomains(userId);
-  const [name, setName] = useState(domain?.name ?? '');
+  const [name, setName] = useState(domain?.name ?? "");
   const [icon, setIcon] = useState(domain?.icon || DEFAULT_DOMAIN_ICON);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -28,18 +37,18 @@ export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSucce
 
     const normalizedName = name.trim();
     if (!normalizedName) {
-      setError('Domain name cannot be empty');
+      setError("Domain name cannot be empty");
       return;
     }
 
     const duplicate = domains?.some(
       (existingDomain) =>
         existingDomain.id !== domain.id &&
-        existingDomain.name.toLowerCase() === normalizedName.toLowerCase()
+        existingDomain.name.toLowerCase() === normalizedName.toLowerCase(),
     );
 
     if (duplicate) {
-      setError('A domain with this name already exists');
+      setError("A domain with this name already exists");
       return;
     }
 
@@ -55,7 +64,7 @@ export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSucce
       });
       onClose();
     } catch {
-      setError('Failed to update domain. Please try again.');
+      setError("Failed to update domain. Please try again.");
     }
   };
 
@@ -73,7 +82,7 @@ export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSucce
       onDeleteSuccess?.(domain.id);
       onClose();
     } catch {
-      setError('Failed to delete domain. Please try again.');
+      setError("Failed to delete domain. Please try again.");
     }
   };
 
@@ -125,14 +134,17 @@ export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSucce
 
                 <form onSubmit={handleSubmit}>
                   <div className="mt-2">
-                    <p className="mb-4 text-sm text-text-muted">Update your domain name and icon.</p>
+                    <p className="mb-4 text-sm text-text-muted">
+                      Update your domain name and icon.
+                    </p>
 
                     <input
                       type="text"
-                      className={`block w-full rounded-lg border px-4 py-3 text-text-default placeholder-text-muted transition-all focus:outline-none focus:ring-2 ${error
-                        ? 'border-status-error-text focus:border-status-error-text focus:ring-status-error-bg'
-                        : 'border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/20'
-                        }`}
+                      className={`block w-full rounded-lg border px-4 py-3 text-text-default placeholder-text-muted transition-all focus:outline-none focus:ring-2 ${
+                        error
+                          ? "border-status-error-text focus:border-status-error-text focus:ring-status-error-bg"
+                          : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/20"
+                      }`}
                       placeholder="e.g., My Knowledge Base"
                       value={name}
                       onChange={(event) => {
@@ -152,10 +164,11 @@ export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSucce
                             key={option}
                             type="button"
                             onClick={() => setIcon(option)}
-                            className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${icon === option
-                              ? 'border-action-primary-bg bg-action-primary-bg/10 text-action-primary-bg'
-                              : 'border-border-subtle text-text-muted hover:bg-surface-subtle hover:text-text-default'
-                              }`}
+                            className={`flex items-center justify-center rounded-lg border p-2 transition-colors ${
+                              icon === option
+                                ? "border-action-primary-bg bg-action-primary-bg/10 text-action-primary-bg"
+                                : "border-border-subtle text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                            }`}
                             aria-label={`Select ${option} icon`}
                           >
                             <DynamicIcon name={option} className="h-4 w-4" />
@@ -187,7 +200,7 @@ export function EditDomainModal({ isOpen, onClose, userId, domain, onDeleteSucce
                       ) : (
                         <>
                           <Trash2 className="h-4 w-4" />
-                          {confirmDelete ? 'Confirm Delete' : 'Delete Domain'}
+                          {confirmDelete ? "Confirm Delete" : "Delete Domain"}
                         </>
                       )}
                     </button>

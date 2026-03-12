@@ -261,11 +261,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [tags, setTags] = useState<Record<string, string>>({}); // entryId → tag label
   const [currentBranch, setCurrentBranch] = useState('main');
   const [graphView, setGraphView] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState({ left: 0, top: 0 });
   const params = useParams();
   const domainId = (params?.domain as string | undefined) ?? '';
+
+  useEffect(() => { setHasMounted(true); }, []);
 
 
 
@@ -729,7 +732,17 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     : branchEntries.filter((e) => !stashedIds.has(e.id));
 
   const stashCount = stashedIds.size;
-  const currentBranchRefId = currentBranchHeadEntry?.id ?? null;
+
+  const headEntryId = useMemo(() => {
+    if (!branchEntries.length) return null;
+    let latest = branchEntries[0];
+    for (const entry of branchEntries) {
+      if (new Date(entry.created_at || 0).getTime() > new Date(latest.created_at || 0).getTime()) {
+        latest = entry;
+      }
+    }
+    return latest.id;
+  }, [branchEntries]);
 
   const branchesByEntryId = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -801,7 +814,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 <span className="flex items-center gap-1 rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted">
                   <GitBranch className="h-3 w-3" />
                   {currentBranch}
-                  {currentBranchRefId ? `@${shortHash(currentBranchRefId)}` : ''}
+                  {headEntryId ? `@${shortHash(headEntryId)}` : ''}
                 </span>
                 <span className="flex items-center gap-1 rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted">
                   <GitCommitHorizontal className="h-3 w-3" />
@@ -832,7 +845,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     className="w-full rounded-md border border-border-default bg-surface-subtle pl-8 pr-2 py-1 text-xs text-text-default transition-all focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                   />
                 </div>
-                <Menu as="div" className="relative">
+                {hasMounted && (
+                  <Menu as="div" className="relative">
                     <MenuButton
                       className={`rounded-md border p-1.5 transition-colors ${filterPersonaId ? 'bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg' : 'border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
                       title="Filter by Author"
@@ -879,6 +893,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       </MenuItems>
                     </Transition>
                   </Menu>
+                )}
                 <button
                   onClick={() => setSortOrder((prev) => prev === 'newest' ? 'oldest' : 'newest')}
                   className="rounded-md border border-border-default p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
@@ -950,7 +965,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     // Hide stashed (unless showStash is on)
                     if (!showStash && stashedIds.has(entry.id)) return null;
 
-                    const isLatestEntry = currentBranchRefId === entry.id;
+                    const isLatestEntry = headEntryId === entry.id;
                     const isAmending = amendState?.entryId === entry.id;
                     const isStashed = stashedIds.has(entry.id);
                     const tag = tags[entry.id];

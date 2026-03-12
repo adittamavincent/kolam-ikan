@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Menu as MenuIcon, X, PanelLeft, PanelRight, Columns } from 'lucide-react';
 import { DomainSwitcher } from '@/components/layout/DomainSwitcher';
 import { Navigator } from '@/components/layout/Navigator';
+import { MainHeader } from '@/components/layout/MainHeader';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useSidebar } from '@/lib/hooks/useSidebar';
 import { useLayout } from '@/lib/hooks/useLayout';
@@ -427,6 +428,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             {error}
           </div>
         )}
+        <MainHeader />
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (

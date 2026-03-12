@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { BlockNoteEditor } from '@/components/shared/BlockNoteEditor';
 import { BlockNoteEditor as BlockNoteEditorType } from '@blocknote/core';
-import { Loader2, Send, Check, Plus, X, ChevronDown, GitBranch } from 'lucide-react';
+import { Loader2, Send, Check, Plus, X, ChevronDown } from 'lucide-react';
 import { usePersonas } from '@/lib/hooks/usePersonas';
 import { useKeyboard } from '@/lib/hooks/useKeyboard';
 import { NavigationGuard } from './NavigationGuard';
@@ -19,7 +19,7 @@ interface EntryCreatorProps {
     onCurrentBranchChange?: (branchName: string) => void;
 }
 
-export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }: EntryCreatorProps) {
+export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     const supabase = createClient();
     const queryClient = useQueryClient();
     const { personas } = usePersonas();
@@ -43,9 +43,7 @@ export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }:
     }
     const [sections, setSections] = useState<SectionState[]>([]);
     const [personaUsageCounts, setPersonaUsageCounts] = useState<Record<string, number>>(getInitialPersonaUsage);
-    const [internalCurrentBranch, setInternalCurrentBranch] = useState('main');
-    const selectedBranch = currentBranch ?? internalCurrentBranch;
-    const setSelectedBranch = onCurrentBranchChange ?? setInternalCurrentBranch;
+    const selectedBranch = currentBranch ?? 'main';
 
     const { data: branches, refetch: refetchBranches } = useQuery({
         queryKey: ['branches', streamId],
@@ -54,18 +52,6 @@ export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }:
                 .from('branches')
                 .select('*')
                 .eq('stream_id', streamId);
-            if (error) throw error;
-            return data;
-        },
-        enabled: !!streamId,
-    });
-
-    const { data: commitBranches, refetch: refetchCommitBranches } = useQuery({
-        queryKey: ['commit-branches', streamId],
-        queryFn: async () => {
-            const { data, error } = await supabase
-                .from('commit_branches')
-                .select('*');
             if (error) throw error;
             return data;
         },
@@ -135,21 +121,6 @@ export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }:
             })
             .slice(0, 3);
     }, [personas, personaUsageCounts]);
-
-    const branchOptions = useMemo(() => {
-        const base = branches ?? [];
-        const hasMain = base.some((branch) => branch.name === 'main');
-        const withMain = hasMain
-            ? base
-            : [{ id: '__main__', name: 'main', stream_id: streamId }, ...base];
-
-        const seen = new Set<string>();
-        return withMain.filter((branch) => {
-            if (seen.has(branch.name)) return false;
-            seen.add(branch.name);
-            return true;
-        });
-    }, [branches, streamId]);
 
     const trackPersonaUsage = (personaId: string) => {
         setPersonaUsageCounts((prev) => ({
@@ -249,7 +220,6 @@ export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }:
                 }
 
                 await refetchBranches();
-                await refetchCommitBranches();
                 queryClient.invalidateQueries({ queryKey: ['commit-branches', streamId] });
             }
 
@@ -333,49 +303,6 @@ export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }:
         focusEditorForInstance(instanceId);
     };
 
-    const handleCreateBranch = async () => {
-        const baseBranchName = selectedBranch || 'main';
-        const requested = window.prompt('Branch name', `${baseBranchName}-new`);
-        if (requested === null) return;
-
-        const branchName = requested.trim();
-        if (!branchName) {
-            window.alert('Branch name is required.');
-            return;
-        }
-
-        const { data: createdBranch, error } = await supabase
-            .from('branches')
-            .insert({ stream_id: streamId, name: branchName })
-            .select('*')
-            .single();
-
-        if (error) {
-            console.error('Failed to create branch', error);
-            return;
-        }
-
-        const baseBranch = branches?.find((branch) => branch.name === baseBranchName);
-        const baseBranchHead = baseBranch
-            ? commitBranches?.find((link) => link.branch_id === baseBranch.id)
-            : null;
-
-        if (baseBranchHead && createdBranch) {
-            const { error: linkError } = await supabase
-                .from('commit_branches')
-                .insert({ commit_id: baseBranchHead.commit_id, branch_id: createdBranch.id });
-
-            if (linkError) {
-                console.error('Failed to point new branch to current head', linkError);
-            }
-        }
-
-        await refetchBranches();
-        await refetchCommitBranches();
-        setSelectedBranch(branchName);
-        queryClient.invalidateQueries({ queryKey: ['commit-branches', streamId] });
-    };
-
     if (isLoading) {
         return (
             <div className="relative rounded-xl border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
@@ -410,66 +337,6 @@ export function EntryCreator({ streamId, currentBranch, onCurrentBranchChange }:
                         </div>
                     </div>
                 )}
-
-                {/* Top bar — branch checkout & status (always visible) */}
-                <div className="relative z-20 flex items-center justify-between px-3 py-2 border-b border-border-subtle/50">
-                    <div className="flex items-center gap-1.5">
-                        <Menu as="div" className="relative z-30">
-                            <MenuButton className="inline-flex items-center gap-1.5 rounded-lg border border-border-subtle bg-surface-subtle/60 px-2 py-1 text-[11px] font-medium text-text-default hover:bg-surface-subtle focus:outline-none">
-                                <GitBranch className="h-3 w-3 text-text-muted" />
-                                {selectedBranch || 'main'}
-                                <ChevronDown className="h-2.5 w-2.5 text-text-muted" />
-                            </MenuButton>
-                            <Transition
-                                as={Fragment}
-                                enter="transition ease-out duration-100"
-                                enterFrom="transform opacity-0 scale-95"
-                                enterTo="transform opacity-100 scale-100"
-                                leave="transition ease-in duration-75"
-                                leaveFrom="transform opacity-100 scale-100"
-                                leaveTo="transform opacity-0 scale-95"
-                            >
-                                <MenuItems
-                                    anchor={{ to: 'bottom start', gap: 4 }}
-                                    portal
-                                    className="z-9999 w-52 overflow-hidden rounded-xl border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
-                                >
-                                    <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
-                                        Checkout Branch
-                                    </div>
-                                    {branchOptions.map((branch) => (
-                                        <MenuItem key={branch.id}>
-                                            {({ active }) => (
-                                                <button
-                                                    onClick={() => setSelectedBranch(branch.name)}
-                                                    className={`${active ? 'bg-surface-subtle text-text-default' : 'text-text-subtle'} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
-                                                >
-                                                    <div className="flex items-center gap-1.5">
-                                                        <GitBranch className="h-3 w-3" />
-                                                        <span>{branch.name}</span>
-                                                    </div>
-                                                    {selectedBranch === branch.name && <Check className="h-3 w-3 text-action-primary-bg" />}
-                                                </button>
-                                            )}
-                                        </MenuItem>
-                                    ))}
-                                    <div className="my-1 h-px bg-border-subtle" />
-                                    <button
-                                        onClick={handleCreateBranch}
-                                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                                    >
-                                        <Plus className="h-3 w-3" />
-                                        New branch
-                                    </button>
-                                </MenuItems>
-                            </Transition>
-                        </Menu>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {status === 'saving' && <span className="text-[10px] text-text-muted animate-pulse">Saving...</span>}
-                        {status === 'error' && <span className="text-[10px] text-status-error-text">Error saving draft</span>}
-                    </div>
-                </div>
 
                 {/* Persona picker */}
                 <div className={`flex items-center gap-2 flex-wrap px-3 py-2 ${sections.length > 0 ? 'border-b border-border-subtle/50' : ''}`}>

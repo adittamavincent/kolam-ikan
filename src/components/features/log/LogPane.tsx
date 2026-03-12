@@ -10,17 +10,13 @@ import { useStream } from '@/lib/hooks/useStream';
 import { useTimelineItems } from '@/lib/hooks/useTimelineItems';
 import { CommitGraph } from './CommitGraph';
 import {
-  Filter, ArrowUpDown, Search, Download, Calendar, PanelLeft,
+  Calendar,
   Check, X, PencilLine, Loader2, Copy, RotateCcw, Trash2,
   GitCommitHorizontal, Undo2, ChevronsDown, Archive,
-  GitCompare, Eye, EyeOff, Tag, GitBranch, Network, Globe,
+  GitCompare, Eye, EyeOff, Tag, GitBranch,
 } from 'lucide-react';
-import { usePersonas } from '@/lib/hooks/usePersonas';
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react';
 import { createPortal } from 'react-dom';
-import { DynamicIcon } from '@/components/shared/DynamicIcon';
 import { exportEntriesToMarkdown, downloadMarkdown } from '@/lib/utils/export';
-import { useSidebar } from '@/lib/hooks/useSidebar';
 import { EntryWithSections } from '@/lib/types';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
@@ -247,7 +243,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const supabase = createClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [filterPersonaId, setFilterPersonaId] = useState<string | null>(null);
+  const [filterPersonaId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
@@ -261,16 +257,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [tags, setTags] = useState<Record<string, string>>({}); // entryId → tag label
   const [currentBranch, setCurrentBranch] = useState('main');
   const [graphView, setGraphView] = useState(false);
-  const [hasMounted, setHasMounted] = useState(false);
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState({ left: 0, top: 0 });
   const params = useParams();
   const domainId = (params?.domain as string | undefined) ?? '';
-
-  useEffect(() => { setHasMounted(true); }, []);
-
-
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -291,7 +282,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       };
       if (payload.target === 'log' && payload.streamId === streamId) {
         setSearchTerm(payload.term);
-        setIsToolbarOpen(true);
         setHighlightTerm(payload.term);
         setHighlightEntryId(payload.entryId ?? null);
         sessionStorage.removeItem('kolam_search_highlight');
@@ -405,9 +395,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
 
 
-  const { personas } = usePersonas();
-  const { visible: sidebarVisible, show: showSidebar } = useSidebar();
-  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+
 
   // ─── Stash helpers ─────────────────────────────────────────────────────────
 
@@ -678,7 +666,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = useCallback(async () => {
     try {
       const allEntries = await fetchAllEntriesForExport();
       if (!allEntries?.length) return;
@@ -688,7 +676,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     } catch (e) {
       console.error('Export failed:', e);
     }
-  };
+  }, [fetchAllEntriesForExport, stream?.name]);
 
   // ─── Layout ────────────────────────────────────────────────────────────────
 
@@ -759,153 +747,139 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     return map;
   }, [branches, commitBranches]);
 
+  const branchNames = useMemo(() => {
+    const names = (branches ?? []).map((branch) => branch.name);
+    if (!names.includes('main')) names.unshift('main');
+    return [...new Set(names)];
+  }, [branches]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onExport = () => {
+      void handleExport();
+    };
+
+    const onToggleGraph = () => {
+      setGraphView((prev) => !prev);
+    };
+
+    const onToggleStash = () => {
+      setShowStash((prev) => !prev);
+    };
+
+    const onToggleSort = () => {
+      setSortOrder((prev) => (prev === 'newest' ? 'oldest' : 'newest'));
+    };
+
+    const onSetBranch = (event: Event) => {
+      const detail = (event as CustomEvent<{ branchName?: string }>).detail;
+      if (typeof detail?.branchName === 'string' && detail.branchName.trim()) {
+        setCurrentBranch(detail.branchName.trim());
+      }
+    };
+
+    const onCreateBranch = async (event: Event) => {
+      const detail = (event as CustomEvent<{ branchName?: string }>).detail;
+      const branchName = detail?.branchName?.trim();
+      if (!branchName) return;
+
+      const existingBranch = branches?.find((branch) => branch.name === branchName);
+      if (existingBranch) {
+        setCurrentBranch(existingBranch.name);
+        return;
+      }
+
+      const { data: createdBranch, error: createError } = await supabase
+        .from('branches')
+        .insert({ stream_id: streamId, name: branchName })
+        .select('id,name,stream_id,created_at,updated_at')
+        .single();
+
+      if (createError || !createdBranch) {
+        console.error('Failed to create branch:', createError);
+        window.alert('Failed to create branch. Please try another name.');
+        return;
+      }
+
+      const branchHeadCommitId = currentBranchHeadEntry?.id ?? headEntryId;
+
+      if (branchHeadCommitId) {
+        const { error: linkError } = await supabase
+          .from('commit_branches')
+          .insert({ commit_id: branchHeadCommitId, branch_id: createdBranch.id });
+
+        if (linkError) {
+          console.error('Failed to point new branch at current head:', linkError);
+          window.alert('Branch created, but failed to point it to the current head.');
+        }
+      }
+
+      await refetchBranches();
+      await refetchCommitBranches();
+      setCurrentBranch(branchName);
+    };
+
+    const onSearch = (event: Event) => {
+      const detail = (event as CustomEvent<{ term?: string }>).detail;
+      if (typeof detail?.term === 'string') {
+        setSearchTerm(detail.term);
+      }
+    };
+
+    window.addEventListener('kolam_header_log_export', onExport);
+    window.addEventListener('kolam_header_log_toggle_graph', onToggleGraph);
+    window.addEventListener('kolam_header_log_toggle_stash', onToggleStash);
+    window.addEventListener('kolam_header_log_toggle_sort', onToggleSort);
+    window.addEventListener('kolam_header_log_set_branch', onSetBranch as EventListener);
+    window.addEventListener('kolam_header_log_create_branch', onCreateBranch as EventListener);
+    window.addEventListener('kolam_header_log_search_term', onSearch as EventListener);
+
+    return () => {
+      window.removeEventListener('kolam_header_log_export', onExport);
+      window.removeEventListener('kolam_header_log_toggle_graph', onToggleGraph);
+      window.removeEventListener('kolam_header_log_toggle_stash', onToggleStash);
+      window.removeEventListener('kolam_header_log_toggle_sort', onToggleSort);
+      window.removeEventListener('kolam_header_log_set_branch', onSetBranch as EventListener);
+      window.removeEventListener('kolam_header_log_create_branch', onCreateBranch as EventListener);
+      window.removeEventListener('kolam_header_log_search_term', onSearch as EventListener);
+    };
+  }, [
+    handleExport,
+    branches,
+    currentBranchHeadEntry?.id,
+    headEntryId,
+    supabase,
+    streamId,
+    refetchBranches,
+    refetchCommitBranches,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('kolam_log_state', {
+        detail: {
+          streamId,
+          currentBranch,
+          commitCount: visibleEntries.length,
+          showStash,
+          stashCount,
+          graphView,
+          sortOrder,
+          searchTerm,
+          branchNames,
+        },
+      }),
+    );
+  }, [streamId, currentBranch, visibleEntries.length, showStash, stashCount, graphView, sortOrder, searchTerm, branchNames]);
+
   return (
     <div
       className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? '' : 'pointer-events-none'}`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
-        {/* Header */}
-        <div className="border-b border-border-subtle bg-surface-default shrink-0">
-          <div className="px-2 py-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                {!sidebarVisible && (
-                  <button
-                    onClick={showSidebar}
-                    className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
-                    title="Show sidebar"
-                  >
-                    <PanelLeft className="h-4 w-4" />
-                  </button>
-                )}
-                <button
-                  onClick={() => setIsToolbarOpen(!isToolbarOpen)}
-                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isToolbarOpen ? 'bg-surface-subtle text-text-default' : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-                  title={isToolbarOpen ? 'Hide search' : 'Show search'}
-                >
-                  <Search className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={handleExport}
-                  className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
-                  title="Export to Markdown"
-                >
-                  <Download className="h-4 w-4" />
-                </button>
-                {stashCount > 0 && (
-                  <button
-                    onClick={() => setShowStash((v) => !v)}
-                    className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${showStash ? 'bg-amber-500/15 text-amber-500' : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-                    title={showStash ? 'Hide stashed entries' : `Show stash (${stashCount})`}
-                  >
-                    <Archive className="h-4 w-4" />
-                  </button>
-                )}
-                {stream?.stream_kind === 'GLOBAL' && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
-                    <Globe className="h-3 w-3" />
-                    Global
-                  </span>
-                )}
-              </div>
-              {/* git log info pill + graph toggle */}
-              <div className="flex items-center gap-1.5 mr-1">
-                <span className="flex items-center gap-1 rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted">
-                  <GitBranch className="h-3 w-3" />
-                  {currentBranch}
-                  {headEntryId ? `@${shortHash(headEntryId)}` : ''}
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted">
-                  <GitCommitHorizontal className="h-3 w-3" />
-                  {visibleEntries.length} commits
-                </span>
-                <button
-                  onClick={() => setGraphView((v) => !v)}
-                  className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${graphView ? 'bg-action-primary-bg/15 text-action-primary-bg' : 'text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-                  title={graphView ? 'Back to commit list' : 'Show commit graph'}
-                >
-                  <Network className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Toolbar */}
-          <div className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${isToolbarOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
-            <div className="overflow-hidden">
-              <div className="px-3 pb-2 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                  <input
-                    type="text"
-                    placeholder="Search commits..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full rounded-md border border-border-default bg-surface-subtle pl-8 pr-2 py-1 text-xs text-text-default transition-all focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
-                  />
-                </div>
-                {hasMounted && (
-                  <Menu as="div" className="relative">
-                    <MenuButton
-                      className={`rounded-md border p-1.5 transition-colors ${filterPersonaId ? 'bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg' : 'border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default'}`}
-                      title="Filter by Author"
-                    >
-                      <Filter className="h-3.5 w-3.5" />
-                    </MenuButton>
-                    <Transition
-                      as={Fragment}
-                      enter="transition ease-out duration-100"
-                      enterFrom="transform opacity-0 scale-95"
-                      enterTo="transform opacity-100 scale-100"
-                      leave="transition ease-in duration-75"
-                      leaveFrom="transform opacity-100 scale-100"
-                      leaveTo="transform opacity-0 scale-95"
-                    >
-                      <MenuItems className="absolute right-0 top-full z-50 mt-1 w-52 rounded-lg border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
-                        <MenuItem>
-                          {({ focus }) => (
-                            <button
-                              onClick={() => setFilterPersonaId(null)}
-                              className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
-                            >
-                              <span>All Authors</span>
-                              {!filterPersonaId && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
-                            </button>
-                          )}
-                        </MenuItem>
-                        {personas?.map((persona) => (
-                          <MenuItem key={persona.id}>
-                            {({ focus }) => (
-                              <button
-                                onClick={() => setFilterPersonaId(persona.id)}
-                                className={`${focus ? 'bg-surface-subtle' : ''} flex w-full items-center justify-between rounded px-2 py-1.5 text-xs text-text-default`}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <DynamicIcon name={persona.icon} className="h-3 w-3" />
-                                  <span>{persona.name}</span>
-                                </div>
-                                {filterPersonaId === persona.id && <div className="h-1.5 w-1.5 rounded-full bg-action-primary-bg" />}
-                              </button>
-                            )}
-                          </MenuItem>
-                        ))}
-                      </MenuItems>
-                    </Transition>
-                  </Menu>
-                )}
-                <button
-                  onClick={() => setSortOrder((prev) => prev === 'newest' ? 'oldest' : 'newest')}
-                  className="rounded-md border border-border-default p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
-                  title={`Sort: ${sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}`}
-                >
-                  <ArrowUpDown className={`h-3.5 w-3.5 transition-transform ${sortOrder === 'oldest' ? 'rotate-180' : ''}`} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Content: Graph View OR Commit List */}
         {graphView ? (
           <div className="flex-1 overflow-hidden">

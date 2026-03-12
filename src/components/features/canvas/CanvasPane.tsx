@@ -11,9 +11,6 @@ import { PartialBlock, BlockNoteEditor as BlockNoteEditorType } from '@blocknote
 import { Json } from '@/lib/types/database.types';
 import { createClient } from '@/lib/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, PanelLeft, Globe } from 'lucide-react';
-import { useSidebar } from '@/lib/hooks/useSidebar';
-import { useStream } from '@/lib/hooks/useStream';
 
 interface CanvasPaneProps {
   streamId: string;
@@ -21,19 +18,16 @@ interface CanvasPaneProps {
 
 export function CanvasPane({ streamId }: CanvasPaneProps) {
   const { canvasWidth } = useLayout();
-  const { visible: sidebarVisible, show: showSidebar } = useSidebar();
-  const { stream } = useStream(streamId);
   const { canvas, updateCanvas, isLoading } = useCanvas(streamId);
   const { targetBlockId, setTargetBlockId } = useCanvasScroll();
   const [editor, setEditor] = useState<BlockNoteEditorType | null>(null);
-  const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
+  const [highlightTerm] = useState<string | null>(null);
   const [snapshotName, setSnapshotName] = useState('');
-  const [showNameInput, setShowNameInput] = useState(false);
-  const supabase = createClient();
-  const queryClient = useQueryClient();
   const markDirty = useCanvasDraft((s) => s.markDirty);
   const markClean = useCanvasDraft((s) => s.markClean);
   const hasReceivedFirstChange = useRef(false);
+  const supabase = createClient();
+  const queryClient = useQueryClient();
 
   const isVisible = canvasWidth > 0;
 
@@ -80,9 +74,9 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   }, [canvas?.id, canvas?.updated_at]);
 
   const saveSnapshotMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (nameOverride?: string) => {
       if (!canvas) return;
-      const name = snapshotName.trim() || `Snapshot ${new Date().toLocaleString()}`;
+      const name = (nameOverride ?? snapshotName).trim() || `Snapshot ${new Date().toLocaleString()}`;
       const { data: userData } = await supabase.auth.getUser();
       const { error } = await supabase.from('canvas_versions').insert({
         canvas_id: canvas.id,
@@ -95,15 +89,17 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     },
     onSuccess: () => {
       setSnapshotName('');
-      setShowNameInput(false);
       markClean(streamId);
       queryClient.invalidateQueries({ queryKey: ['canvas-versions', streamId] });
     },
   });
 
-  const handleSaveSnapshot = () => {
-    saveSnapshotMutation.mutate();
-  };
+  const handleSaveSnapshot = useCallback(
+    (nameOverride?: string) => {
+      saveSnapshotMutation.mutate(nameOverride);
+    },
+    [saveSnapshotMutation],
+  );
 
   // Handle auto-scroll to target block
   useEffect(() => {
@@ -127,21 +123,44 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   }, [targetBlockId, editor, canvas, setTargetBlockId]);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('kolam_search_highlight');
-    if (!raw) return;
-    try {
-      const payload = JSON.parse(raw) as {
-        term: string;
-        target: 'log' | 'canvas';
-        streamId?: string;
-      };
-      if (payload.target === 'canvas' && payload.streamId === streamId) {
-        setHighlightTerm(payload.term);
-        sessionStorage.removeItem('kolam_search_highlight');
+    if (typeof window === 'undefined') return;
+
+    const onSnapshotName = (event: Event) => {
+      const detail = (event as CustomEvent<{ name?: string }>).detail;
+      if (typeof detail?.name === 'string') {
+        setSnapshotName(detail.name);
       }
-    } finally {
-    }
-  }, [streamId]);
+    };
+
+    const onSaveSnapshot = (event: Event) => {
+      const detail = (event as CustomEvent<{ name?: string }>).detail;
+      handleSaveSnapshot(detail?.name);
+    };
+
+    window.addEventListener('kolam_header_canvas_snapshot_name', onSnapshotName as EventListener);
+    window.addEventListener('kolam_header_canvas_save_snapshot', onSaveSnapshot as EventListener);
+
+    return () => {
+      window.removeEventListener('kolam_header_canvas_snapshot_name', onSnapshotName as EventListener);
+      window.removeEventListener('kolam_header_canvas_save_snapshot', onSaveSnapshot as EventListener);
+    };
+  }, [handleSaveSnapshot]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('kolam_canvas_state', {
+        detail: {
+          streamId,
+          hasCanvas: Boolean(canvas),
+          snapshotName,
+          isSavingSnapshot: saveSnapshotMutation.isPending,
+        },
+      }),
+    );
+  }, [streamId, canvas, snapshotName, saveSnapshotMutation.isPending]);
+
+
 
   return (
     <div
@@ -150,71 +169,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
-        {/* Compact toolbar */}
-        {canvas && (
-          <div className="border-b border-border-subtle bg-surface-default shrink-0">
-            <div className="px-2 py-1.5">
-              <div className="flex items-center justify-between gap-1">
-                <div className="flex items-center gap-1.5">
-                  {canvasWidth === 100 && !sidebarVisible && (
-                    <button
-                      onClick={showSidebar}
-                      className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
-                      title="Show sidebar"
-                    >
-                      <PanelLeft className="h-4 w-4" />
-                    </button>
-                  )}
-                  {canvasWidth === 100 && stream?.stream_kind === 'GLOBAL' && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-1 text-[11px] font-semibold text-action-primary-bg">
-                      <Globe className="h-3 w-3" />
-                      Global
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                {showNameInput ? (
-                  <div className="flex items-center gap-1 flex-1">
-                    <input
-                      value={snapshotName}
-                      onChange={(e) => setSnapshotName(e.target.value)}
-                      placeholder="Snapshot name..."
-                      className="flex-1 rounded-md border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSaveSnapshot();
-                        if (e.key === 'Escape') setShowNameInput(false);
-                      }}
-                      autoFocus
-                    />
-                    <button
-                      onClick={handleSaveSnapshot}
-                      disabled={saveSnapshotMutation.isPending}
-                      className="rounded-md bg-action-primary-bg px-2 py-1 text-xs text-action-primary-text hover:opacity-90 disabled:opacity-50"
-                    >
-                      {saveSnapshotMutation.isPending ? '...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => setShowNameInput(false)}
-                      className="rounded-md border border-border-default px-2 py-1 text-xs text-text-subtle hover:bg-surface-subtle"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setShowNameInput(true)}
-                    className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
-                    title="Save Snapshot"
-                  >
-                    <Save className="h-4 w-4" />
-                  </button>
-                )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Editor area */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-24">
           {canvas ? (

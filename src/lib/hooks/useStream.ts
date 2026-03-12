@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
-import { Stream } from '@/lib/types';
+import { StreamWithCabinetAndDomain } from '@/lib/types';
 
 export function useStream(streamId: string) {
   const supabase = createClient();
@@ -10,13 +10,13 @@ export function useStream(streamId: string) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from('streams')
-        .select('*')
+        .select('*, cabinet:cabinets(*, domain:domains(*))')
         .eq('id', streamId)
         .abortSignal(signal)
         .single();
 
       if (error) throw error;
-      return data as Stream;
+      return data as StreamWithCabinetAndDomain;
     },
     enabled: !!streamId,
   });

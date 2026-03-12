@@ -61,6 +61,12 @@ export interface StreamWithCanvas extends Stream {
   canvas?: Canvas;
 }
 
+export interface StreamWithCabinetAndDomain extends Stream {
+  cabinet?: Cabinet & {
+    domain?: Domain;
+  };
+}
+
 export interface EntryWithSections extends Entry {
   sections: SectionWithPersona[];
 }

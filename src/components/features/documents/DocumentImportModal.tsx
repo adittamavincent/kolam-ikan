@@ -1,11 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import {
-  Dialog,
-  DialogBackdrop,
-  DialogPanel,
-} from "@headlessui/react";
+import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -22,7 +18,10 @@ import { PdfAttachmentThumbnail } from "@/components/features/log/PdfAttachmentT
 // ─── Temp file store access ──────────────────────────────────────────────────
 declare global {
   interface Window {
-    kolam_temp_files?: Map<string, { file: File; hash?: string; blobUrl?: string }>;
+    kolam_temp_files?: Map<
+      string,
+      { file: File; hash?: string; blobUrl?: string }
+    >;
     kolam_pending_file_ids?: string[];
   }
 }
@@ -113,7 +112,9 @@ export function DocumentImportModal({
   const [enableTableStructure, setEnableTableStructure] = useState(true);
   const [debugDoclingTables, setDebugDoclingTables] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [localThumbnails, setLocalThumbnails] = useState<Record<string, string>>({});
+  const [localThumbnails, setLocalThumbnails] = useState<
+    Record<string, string>
+  >({});
   const localThumbnailsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
@@ -121,7 +122,9 @@ export function DocumentImportModal({
   }, [localThumbnails]);
 
   const revokeLocalThumbnails = useCallback(() => {
-    Object.values(localThumbnailsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    Object.values(localThumbnailsRef.current).forEach((url) =>
+      URL.revokeObjectURL(url),
+    );
     setLocalThumbnails({});
   }, [setLocalThumbnails]);
 
@@ -143,12 +146,17 @@ export function DocumentImportModal({
           retrievedFiles.push(fileData);
           tempStore.delete(id); // Clean up after retrieving
         } else {
-          console.warn("[DocumentImportModal] File ID not found in temp store:", id);
+          console.warn(
+            "[DocumentImportModal] File ID not found in temp store:",
+            id,
+          );
         }
       }
 
       if (retrievedFiles.length > 0) {
-        console.log("[DocumentImportModal] Processing retrieved files:", { count: retrievedFiles.length });
+        console.log("[DocumentImportModal] Processing retrieved files:", {
+          count: retrievedFiles.length,
+        });
         (async () => {
           for (const { file, hash } of retrievedFiles) {
             try {
@@ -168,13 +176,16 @@ export function DocumentImportModal({
                 fileHash: hash,
               });
             } catch (error) {
-              console.error("[DocumentImportModal] Error queueing retrieved file:", error);
+              console.error(
+                "[DocumentImportModal] Error queueing retrieved file:",
+                error,
+              );
             }
           }
         })();
       }
     },
-    [createImport]
+    [createImport],
   );
 
   const selectedFilePreviewUrl = useMemo(() => {
@@ -194,7 +205,9 @@ export function DocumentImportModal({
   // Cleanup local thumbnails when modal closes
   useEffect(() => {
     if (!isOpen) {
-      Object.values(localThumbnailsRef.current).forEach((url) => URL.revokeObjectURL(url));
+      Object.values(localThumbnailsRef.current).forEach((url) =>
+        URL.revokeObjectURL(url),
+      );
     }
   }, [isOpen]);
 
@@ -208,15 +221,17 @@ export function DocumentImportModal({
   const derivedTitle = useMemo(() => {
     if (title.trim()) return title.trim();
     if (!selectedFile || !selectedFile.name) {
-       
-      console.warn("[DocumentImportModal] derivedTitle: selectedFile or name is missing", {
-        selectedFileExists: !!selectedFile,
-        selectedFileName: selectedFile?.name,
-      });
+      console.warn(
+        "[DocumentImportModal] derivedTitle: selectedFile or name is missing",
+        {
+          selectedFileExists: !!selectedFile,
+          selectedFileName: selectedFile?.name,
+        },
+      );
       return "";
     }
     const derived = selectedFile.name.replace(/\.pdf$/i, "");
-     
+
     console.log("[DocumentImportModal] derivedTitle computed:", {
       original: selectedFile.name,
       derived,
@@ -252,10 +267,13 @@ export function DocumentImportModal({
 
     // First check if there are pending file IDs stored
     const pendingIds = getPendingFileIds();
-    console.log("[DocumentImportModal] Checking for pending files on modal open:", {
-      pendingIds,
-      count: pendingIds.length,
-    });
+    console.log(
+      "[DocumentImportModal] Checking for pending files on modal open:",
+      {
+        pendingIds,
+        count: pendingIds.length,
+      },
+    );
 
     if (pendingIds.length > 0) {
       setPendingFileIds([]); // Clear pending IDs
@@ -268,21 +286,35 @@ export function DocumentImportModal({
       const { fileIds } = customEvent.detail ?? {};
 
       if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
-        console.warn("[DocumentImportModal] Received event with no fileIds", customEvent.detail);
+        console.warn(
+          "[DocumentImportModal] Received event with no fileIds",
+          customEvent.detail,
+        );
         return;
       }
 
-      console.log("[DocumentImportModal] Received kolam_header_documents_import event with fileIds:", fileIds);
+      console.log(
+        "[DocumentImportModal] Received kolam_header_documents_import event with fileIds:",
+        fileIds,
+      );
       processQueuedFileIds(fileIds);
     };
 
-    window.addEventListener("kolam_header_documents_import", handleFileImportEvent);
-    return () => window.removeEventListener("kolam_header_documents_import", handleFileImportEvent);
+    window.addEventListener(
+      "kolam_header_documents_import",
+      handleFileImportEvent,
+    );
+    return () =>
+      window.removeEventListener(
+        "kolam_header_documents_import",
+        handleFileImportEvent,
+      );
   }, [isOpen, processQueuedFileIds]);
 
   // If parent transfers files into this modal, queue them automatically
   useEffect(() => {
-    if (!isOpen || !initialQueuedFiles || initialQueuedFiles.length === 0) return;
+    if (!isOpen || !initialQueuedFiles || initialQueuedFiles.length === 0)
+      return;
 
     console.log("[DocumentImportModal] Received initialQueuedFiles:", {
       count: initialQueuedFiles.length,
@@ -302,7 +334,9 @@ export function DocumentImportModal({
         return false;
       }
       if (!f.file.name) {
-        console.warn("[DocumentImportModal] File.name is missing", { file: f.file });
+        console.warn("[DocumentImportModal] File.name is missing", {
+          file: f.file,
+        });
         return false;
       }
       return true;
@@ -311,13 +345,16 @@ export function DocumentImportModal({
     if (validFiles.length === 0) {
       console.warn(
         "[DocumentImportModal] No valid files to queue after filtering",
-        { initialQueuedFiles, validFiles }
+        { initialQueuedFiles, validFiles },
       );
       return;
     }
 
     const queueKey = validFiles
-      .map(({ file }) => `${file.name}:${file.size ?? 0}:${file.lastModified ?? 0}`)
+      .map(
+        ({ file }) =>
+          `${file.name}:${file.size ?? 0}:${file.lastModified ?? 0}`,
+      )
       .join("|");
 
     if (initialQueueKeyRef.current === queueKey) return;
@@ -337,8 +374,13 @@ export function DocumentImportModal({
           });
 
           if (!file || !file.name) {
-            console.error("[DocumentImportModal] File or file.name is undefined!", { file });
-            setSubmitError("Error: Received file without a valid name. Please try again.");
+            console.error(
+              "[DocumentImportModal] File or file.name is undefined!",
+              { file },
+            );
+            setSubmitError(
+              "Error: Received file without a valid name. Please try again.",
+            );
             continue;
           }
 
@@ -367,7 +409,11 @@ export function DocumentImportModal({
           }
         } catch (error) {
           console.error("[DocumentImportModal] Import error:", error);
-          setSubmitError(error instanceof Error ? error.message : "Failed to queue document import.");
+          setSubmitError(
+            error instanceof Error
+              ? error.message
+              : "Failed to queue document import.",
+          );
         }
       }
     })();
@@ -387,7 +433,6 @@ export function DocumentImportModal({
       return;
     }
 
-     
     console.log("[DocumentImportModal] handleSubmit started:", {
       fileName: selectedFile.name,
       fileSize: selectedFile.size,
@@ -399,7 +444,7 @@ export function DocumentImportModal({
 
     try {
       const fileHash = await calculateFileHash(selectedFile);
-       
+
       console.log("[DocumentImportModal] Submitting import:", {
         fileName: selectedFile.name,
         derivedTitle,
@@ -432,7 +477,6 @@ export function DocumentImportModal({
       setEnableTableStructure(true);
       setDebugDoclingTables(false);
     } catch (error) {
-       
       console.error("[DocumentImportModal] handleSubmit error:", error);
       setSubmitError(
         error instanceof Error
@@ -472,9 +516,7 @@ export function DocumentImportModal({
       await deleteDocument.mutateAsync({ documentId });
     } catch (error) {
       setSubmitError(
-        error instanceof Error
-          ? error.message
-          : "Failed to delete document.",
+        error instanceof Error ? error.message : "Failed to delete document.",
       );
     }
   };
@@ -491,7 +533,10 @@ export function DocumentImportModal({
         className="fixed inset-0 overflow-y-auto p-3 lg:p-4"
         onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
           const target = e.target as Node;
-          if (dialogPanelRef.current && !dialogPanelRef.current.contains(target)) {
+          if (
+            dialogPanelRef.current &&
+            !dialogPanelRef.current.contains(target)
+          ) {
             handleClose();
           }
         }}
@@ -519,7 +564,10 @@ export function DocumentImportModal({
 
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_280px]">
                   <label className="flex flex-col gap-2 rounded-xl border border-dashed border-action-primary-bg/30 bg-surface-default p-4 text-sm text-text-default transition-colors hover:border-action-primary-bg/50 hover:bg-surface-subtle/35">
-                    <span className="font-medium">PDF file</span>
+                    <div className="flex items-center justify-between gap-8">
+                      <span className="font-medium">PDF file</span>
+                      <span className="text-xs text-text-muted">One PDF per import.</span>
+                    </div>
                     <input
                       type="file"
                       accept="application/pdf,.pdf"
@@ -528,9 +576,6 @@ export function DocumentImportModal({
                       }
                       className="block w-full rounded-xl border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file:rounded-sm file:border-0 file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
                     />
-                    <span className="text-xs text-text-muted">
-                      One PDF per import.
-                    </span>
                   </label>
 
                   <div className="rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-muted">
@@ -558,9 +603,17 @@ export function DocumentImportModal({
                   </div>
                 </div>
 
-                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
-                  <label className="flex flex-col gap-2 rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
-                    <span className="font-medium">Document title</span>
+                <div className="flex gap-3">
+                  <label className="flex-1 flex flex-col gap-2 justify-between rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">Document title</span>
+                      <span className="text-xs text-text-muted">
+                        Leave blank to use{" "}
+                        <span className="font-medium text-text-subtle">
+                          {derivedTitle || "the filename"}
+                        </span>
+                      </span>
+                    </div>
                     <input
                       type="text"
                       value={title}
@@ -572,16 +625,24 @@ export function DocumentImportModal({
                       }
                       className="w-full rounded-xl border border-border-default bg-surface-subtle px-3 py-2.5 text-sm text-text-default outline-none transition-colors focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg"
                     />
-                    <span className="text-xs text-text-muted">
-                      Leave blank to use{" "}
-                      <span className="font-medium text-text-subtle">
-                        {derivedTitle || "the filename"}
-                      </span>
-                    </span>
                   </label>
 
-                  <label className="flex flex-col gap-2 rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
-                    <span className="font-medium">Parsing mode</span>
+                  <label className="flex-1 flex-col gap-2 justify-between rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
+                    <div className="flex items-start justify-between">
+                      <span className="font-medium shrink-0">Parsing mode</span>
+                      <span className="text-xs leading-5 text-text-muted text-balance flex-1 text-right min-w-0">
+                        Use{" "}
+                        <span className="font-medium text-text-subtle">
+                          lattice
+                        </span>{" "}
+                        for table borders,{" "}
+                        <span className="font-medium text-text-subtle">
+                          stream
+                        </span>{" "}
+                        for text-aligned tables.
+                      </span>
+                    </div>
+
                     <div className="relative">
                       <select
                         value={flavor}
@@ -595,22 +656,11 @@ export function DocumentImportModal({
                       </select>
                       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
                     </div>
-                    <span className="text-xs leading-5 text-text-muted">
-                      Use{" "}
-                      <span className="font-medium text-text-subtle">
-                        lattice
-                      </span>{" "}
-                      for table borders, {" "}
-                      <span className="font-medium text-text-subtle">
-                        stream
-                      </span>{" "}
-                      for text-aligned tables.
-                    </span>
                   </label>
                 </div>
 
-                <div className="grid gap-2.5 lg:grid-cols-2">
-                  <label className="flex items-start gap-3 rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
+                <div className="flex gap-2.5">
+                  <label className="w-1/2 flex items-start gap-3 rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
                     <input
                       type="checkbox"
                       checked={enableTableStructure}
@@ -623,11 +673,13 @@ export function DocumentImportModal({
                       <div className="font-medium text-text-default">
                         Enable Docling table structure
                       </div>
-                      <div className="mt-1 text-xs leading-5 text-text-muted">Keep table rows and columns linked.</div>
+                      <div className="mt-1 text-xs leading-5 text-text-muted">
+                        Keep table rows and columns linked.
+                      </div>
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-3 rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
+                  <label className="w-1/2 flex items-start gap-3 rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
                     <input
                       type="checkbox"
                       checked={debugDoclingTables}
@@ -640,7 +692,9 @@ export function DocumentImportModal({
                       <div className="font-medium text-text-default">
                         Export Docling debug metadata
                       </div>
-                      <div className="mt-1 text-xs leading-5 text-text-muted">Include diagnostics for troubleshooting.</div>
+                      <div className="mt-1 text-xs leading-5 text-text-muted">
+                        Include diagnostics for troubleshooting.
+                      </div>
                     </div>
                   </label>
                 </div>
@@ -657,7 +711,9 @@ export function DocumentImportModal({
                     <div className="text-sm font-semibold text-text-default">
                       Ready to queue
                     </div>
-                    <div className="mt-1 text-xs leading-5 text-text-muted">Shows up instantly in the queue.</div>
+                    <div className="mt-1 text-xs leading-5 text-text-muted">
+                      Shows up instantly in the queue.
+                    </div>
                   </div>
                   <button
                     type="submit"
@@ -729,60 +785,97 @@ export function DocumentImportModal({
                     return (
                       <div
                         key={document.id}
-                        className="rounded-xl border border-border-default/60 bg-surface-default px-4 py-2"
+                        className="relative rounded-xl border border-border-default/60 bg-surface-default p-4"
                       >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <div className="relative shrink-0">
-                              <PdfAttachmentThumbnail
-                                url={localThumbnails[document.id] || null}
-                                storagePath={document.storage_path}
-                                thumbnailPath={document.thumbnail_path}
-                                title={document.title}
-                              />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-medium text-text-default">
-                                {document.title}
-                              </div>
-                              <div className="flex items-center gap-1 text-xs text-text-muted">
-                                <span className="truncate">
-                                  {document.original_filename}
-                                </span>
-                                <span className="shrink-0">·</span>
-                                <span className="shrink-0">
-                                  {formatBytes(document.file_size_bytes)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <span
-                            className={`shrink-0 inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getStatusTone(status)}`}
+                        {/* X Icon Action Button */}
+                        {(isPending || status !== "processing") && (
+                          <button
+                            type="button"
+                            aria-label={isPending ? "Cancel import" : "Delete document"}
+                            onClick={() => {
+                              if (isPending) {
+                                handleCancelDocument(document.id);
+                              } else {
+                                const confirmed = window.confirm(
+                                  "Delete this parsed file permanently? This removes it from storage and sections using it may break."
+                                );
+                                if (!confirmed) return;
+                                void handleDeleteDocument(document.id);
+                              }
+                            }}
+                            disabled={
+                              cancelImport.isPending ||
+                              cancelAllPendingImports.isPending ||
+                              deleteDocument.isPending
+                            }
+                            className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-xl bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus:outline-none disabled:opacity-60"
                           >
-                            {status === "queued" && (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            )}
-                            {getStatusLabel(status)}
-                          </span>
-                        </div>
-
-                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {isPending && (
-                              <button
-                                onClick={() =>
-                                  handleCancelDocument(document.id)
-                                }
-                                disabled={
-                                  cancelImport.isPending ||
-                                  cancelAllPendingImports.isPending ||
-                                  deleteDocument.isPending
-                                }
-                                className="shrink-0 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
+                        {/* Top Part */}
+                        <div className="flex items-center justify-between gap-3">
+                          {/* Thumbnail */}
+                          <div className="relative shrink-0">
+                            <PdfAttachmentThumbnail
+                              url={localThumbnails[document.id] || null}
+                              storagePath={document.storage_path}
+                              thumbnailPath={document.thumbnail_path}
+                              title={document.title}
+                            />
+                          </div>
+                          {/* Right */}
+                          <div className="min-w-0 max-w-full flex-1">
+                            {/* Collected */}
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              {/* Document Info */}
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium text-text-default">
+                                  {document.title}
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-text-muted">
+                                  <span className="truncate">
+                                    {document.original_filename}
+                                  </span>
+                                  <span className="shrink-0">·</span>
+                                  <span className="shrink-0">
+                                    {formatBytes(document.file_size_bytes)}
+                                  </span>
+                                </div>
+                              </div>
+                              {/* Status */}
+                              <span
+                                className={`shrink-0 inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getStatusTone(status)}`}
                               >
-                                Cancel
-                              </button>
+                                {status === "queued" && (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                )}
+                                {getStatusLabel(status)}
+                              </span>
+                            </div>
+                            {/* Progress Information */}
+                            {status === "processing" && (
+                              <div className="flex items-center gap-2 w-full">
+                                {/* Progress Indicator */}
+                                <div className="h-1.5 flex-1 overflow-hidden rounded-xl bg-surface-subtle">
+                                  <div
+                                    className="h-full rounded-xl bg-action-primary-bg transition-[width] duration-500"
+                                    style={{ width: `${progressPercent}%` }}
+                                  />
+                                </div>
+                                <span className="shrink-0 min-w-9 text-right text-xs font-semibold text-text-default">
+                                  {progressPercent}%
+                                </span>
+                              </div>
                             )}
+                          </div>
+                        </div>
+                        {/* Bottom Part */}
+                        <div className="mt-2 flex-1 flex-wrap items-center justify-between gap-2">
+                          {/* Attach Button (if completed) */}
+                          <div className="flex flex-wrap items-center gap-2">
                             {status === "completed" && onSelectDocument && (
                               <button
                                 onClick={() => {
@@ -794,41 +887,23 @@ export function DocumentImportModal({
                                 Attach
                               </button>
                             )}
-                            <button
-                              onClick={() => {
-                                const confirmed = window.confirm(
-                                  "Delete this parsed file permanently? This removes it from storage and sections using it may break.",
-                                );
-                                if (!confirmed) return;
-                                void handleDeleteDocument(document.id);
-                              }}
-                              disabled={
-                                deleteDocument.isPending ||
-                                cancelImport.isPending ||
-                                cancelAllPendingImports.isPending
-                              }
-                              className="shrink-0 rounded-xl border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              Delete
-                            </button>
                           </div>
-                          <div className="flex min-w-0 flex-1 items-center gap-3">
+                          {/* Progress Information */}
+                          <div className="flex-1 items-center gap-3">
+                            {/* Error Message */}
                             {latestJob?.error_message && (
-                              <div className="rounded-xl border border-rose-500/25 bg-rose-500/8 px-2.5 py-1.5 text-xs text-rose-600">
+                              <div className="rounded-sm border border-rose-500/25 bg-rose-500/8 px-2.5 py-1.5 text-xs text-rose-600">
                                 {latestJob.error_message}
                               </div>
                             )}
+                            {/* Progress Bar */}
                             {showProgress && (
-                              <div className="flex min-w-0 items-center gap-2 text-[11px] text-text-muted">
-                                <div className="h-1.5 min-w-24 overflow-hidden rounded-xl bg-surface-subtle">
-                                  <div
-                                    className="h-full rounded-xl bg-action-primary-bg transition-[width] duration-500"
-                                    style={{ width: `${progressPercent}%` }}
-                                  />
-                                </div>
-                                <span className="shrink-0">{progressPercent}%</span>
+                              <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
+                                {/* Progress Message */}
                                 {progressMessage && (
-                                  <span className="shrink-0">· {progressMessage}</span>
+                                  <span className="truncate shrink min-w-0" title={progressMessage}>
+                                    {progressMessage}
+                                  </span>
                                 )}
                                 {eta && (
                                   <span className="shrink-0">ETA {eta}</span>

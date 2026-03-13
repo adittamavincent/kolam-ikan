@@ -70,28 +70,28 @@ interface DomainWithCounts extends Domain {
 
 function StatCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-border-subtle bg-surface-default p-5">
+    <div className="animate-pulse rounded-xl border border-border-subtle bg-surface-default p-5">
       <div className="mb-3 h-10 w-10 rounded-xl bg-surface-elevated" />
-      <div className="mb-2 h-7 w-16 rounded bg-surface-elevated" />
-      <div className="h-4 w-24 rounded bg-surface-elevated" />
+      <div className="mb-2 h-7 w-16 rounded-sm bg-surface-elevated" />
+      <div className="h-4 w-24 rounded-sm bg-surface-elevated" />
     </div>
   );
 }
 
 function DomainCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-2xl border border-border-subtle bg-surface-default p-5">
+    <div className="animate-pulse rounded-xl border border-border-subtle bg-surface-default p-5">
       <div className="mb-4 flex items-center gap-3">
         <div className="h-11 w-11 rounded-xl bg-surface-elevated" />
         <div>
-          <div className="mb-2 h-5 w-28 rounded bg-surface-elevated" />
-          <div className="h-3 w-40 rounded bg-surface-elevated" />
+          <div className="mb-2 h-5 w-28 rounded-sm bg-surface-elevated" />
+          <div className="h-3 w-40 rounded-sm bg-surface-elevated" />
         </div>
       </div>
       <div className="flex gap-4">
-        <div className="h-4 w-16 rounded bg-surface-elevated" />
-        <div className="h-4 w-16 rounded bg-surface-elevated" />
-        <div className="h-4 w-16 rounded bg-surface-elevated" />
+        <div className="h-4 w-16 rounded-sm bg-surface-elevated" />
+        <div className="h-4 w-16 rounded-sm bg-surface-elevated" />
+        <div className="h-4 w-16 rounded-sm bg-surface-elevated" />
       </div>
     </div>
   );
@@ -100,10 +100,10 @@ function DomainCardSkeleton() {
 function ActivityItemSkeleton() {
   return (
     <div className="animate-pulse flex items-start gap-3 rounded-xl border border-border-subtle bg-surface-default p-4">
-      <div className="h-9 w-9 rounded-lg bg-surface-elevated" />
+      <div className="h-9 w-9 rounded-sm bg-surface-elevated" />
       <div className="flex-1">
-        <div className="mb-2 h-4 w-3/4 rounded bg-surface-elevated" />
-        <div className="h-3 w-1/2 rounded bg-surface-elevated" />
+        <div className="mb-2 h-4 w-3/4 rounded-sm bg-surface-elevated" />
+        <div className="h-3 w-1/2 rounded-sm bg-surface-elevated" />
       </div>
     </div>
   );
@@ -150,7 +150,7 @@ function StatCard({
   const c = colorMap[color] ?? colorMap.blue;
 
   return (
-    <div className="group rounded-2xl border border-border-subtle bg-surface-default p-5">
+    <div className="group rounded-xl border border-border-subtle bg-surface-default p-5">
       <div className={`mb-3 inline-flex rounded-xl ${c.iconBg} p-2.5`}>
         <Icon className={`h-5 w-5 ${c.text}`} />
       </div>
@@ -170,7 +170,7 @@ function DomainCard({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full flex-col rounded-2xl border border-border-subtle bg-surface-default p-5 text-left transition-all hover:border-action-primary-bg/50"
+      className="group flex w-full flex-col rounded-xl border border-border-subtle bg-surface-default p-5 text-left transition-all hover:border-action-primary-bg/50"
     >
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-action-primary-bg/10 text-2xl group-hover:bg-action-primary-bg/20 transition-colors">
@@ -225,7 +225,7 @@ function RecentActivityItem({
       onClick={onClick}
       className="group flex w-full items-start gap-3 rounded-xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-border-default relative"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-subtle text-lg transition-colors group-hover:bg-action-primary-bg/10">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-surface-subtle text-lg transition-colors group-hover:bg-action-primary-bg/10">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -255,7 +255,7 @@ function QuickAction({
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-4 rounded-2xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-action-primary-bg/50"
+      className="group flex items-center gap-4 rounded-xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-action-primary-bg/50"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-action-primary-bg/10 transition-colors group-hover:bg-action-primary-bg/20">
         <Icon className="h-5 w-5 text-action-primary-bg" />
@@ -281,7 +281,7 @@ function ErrorBanner({
       <span className="flex-1">{message}</span>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1 rounded-lg bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
+        className="inline-flex items-center gap-1 rounded-sm bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
       >
         <RefreshCw className="h-3.5 w-3.5" />
         Retry
@@ -592,7 +592,7 @@ export default function HomePage() {
                 <DomainCardSkeleton />
               </div>
             ) : totalDomains === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-border-default bg-surface-default p-10 text-center">
+              <div className="rounded-xl border-2 border-dashed border-border-default bg-surface-default p-10 text-center">
                 <Globe className="mx-auto h-10 w-10 text-text-muted" />
                 <h3 className="mt-3 text-sm font-semibold text-text-default">
                   No domains yet
@@ -641,7 +641,7 @@ export default function HomePage() {
                 <ActivityItemSkeleton />
               </div>
             ) : recentStreams?.length === 0 && recentEntries?.length === 0 ? (
-              <div className="rounded-2xl border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
+              <div className="rounded-xl border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
                 <Clock className="mx-auto h-8 w-8 text-text-muted" />
                 <h3 className="mt-3 text-sm font-semibold text-text-default">
                   No activity yet

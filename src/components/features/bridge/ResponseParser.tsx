@@ -745,36 +745,36 @@ export const ResponseParser = forwardRef<
           <textarea
             value={pastedXML}
             onChange={(e) => onPastedXMLChange(e.target.value)}
-            className="w-full rounded border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
+            className="w-full rounded-sm border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
             rows={6}
             placeholder={`Paste the LLM response here. Expected format:\n<response>\n  ${canProcessLog ? "<thought_log>...</thought_log>" : ""}${canProcessLog && canProcessCanvas ? "\n  " : ""}${canProcessCanvas ? "<canvas_update>markdown or JSON</canvas_update>" : ""}\n</response>`}
           />
         </div>
 
         {parseError && (
-          <div className="rounded bg-status-error-bg p-3 text-sm text-status-error-text border border-status-error-border">
+          <div className="rounded-sm bg-status-error-bg p-3 text-sm text-status-error-text border border-status-error-border">
             Error: {parseError}
           </div>
         )}
 
         {ignoredTags.length > 0 && (
-          <div className="rounded border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
+          <div className="rounded-sm border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
             Ignored tags: {ignoredTags.join(", ")}
           </div>
         )}
 
         {conflictWarning && (
-          <div className="rounded-lg border border-status-error-border bg-status-error-bg/20 p-3 text-xs text-status-error-text">
+          <div className="rounded-sm border border-status-error-border bg-status-error-bg/20 p-3 text-xs text-status-error-text">
             {conflictWarning}
           </div>
         )}
 
         {canvasParseError && canProcessCanvas && (
-          <div className="flex items-center justify-between rounded border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
+          <div className="flex items-center justify-between rounded-sm border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
             <span>{canvasParseError}</span>
             <button
               onClick={handlePlainTextImport}
-              className="rounded bg-action-primary-bg px-2 py-1 text-[11px] text-action-primary-text hover:bg-action-primary-hover"
+              className="rounded-sm bg-action-primary-bg px-2 py-1 text-[11px] text-action-primary-text hover:bg-action-primary-hover"
             >
               Import as Plain Text
             </button>
@@ -782,14 +782,14 @@ export const ResponseParser = forwardRef<
         )}
 
         {(thoughtLog || incomingBlocks) && (
-          <div className="rounded border border-border-default bg-surface-subtle p-3 text-xs space-y-2">
+          <div className="rounded-sm border border-border-default bg-surface-subtle p-3 text-xs space-y-2">
             <div className="font-medium text-text-default">Parsed Content</div>
             {thoughtLog && (
               <div>
                 <span className="font-medium text-text-muted">
                   Thought Log → New Entry:
                 </span>
-                <div className="mt-1 max-h-32 overflow-y-auto rounded bg-surface-default p-2 text-text-default whitespace-pre-wrap">
+                <div className="mt-1 max-h-32 overflow-y-auto rounded-sm bg-surface-default p-2 text-text-default whitespace-pre-wrap">
                   {thoughtLog}
                 </div>
               </div>
@@ -813,7 +813,7 @@ export const ResponseParser = forwardRef<
                   <button
                     key={mode}
                     onClick={() => setPreviewMode(mode)}
-                    className={`rounded px-3 py-1 text-xs ${
+                    className={`rounded-sm px-3 py-1 text-xs ${
                       previewMode === mode
                         ? "bg-action-primary-bg text-action-primary-text"
                         : "bg-surface-subtle text-text-default hover:bg-surface-hover"
@@ -826,20 +826,20 @@ export const ResponseParser = forwardRef<
               <div className="flex gap-2 text-xs">
                 <button
                   onClick={() => bulkDecision("accept")}
-                  className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
+                  className="rounded-sm bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
                 >
                   Merge All
                 </button>
                 <button
                   onClick={() => bulkDecision("reject")}
-                  className="rounded bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
+                  className="rounded-sm bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
                 >
                   Reject All
                 </button>
               </div>
             </div>
 
-            <div className="divide-y divide-border-subtle/30 overflow-hidden rounded-lg border border-border-default/50 bg-surface-default shadow-sm">
+            <div className="divide-y divide-border-subtle/30 overflow-hidden rounded-sm border border-border-default/50 bg-surface-default shadow-sm">
               {changes.map((change) => (
                 <div
                   key={change.id}
@@ -886,7 +886,7 @@ export const ResponseParser = forwardRef<
                     <button
                       onClick={() => updateDecision(change.id, "accept")}
                       title="Accept"
-                      className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition-all ${
+                      className={`flex-1 rounded-sm px-2 py-1.5 text-xs font-bold transition-all ${
                         change.decision === "accept"
                           ? "bg-action-primary-bg text-action-primary-text shadow-sm"
                           : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
@@ -898,7 +898,7 @@ export const ResponseParser = forwardRef<
                       <button
                         onClick={() => updateDecision(change.id, "both")}
                         title="Keep both"
-                        className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition-all ${
+                        className={`flex-1 rounded-sm px-2 py-1.5 text-xs font-bold transition-all ${
                           change.decision === "both"
                             ? "bg-action-primary-bg text-action-primary-text shadow-sm"
                             : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
@@ -910,7 +910,7 @@ export const ResponseParser = forwardRef<
                     <button
                       onClick={() => updateDecision(change.id, "reject")}
                       title="Reject"
-                      className={`flex-1 rounded-md px-2 py-1.5 text-xs font-bold transition-all ${
+                      className={`flex-1 rounded-sm px-2 py-1.5 text-xs font-bold transition-all ${
                         change.decision === "reject"
                           ? "bg-action-primary-bg text-action-primary-text shadow-sm"
                           : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
@@ -926,7 +926,7 @@ export const ResponseParser = forwardRef<
         )}
 
         {applyError && (
-          <div className="rounded bg-status-error-bg p-3 text-sm text-status-error-text border border-status-error-border">
+          <div className="rounded-sm bg-status-error-bg p-3 text-sm text-status-error-text border border-status-error-border">
             Error: {applyError}
           </div>
         )}
@@ -934,14 +934,14 @@ export const ResponseParser = forwardRef<
         <div className="flex flex-wrap gap-2">
           <button
             onClick={parseResponse}
-            className="rounded bg-action-primary-bg px-4 py-2 text-action-primary-text hover:bg-action-primary-hover transition-colors"
+            className="rounded-sm bg-action-primary-bg px-4 py-2 text-action-primary-text hover:bg-action-primary-hover transition-colors"
           >
             Parse Response
           </button>
           <button
             onClick={handleApply}
             disabled={isApplying || (!thoughtLog && !mergedBlocks)}
-            className="rounded bg-surface-subtle px-4 py-2 text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
+            className="rounded-sm bg-surface-subtle px-4 py-2 text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             {isApplying ? "Applying..." : "Apply Changes"}
           </button>

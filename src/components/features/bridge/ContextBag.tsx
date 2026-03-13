@@ -105,7 +105,7 @@ export function ContextBag({
     <div className="mb-6 rounded-xl border border-border-default/50 bg-surface-subtle/20 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-text-default">Context Bag</h3>
-        <span className="rounded-full bg-surface-subtle px-2.5 py-1 text-[10px] font-bold tracking-wider text-text-muted">
+        <span className="rounded-xl bg-surface-subtle px-2.5 py-1 text-[10px] font-bold tracking-wider text-text-muted">
           {selectedEntries.length} SELECTED
         </span>
       </div>
@@ -144,7 +144,7 @@ export function ContextBag({
               Include Domain Global Stream
             </span>
             {globalStreamLoading && (
-              <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-full border-2 border-text-muted border-t-transparent" />
+              <span className="ml-1 inline-block h-3 w-3 animate-spin rounded-xl border-2 border-text-muted border-t-transparent" />
             )}
           </label>
           {!globalStreamLoading &&
@@ -168,25 +168,25 @@ export function ContextBag({
           <button
             onClick={selectAll}
             disabled={disableSelectAll || isLoadingEntries}
-            className="rounded-full border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
+            className="rounded-xl border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
           >
             Select All
           </button>
           <button
             onClick={selectLastFive}
             disabled={isLoadingEntries}
-            className="rounded-full border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
+            className="rounded-xl border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
           >
             Last 5
           </button>
           <button
             onClick={clearAll}
-            className="rounded-full border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default transition-all shadow-sm"
+            className="rounded-xl border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default transition-all shadow-sm"
           >
             Clear
           </button>
         </div>
-        <div className="max-h-56 space-y-3 overflow-y-auto rounded-lg border border-border-subtle/50 bg-surface-default/50 p-3 text-xs shadow-inner">
+        <div className="max-h-56 space-y-3 overflow-y-auto rounded-sm border border-border-subtle/50 bg-surface-default/50 p-3 text-xs shadow-inner">
           {isLoadingEntries ? (
             <div className="text-text-muted animate-pulse">
               Loading entries...
@@ -207,7 +207,7 @@ export function ContextBag({
                   return (
                     <label
                       key={entry.id}
-                      className="flex items-start gap-3 rounded-md p-1.5 hover:bg-surface-subtle transition-colors cursor-pointer select-none"
+                      className="flex items-start gap-3 rounded-sm p-1.5 hover:bg-surface-subtle transition-colors cursor-pointer select-none"
                     >
                       <input
                         type="checkbox"

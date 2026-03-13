@@ -14,7 +14,7 @@ export const NavigatorCreateButton = React.forwardRef<
     <button
       ref={ref}
       disabled={disabled}
-      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg/40 ${
+      className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg/40 ${
         disabled
           ? "cursor-not-allowed text-text-muted/60 opacity-70"
           : "text-text-muted hover:bg-surface-subtle hover:text-text-default active:bg-surface-subtle/80"

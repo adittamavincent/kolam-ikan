@@ -43,8 +43,8 @@ export default function ForgotPasswordPage() {
   if (submitted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-surface-subtle p-4">
-        <div className="w-full max-w-md space-y-8 rounded-2xl bg-surface-default p-8 text-center border border-border-default">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-status-success-bg">
+        <div className="w-full max-w-md space-y-8 rounded-xl bg-surface-default p-8 text-center border border-border-default">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-status-success-bg">
             <CheckCircle2 className="h-10 w-10 text-status-success-text" />
           </div>
           <h2 className="text-2xl font-bold text-text-default">
@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
           Back to login
         </Link>
 
-        <div className="rounded-2xl bg-surface-default p-8 border border-border-default">
+        <div className="rounded-xl bg-surface-default p-8 border border-border-default">
           <h2 className="text-2xl font-bold text-text-default">
             Forgot Password
           </h2>
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleReset} className="mt-8 space-y-6">
             {error && (
-              <div className="flex items-start gap-3 rounded-lg bg-status-error-bg p-4 text-sm text-status-error-text border border-status-error-border">
+              <div className="flex items-start gap-3 rounded-sm bg-status-error-bg p-4 text-sm text-status-error-text border border-status-error-border">
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 <p>{error}</p>
               </div>
@@ -110,7 +110,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full rounded-lg border border-border-default bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default focus:border-action-primary-bg focus:bg-surface-default focus:outline-none focus:ring-4 focus:ring-action-primary-bg/10 transition-all sm:text-sm"
+                  className="block w-full rounded-sm border border-border-default bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default focus:border-action-primary-bg focus:bg-surface-default focus:outline-none focus:ring-4 focus:ring-action-primary-bg/10 transition-all sm:text-sm"
                   placeholder="name@example.com"
                 />
               </div>
@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full justify-center rounded-lg bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus:ring-4 focus:ring-action-primary-bg/20 transition-all disabled:opacity-70"
+              className="flex w-full justify-center rounded-sm bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus:ring-4 focus:ring-action-primary-bg/20 transition-all disabled:opacity-70"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

@@ -75,12 +75,12 @@ export function PdfAttachmentThumbnail({
     <div className="relative h-16 w-12">
       <canvas
         ref={canvasRef}
-        className="h-16 w-12 rounded border border-border-subtle object-cover"
+        className="h-16 w-12 rounded-sm border border-border-subtle object-cover"
         aria-label={`Thumbnail preview for ${title}`}
       />
       {!hasRendered && (
         <div
-          className="absolute inset-0 flex items-center justify-center rounded border border-border-subtle bg-surface-subtle"
+          className="absolute inset-0 flex items-center justify-center rounded-sm border border-border-subtle bg-surface-subtle"
           aria-label={`PDF thumbnail unavailable for ${title}`}
         >
           <FileText className="h-4 w-4 text-text-muted" />

@@ -113,7 +113,7 @@ export function MainHeader() {
         {!sidebarVisible && (
           <button
             onClick={showSidebar}
-            className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+            className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
             title="Show sidebar"
           >
             <PanelLeft className="h-4 w-4" />
@@ -130,7 +130,7 @@ export function MainHeader() {
           </span>
 
           {stream.stream_kind === "GLOBAL" && (
-            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
+            <span className="ml-1 inline-flex items-center gap-1 rounded-xl border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
               <Globe className="h-3 w-3" />
               Global
             </span>
@@ -143,7 +143,7 @@ export function MainHeader() {
           <>
             <button
               onClick={() => setIsSearchOpen((prev) => !prev)}
-              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+              className={`rounded-sm p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
               title={isSearchOpen ? "Hide search" : "Show search"}
             >
               <Search className="h-4 w-4" />
@@ -161,14 +161,14 @@ export function MainHeader() {
                     emit("kolam_header_log_search_term", { term });
                   }}
                   placeholder="Search commits..."
-                  className="w-full rounded-md border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                  className="w-full rounded-sm border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                 />
               </div>
             )}
 
             <button
               onClick={() => emit("kolam_header_documents_import")}
-              className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+              className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
               title="Import PDF"
             >
               <FileUp className="h-4 w-4" />
@@ -176,7 +176,7 @@ export function MainHeader() {
 
             <button
               onClick={() => emit("kolam_header_log_export")}
-              className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+              className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
               title="Export to Markdown"
             >
               <Download className="h-4 w-4" />
@@ -184,7 +184,7 @@ export function MainHeader() {
 
             <button
               onClick={() => emit("kolam_header_log_toggle_stash")}
-              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+              className={`rounded-sm p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
               title={
                 logState.showStash
                   ? "Hide stashed entries"
@@ -196,7 +196,7 @@ export function MainHeader() {
 
             <button
               onClick={() => emit("kolam_header_log_toggle_sort")}
-              className="rounded-md p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+              className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
               title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
             >
               <ArrowUpDown
@@ -206,7 +206,7 @@ export function MainHeader() {
 
             <button
               onClick={() => emit("kolam_header_log_toggle_graph")}
-              className={`rounded-md p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+              className={`rounded-sm p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
               title={
                 logState.graphView ? "Back to commit list" : "Show commit graph"
               }
@@ -215,7 +215,7 @@ export function MainHeader() {
             </button>
 
             <Menu as="div" className="relative hidden md:block">
-              <MenuButton className="inline-flex items-center gap-1.5 rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
+              <MenuButton className="inline-flex items-center gap-1.5 rounded-xl bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
                 <GitBranch className="h-3 w-3" />
                 {logState.currentBranch}
                 <ChevronDown className="h-3 w-3" />
@@ -244,7 +244,7 @@ export function MainHeader() {
                           onClick={() =>
                             emit("kolam_header_log_set_branch", { branchName })
                           }
-                          className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
+                          className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
                         >
                           <span className="flex items-center gap-1.5">
                             <GitBranch className="h-3 w-3" />
@@ -272,7 +272,7 @@ export function MainHeader() {
                       }
                       emit("kolam_header_log_create_branch", { branchName });
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
                   >
                     <Plus className="h-3 w-3" />
                     New branch
@@ -281,7 +281,7 @@ export function MainHeader() {
               </Transition>
             </Menu>
 
-            <span className="hidden items-center gap-1 rounded-full bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted md:inline-flex">
+            <span className="hidden items-center gap-1 rounded-xl bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted md:inline-flex">
               <GitCommitHorizontal className="h-3 w-3" />
               {logState.commitCount}
             </span>
@@ -299,7 +299,7 @@ export function MainHeader() {
                 emit("kolam_header_canvas_snapshot_name", { name });
               }}
               placeholder="Snapshot name..."
-              className="w-36 rounded-md border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+              className="w-36 rounded-sm border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
             />
             <button
               onClick={() =>
@@ -308,7 +308,7 @@ export function MainHeader() {
                 })
               }
               disabled={canvasState.isSavingSnapshot}
-              className="inline-flex items-center gap-1 rounded-md bg-action-primary-bg px-2 py-1 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded-sm bg-action-primary-bg px-2 py-1 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-60"
               title="Save Snapshot"
             >
               <Save className="h-3.5 w-3.5" />

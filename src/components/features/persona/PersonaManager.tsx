@@ -221,7 +221,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
+              <DialogPanel className="w-full max-w-2xl transform overflow-hidden rounded-xl bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
                 <div className="flex items-center justify-between mb-6">
                   <DialogTitle
                     as="h3"
@@ -231,7 +231,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   </DialogTitle>
                   <button
                     onClick={onClose}
-                    className="rounded-full p-1 hover:bg-surface-subtle transition-colors text-text-muted hover:text-text-default"
+                    className="rounded-xl p-1 hover:bg-surface-subtle transition-colors text-text-muted hover:text-text-default"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -260,7 +260,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                       </p>
                     </div>
 
-                    <div className="rounded-lg border border-border-subtle bg-surface-subtle p-3">
+                    <div className="rounded-sm border border-border-subtle bg-surface-subtle p-3">
                       <p className="text-xs text-text-subtle">
                         {deleteUsageCount === 0 ? (
                           <span>
@@ -290,7 +290,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         <select
                           value={transferPersonaId}
                           onChange={(e) => setTransferPersonaId(e.target.value)}
-                          className="w-full rounded-lg border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                          className="w-full rounded-sm border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                         >
                           <option value="">Select persona</option>
                           {transferCandidates.map((persona) => (
@@ -309,7 +309,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     )}
 
                     {error && (
-                      <div className="flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg/10 p-2 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg/10 p-2 rounded-sm">
                         <AlertCircle className="h-4 w-4" />
                         {error}
                       </div>
@@ -325,7 +325,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           setIsPermanent(false);
                           setError(null);
                         }}
-                        className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
                       >
                         Cancel
                       </button>
@@ -338,7 +338,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                             (deleteUsageCount > 0 &&
                               transferCandidates.length === 0)
                           }
-                          className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                          className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 rounded-sm transition-colors disabled:opacity-50 flex items-center gap-2"
                         >
                           {hardDeletePersona.isPending && (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -352,7 +352,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                               type="button"
                               onClick={() => handleDelete(true)}
                               disabled={hardDeletePersona.isPending}
-                              className="px-4 py-2 text-sm font-medium border border-status-error-text/30 text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                              className="px-4 py-2 text-sm font-medium border border-status-error-text/30 text-status-error-text hover:bg-status-error-bg/10 rounded-sm transition-colors disabled:opacity-50 flex items-center gap-2"
                             >
                               {hardDeletePersona.isPending && (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -368,7 +368,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                               (deleteUsageCount > 0 &&
                                 transferCandidates.length === 0)
                             }
-                            className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                            className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 rounded-sm transition-colors disabled:opacity-50 flex items-center gap-2"
                           >
                             {deletePersona.isPending && (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -391,7 +391,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full rounded-lg border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                        className="w-full rounded-sm border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                         placeholder="e.g., Creative Mode"
                         autoFocus
                       />
@@ -407,7 +407,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                             key={c}
                             type="button"
                             onClick={() => setColor(c)}
-                            className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${color === c ? "border-text-default" : "border-transparent"}`}
+                            className={`w-8 h-8 rounded-xl border-2 transition-transform hover:scale-110 ${color === c ? "border-text-default" : "border-transparent"}`}
                             style={{ backgroundColor: c }}
                           />
                         ))}
@@ -424,7 +424,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                             key={ic}
                             type="button"
                             onClick={() => setIcon(ic)}
-                            className={`flex items-center justify-center p-2 rounded-lg border transition-colors ${icon === ic ? "bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg" : "border-border-subtle hover:bg-surface-subtle text-text-subtle"}`}
+                            className={`flex items-center justify-center p-2 rounded-sm border transition-colors ${icon === ic ? "bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg" : "border-border-subtle hover:bg-surface-subtle text-text-subtle"}`}
                           >
                             <DynamicIcon name={ic} className="h-5 w-5" />
                           </button>
@@ -433,7 +433,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     </div>
 
                     {error && (
-                      <div className="flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg/10 p-2 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg/10 p-2 rounded-sm">
                         <AlertCircle className="h-4 w-4" />
                         {error}
                       </div>
@@ -446,7 +446,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           setIsCreating(false);
                           setEditingPersona(null);
                         }}
-                        className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
+                        className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
                       >
                         Cancel
                       </button>
@@ -455,7 +455,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         disabled={
                           createPersona.isPending || updatePersona.isPending
                         }
-                        className="px-4 py-2 text-sm font-medium bg-action-primary-bg text-white hover:bg-action-primary-hover rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="px-4 py-2 text-sm font-medium bg-action-primary-bg text-white hover:bg-action-primary-hover rounded-sm transition-colors disabled:opacity-50 flex items-center gap-2"
                       >
                         {(createPersona.isPending ||
                           updatePersona.isPending) && (
@@ -476,7 +476,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           setColor("#0ea5e9");
                           setError(null);
                         }}
-                        className="flex items-center gap-2 rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                        className="flex items-center gap-2 rounded-sm bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
                       >
                         <Plus className="h-4 w-4" />
                         New Persona
@@ -491,7 +491,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                       </label>
                     </div>
                     {error && (
-                      <div className="mb-3 flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg/10 p-2 rounded-lg">
+                      <div className="mb-3 flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg/10 p-2 rounded-sm">
                         <AlertCircle className="h-4 w-4" />
                         {error}
                       </div>
@@ -513,7 +513,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                             >
                               <div className="flex items-center gap-3">
                                 <div
-                                  className="h-10 w-10 rounded-lg flex items-center justify-center"
+                                  className="h-10 w-10 rounded-sm flex items-center justify-center"
                                   style={{
                                     backgroundColor: `${persona.color}20`,
                                     color: persona.color,
@@ -528,12 +528,12 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   <h4 className="font-medium text-text-default flex items-center gap-2">
                                     {persona.name}
                                     {persona.is_system && (
-                                      <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 rounded border border-border-subtle uppercase tracking-wider">
+                                      <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 rounded-sm border border-border-subtle uppercase tracking-wider">
                                         System
                                       </span>
                                     )}
                                     {persona.deleted_at && (
-                                      <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 rounded border border-status-error-text/20 uppercase tracking-wider">
+                                      <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 rounded-sm border border-status-error-text/20 uppercase tracking-wider">
                                         Deleted
                                       </span>
                                     )}
@@ -557,7 +557,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                               updates: { deleted_at: null },
                                             });
                                           }}
-                                          className="px-2 py-1 text-xs text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
+                                          className="px-2 py-1 text-xs text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
                                           title="Restore"
                                         >
                                           Restore
@@ -570,7 +570,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                             isPreparingDelete ||
                                             hardDeletePersona.isPending
                                           }
-                                          className="px-2 py-1 text-xs text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors"
+                                          className="px-2 py-1 text-xs text-status-error-text hover:bg-status-error-bg/10 rounded-sm transition-colors"
                                           title="Delete permanently"
                                         >
                                           {isPreparingDelete ? (
@@ -591,7 +591,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                             setColor(persona.color);
                                             setError(null);
                                           }}
-                                          className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-lg transition-colors"
+                                          className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
                                           title="Edit"
                                         >
                                           <Pencil className="h-4 w-4" />
@@ -604,7 +604,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                             isPreparingDelete ||
                                             deletePersona.isPending
                                           }
-                                          className="p-2 text-text-muted hover:text-status-error-text hover:bg-status-error-bg/10 rounded-lg transition-colors"
+                                          className="p-2 text-text-muted hover:text-status-error-text hover:bg-status-error-bg/10 rounded-sm transition-colors"
                                           title="Delete"
                                         >
                                           {isPreparingDelete ? (

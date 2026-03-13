@@ -677,13 +677,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <div className="flex gap-2">
                 <button
                   onClick={handleKeepRecovery}
-                  className="rounded bg-action-primary-bg px-2 py-1 text-[10px] text-action-primary-text hover:bg-action-primary-hover"
+                  className="rounded-sm bg-action-primary-bg px-2 py-1 text-[10px] text-action-primary-text hover:bg-action-primary-hover"
                 >
                   Keep
                 </button>
                 <button
                   onClick={handleDiscardRecovery}
-                  className="rounded bg-surface-default px-2 py-1 text-[10px] text-text-default hover:bg-surface-hover"
+                  className="rounded-sm bg-surface-default px-2 py-1 text-[10px] text-text-default hover:bg-surface-hover"
                 >
                   Discard
                 </button>
@@ -704,11 +704,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             <button
               key={`quick-persona-${persona.id}`}
               onClick={() => addPersona(persona.id)}
-              className="flex items-center gap-1.5 rounded-lg border border-border-subtle/70 bg-surface-subtle/40 px-2 py-1 text-[11px] font-medium text-text-default transition-colors hover:bg-surface-subtle"
+              className="flex items-center gap-1.5 rounded-sm border border-border-subtle/70 bg-surface-subtle/40 px-2 py-1 text-[11px] font-medium text-text-default transition-colors hover:bg-surface-subtle"
               title={`Quick add ${persona.name}`}
             >
               <div
-                className="flex h-4 w-4 items-center justify-center rounded"
+                className="flex h-4 w-4 items-center justify-center rounded-sm"
                 style={{
                   backgroundColor: `${persona.color}20`,
                   color: persona.color,
@@ -721,7 +721,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           ))}
 
           <Menu as="div" className="relative z-30">
-            <MenuButton className="flex items-center gap-1.5 rounded-lg py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none">
+            <MenuButton className="flex items-center gap-1.5 rounded-sm py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none">
               <Plus className="h-3 w-3 text-text-subtle" />
               <span className="text-text-default">Add Persona</span>
             </MenuButton>
@@ -754,11 +754,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           active
                             ? "bg-surface-subtle text-text-default"
                             : "text-text-subtle"
-                        } group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
+                        } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
                       >
                         <div className="flex items-center gap-2">
                           <div
-                            className="flex h-5 w-5 items-center justify-center rounded"
+                            className="flex h-5 w-5 items-center justify-center rounded-sm"
                             style={{
                               backgroundColor: `${persona.color}20`,
                               color: persona.color,
@@ -781,7 +781,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
           <button
             onClick={addPdfSection}
-            className="flex items-center gap-1.5 rounded-lg py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none"
+            className="flex items-center gap-1.5 rounded-sm py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none"
             title="Add PDF attachment section"
           >
             <FileText className="h-3 w-3 text-text-subtle" />
@@ -816,7 +816,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           <div className="flex items-center justify-between px-4 py-1.5 bg-surface-subtle/50 border-y border-border-subtle/70">
                             <div className="flex items-center gap-2">
                               <button
-                                className="cursor-grab rounded p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
+                                className="cursor-grab rounded-sm p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
                                 aria-label="Drag to reorder"
                                 {...dragHandleProps}
                               >
@@ -824,9 +824,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               </button>
 
                               <Menu as="div" className="relative z-30">
-                                <MenuButton className="flex items-center gap-2 rounded hover:bg-surface-subtle/50 px-1 py-0.5 transition-colors focus:outline-none">
+                                <MenuButton className="flex items-center gap-2 rounded-sm hover:bg-surface-subtle/50 px-1 py-0.5 transition-colors focus:outline-none">
                                   <div
-                                    className="flex h-4 w-4 items-center justify-center rounded"
+                                    className="flex h-4 w-4 items-center justify-center rounded-sm"
                                     style={{
                                       backgroundColor: `${persona.color}20`,
                                       color: persona.color,
@@ -871,10 +871,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               active
                                                 ? "bg-surface-subtle text-text-default"
                                                 : "text-text-subtle"
-                                            } group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition-colors`}
+                                            } group flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors`}
                                           >
                                             <div
-                                              className="flex h-4 w-4 items-center justify-center rounded"
+                                              className="flex h-4 w-4 items-center justify-center rounded-sm"
                                               style={{
                                                 backgroundColor: `${p.color}20`,
                                                 color: p.color,
@@ -900,7 +900,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                             <button
                               onClick={() => removeSection(instanceId)}
-                              className="text-text-muted hover:text-text-default p-0.5 rounded hover:bg-surface-subtle transition-colors"
+                              className="text-text-muted hover:text-text-default p-0.5 rounded-sm hover:bg-surface-subtle transition-colors"
                               title="Remove this section"
                             >
                               <X className="h-3 w-3" />
@@ -966,7 +966,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         <div className="flex items-center justify-between px-4 py-1.5 bg-surface-subtle/50 border-y border-border-subtle/70">
                           <div className="flex items-center gap-2">
                             <button
-                              className="cursor-grab rounded p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
+                              className="cursor-grab rounded-sm p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
                               aria-label="Drag to reorder"
                               {...dragHandleProps}
                             >
@@ -980,7 +980,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                           <button
                             onClick={() => removeSection(instanceId)}
-                            className="text-text-muted hover:text-text-default p-0.5 rounded hover:bg-surface-subtle transition-colors"
+                            className="text-text-muted hover:text-text-default p-0.5 rounded-sm hover:bg-surface-subtle transition-colors"
                             title="Remove this PDF section"
                           >
                             <X className="h-3 w-3" />
@@ -991,7 +991,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
-                              className="inline-flex items-center gap-2 rounded-lg border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default hover:bg-surface-default"
+                              className="inline-flex items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default hover:bg-surface-default"
                               onClick={() =>
                                 setPdfPickerTargetInstanceId(instanceId)
                               }
@@ -1009,7 +1009,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           </div>
 
                           {effectiveAttachments.length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-border-subtle bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
+                            <div className="rounded-sm border border-dashed border-border-subtle bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
                               Drop or attach one or more PDFs to start building
                               this section.
                             </div>
@@ -1018,7 +1018,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               {effectiveAttachments.map((attachment) => (
                                 <div
                                   key={attachment.documentId}
-                                  className="cursor-pointer rounded-lg border border-border-subtle bg-surface-default px-3 py-2 transition-colors hover:bg-surface-subtle"
+                                  className="cursor-pointer rounded-sm border border-border-subtle bg-surface-default px-3 py-2 transition-colors hover:bg-surface-subtle"
                                   role="button"
                                   tabIndex={0}
                                   onClick={() =>
@@ -1072,7 +1072,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             onClick={(event) => {
                                               event.stopPropagation();
                                             }}
-                                            className="rounded p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                            className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                                             aria-label="Open PDF preview"
                                           >
                                             {section.displayMode ===
@@ -1088,7 +1088,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                           {section.displayMode === "inline" && (
                                             <iframe
                                               src={attachment.previewUrl}
-                                              className="h-24 w-40 rounded border border-border-subtle"
+                                              className="h-24 w-40 rounded-sm border border-border-subtle"
                                               title={`Inline preview for ${attachment.titleSnapshot}`}
                                             />
                                           )}
@@ -1107,7 +1107,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                         onClickCapture={(event) => {
                                           event.stopPropagation();
                                         }}
-                                        className="rounded p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                        className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                                         aria-label={`Remove ${attachment.titleSnapshot}`}
                                       >
                                         <X className="h-3.5 w-3.5" />
@@ -1132,7 +1132,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         {sections.length > 0 && (
           <div className="flex items-center justify-between px-3 py-2 bg-surface-subtle/50 border-t border-border-default/50 rounded-b-xl">
             <div className="text-[10px] text-text-muted">
-              <kbd className="rounded border border-border-subtle bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
+              <kbd className="rounded-sm border border-border-subtle bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
                 ⌘+Enter
               </kbd>
               <span className="mx-1">→</span>
@@ -1141,7 +1141,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             <button
               onClick={handleCommit}
               disabled={status === "saving"}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
                 status !== "saving"
                   ? "bg-action-primary-bg text-white hover:bg-action-primary-hover"
                   : "bg-surface-subtle text-text-muted cursor-not-allowed"
@@ -1187,7 +1187,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   setParsedPreviewError(null);
                 }}
                 disabled={parsedPreviewLoading}
-                className="rounded p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
+                className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
                 aria-label="Close parsed content preview"
               >
                 <X className="h-4 w-4" />
@@ -1203,13 +1203,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               )}
 
               {!parsedPreviewLoading && parsedPreviewError && (
-                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
+                <div className="rounded-sm border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
                   {parsedPreviewError}
                 </div>
               )}
 
               {!parsedPreviewLoading && !parsedPreviewError && parsedPreview && (
-                <pre className="whitespace-pre-wrap wrap-break-word rounded-lg border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
+                <pre className="whitespace-pre-wrap wrap-break-word rounded-sm border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
                   {parsedPreview.markdown}
                 </pre>
               )}

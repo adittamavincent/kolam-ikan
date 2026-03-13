@@ -162,7 +162,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
             <span className="text-sm font-semibold text-text-default">
               git diff
             </span>
-            <code className="text-[11px] bg-surface-subtle text-text-muted rounded px-1.5 py-0.5 font-mono">
+            <code className="text-[11px] bg-surface-subtle text-text-muted rounded-sm px-1.5 py-0.5 font-mono">
               {prevEntry ? shortHash(prevEntry.id) : "0000000"}..
               {shortHash(entry.id)}
             </code>
@@ -176,7 +176,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
             </span>
             <button
               onClick={onClose}
-              className="rounded-md p-1 text-text-muted hover:bg-surface-subtle"
+              className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle"
             >
               <X className="h-4 w-4" />
             </button>
@@ -246,7 +246,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
           <span className="text-sm font-semibold text-text-default">
             git tag
           </span>
-          <code className="text-[11px] bg-surface-subtle text-text-muted rounded px-1.5 py-0.5 font-mono">
+          <code className="text-[11px] bg-surface-subtle text-text-muted rounded-sm px-1.5 py-0.5 font-mono">
             {shortHash(entryId)}
           </code>
         </div>
@@ -263,12 +263,12 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
             }
             if (e.key === "Escape") onClose();
           }}
-          className="w-full rounded-md border border-border-default bg-surface-subtle px-3 py-1.5 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg mb-3"
+          className="w-full rounded-sm border border-border-default bg-surface-subtle px-3 py-1.5 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg mb-3"
         />
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-subtle"
+            className="rounded-sm border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-subtle"
           >
             Cancel
           </button>
@@ -277,7 +277,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
               onSave(value.trim() || null);
               onClose();
             }}
-            className="rounded-lg bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text hover:opacity-90"
+            className="rounded-sm bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text hover:opacity-90"
           >
             Save Tag
           </button>
@@ -1109,7 +1109,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="h-28 rounded-lg bg-surface-subtle/50"
+                      className="h-28 rounded-sm bg-surface-subtle/50"
                     />
                   ))}
                 </div>
@@ -1162,7 +1162,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           className={isStashed ? "opacity-50" : undefined}
                         >
                           <div
-                            className={`relative group rounded-lg border bg-surface-default transition-all ${isAmending ? "border-action-primary-bg/50 ring-1 ring-action-primary-bg/40" : "border-border-subtle hover:border-border-default/50"}`}
+                            className={`relative group rounded-sm border bg-surface-default transition-all ${isAmending ? "border-action-primary-bg/50 ring-1 ring-action-primary-bg/40" : "border-border-subtle hover:border-border-default/50"}`}
                           >
                             {/* Commit header — mimics git log --oneline */}
                             <div className="flex items-center px-2.5 py-0.5 bg-surface-subtle/40 border-b border-border-subtle/40">
@@ -1174,7 +1174,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     <code className="text-[10px] font-mono text-action-primary-bg/80 cursor-help">
                                       {hash}
                                     </code>
-                                    <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 rounded-lg border border-border-default bg-surface-elevated p-2 text-[10px] font-mono text-text-default shadow-xl group-hover/hash:block">
+                                    <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 rounded-sm border border-border-default bg-surface-elevated p-2 text-[10px] font-mono text-text-default shadow-xl group-hover/hash:block">
                                       <div className="mb-1 text-[9px] uppercase tracking-wider text-text-muted">
                                         Commit Metadata
                                       </div>
@@ -1208,18 +1208,18 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   </span>
                                   {/* Tag badge */}
                                   {tag && (
-                                    <span className="shrink-0 flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                                    <span className="shrink-0 flex items-center gap-0.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
                                       <Tag className="h-2.5 w-2.5" />
                                       {tag}
                                     </span>
                                   )}
                                   {isLatestEntry && (
-                                    <span className="shrink-0 inline-flex items-center rounded-full border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                                    <span className="shrink-0 inline-flex items-center rounded-xl border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                                       HEAD
                                     </span>
                                   )}
                                   {isStashed && (
-                                    <span className="shrink-0 flex items-center gap-0.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
+                                    <span className="shrink-0 flex items-center gap-0.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
                                       <Archive className="h-2.5 w-2.5" />
                                       stashed
                                     </span>
@@ -1233,7 +1233,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                       <button
                                         onClick={() => handleSaveAmend(entry)}
                                         disabled={amendEntry.isPending}
-                                        className="inline-flex items-center gap-1 rounded-md bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                                        className="inline-flex items-center gap-1 rounded-sm bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
                                       >
                                         {amendEntry.isPending ? (
                                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -1245,7 +1245,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                       <button
                                         onClick={handleCancelAmend}
                                         disabled={amendEntry.isPending}
-                                        className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
+                                        className="inline-flex items-center gap-1 rounded-sm border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
                                       >
                                         <X className="h-3 w-3" />
                                         Cancel
@@ -1254,7 +1254,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   ) : isLatestEntry ? (
                                     <button
                                       onClick={() => handleStartAmend(entry)}
-                                      className="inline-flex items-center gap-1 rounded-md border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
+                                      className="inline-flex items-center gap-1 rounded-sm border border-border-default px-1 py-px text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
                                       title="git commit --amend"
                                     >
                                       <PencilLine className="h-3 w-3" />
@@ -1326,7 +1326,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       <button
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-subtle/80 rounded-md transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-subtle/80 rounded-sm transition-colors disabled:opacity-50"
                       >
                         <ChevronsDown className="h-3.5 w-3.5" />
                         {isFetchingNextPage
@@ -1383,21 +1383,21 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             </div>
             <button
               onClick={() => handleContextAction("copy-sha")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <Copy className="h-3.5 w-3.5 text-text-muted" />
               Copy SHA
             </button>
             <button
               onClick={() => handleContextAction("copy-content")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <Eye className="h-3.5 w-3.5 text-text-muted" />
               Copy content
             </button>
             <button
               onClick={() => handleContextAction("diff")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <GitCompare className="h-3.5 w-3.5 text-text-muted" />
               Diff with previous
@@ -1411,28 +1411,28 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             </div>
             <button
               onClick={() => handleContextAction("cherry-pick")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <RotateCcw className="h-3.5 w-3.5 text-text-muted rotate-180" />
               cherry-pick
             </button>
             <button
               onClick={() => handleContextAction("branch")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <GitBranch className="h-3.5 w-3.5 text-text-muted" />
               branch from here
             </button>
             <button
               onClick={() => handleContextAction("revert")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <Undo2 className="h-3.5 w-3.5 text-text-muted" />
               revert
             </button>
             <button
               onClick={() => handleContextAction("tag")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <Tag className="h-3.5 w-3.5 text-text-muted" />
               {tags[contextMenu.entry.id]
@@ -1441,7 +1441,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             </button>
             <button
               onClick={() => handleContextAction("stash")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               {stashedIds.has(contextMenu.entry.id) ? (
                 <>
@@ -1466,14 +1466,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             </div>
             <button
               onClick={() => handleContextAction("reset")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
               reset --hard
             </button>
             <button
               onClick={() => handleContextAction("delete")}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
               rm (delete)

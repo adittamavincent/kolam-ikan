@@ -42,7 +42,7 @@ export function PromotableBlock({
         <button
           onClick={handlePromote}
           disabled={wasPromoted}
-          className={`absolute right-2 top-2 rounded p-1 transition-colors ${
+          className={`absolute right-2 top-2 rounded-sm p-1 transition-colors ${
             wasPromoted
               ? "bg-status-success-bg text-status-success-text"
               : "bg-surface-default text-text-muted hover:bg-surface-hover"

@@ -112,9 +112,9 @@ export function LogSection({
 
   if (isPdfSection) {
     return (
-      <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/40 rounded-md border border-border-subtle">
+      <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/40 rounded-sm border border-border-subtle">
         <div className="shrink-0 pt-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-subtle text-text-subtle border border-border-subtle">
+          <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-surface-subtle text-text-subtle border border-border-subtle">
             <FileText className="h-4 w-4" />
           </div>
         </div>
@@ -139,7 +139,7 @@ export function LogSection({
             {(section.section_pdf_attachments ?? []).map((attachment) => (
               <div
                 key={attachment.id}
-                className="flex items-start gap-2 rounded border border-border-subtle bg-surface-subtle/40 px-2 py-1.5"
+                className="flex items-start gap-2 rounded-sm border border-border-subtle bg-surface-subtle/40 px-2 py-1.5"
               >
                 <LinkIcon className="mt-0.5 h-3.5 w-3.5 text-text-muted" />
                 <div className="min-w-0">
@@ -168,12 +168,12 @@ export function LogSection({
   }
 
   return (
-    <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 rounded-md">
+    <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 rounded-sm">
       {/* Sidebar / Persona Indicator */}
       <div className="shrink-0 pt-1">
         <Menu as="div" className="relative">
           <MenuButton
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:scale-105 focus:outline-none"
+            className="flex h-8 w-8 items-center justify-center rounded-sm transition-all hover:scale-105 focus:outline-none"
             style={{
               backgroundColor: `${currentPersona?.color || "#94a3b8"}15`,
               color: currentPersona?.color || "#94a3b8",
@@ -208,11 +208,11 @@ export function LogSection({
                         focus
                           ? "bg-surface-subtle text-text-default"
                           : "text-text-subtle"
-                      } group flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors`}
+                      } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
                     >
                       <div className="flex items-center gap-2">
                         <div
-                          className="flex h-5 w-5 items-center justify-center rounded"
+                          className="flex h-5 w-5 items-center justify-center rounded-sm"
                           style={{
                             backgroundColor: `${persona.color}20`,
                             color: persona.color,

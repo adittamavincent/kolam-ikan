@@ -135,7 +135,7 @@ export function DomainSwitcher({
         }`}
       >
         <Home className="h-5 w-5" />
-        <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+        <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
           Home
         </div>
       </button>
@@ -147,7 +147,7 @@ export function DomainSwitcher({
           title="Global Search (⌘⇧K)"
         >
           <Search className="h-5 w-5" />
-          <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
             Global Search
           </div>
         </button>
@@ -158,7 +158,7 @@ export function DomainSwitcher({
           title="Manage Personas"
         >
           <Users className="h-5 w-5" />
-          <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
             Personas
           </div>
         </button>
@@ -213,7 +213,7 @@ export function DomainSwitcher({
             )}
             {/* Active Indicator */}
             {currentDomainId === domain.id && (
-              <div className="absolute -left-2 h-6 w-1 rounded-r-full bg-action-primary-bg" />
+              <div className="absolute -left-2 h-6 w-1 rounded-r-xl bg-action-primary-bg" />
             )}
           </button>
         ))}
@@ -226,7 +226,7 @@ export function DomainSwitcher({
           className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg hover:scale-105"
         >
           <Plus className="h-5 w-5" />
-          <div className="absolute left-14 hidden rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
             Add Domain
           </div>
         </button>
@@ -234,7 +234,7 @@ export function DomainSwitcher({
 
       {hoveredDomainTooltip && (
         <div
-          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap rounded-md bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
+          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
           style={{ top: hoveredDomainTooltip.top }}
         >
           {hoveredDomainTooltip.name}
@@ -246,7 +246,7 @@ export function DomainSwitcher({
         <Menu as="div" className="relative">
           <MenuButton
             id={`${profileMenuIdBase}-button`}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm"
           >
             {avatarUrl ? (
               <Image
@@ -292,7 +292,7 @@ export function DomainSwitcher({
                 {({ focus }: { focus: boolean }) => (
                   <button
                     onClick={() => setProfileOpen(true)}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default`}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs text-text-default`}
                   >
                     <Settings className="h-4 w-4 text-text-muted" />
                     Profile settings
@@ -305,7 +305,7 @@ export function DomainSwitcher({
                     type="button"
                     onClick={handleSignOut}
                     disabled={loading || signingOut || status !== "signed_in"}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-text-default disabled:opacity-50`}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs text-text-default disabled:opacity-50`}
                   >
                     <LogOut className="h-4 w-4 text-text-muted" />
                     {signingOut ? "Signing out..." : "Sign out"}
@@ -366,7 +366,7 @@ export function DomainSwitcher({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
+                <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-xl bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
                   <DialogTitle
                     as="h3"
                     className="text-lg font-semibold leading-6 text-text-default"
@@ -382,10 +382,10 @@ export function DomainSwitcher({
                           width={64}
                           height={64}
                           unoptimized
-                          className="rounded-full object-cover border-2 border-border-subtle"
+                          className="rounded-xl object-cover border-2 border-border-subtle"
                         />
                       ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-action-primary-bg/10 text-xl font-bold text-action-primary-bg border-2 border-action-primary-bg/20">
+                        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-action-primary-bg/10 text-xl font-bold text-action-primary-bg border-2 border-action-primary-bg/20">
                           {initials}
                         </div>
                       )}
@@ -397,7 +397,7 @@ export function DomainSwitcher({
                       </div>
                     </div>
 
-                    <div className="rounded-lg bg-surface-subtle p-4 border border-border-subtle">
+                    <div className="rounded-sm bg-surface-subtle p-4 border border-border-subtle">
                       <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">
                         Account Details
                       </p>
@@ -421,7 +421,7 @@ export function DomainSwitcher({
                   <div className="mt-6 flex justify-end">
                     <button
                       type="button"
-                      className="inline-flex justify-center rounded-lg border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 transition-colors"
+                      className="inline-flex justify-center rounded-sm border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 transition-colors"
                       onClick={() => setProfileOpen(false)}
                     >
                       Close

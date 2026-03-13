@@ -441,7 +441,7 @@ function LoginForm() {
       <div className="w-full max-w-md space-y-8">
         {/* Branding */}
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-action-primary-bg">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-action-primary-bg">
             <span className="text-3xl font-bold text-white">K</span>
           </div>
           <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-text-default">
@@ -455,13 +455,13 @@ function LoginForm() {
         </div>
 
         {/* Main Auth Card */}
-        <div className="rounded-2xl bg-surface-default p-8 border border-border-subtle">
+        <div className="rounded-xl bg-surface-default p-8 border border-border-subtle">
           {/* Mode Toggle */}
-          <div className="mb-6 flex rounded-lg bg-surface-subtle p-1">
+          <div className="mb-6 flex rounded-sm bg-surface-subtle p-1">
             <button
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+              className={`flex-1 rounded-sm px-4 py-2 text-sm font-semibold transition-all ${
                 mode === "signin"
                   ? "bg-surface-default text-text-default"
                   : "text-text-subtle hover:text-text-default"
@@ -472,7 +472,7 @@ function LoginForm() {
             <button
               type="button"
               onClick={() => mode === "signin" && toggleMode()}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+              className={`flex-1 rounded-sm px-4 py-2 text-sm font-semibold transition-all ${
                 mode === "signup"
                   ? "bg-surface-default text-text-default"
                   : "text-text-subtle hover:text-text-default"
@@ -487,14 +487,14 @@ function LoginForm() {
             onSubmit={mode === "signin" ? handleLogin : handleSignup}
           >
             {error && (
-              <div className="flex items-start gap-3 rounded-lg bg-status-error-bg p-4 text-sm text-status-error-text border border-status-error-border animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3 rounded-sm bg-status-error-bg p-4 text-sm text-status-error-text border border-status-error-border animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-5 w-5 shrink-0 text-status-error-text" />
                 <p>{error}</p>
               </div>
             )}
 
             {successMessage && (
-              <div className="flex items-start gap-3 rounded-lg bg-status-success-bg p-4 text-sm text-status-success-text border border-status-success-border animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3 rounded-sm bg-status-success-bg p-4 text-sm text-status-success-text border border-status-success-border animate-in fade-in slide-in-from-top-1">
                 <CheckCircle className="h-5 w-5 shrink-0 text-status-success-text" />
                 <p>{successMessage}</p>
               </div>
@@ -525,7 +525,7 @@ function LoginForm() {
                       onBlur={(e) =>
                         handleFieldBlur("fullName", e.target.value)
                       }
-                      className={`block w-full rounded-lg border ${
+                      className={`block w-full rounded-sm border ${
                         fieldErrors.fullName && touchedFields.has("fullName")
                           ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
                           : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
@@ -562,7 +562,7 @@ function LoginForm() {
                       validateFieldDebounced("email", e.target.value);
                     }}
                     onBlur={(e) => handleFieldBlur("email", e.target.value)}
-                    className={`block w-full rounded-lg border ${
+                    className={`block w-full rounded-sm border ${
                       fieldErrors.email && touchedFields.has("email")
                         ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
                         : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
@@ -616,7 +616,7 @@ function LoginForm() {
                       }
                     }}
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
-                    className={`block w-full rounded-lg border ${
+                    className={`block w-full rounded-sm border ${
                       fieldErrors.password && touchedFields.has("password")
                         ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
                         : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
@@ -677,7 +677,7 @@ function LoginForm() {
                       onBlur={(e) =>
                         handleFieldBlur("confirmPassword", e.target.value)
                       }
-                      className={`block w-full rounded-lg border ${
+                      className={`block w-full rounded-sm border ${
                         fieldErrors.confirmPassword &&
                         touchedFields.has("confirmPassword")
                           ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
@@ -722,7 +722,7 @@ function LoginForm() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMeState(e.target.checked)}
-                  className="h-4 w-4 rounded border-border-default text-action-primary-bg focus:ring-action-primary-bg"
+                  className="h-4 w-4 rounded-sm border-border-default text-action-primary-bg focus:ring-action-primary-bg"
                 />
                 <label
                   htmlFor="remember-me"
@@ -737,7 +737,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative flex w-full justify-center rounded-lg bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus:outline-none focus:ring-4 focus:ring-action-primary-bg/20 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="group relative flex w-full justify-center rounded-sm bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus:outline-none focus:ring-4 focus:ring-action-primary-bg/20 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -792,7 +792,7 @@ function LoginForm() {
                   key={acc.email}
                   onClick={() => quickLogin(acc)}
                   disabled={loading}
-                  className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-default p-3 text-left transition-all hover:border-action-primary-bg group"
+                  className="flex items-center justify-between rounded-sm border border-border-subtle bg-surface-default p-3 text-left transition-all hover:border-action-primary-bg group"
                 >
                   <div>
                     <div className="text-xs font-bold text-text-default">

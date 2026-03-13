@@ -22,11 +22,13 @@ interface SectionDraft {
 }
 
 export interface PdfDraftAttachment {
-  documentId: string;
+  documentId?: string;
+  storagePath?: string;
   titleSnapshot: string;
   annotationText?: string | null;
   referencedPersonaId?: string | null;
   referencedPage?: number | null;
+  fileHash?: string;
 }
 
 interface DraftState {
@@ -505,6 +507,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
         if (draft.sectionType === "PDF" && draft.pdfAttachments?.length) {
           draft.pdfAttachments.forEach((attachment, attachmentIndex) => {
+            if (!attachment.documentId) return;
+
             pdfAttachmentInserts.push({
               section_id: insertedSection.id,
               document_id: attachment.documentId,

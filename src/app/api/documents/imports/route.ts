@@ -48,6 +48,35 @@ function getAppUrl(request: Request) {
   );
 }
 
+function formatWorkerDispatchError(error: unknown, workerEndpoint: string) {
+  if (!(error instanceof Error)) {
+    return `Failed to reach document import worker at ${workerEndpoint}`;
+  }
+
+  const cause = error.cause as
+    | {
+        code?: string;
+        errno?: string | number;
+        address?: string;
+        port?: number;
+        message?: string;
+      }
+    | undefined;
+
+  const detailParts: string[] = [];
+  if (cause?.code) detailParts.push(`code=${cause.code}`);
+  if (cause?.errno != null) detailParts.push(`errno=${cause.errno}`);
+  if (cause?.address) detailParts.push(`address=${cause.address}`);
+  if (cause?.port != null) detailParts.push(`port=${cause.port}`);
+  if (cause?.message) detailParts.push(cause.message);
+
+  const detail = detailParts.length
+    ? detailParts.join(", ")
+    : error.message || "unknown network error";
+
+  return `Unable to reach document import worker at ${workerEndpoint} (${detail}). Verify the worker is running and DOCUMENT_IMPORT_SERVICE_URL points to a reachable host.`;
+}
+
 async function dispatchImportJob(
   request: Request,
   params: {
@@ -92,25 +121,33 @@ async function dispatchImportJob(
   }
 
   const appUrl = getAppUrl(request);
-  const response = await fetch(`${serviceUrl}/imports`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      jobId: params.jobId,
-      documentId: params.documentId,
-      streamId: params.streamId,
-      title: params.title,
-      fileName: params.fileName,
-      contentType: params.contentType,
-      fileSizeBytes: params.fileSizeBytes,
-      parserConfig: params.parserConfig,
-      fileUrl: signedUrlResult.data.signedUrl,
-      callbackUrl: `${appUrl}/api/documents/imports/callback`,
-      callbackToken,
-    }),
-  });
+  const workerEndpoint = `${serviceUrl}/imports`;
+  let response: Response;
+
+  try {
+    response = await fetch(workerEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        jobId: params.jobId,
+        documentId: params.documentId,
+        streamId: params.streamId,
+        title: params.title,
+        fileName: params.fileName,
+        contentType: params.contentType,
+        fileSizeBytes: params.fileSizeBytes,
+        parserConfig: params.parserConfig,
+        fileUrl: signedUrlResult.data.signedUrl,
+        callbackUrl: `${appUrl}/api/documents/imports/callback`,
+        callbackToken,
+      }),
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (error) {
+    throw new Error(formatWorkerDispatchError(error, workerEndpoint));
+  }
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
@@ -151,6 +188,7 @@ export async function POST(request: Request) {
   const flavor = formData.get("flavor");
   const enableTableStructure = formData.get("enableTableStructure");
   const debugDoclingTables = formData.get("debugDoclingTables");
+  const fileHash = formData.get("fileHash");
 
   if (!(file instanceof File) || typeof streamId !== "string") {
     return NextResponse.json(
@@ -169,6 +207,7 @@ export async function POST(request: Request) {
     flavor: typeof flavor === "string" ? flavor : "lattice",
     enableTableStructure: enableTableStructure === "true",
     debugDoclingTables: debugDoclingTables === "true",
+    fileHash: typeof fileHash === "string" ? fileHash : undefined,
   });
 
   if (!input.success) {
@@ -198,6 +237,28 @@ export async function POST(request: Request) {
   const titleValue =
     input.data.title?.trim() || filename.replace(/\.pdf$/i, "");
 
+  // --- De-duplication check ---
+  if (input.data.fileHash) {
+    const { data: existingDoc } = await admin
+      .from("documents")
+      .select("id, title, storage_path, import_status")
+      .eq("stream_id", input.data.streamId)
+      .contains("source_metadata", { fileHash: input.data.fileHash })
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDoc) {
+      // If we found an existing document with the same hash in the same stream, 
+      // we can return it instead of creating a new one.
+      return NextResponse.json({
+        message: "Document already exists, reusing existing one",
+        documentId: existingDoc.id,
+        reused: true,
+      });
+    }
+  }
+
   try {
     await ensureDocumentBucket();
   } catch (error) {
@@ -223,6 +284,7 @@ export async function POST(request: Request) {
   const sourceMetadata = {
     uploadOrigin: "kolam-ikan-app",
     workerStatus: "awaiting-pickup",
+    fileHash: input.data.fileHash,
   };
   const parserConfig = {
     flavor: input.data.flavor,

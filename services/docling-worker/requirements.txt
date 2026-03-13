@@ -6,3 +6,6 @@ camelot-py[cv]==1.0.9
 pandas==2.3.2
 tabulate==0.9.0
 tqdm==4.67.1
+pdf2image==1.17.0
+supabase==2.13.0
+Pillow==10.4.0

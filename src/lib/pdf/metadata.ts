@@ -27,31 +27,53 @@ function normalizePdfDate(raw: string | undefined): string | null {
 export async function extractPdfMetadata(
   pdfBytes: Uint8Array,
 ): Promise<PdfExtractedMetadata> {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdfjsModule = await import("pdfjs-dist");
+  type PdfJsModule = {
+    getDocument: (opts: {
+      data: Uint8Array;
+      useWorkerFetch?: boolean;
+      isEvalSupported?: boolean;
+      disableFontFace?: boolean;
+    }) => {
+      promise: Promise<unknown>;
+    };
+  };
+  const pdfjs = (pdfjsModule.default || pdfjsModule) as unknown as PdfJsModule;
 
   const loadingTask = pdfjs.getDocument({
     data: pdfBytes,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    disableFontFace: true, // Not needed for metadata
   });
 
   const pdf = await loadingTask.promise;
-  const pageCount = pdf.numPages;
+  const pdfWithMeta = pdf as {
+    numPages: number;
+    getMetadata?: () => Promise<{ info: { Title?: string; Author?: string; CreationDate?: string } }>;
+    destroy?: () => Promise<void>;
+  };
+
+  const pageCount = pdfWithMeta.numPages;
 
   let title: string | null = null;
   let author: string | null = null;
   let creationDate: string | null = null;
 
   try {
-    const metadata = await pdf.getMetadata();
-    const info = metadata.info as {
-      Title?: string;
-      Author?: string;
-      CreationDate?: string;
-    };
-    title = info.Title?.trim() || null;
-    author = info.Author?.trim() || null;
-    creationDate = normalizePdfDate(info.CreationDate);
+    if (typeof pdfWithMeta.getMetadata === "function") {
+      const metadata = await pdfWithMeta.getMetadata();
+      const info = metadata.info as {
+        Title?: string;
+        Author?: string;
+        CreationDate?: string;
+      };
+      title = info.Title?.trim() || null;
+      author = info.Author?.trim() || null;
+      creationDate = normalizePdfDate(info.CreationDate);
+    }
   } finally {
-    await pdf.destroy();
+    if (typeof pdfWithMeta.destroy === "function") await pdfWithMeta.destroy();
   }
 
   return {

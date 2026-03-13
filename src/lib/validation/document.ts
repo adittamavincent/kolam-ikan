@@ -14,6 +14,7 @@ export const CreateDocumentImportSchema = z.object({
   flavor: z.enum(["lattice", "stream"]).default("lattice"),
   enableTableStructure: z.boolean().default(true),
   debugDoclingTables: z.boolean().default(false),
+  fileHash: z.string().trim().min(1).max(128).optional(),
 });
 
 export const DocumentChunkPayloadSchema = z.object({
@@ -38,6 +39,7 @@ export const DocumentImportCallbackSchema = z.object({
   warningMessages: z.array(z.string()).optional(),
   errorMessage: z.string().optional(),
   chunks: z.array(DocumentChunkPayloadSchema).optional(),
+  thumbnailPath: z.string().optional(),
 });
 
 export type CreateDocumentImportInput = z.infer<

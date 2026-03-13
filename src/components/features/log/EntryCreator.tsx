@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, Fragment, useEffect, useMemo } from "react";
+import React, { useState, useRef, Fragment, useEffect, useMemo, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
@@ -38,6 +38,7 @@ import {
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
+import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
 import {
   DndContext,
@@ -108,16 +109,18 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   };
 
   interface PdfAttachmentState {
-    documentId: string;
+    documentId?: string;
     titleSnapshot: string;
     pageCount: number;
     author: string | null;
     creationDate: string | null;
-    storagePath: string;
+    storagePath?: string;
+    thumbnailPath?: string | null;
     previewUrl: string | null;
     annotationText?: string | null;
     referencedPersonaId?: string | null;
     referencedPage?: number | null;
+    fileHash?: string;
   }
 
   type SectionState =
@@ -142,11 +145,23 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const [pdfPickerTargetInstanceId, setPdfPickerTargetInstanceId] = useState<
     string | null
   >(null);
+  const [importModalFiles, setImportModalFiles] = useState<
+    Array<{ file: File; hash?: string }>
+  >([]);
   const [parsedPreview, setParsedPreview] = useState<{
     documentId: string;
     title: string;
     markdown: string;
   } | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<{
+    documentId?: string;
+    title: string;
+    previewUrl: string | null;
+    importStatus?: string;
+  } | null>(null);
+  const [activePreviewTab, setActivePreviewTab] = useState<"pdf" | "parsed">(
+    "pdf",
+  );
   const [parsedPreviewLoading, setParsedPreviewLoading] = useState(false);
   const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
     null,
@@ -158,50 +173,42 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     for (const section of sections) {
       if (section.kind !== "PDF") continue;
       for (const attachment of section.attachments) {
-        ids.add(attachment.documentId);
+        if (attachment.documentId) {
+          ids.add(attachment.documentId);
+        }
       }
     }
     return Array.from(ids);
   }, [sections]);
 
-  const { data: attachedDocumentStatuses, isLoading: attachedStatusLoading } =
-    useQuery({
-      queryKey: ["entry-creator-attached-doc-status", streamId, attachedDocumentIds],
-      queryFn: async () => {
-        if (attachedDocumentIds.length === 0) {
-          return new Map<string, string>();
-        }
-        const { data, error } = await supabase
-          .from("documents")
-          .select("id, import_status")
-          .in("id", attachedDocumentIds);
-        if (error) throw error;
+  const { documents: importedDocuments, isLoading: isDocumentsLoading } = useDocuments(streamId);
 
-        const statusMap = new Map<string, string>();
-        for (const row of data ?? []) {
-          statusMap.set(row.id, row.import_status ?? "unknown");
-        }
-        return statusMap;
-      },
-      enabled: attachedDocumentIds.length > 0,
-    });
+  const attachedDocDetails = useMemo(() => {
+    const map = new Map<string, DocumentWithLatestJob>();
+    for (const doc of importedDocuments) {
+      if (attachedDocumentIds.includes(doc.id)) {
+        map.set(doc.id, doc);
+      }
+    }
+    return map;
+  }, [importedDocuments, attachedDocumentIds]);
 
   const unparsedAttachedCount = useMemo(() => {
     if (attachedDocumentIds.length === 0) return 0;
-    if (!attachedDocumentStatuses) return attachedDocumentIds.length;
-
+    
     let count = 0;
     for (const id of attachedDocumentIds) {
-      const status = attachedDocumentStatuses.get(id);
+      const doc = attachedDocDetails.get(id);
+      const status = doc?.latestJob?.status ?? doc?.import_status;
       if (status !== "completed") count += 1;
     }
     return count;
-  }, [attachedDocumentIds, attachedDocumentStatuses]);
+  }, [attachedDocumentIds, attachedDocDetails]);
 
   const hasUnparsedAttachments = unparsedAttachedCount > 0;
   const commitBlockedByPdfStatus =
     attachedDocumentIds.length > 0 &&
-    (attachedStatusLoading || hasUnparsedAttachments);
+    (isDocumentsLoading || hasUnparsedAttachments);
 
   const { data: branches, refetch: refetchBranches } = useQuery({
     queryKey: ["branches", streamId],
@@ -215,6 +222,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     },
     enabled: !!streamId,
   });
+
 
   // Refs for editors to clear them
   const editorRefs = useRef<Record<string, BlockNoteEditorType>>({});
@@ -283,7 +291,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         return a.name.localeCompare(b.name);
       })
       .slice(0, 3);
-  }, [personas, personaUsageCounts]);
+  // Recompute when persona ids/names change or when usage counts change.
+  }, [personaUsageCounts, personas]);
 
   const trackPersonaUsage = (personaId: string) => {
     setPersonaUsageCounts((prev) => ({
@@ -306,17 +315,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   displayMode: draft.pdfDisplayMode ?? "inline",
                   attachments: (draft.pdfAttachments ?? []).map(
                     (attachment) => ({
-                      documentId: attachment.documentId,
+                      documentId: attachment.documentId ?? "",
                       titleSnapshot: attachment.titleSnapshot,
                       pageCount: 0,
                       author: null,
                       creationDate: null,
-                      storagePath: "",
+                      storagePath: attachment.storagePath ?? "",
+                      thumbnailPath: null,
                       previewUrl: null,
                       annotationText: attachment.annotationText ?? null,
                       referencedPersonaId:
                         attachment.referencedPersonaId ?? null,
                       referencedPage: attachment.referencedPage ?? null,
+                      fileHash: attachment.fileHash,
                     }),
                   ),
                   note: "",
@@ -339,6 +350,114 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       // Let the user explicitly select a persona or add a section
     }
   }, [initialDrafts, isLoading, sections.length, discardedRecovery]);
+
+  const persistPdfSection = useCallback(
+    (
+      instanceId: string,
+      draft?: Extract<SectionState, { kind: "PDF" }>,
+    ) => {
+      const section =
+        draft ??
+        sections.find((s) => s.instanceId === instanceId && s.kind === "PDF");
+      if (!section || section.kind !== "PDF") return;
+
+      savePdfDraft(instanceId, {
+        displayMode: section.displayMode,
+        attachments: section.attachments.map((attachment) => ({
+          documentId: attachment.documentId,
+          storagePath: attachment.storagePath,
+          titleSnapshot: attachment.titleSnapshot,
+          annotationText: attachment.annotationText ?? null,
+          referencedPersonaId: attachment.referencedPersonaId ?? null,
+          referencedPage: attachment.referencedPage ?? null,
+          fileHash: attachment.fileHash,
+        })),
+        content: [],
+      });
+    },
+    [sections, savePdfDraft],
+  );
+
+  // Watch imported documents and automatically update pending attachments
+  // or add a PDF section when a document finishes importing.
+  useEffect(() => {
+    if (!importedDocuments || importedDocuments.length === 0) return;
+
+    let hasChanges = false;
+    const nextSections = [...sections];
+
+    for (const doc of importedDocuments) {
+      const sourceMeta = (doc.source_metadata ?? {}) as {
+        pageCount?: number;
+        extractedAuthor?: string;
+        extractedCreationDate?: string;
+        previewUrl?: string;
+        fileHash?: string;
+      };
+
+      // 1. Update any pending attachments that match this document's ID or hash
+      for (let i = 0; i < nextSections.length; i++) {
+        const section = nextSections[i];
+        if (section.kind !== "PDF") continue;
+
+        let sectionChanged = false;
+        const nextAttachments = section.attachments.map((att) => {
+          const isMatchById = att.documentId === doc.id;
+          const isMatchByHash =
+            att.fileHash && sourceMeta.fileHash === att.fileHash;
+
+          if (isMatchById || isMatchByHash) {
+            const nextPreviewUrl = sourceMeta.previewUrl ?? att.previewUrl ?? null;
+            const nextPageCount = sourceMeta.pageCount ?? att.pageCount ?? 0;
+            const nextAuthor = sourceMeta.extractedAuthor ?? att.author ?? null;
+            const nextCreationDate = sourceMeta.extractedCreationDate ?? doc.created_at ?? att.creationDate ?? null;
+            
+            if (
+              att.documentId !== doc.id ||
+              att.storagePath !== doc.storage_path ||
+              att.thumbnailPath !== doc.thumbnail_path ||
+              att.pageCount !== nextPageCount ||
+              att.author !== nextAuthor ||
+              att.creationDate !== nextCreationDate ||
+              att.previewUrl !== nextPreviewUrl
+            ) {
+              sectionChanged = true;
+              hasChanges = true;
+              return {
+                ...att,
+                documentId: doc.id,
+                storagePath: doc.storage_path,
+                thumbnailPath: doc.thumbnail_path,
+                pageCount: nextPageCount,
+                author: nextAuthor,
+                creationDate: nextCreationDate,
+                previewUrl: nextPreviewUrl,
+              };
+            }
+          }
+          return att;
+        });
+
+        if (sectionChanged) {
+          nextSections[i] = { ...section, attachments: nextAttachments };
+          persistPdfSection(
+            section.instanceId,
+            nextSections[i] as Extract<SectionState, { kind: "PDF" }>,
+          );
+        }
+      }
+    }
+
+    if (hasChanges) {
+      setSections(nextSections);
+    }
+  }, [
+    importedDocuments,
+    attachedDocumentIds,
+    savePdfDraft,
+    sections,
+    persistPdfSection,
+  ]);
 
   const handleKeepRecovery = () => {
     setDiscardedRecovery(false);
@@ -389,19 +508,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           newSections.push({ instanceId, kind: "PERSONA" as const, personaId: turn.personaId });
         } else {
           // PDF turn — create one PDF section that may contain multiple attachments
-          const attachments = turn.attachments?.length
-            ? turn.attachments
-            : turn.documentId && turn.storagePath
-              ? [
-                  {
-                    documentId: turn.documentId,
-                    storagePath: turn.storagePath,
-                    titleSnapshot: turn.titleSnapshot ?? "Document",
-                  },
-                ]
-              : [];
+          const attachments = turn.attachments;
 
-          if (attachments.length === 0) {
+          if (!attachments || attachments.length === 0) {
             continue;
           }
 
@@ -409,10 +518,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             displayMode: "inline",
             attachments: attachments.map((attachment) => ({
               documentId: attachment.documentId,
+              storagePath: attachment.storagePath,
               titleSnapshot: attachment.titleSnapshot ?? "Document",
               annotationText: null,
               referencedPersonaId: null,
               referencedPage: null,
+              fileHash: attachment.fileHash,
+              previewUrl: attachment.previewUrl ?? null,
             })),
             content: [],
           });
@@ -427,10 +539,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               author: null,
               creationDate: null,
               storagePath: attachment.storagePath,
-              previewUrl: null,
+              thumbnailPath: attachment.thumbnailPath ?? null,
+              previewUrl: attachment.previewUrl ?? null,
               annotationText: null,
               referencedPersonaId: null,
               referencedPage: null,
+              fileHash: attachment.fileHash,
             })),
             note: "",
             isUploading: false,
@@ -656,28 +770,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     );
   };
 
-  const persistPdfSection = (
-    instanceId: string,
-    draft?: Extract<SectionState, { kind: "PDF" }>,
-  ) => {
-    const section =
-      draft ??
-      sections.find((s) => s.instanceId === instanceId && s.kind === "PDF");
-    if (!section || section.kind !== "PDF") return;
-
-    savePdfDraft(instanceId, {
-      displayMode: section.displayMode,
-      attachments: section.attachments.map((attachment) => ({
-        documentId: attachment.documentId,
-        titleSnapshot: attachment.titleSnapshot,
-        annotationText: attachment.annotationText ?? null,
-        referencedPersonaId: attachment.referencedPersonaId ?? null,
-        referencedPage: attachment.referencedPage ?? null,
-      })),
-      content: [],
-    });
-  };
-
   const attachDocumentToPdfSection = async (
     instanceId: string,
     document: DocumentWithLatestJob,
@@ -703,9 +795,28 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       return;
     }
 
-    const signed = await supabase.storage
-      .from("document-files")
-      .createSignedUrl(document.storage_path, 60 * 30);
+    let previewUrl: string | null = null;
+    
+    try {
+      if (!document.storage_path) {
+        console.warn(`Document ${document.id} has no storage_path`);
+      } else {
+        const signed = await supabase.storage
+          .from("document-files")
+          .createSignedUrl(document.storage_path, 60 * 30);
+
+        if (signed.error) {
+          console.warn(
+            `Failed to create signed URL for ${document.storage_path}:`,
+            signed.error,
+          );
+        } else if (signed.data?.signedUrl) {
+          previewUrl = signed.data.signedUrl;
+        }
+      }
+    } catch (error) {
+      console.error(`Error creating signed URL for document ${document.id}:`, error);
+    }
 
     const sourceMetadata = (document.source_metadata ?? {}) as {
       pageCount?: number;
@@ -720,7 +831,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       author: sourceMetadata.extractedAuthor ?? null,
       creationDate: sourceMetadata.extractedCreationDate ?? null,
       storagePath: document.storage_path,
-      previewUrl: signed.data?.signedUrl ?? null,
+      thumbnailPath: document.thumbnail_path,
+      previewUrl,
       annotationText: null,
       referencedPersonaId: null,
       referencedPage: null,
@@ -793,6 +905,39 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       markdown: data.extracted_markdown,
     });
     setParsedPreviewLoading(false);
+  };
+
+  const openAttachmentPreview = (
+    attachment: PdfAttachmentState,
+    importStatus?: string,
+    preferredTab?: "pdf" | "parsed",
+  ) => {
+    const nextTab =
+      preferredTab ??
+      (importStatus === "completed" && attachment.documentId ? "parsed" : "pdf");
+
+    setAttachmentPreview({
+      documentId: attachment.documentId,
+      title: attachment.titleSnapshot,
+      previewUrl: attachment.previewUrl,
+      importStatus,
+    });
+    setActivePreviewTab(nextTab);
+
+    setParsedPreview(null);
+    setParsedPreviewError(null);
+
+    if (nextTab === "parsed" && attachment.documentId) {
+      void openParsedPreview(attachment.documentId, attachment.titleSnapshot);
+    }
+  };
+
+  const closeAttachmentPreview = () => {
+    if (parsedPreviewLoading) return;
+    setAttachmentPreview(null);
+    setParsedPreview(null);
+    setParsedPreviewError(null);
+    setActivePreviewTab("pdf");
   };
 
   const sensors = useSensors(useSensor(PointerSensor));
@@ -966,7 +1111,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                     <SortableSection key={instanceId} id={instanceId}>
                       {(dragHandleProps) => (
                         <div className="flex flex-col">
-                          <div className="flex items-center justify-between px-4 py-1.5 bg-surface-subtle/50 border-y border-border-subtle/70">
+                          <div className="flex items-center justify-between px-4 py-1 bg-surface-subtle/50 border-y border-border-subtle/70">
                             <div className="flex items-center gap-2">
                               <button
                                 className="cursor-grab rounded-sm p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
@@ -1060,7 +1205,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </button>
                           </div>
 
-                          <div className="p-4">
+                          <div className="px-4">
                             <BlockNoteEditor
                               initialContent={getDraftContent(instanceId)}
                               onChange={(content) => {
@@ -1099,17 +1244,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   pdfSection.attachments.length > 0
                     ? pdfSection.attachments
                     : pdfDraft.attachments.map((attachment) => ({
-                        documentId: attachment.documentId,
+                        documentId: attachment.documentId ?? "",
+                        storagePath: attachment.storagePath ?? "",
                         titleSnapshot: attachment.titleSnapshot,
                         pageCount: 0,
                         author: null,
                         creationDate: null,
-                        storagePath: "",
+                        thumbnailPath: null,
                         previewUrl: null,
                         annotationText: attachment.annotationText ?? null,
                         referencedPersonaId:
                           attachment.referencedPersonaId ?? null,
                         referencedPage: attachment.referencedPage ?? null,
+                        fileHash: attachment.fileHash,
                       }));
 
                 return (
@@ -1142,15 +1289,32 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                         <div className="p-4 space-y-3">
                           <div className="flex flex-wrap items-center gap-2">
+                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
+                              <Upload className="h-3 w-3" />
+                              Upload PDF
+                              <input
+                                type="file"
+                                accept="application/pdf"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setImportModalFiles([{ file }]);
+                                  setPdfPickerTargetInstanceId(instanceId);
+                                }}
+                              />
+                            </label>
+
                             <button
                               type="button"
-                              className="inline-flex items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default hover:bg-surface-default"
-                              onClick={() =>
-                                setPdfPickerTargetInstanceId(instanceId)
-                              }
+                              className="inline-flex items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
+                              onClick={() => {
+                                setImportModalFiles([]);
+                                setPdfPickerTargetInstanceId(instanceId);
+                              }}
                             >
-                              <Upload className="h-3 w-3" />
-                              Import / Select PDF
+                              <FileText className="h-3 w-3" />
+                              Select from Library
                             </button>
 
                             {section.isUploading && (
@@ -1168,56 +1332,115 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {effectiveAttachments.map((attachment) => (
-                                <div
-                                  key={attachment.documentId}
-                                  className="cursor-pointer rounded-sm border border-border-subtle bg-surface-default px-3 py-2 transition-colors hover:bg-surface-subtle"
-                                  role="button"
-                                  tabIndex={0}
-                                  onClick={() =>
-                                    void openParsedPreview(
-                                      attachment.documentId,
-                                      attachment.titleSnapshot,
-                                    )
-                                  }
-                                  onKeyDown={(event) => {
-                                    if (
-                                      event.key === "Enter" ||
-                                      event.key === " "
-                                    ) {
-                                      event.preventDefault();
-                                      void openParsedPreview(
-                                        attachment.documentId,
-                                        attachment.titleSnapshot,
-                                      );
-                                    }
-                                  }}
-                                  title="Open parsed Docling content"
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <PdfAttachmentThumbnail
-                                        url={attachment.previewUrl}
-                                        title={attachment.titleSnapshot}
+                              {effectiveAttachments.map((attachment) => {
+                                const docDetail = attachment.documentId ? attachedDocDetails.get(attachment.documentId) : null;
+                                const latestJob = docDetail?.latestJob;
+                                const importStatus = docDetail?.import_status ?? latestJob?.status;
+                                const isProcessing = importStatus === "queued" || importStatus === "processing";
+                                const canOpenParsed = importStatus === "completed" && !!attachment.documentId;
+                                const progressPercent = latestJob?.progress_percent ?? 0;
+                                const progressMessage = latestJob?.progress_message;
+
+                                return (
+                                  <div
+                                    key={attachment.documentId || attachment.fileHash || attachment.titleSnapshot}
+                                    className={`relative overflow-hidden rounded-sm border border-border-subtle bg-surface-default px-3 py-2 transition-colors ${
+                                      "cursor-default"
+                                    }`}
+                                    title={isProcessing ? "Processing Docling..." : "Attachment actions"}
+                                  >
+                                    {/* Progress bar background */}
+                                    {isProcessing && (
+                                      <div
+                                        className="absolute bottom-0 left-0 h-0.5 bg-action-primary-bg/30 transition-all duration-500 ease-out"
+                                        style={{ width: `${progressPercent}%` }}
                                       />
-                                      <div>
-                                        <div className="text-xs font-medium text-text-default">
-                                          {attachment.titleSnapshot}
+                                    )}
+
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="flex items-center gap-2">
+                                        <div className="relative">
+                                          <PdfAttachmentThumbnail
+                                            url={attachment.previewUrl}
+                                            storagePath={attachment.storagePath}
+                                            thumbnailPath={attachment.thumbnailPath ?? docDetail?.thumbnail_path ?? null}
+                                            title={attachment.titleSnapshot}
+                                          />
+                                          {isProcessing && (
+                                            <div className="absolute inset-0 flex items-center justify-center rounded-sm bg-black/5 backdrop-blur-[1px]">
+                                              <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
+                                            </div>
+                                          )}
                                         </div>
-                                        <div className="text-[11px] text-text-muted">
-                                          {attachment.pageCount > 0
-                                            ? `${attachment.pageCount} pages`
-                                            : "PDF"}
-                                          {attachment.author
-                                            ? ` • ${attachment.author}`
-                                            : ""}
+                                        <div>
+                                          <div className="text-xs font-medium text-text-default">
+                                            {attachment.titleSnapshot}
+                                          </div>
+                                          <div className="flex flex-col gap-0.5">
+                                            <div className="text-[11px] text-text-muted">
+                                              {attachment.pageCount > 0
+                                                ? `${attachment.pageCount} pages`
+                                                : "PDF"}
+                                              {attachment.author
+                                                ? ` • ${attachment.author}`
+                                                : ""}
+                                            </div>
+                                            {isProcessing && (
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="text-[10px] font-medium text-action-primary-bg">
+                                                  {progressPercent}%
+                                                </span>
+                                                {progressMessage && (
+                                                  <span className="truncate text-[10px] text-text-subtle">
+                                                    {progressMessage}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
 
-                                    <div className="flex items-center gap-1">
-                                      {attachment.previewUrl && (
-                                        <>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            openAttachmentPreview(
+                                              attachment,
+                                              importStatus,
+                                              "pdf",
+                                            );
+                                          }}
+                                          className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                          aria-label={`Preview ${attachment.titleSnapshot}`}
+                                          title="Open PDF preview"
+                                        >
+                                          <Eye className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            if (!canOpenParsed) return;
+                                            openAttachmentPreview(
+                                              attachment,
+                                              importStatus,
+                                              "parsed",
+                                            );
+                                          }}
+                                          disabled={!canOpenParsed}
+                                          className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                                          aria-label={`Open parsed Docling for ${attachment.titleSnapshot}`}
+                                          title={
+                                            canOpenParsed
+                                              ? "Open parsed Docling content"
+                                              : "Parsed content not ready"
+                                          }
+                                        >
+                                          <FileText className="h-3.5 w-3.5" />
+                                        </button>
+                                        {attachment.previewUrl && (
                                           <a
                                             href={attachment.previewUrl}
                                             target="_blank"
@@ -1226,49 +1449,48 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               event.stopPropagation();
                                             }}
                                             className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                                            aria-label="Open PDF preview"
+                                            aria-label="Open PDF in new tab"
+                                            title="Open in new tab"
                                           >
                                             {section.displayMode ===
                                             "download" ? (
                                               <Download className="h-3.5 w-3.5" />
-                                            ) : section.displayMode ===
-                                              "external" ? (
-                                              <ExternalLink className="h-3.5 w-3.5" />
                                             ) : (
-                                              <Eye className="h-3.5 w-3.5" />
+                                              <ExternalLink className="h-3.5 w-3.5" />
                                             )}
                                           </a>
-                                          {section.displayMode === "inline" && (
-                                            <iframe
-                                              src={attachment.previewUrl}
-                                              className="h-24 w-40 rounded-sm border border-border-subtle"
-                                              title={`Inline preview for ${attachment.titleSnapshot}`}
-                                            />
-                                          )}
-                                        </>
-                                      )}
-                                      <button
-                                        onClick={() =>
-                                          removePdfAttachment(
-                                            instanceId,
-                                            attachment.documentId,
-                                          )
-                                        }
-                                        onMouseDown={(event) => {
-                                          event.stopPropagation();
-                                        }}
-                                        onClickCapture={(event) => {
-                                          event.stopPropagation();
-                                        }}
-                                        className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                                        aria-label={`Remove ${attachment.titleSnapshot}`}
-                                      >
-                                        <X className="h-3.5 w-3.5" />
-                                      </button>
+                                        )}
+                                        <button
+                                          onClick={() => {
+                                            if (attachment.documentId) {
+                                              removePdfAttachment(
+                                                instanceId,
+                                                attachment.documentId,
+                                              );
+                                            } else {
+                                              // Remove pending attachment
+                                              updatePdfSection(instanceId, (s) => ({
+                                                ...s,
+                                                attachments: s.attachments.filter(a => a !== attachment)
+                                              }));
+                                            }
+                                          }}
+                                          onMouseDown={(event) => {
+                                            event.stopPropagation();
+                                          }}
+                                          onClickCapture={(event) => {
+                                            event.stopPropagation();
+                                          }}
+                                          className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                          aria-label={`Remove ${attachment.titleSnapshot}`}
+                                        >
+                                          <X className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -1308,7 +1530,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
         {commitBlockedByPdfStatus && (
           <div className="mx-3 mb-2 rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-            {attachedStatusLoading
+            {isDocumentsLoading
               ? "Checking PDF parse status before commit..."
               : `${unparsedAttachedCount} attached PDF file${unparsedAttachedCount === 1 ? " is" : "s are"} not fully parsed yet. Wait until status is Ready in import queue.`}
           </div>
@@ -1317,36 +1539,72 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
       <DocumentImportModal
         isOpen={!!pdfPickerTargetInstanceId}
-        onClose={() => setPdfPickerTargetInstanceId(null)}
+        onClose={() => {
+          setPdfPickerTargetInstanceId(null);
+          setImportModalFiles([]);
+        }}
         streamId={streamId}
         onSelectDocument={(document) => {
           if (!pdfPickerTargetInstanceId) return;
           void attachDocumentToPdfSection(pdfPickerTargetInstanceId, document);
         }}
+        initialQueuedFiles={importModalFiles}
       />
 
       <Dialog
-        open={parsedPreviewLoading || !!parsedPreview || !!parsedPreviewError}
-        onClose={() => {
-          if (parsedPreviewLoading) return;
-          setParsedPreview(null);
-          setParsedPreviewError(null);
-        }}
+        open={!!attachmentPreview}
+        onClose={closeAttachmentPreview}
         className="relative z-50"
       >
         <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-border-default bg-surface-default shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
-              <DialogTitle className="text-sm font-semibold text-text-default">
-                {parsedPreview?.title ?? "Parsed PDF Content"}
-              </DialogTitle>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="truncate text-sm font-semibold text-text-default">
+                  {attachmentPreview?.title ?? parsedPreview?.title ?? "PDF Preview"}
+                </DialogTitle>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePreviewTab("pdf");
+                    }}
+                    className={`rounded-sm px-2 py-1 text-[11px] font-medium transition-colors ${
+                      activePreviewTab === "pdf"
+                        ? "bg-action-primary-bg text-white"
+                        : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
+                    }`}
+                  >
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActivePreviewTab("parsed");
+                      if (
+                        attachmentPreview?.documentId &&
+                        parsedPreview?.documentId !== attachmentPreview.documentId
+                      ) {
+                        void openParsedPreview(
+                          attachmentPreview.documentId,
+                          attachmentPreview.title,
+                        );
+                      }
+                    }}
+                    className={`rounded-sm px-2 py-1 text-[11px] font-medium transition-colors ${
+                      activePreviewTab === "parsed"
+                        ? "bg-action-primary-bg text-white"
+                        : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
+                    }`}
+                  >
+                    Parsed
+                  </button>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  setParsedPreview(null);
-                  setParsedPreviewError(null);
-                }}
+                onClick={closeAttachmentPreview}
                 disabled={parsedPreviewLoading}
                 className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
                 aria-label="Close parsed content preview"
@@ -1356,23 +1614,47 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             </div>
 
             <div className="min-h-40 max-h-[70vh] overflow-auto p-4">
-              {parsedPreviewLoading && (
-                <div className="flex items-center gap-2 text-sm text-text-muted">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading parsed content...
-                </div>
+              {activePreviewTab === "pdf" && (
+                attachmentPreview?.previewUrl ? (
+                  <iframe
+                    src={attachmentPreview.previewUrl}
+                    className="h-[68vh] w-full rounded-sm border border-border-subtle bg-surface-subtle"
+                    title={`PDF preview for ${attachmentPreview.title}`}
+                  />
+                ) : (
+                  <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">
+                    Preview is not available for this attachment yet.
+                  </div>
+                )
               )}
 
-              {!parsedPreviewLoading && parsedPreviewError && (
-                <div className="rounded-sm border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
-                  {parsedPreviewError}
-                </div>
-              )}
+              {activePreviewTab === "parsed" && (
+                <>
+                  {attachmentPreview?.importStatus !== "completed" && (
+                    <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                      Parsed Docling output is not ready yet. Wait until import status is completed.
+                    </div>
+                  )}
 
-              {!parsedPreviewLoading && !parsedPreviewError && parsedPreview && (
-                <pre className="whitespace-pre-wrap wrap-break-word rounded-sm border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
-                  {parsedPreview.markdown}
-                </pre>
+                  {attachmentPreview?.importStatus === "completed" && parsedPreviewLoading && (
+                    <div className="flex items-center gap-2 text-sm text-text-muted">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading parsed content...
+                    </div>
+                  )}
+
+                  {attachmentPreview?.importStatus === "completed" && !parsedPreviewLoading && parsedPreviewError && (
+                    <div className="rounded-sm border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
+                      {parsedPreviewError}
+                    </div>
+                  )}
+
+                  {attachmentPreview?.importStatus === "completed" && !parsedPreviewLoading && !parsedPreviewError && parsedPreview && (
+                    <pre className="whitespace-pre-wrap wrap-break-word rounded-sm border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
+                      {parsedPreview.markdown}
+                    </pre>
+                  )}
+                </>
               )}
             </div>
           </DialogPanel>

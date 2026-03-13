@@ -54,6 +54,12 @@ export type DocumentEntryLinkInsert =
 export type DocumentEntryLinkUpdate =
   Database["public"]["Tables"]["document_entry_links"]["Update"];
 
+export type DocumentWithAssets = Document & {
+  chunks?: DocumentChunk[];
+  thumbnailUrl?: string;
+  fileUrl?: string;
+};
+
 export type Section = Database["public"]["Tables"]["sections"]["Row"];
 export type SectionInsert = Database["public"]["Tables"]["sections"]["Insert"];
 export type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
@@ -81,6 +87,8 @@ export type DocumentImportStatus =
 
 export interface DocumentWithLatestJob extends Document {
   latestJob?: DocumentImportJob | null;
+  fileUrl?: string | null;
+  thumbnailUrl?: string | null;
 }
 
 export interface DocumentImportDispatchResult {

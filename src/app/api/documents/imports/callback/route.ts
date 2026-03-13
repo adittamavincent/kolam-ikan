@@ -108,6 +108,7 @@ export async function POST(request: Request) {
     import_status: payload.status,
     extracted_markdown: payload.extractedMarkdown,
     extraction_metadata: payload.extractionMetadata ?? {},
+    thumbnail_path: payload.thumbnailPath,
   };
 
   const { error: documentError } = await admin

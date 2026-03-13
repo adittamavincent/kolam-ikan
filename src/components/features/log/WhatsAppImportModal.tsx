@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Dialog,
   DialogBackdrop,
@@ -25,9 +26,45 @@ import {
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 import { createClient } from "@/lib/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+
+// ─── Global temp file store ──────────────────────────────────────────────────
+// Use a Map to temporarily store File objects since they don't serialize well through events
+declare global {
+  interface Window {
+    kolam_temp_files?: Map<string, { file: File; hash?: string; blobUrl?: string }>;  
+    kolam_pending_file_ids?: string[];
+  }
+}
+
+const getTempFileStore = (): Map<string, { file: File; hash?: string; blobUrl?: string }> => {
+  if (typeof window === "undefined") return new Map();
+  if (!window.kolam_temp_files) {
+    window.kolam_temp_files = new Map();
+  }
+  return window.kolam_temp_files;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const getPendingFileIds = (): string[] => {
+  if (typeof window === "undefined") return [];
+  if (!window.kolam_pending_file_ids) {
+    window.kolam_pending_file_ids = [];
+  }
+  return window.kolam_pending_file_ids;
+};
+
+const setPendingFileIds = (ids: string[]): void => {
+  if (typeof window === "undefined") return;
+  window.kolam_pending_file_ids = ids;
+  console.log("[WhatsApp] Set pending file IDs:", ids);
+};
+
+const generateFileId = (): string => `file_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 import JSZip from "jszip";
+import { calculateFileHash } from "@/lib/utils/hash";
 
 // ─── Inject payload (consumed by EntryCreator) ────────────────────────────────
 
@@ -39,13 +76,14 @@ export interface WhatsAppInjectPayload {
         type: "pdf";
         personaId: string;
         personaName: string;
-        documentId?: string;
-        storagePath?: string;
-        titleSnapshot?: string;
         attachments: Array<{
-          documentId: string;
-          storagePath: string;
+          documentId?: string;
+          storagePath?: string;
+          thumbnailPath?: string;
+          previewUrl?: string;
           titleSnapshot: string;
+          file?: File;
+          fileHash?: string;
         }>;
       }
   >;
@@ -69,6 +107,7 @@ interface PdfUploadState {
   file?: File;
   documentId?: string;
   storagePath?: string;
+  thumbnailPath?: string;
   titleSnapshot?: string;
   error?: string;
 }
@@ -84,17 +123,26 @@ type Step = "paste" | "range" | "map" | "files";
 
 // iOS: [3/10/26, 7:42:30 PM] Name: text
 const IOS_MSG_RE =
-  /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*[\d:]+\s*[AP]M\]\s*([^:[\]]+):\s*([\s\S]+)/;
+  /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*[\d:.]+(?:\s*[AP]\.?M\.?)?\]\s*([^:[\]]+):\s*([\s\S]*)$/i;
 // Android: 3/10/2026, 7:42 PM - Name: text
 const ANDROID_MSG_RE =
-  /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*[\d:]+\s*[AP]M\s*-\s*([^:]+):\s*([\s\S]+)/;
+  /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*[\d:.]+(?:\s*[AP]\.?M\.?)?\s*-\s*([^:]+):\s*([\s\S]*)$/i;
 
-function stripInvisible(s: string): string {
-  // Strip leading Unicode directional / invisible marks WhatsApp inserts
-  return s.replace(/^[\u200E\u200F\u202A-\u202E\u2066-\u2069]+/, "").trim();
+function normalizeWhatsAppHeaderLine(s?: string): string {
+  const inStr = s ?? "";
+  return inStr
+    .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, "")
+    .replace(/[\u00A0\u202F]/g, " ")
+    .trimStart();
 }
 
-function normalizeSenderName(rawSender: string): string {
+function stripInvisible(s?: string): string {
+  const inStr = s ?? "";
+  // Strip leading Unicode directional / invisible marks WhatsApp inserts
+  return inStr.replace(/^[\u200E\u200F\u202A-\u202E\u2066-\u2069]+/, "").trim();
+}
+
+function normalizeSenderName(rawSender?: string): string {
   return stripInvisible(rawSender)
     .replace(/^~+\s*/, "")
     .replace(/\s+/g, " ")
@@ -110,18 +158,18 @@ interface ClassifiedText {
   mediaKind?: string;
 }
 
-function derivePreferredPdfTitle(caption: string, fallbackFilename: string): string | undefined {
-  const trimmed = caption.trim();
+function derivePreferredPdfTitle(caption?: string, fallbackFilename?: string): string | undefined {
+  const trimmed = (caption ?? "").trim();
   if (!trimmed) return undefined;
 
   const beforeMeta = trimmed.split("•")[0]?.trim() ?? trimmed;
   const cleaned = beforeMeta.replace(/\s{2,}/g, " ").replace(/\.pdf$/i, "").trim();
-  const fallbackBase = fallbackFilename.replace(/\.pdf$/i, "").trim().toLowerCase();
+  const fallbackBase = (fallbackFilename ?? "").replace(/\.pdf$/i, "").trim().toLowerCase();
   if (!cleaned || cleaned.toLowerCase() === fallbackBase) return undefined;
   return cleaned;
 }
 
-function classifyText(raw: string): ClassifiedText {
+function classifyText(raw?: string): ClassifiedText {
   const t = stripInvisible(raw);
 
   // Inline attachment marker, e.g.:
@@ -196,7 +244,6 @@ function parseRawMessages(raw: string): RawMessage[] {
   const lines = raw.split("\n");
   const result: RawMessage[] = [];
   let current: { sender: string; senderRaw: string; text: string } | null = null;
-
   const flush = () => {
     if (!current) return;
     const classified = classifyText(current.text);
@@ -209,9 +256,11 @@ function parseRawMessages(raw: string): RawMessage[] {
     }
     current = null;
   };
-
-  for (const line of lines) {
-    const normalizedLine = stripInvisible(line);
+  let lastLine = "";
+  try {
+    for (const [, line] of lines.entries()) {
+      lastLine = line;
+      const normalizedLine = normalizeWhatsAppHeaderLine(line);
     const iosM = normalizedLine.match(IOS_MSG_RE);
     const androidM = !iosM ? normalizedLine.match(ANDROID_MSG_RE) : null;
     const m = iosM ?? androidM;
@@ -220,12 +269,18 @@ function parseRawMessages(raw: string): RawMessage[] {
       flush();
       const senderRaw = stripInvisible(m[2]);
       const sender = normalizeSenderName(senderRaw) || senderRaw || "Unknown";
-      const msgText = m[3].trim();
-      if (sender && msgText) current = { sender, senderRaw, text: msgText };
+      const msgText = stripInvisible(m[3]).trim();
+      if (sender) current = { sender, senderRaw, text: msgText };
     } else if (current) {
       const trimmed = stripInvisible(line).trimEnd();
-      if (trimmed) current.text += "\n" + trimmed;
-    }
+        if (trimmed) current.text += "\n" + trimmed;
+        }
+      }
+    } catch (err) {
+    // Help debugging: log the offending line and rethrow
+     
+    console.error("parseRawMessages failed processing line:", lastLine, err);
+    throw err;
   }
   flush();
   return result;
@@ -282,13 +337,28 @@ function getMappableSenders(turns: ParsedTurn[]): string[] {
     });
 }
 
-function normalizeAttachmentKey(value: string): string {
-  return value
+function normalizeAttachmentKey(value?: string): string {
+  const inVal = value ?? "";
+  return inVal
     .replace(/\\/g, "/")
     .split("/")
     .pop()
     ?.trim()
-    .toLowerCase() ?? "";
+    ?.toLowerCase() ?? "";
+}
+
+function formatBytes(bytes: number | undefined | null): string {
+  if (!bytes && bytes !== 0) return "";
+  const thresh = 1024;
+  if (Math.abs(bytes) < thresh) return bytes + " B";
+  const units = ["KB", "MB", "GB", "TB"];
+  let u = -1;
+  let b = bytes;
+  do {
+    b = b / thresh;
+    u++;
+  } while (Math.abs(b) >= thresh && u < units.length - 1);
+  return `${b.toFixed(b >= 10 ? 0 : 1)} ${units[u]}`;
 }
 
 function indexPdfFile(index: Record<string, File[]>, key: string, file: File) {
@@ -415,6 +485,55 @@ export function WhatsAppImportModal({
   const [zipLoading, setZipLoading] = useState(false);
   const [zipAutoUploadRan, setZipAutoUploadRan] = useState(false);
   const zipInputRef = useRef<HTMLInputElement>(null);
+
+  // Preview tooltip state (custom tooltip with configurable timing)
+  const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [tooltipContent, setTooltipContent] = useState<string | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; width: number } | null>(null);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const TOOLTIP_SHOW_DELAY = 300; // ms (slower show)
+  const TOOLTIP_HIDE_DELAY = 200; // ms
+
+  useEffect(() => {
+    return () => {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, []);
+
+  const handlePreviewMouseEnter = (e: React.MouseEvent, idx: number, content: string) => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const left = Math.max(8, rect.left);
+    const top = rect.bottom + 8; // small gap
+    const maxWidth = Math.min(400, window.innerWidth - left - 16);
+    setTooltipPos({ left, top, width: maxWidth });
+    setTooltipContent(content);
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    tooltipTimerRef.current = setTimeout(() => {
+      setTooltipVisible(true);
+      tooltipTimerRef.current = null;
+    }, TOOLTIP_SHOW_DELAY);
+  };
+
+  const handlePreviewMouseLeave = () => {
+    if (tooltipTimerRef.current) {
+      clearTimeout(tooltipTimerRef.current);
+      tooltipTimerRef.current = null;
+    }
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      setTooltipVisible(false);
+      setTooltipContent(null);
+      setTooltipPos(null);
+      hideTimerRef.current = null;
+    }, TOOLTIP_HIDE_DELAY);
+  };
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const selectedTurns =
@@ -614,88 +733,142 @@ export function WhatsAppImportModal({
     setUploads((prev) => ({ ...prev, [turnId]: { status: "pending", file } }));
   };
 
-  const processPdfUpload = async (
-    turnId: string,
-    expectedFilename: string,
-    preferredTitle: string | undefined,
-    file: File,
-  ): Promise<PdfUploadState> => {
-    setUploads((prev) => ({ ...prev, [turnId]: { status: "uploading", file } }));
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("streamId", streamId);
-      formData.append(
-        "title",
-        (preferredTitle || expectedFilename.replace(/\.pdf$/i, "")).trim(),
-      );
-      formData.append("flavor", "lattice");
-      formData.append("enableTableStructure", "true");
-      formData.append("debugDoclingTables", "false");
-
-      const res = await fetch("/api/documents/imports", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = (await res.json().catch(() => null)) as {
-        document?: { id: string; storage_path: string; title: string };
-        error?: string;
-      } | null;
-
-      if (!res.ok) throw new Error(data?.error ?? "Upload failed");
-
-      const doc = data?.document;
-      if (!doc) throw new Error("No document returned from server");
-
-      await queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
-
-      return {
-        status: "done",
-        file,
-        documentId: doc.id,
-        storagePath: doc.storage_path,
-        titleSnapshot: doc.title,
-      };
-    } catch (e) {
-      return {
-        status: "error",
-        file,
-        error: e instanceof Error ? e.message : "Upload failed",
-      };
-    }
-  };
-
   const handleProcessAndConfirm = async () => {
     if (!canConfirmFiles) return;
 
-    const nextUploads: Record<string, PdfUploadState> = { ...uploads };
-
-    for (const turn of pdfTurns) {
-      const current = nextUploads[turn.id];
-      if (!current || current.status === "skipped" || current.status === "done") continue;
-      if (!current.file) continue;
-
-      const result = await processPdfUpload(
-        turn.id,
-        turn.filename ?? "document.pdf",
-        turn.preferredTitle,
-        current.file,
-      );
-      nextUploads[turn.id] = result;
-      setUploads((prev) => ({ ...prev, [turn.id]: result }));
-    }
-
-    const hasBlockingPdf = pdfTurns.some((turn) => {
-      const upload = nextUploads[turn.id];
-      if (!upload) return true;
-      if (upload.status === "skipped" || upload.status === "done") return false;
-      return true;
+     
+    console.log("[WhatsApp] handleProcessAndConfirm started with selectedTurns:", {
+      count: selectedTurns.length,
+      types: selectedTurns.map((t) => t.type),
     });
 
-    if (hasBlockingPdf) return;
-    handleConfirm(nextUploads);
+    // Transfer all text turns and any already-completed PDFs to EntryCreator
+    // Transfer all pending PDF files to the Docling document import handler
+    const payloadTurns: WhatsAppInjectPayload["turns"] = [];
+    const transferFiles: Array<{ file: File; hash?: string }> = [];
+
+    for (const turn of selectedTurns) {
+      if (turn.type === "media") continue;
+      const personaId = mapping[turn.sender];
+      if (!personaId) continue;
+      const persona = personas?.find((p) => p.id === personaId);
+      const personaName = persona?.name ?? turn.sender;
+
+      if (turn.type === "text") {
+        // All text turns go directly to EntryCreator
+        payloadTurns.push({ type: "text", personaId, personaName, messages: turn.messages! });
+      } else if (turn.type === "pdf") {
+        const upload = uploads[turn.id];
+         
+        console.log("[WhatsApp] Processing PDF turn:", {
+          turnId: turn.id,
+          filename: turn.filename,
+          fullPath: turn.fullPath,
+          uploadStatus: upload?.status,
+          uploadFile: upload?.file ? { name: upload.file.name, size: upload.file.size } : null,
+        });
+        
+        // If already uploaded (done) → include in inject payload
+        if (upload?.status === "done" && upload.documentId && upload.storagePath) {
+          const attachment = {
+            documentId: upload.documentId,
+            storagePath: upload.storagePath,
+            thumbnailPath: upload.thumbnailPath,
+            titleSnapshot:
+              upload.titleSnapshot ?? turn.preferredTitle ?? turn.filename ?? "Document",
+          };
+
+          const last = payloadTurns[payloadTurns.length - 1];
+          if (last?.type === "pdf" && last.personaId === personaId) {
+            last.attachments.push(attachment);
+          } else {
+            payloadTurns.push({ type: "pdf", personaId, personaName, attachments: [attachment] });
+          }
+        } 
+        // If pending with a file → include placeholder in inject + transfer to document import handler
+        else if (upload?.file && upload.status === "pending") {
+          const file = upload.file;
+          
+          console.log("[WhatsApp] Queuing PDF file for transfer:", {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+          });
+          const hash = await calculateFileHash(file);
+          
+          if (!transferFiles.find((f) => f.file === file)) {
+            transferFiles.push({ file, hash });
+          }
+
+          // Create a blob URL for immediate preview display
+          const blobUrl = URL.createObjectURL(file);
+
+          // Include placeholder attachment in inject payload so EntryCreator creates the section
+          // The actual documentId will be added once Dockling processing completes
+          const attachment = {
+            titleSnapshot:
+              upload.titleSnapshot ?? turn.preferredTitle ?? turn.filename ?? "Document",
+            fileHash: hash,
+            previewUrl: blobUrl,
+          };
+
+          const last = payloadTurns[payloadTurns.length - 1];
+          if (last?.type === "pdf" && last.personaId === personaId) {
+            last.attachments.push(attachment);
+          } else {
+            payloadTurns.push({ type: "pdf", personaId, personaName, attachments: [attachment] });
+          }
+        }
+        // If skipped or error, ignore
+      }
+    }
+
+    // Dispatch all text turns and PDFs (including pending ones) to EntryCreator
+    if (payloadTurns.length > 0) {
+       
+      console.log("[WhatsApp] Dispatching kolam_whatsapp_import_inject:", {
+        turnCount: payloadTurns.length,
+        streamId,
+      });
+      window.dispatchEvent(
+        new CustomEvent("kolam_whatsapp_import_inject", {
+          detail: { streamId, turns: payloadTurns } satisfies WhatsAppInjectPayload,
+        }),
+      );
+    }
+
+    // Transfer all pending PDF files to the document import handler for Docling processing
+    if (transferFiles.length > 0) {
+      const tempStore = getTempFileStore();
+      const fileIds = transferFiles.map((fileData) => {
+        const id = generateFileId();
+        // Create blob URL for preview
+        const blobUrl = URL.createObjectURL(fileData.file);
+        tempStore.set(id, { ...fileData, blobUrl });
+        return id;
+      });
+
+      // Store pending file IDs so they're available when DocumentImportModal opens
+      setPendingFileIds(fileIds);
+
+      console.log("[WhatsApp] Storing files in temp store and dispatching kolam_header_documents_import:", {
+        fileCount: transferFiles.length,
+        fileIds,
+        files: transferFiles.map((f) => ({
+          name: f.file.name,
+          size: f.file.size,
+          hash: f.hash,
+        })),
+      });
+      window.dispatchEvent(
+        new CustomEvent("kolam_header_documents_import", {
+          detail: { fileIds },
+        }),
+      );
+    }
+
+    // Close the modal immediately
+    handleClose();
   };
 
   const handleConfirm = (uploadsSnapshot: Record<string, PdfUploadState> = uploads) => {
@@ -717,6 +890,7 @@ export function WhatsAppImportModal({
         const attachment = {
           documentId: upload.documentId,
           storagePath: upload.storagePath,
+          thumbnailPath: upload.thumbnailPath,
           titleSnapshot:
             upload.titleSnapshot ??
             turn.preferredTitle ??
@@ -923,58 +1097,161 @@ export function WhatsAppImportModal({
                 <div>
                   <p className="text-xs font-medium text-text-default">Select chat range</p>
                   <p className="mt-0.5 text-[11px] text-text-muted">
-                    Choose chronological turns to import before persona mapping.
+                    Choose chronological turns to import before persona mapping. Use the
+                    preview below to set start/end precisely.
                   </p>
                 </div>
 
-                <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
-                  Total turns: <span className="font-semibold text-text-default">{parsedTurns.length}</span>
-                  {" · "}
-                  Selected: <span className="font-semibold text-text-default">{selectedTurns.length}</span>
-                  {" · "}
-                  Importable: <span className="font-semibold text-text-default">{rangeImportableCount}</span>
+                <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted flex items-center justify-between">
+                  <div>
+                    Total turns: <span className="font-semibold text-text-default">{parsedTurns.length}</span>
+                    {" · "}
+                    Selected: <span className="font-semibold text-text-default">{selectedTurns.length}</span>
+                    {" · "}
+                    Importable: <span className="font-semibold text-text-default">{rangeImportableCount}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-[11px] text-text-muted">Quick adjust:</div>
+                    <button
+                      onClick={() => setRangeStart((s) => Math.max(0, s - 1))}
+                      title="Move start back"
+                      className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setRangeStart((s) => Math.min(s + 1, rangeEnd))}
+                      title="Move start forward"
+                      className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
                   <label className="flex flex-col gap-1 text-[11px] text-text-muted">
                     From turn
-                    <input
-                      type="number"
-                      min={1}
-                      max={Math.max(1, parsedTurns.length)}
-                      value={Math.min(rangeStart + 1, Math.max(1, parsedTurns.length))}
-                      onChange={(e) => {
-                        const max = Math.max(1, parsedTurns.length);
-                        const next = Math.min(
-                          Math.max(1, Number.parseInt(e.target.value || "1", 10) || 1),
-                          max,
-                        ) - 1;
-                        setRangeStart(next);
-                        if (next > rangeEnd) setRangeEnd(next);
-                      }}
-                      className="rounded-sm border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
-                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setRangeStart((s) => Math.max(0, s - 1))}
+                        className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                        aria-label="decrement start"
+                      >-</button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={Math.max(1, parsedTurns.length)}
+                        value={Math.min(rangeStart + 1, Math.max(1, parsedTurns.length))}
+                        onChange={(e) => {
+                          const max = Math.max(1, parsedTurns.length);
+                          const next = Math.min(
+                            Math.max(1, Number.parseInt(e.target.value || "1", 10) || 1),
+                            max,
+                          ) - 1;
+                          setRangeStart(next);
+                          if (next > rangeEnd) setRangeEnd(next);
+                        }}
+                        className="rounded-sm border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setRangeStart((s) => Math.min(s + 1, rangeEnd))}
+                        className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                        aria-label="increment start"
+                      >+</button>
+                    </div>
                   </label>
 
                   <label className="flex flex-col gap-1 text-[11px] text-text-muted">
                     To turn
-                    <input
-                      type="number"
-                      min={1}
-                      max={Math.max(1, parsedTurns.length)}
-                      value={Math.min(rangeEnd + 1, Math.max(1, parsedTurns.length))}
-                      onChange={(e) => {
-                        const max = Math.max(1, parsedTurns.length);
-                        const next = Math.min(
-                          Math.max(1, Number.parseInt(e.target.value || "1", 10) || 1),
-                          max,
-                        ) - 1;
-                        setRangeEnd(next);
-                        if (next < rangeStart) setRangeStart(next);
-                      }}
-                      className="rounded-sm border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
-                    />
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setRangeEnd((e) => Math.max(e - 1, rangeStart))}
+                        className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                        aria-label="decrement end"
+                      >-</button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={Math.max(1, parsedTurns.length)}
+                        value={Math.min(rangeEnd + 1, Math.max(1, parsedTurns.length))}
+                        onChange={(e) => {
+                          const max = Math.max(1, parsedTurns.length);
+                          const next = Math.min(
+                            Math.max(1, Number.parseInt(e.target.value || "1", 10) || 1),
+                            max,
+                          ) - 1;
+                          setRangeEnd(next);
+                          if (next < rangeStart) setRangeStart(next);
+                        }}
+                        className="rounded-sm border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
+                      />
+                      <button
+                        onClick={() => setRangeEnd((e) => Math.min(e + 1, parsedTurns.length - 1))}
+                        className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                        aria-label="increment end"
+                      >+</button>
+                    </div>
                   </label>
+                </div>
+
+                {/* Preview list with clickable controls to set start/end */}
+                <div className="max-h-48 overflow-y-auto rounded-sm border border-border-subtle bg-surface-subtle/30 p-2 text-[11px]">
+                  {parsedTurns.length === 0 ? (
+                    <div className="text-text-muted">No turns to preview.</div>
+                  ) : (
+                    parsedTurns.map((t, idx) => {
+                      const isSelected = idx >= rangeStart && idx <= rangeEnd;
+                      // Determine preview + optional size for PDFs when file is available
+                      let preview = "";
+                      let fullPreview = "";
+                      if (t.type === "text") {
+                        fullPreview = (t.messages && t.messages.join("\n\n")) || "";
+                        preview = t.messages?.[0]?.slice(0, 120) ?? "";
+                      } else if (t.type === "pdf") {
+                        const filename = t.filename ?? "document.pdf";
+                        const matchedFile = uploads[t.id]?.file ?? findBestPdfForTurn(t, zipPdfIndex);
+                        const sizeStr = matchedFile ? ` (${formatBytes(matchedFile.size)})` : "";
+                        preview = `PDF: ${filename}${sizeStr}`;
+                        fullPreview = preview;
+                      } else {
+                        preview = `Media: ${t.mediaKind ?? "file"}`;
+                        fullPreview = preview;
+                      }
+                      return (
+                        <div
+                          key={t.id}
+                          className={`relative flex items-center justify-between gap-3 px-2 py-1 rounded-sm ${isSelected ? "bg-action-primary-bg/10 border border-action-primary-bg/20" : "hover:bg-surface-subtle"}`}
+                        >
+                          <div
+                            className="min-w-0 flex-1 text-[11px]"
+                            onMouseEnter={(e) => handlePreviewMouseEnter(e, idx, fullPreview)}
+                            onMouseLeave={handlePreviewMouseLeave}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[11px] text-text-muted">#{idx + 1}</span>
+                              <span className="font-medium text-text-default truncate">{t.sender}</span>
+                            </div>
+                            <div className="truncate text-[10px] text-text-muted">{preview}</div>
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setRangeStart(idx)}
+                              title="Set as start"
+                              className="rounded-sm border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+                            >Start</button>
+                            <button
+                              onClick={() => setRangeEnd(idx)}
+                              title="Set as end"
+                              className="rounded-sm border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+                            >End</button>
+                          </div>
+                          {/* Tooltip is rendered in a portal to avoid affecting layout */}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
 
                 {selectedTurns.length > 0 && (
@@ -1260,6 +1537,18 @@ export function WhatsAppImportModal({
 
           </DialogPanel>
         </div>
+        {/* Portal tooltip: render global tooltip so it doesn't affect modal layout */}
+        {typeof document !== "undefined" && tooltipVisible && tooltipContent && tooltipPos
+          ? createPortal(
+              <div
+                style={{ left: tooltipPos.left, top: tooltipPos.top, width: tooltipPos.width }}
+                className="fixed z-50 rounded-sm border border-border-default bg-surface-default p-2 text-xs text-text-default shadow-lg"
+              >
+                <div className="whitespace-pre-wrap wrap-break-word text-[12px]">{tooltipContent}</div>
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     </Dialog>
   );
@@ -1283,6 +1572,17 @@ function PdfUploadRow({
   onUnskip: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewUrl = useMemo(() => {
+    if (!upload.file) return undefined;
+    return URL.createObjectURL(upload.file);
+  }, [upload.file]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   const filename = turn.filename ?? "document.pdf";
   const isSkipped = upload.status === "skipped";
   const isDone = upload.status === "done";
@@ -1301,9 +1601,18 @@ function PdfUploadRow({
       }`}
     >
       <div className="flex items-start gap-2">
-        <FileText
-          className={`mt-0.5 h-4 w-4 shrink-0 ${isDone ? "text-green-500" : "text-blue-500"}`}
-        />
+        {upload.file ? (
+          <PdfAttachmentThumbnail
+            url={previewUrl}
+            storagePath={upload.storagePath}
+            thumbnailPath={upload.thumbnailPath}
+            title={filename}
+          />
+        ) : (
+          <FileText
+            className={`mt-0.5 h-4 w-4 shrink-0 ${isDone ? "text-green-500" : "text-blue-500"}`}
+          />
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-medium text-text-default">{filename}</p>
           {turn.fullPath && (
@@ -1315,9 +1624,12 @@ function PdfUploadRow({
             </p>
           )}
           <p className="text-[10px] text-text-muted">
-            Sent by{" "}
+            Sent by {" "}
             <span className="font-medium text-text-default">{turn.sender}</span>
           </p>
+          {upload.file && (
+            <p className="text-[10px] text-text-muted">Size: {formatBytes(upload.file.size)}</p>
+          )}
         </div>
 
         {/* Status indicator */}

@@ -11,7 +11,9 @@ from urllib.parse import urlparse
 import camelot
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException
+from pdf2image import convert_from_path
 from pydantic import BaseModel, Field
+from supabase import create_client, Client
 from tqdm import tqdm
 
 from docling.datamodel.base_models import InputFormat
@@ -135,6 +137,7 @@ async def send_progress(
     warning_messages: list[str] | None = None,
     error_message: str | None = None,
     chunks: list[dict[str, Any]] | None = None,
+    thumbnail_path: str | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "documentId": request.documentId,
@@ -154,6 +157,8 @@ async def send_progress(
         payload["errorMessage"] = error_message
     if chunks is not None:
         payload["chunks"] = chunks
+    if thumbnail_path is not None:
+        payload["thumbnailPath"] = thumbnail_path
 
     await post_callback(request, payload)
 
@@ -180,6 +185,59 @@ def convert_pdf_to_markdown(pdf_path: Path, flavor: str) -> tuple[str, dict[str,
     return final_md, metadata
 
 
+def generate_and_upload_thumbnail(pdf_path: Path, document_id: str) -> str | None:
+    """Generate a thumbnail from the first page of the PDF and upload to Supabase storage."""
+    temp_thumb_path: Path | None = None
+    try:
+        # Generate thumbnail from first page
+        images = convert_from_path(str(pdf_path), first_page=1, last_page=1, size=(300, 400))
+        if not images:
+            logger.warning("No images generated from PDF for document %s", document_id)
+            return None
+
+        # Save thumbnail to temporary file
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_thumb:
+            images[0].save(temp_thumb.name, "PNG")
+            temp_thumb_path = Path(temp_thumb.name)
+
+        # Upload to Supabase storage
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+
+        if not supabase_url or not supabase_key:
+            logger.error("Supabase credentials not configured for thumbnail upload")
+            return None
+
+        supabase: Client = create_client(supabase_url, supabase_key)
+
+        thumbnail_path = f"{document_id}.png"
+
+        with open(temp_thumb_path, "rb") as f:
+            file_data = f.read()
+
+        response = supabase.storage.from_("thumbnails").upload(
+            path=thumbnail_path,
+            file=file_data,
+            file_options={"content-type": "image/png"}
+        )
+
+        # supabase-py returns upload metadata, not an HTTP response object.
+        # Any upload failure throws; if we get here, treat it as success.
+        if not response:
+            logger.error("Failed to upload thumbnail for document %s: empty upload response", document_id)
+            return None
+
+        logger.info("Generated and uploaded thumbnail for document %s", document_id)
+        return thumbnail_path
+
+    except Exception:
+        logger.exception("Failed to generate/upload thumbnail for document %s", document_id)
+        return None
+    finally:
+        if temp_thumb_path and temp_thumb_path.exists():
+            temp_thumb_path.unlink(missing_ok=True)
+
+
 async def process_import(request: ImportRequest) -> None:
     temp_file_path: Path | None = None
     try:
@@ -204,6 +262,16 @@ async def process_import(request: ImportRequest) -> None:
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
             temp_file.write(pdf_bytes)
             temp_file_path = Path(temp_file.name)
+
+        await send_progress(
+            request,
+            status="processing",
+            progress_percent=25,
+            progress_message="Generating thumbnail",
+            eta_seconds=5,
+        )
+
+        thumbnail_path = generate_and_upload_thumbnail(temp_file_path, request.documentId)
 
         await send_progress(
             request,
@@ -238,6 +306,7 @@ async def process_import(request: ImportRequest) -> None:
             extraction_metadata=extraction_metadata,
             warning_messages=[],
             chunks=chunks,
+            thumbnail_path=thumbnail_path,
         )
 
         logger.info("Completed import job %s for document %s", request.jobId, request.documentId)

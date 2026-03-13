@@ -13,32 +13,28 @@ import { Sparkles } from "lucide-react";
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
   const [isDocumentImportOpen, setIsDocumentImportOpen] = useState(false);
+  const [incomingDocumentFiles, setIncomingDocumentFiles] = useState<Array<{ file: File; hash?: string }> | null>(null);
   const [isWhatsAppImportOpen, setIsWhatsAppImportOpen] = useState(false);
   const { logWidth } = useLayout();
   useRealtimeEntries(streamId);
 
   useEffect(() => {
-    const onOpenDocumentImport = () => setIsDocumentImportOpen(true);
+    const onOpenDocumentImport = (ev?: Event) => {
+      if (ev && ev instanceof CustomEvent && ev.detail?.files) {
+        const files = ev.detail.files as File[];
+        setIncomingDocumentFiles(files.map((f) => ({ file: f })));
+      }
+      setIsDocumentImportOpen(true);
+    };
+
     const onOpenWhatsAppImport = () => setIsWhatsAppImportOpen(true);
 
-    window.addEventListener(
-      "kolam_header_documents_import",
-      onOpenDocumentImport,
-    );
-    window.addEventListener(
-      "kolam_header_whatsapp_import",
-      onOpenWhatsAppImport,
-    );
+    window.addEventListener("kolam_header_documents_import", onOpenDocumentImport as EventListener);
+    window.addEventListener("kolam_header_whatsapp_import", onOpenWhatsAppImport);
 
     return () => {
-      window.removeEventListener(
-        "kolam_header_documents_import",
-        onOpenDocumentImport,
-      );
-      window.removeEventListener(
-        "kolam_header_whatsapp_import",
-        onOpenWhatsAppImport,
-      );
+      window.removeEventListener("kolam_header_documents_import", onOpenDocumentImport as EventListener);
+      window.removeEventListener("kolam_header_whatsapp_import", onOpenWhatsAppImport);
     };
   }, []);
 
@@ -67,7 +63,11 @@ export function StreamView({ streamId }: { streamId: string }) {
 
       <DocumentImportModal
         isOpen={isDocumentImportOpen}
-        onClose={() => setIsDocumentImportOpen(false)}
+        onClose={() => {
+          setIsDocumentImportOpen(false);
+          setIncomingDocumentFiles(null);
+        }}
+        initialQueuedFiles={incomingDocumentFiles ?? undefined}
         streamId={streamId}
       />
 

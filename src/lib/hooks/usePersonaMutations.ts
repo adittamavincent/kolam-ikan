@@ -41,7 +41,10 @@ export function usePersonaMutations() {
       return null;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+      });
     },
   });
 
@@ -62,7 +65,10 @@ export function usePersonaMutations() {
       return null;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+      });
     },
   });
 
@@ -93,7 +99,10 @@ export function usePersonaMutations() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+      });
       queryClient.invalidateQueries({ queryKey: ["entries"] });
     },
   });
@@ -121,7 +130,10 @@ export function usePersonaMutations() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["personas"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+      });
       queryClient.invalidateQueries({ queryKey: ["entries"] });
     },
   });

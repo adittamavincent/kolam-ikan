@@ -11,9 +11,10 @@ import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
-import { Check, FileText, Link as LinkIcon } from "lucide-react";
+import { Check, FileText } from "lucide-react";
 import { PartialBlock } from "@blocknote/core";
 import { useMemo } from "react";
+import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 
 interface LogSectionProps {
   section: SectionWithPersona;
@@ -141,7 +142,15 @@ export function LogSection({
                 key={attachment.id}
                 className="flex items-start gap-2 rounded-sm border border-border-subtle bg-surface-subtle/40 px-2 py-1.5"
               >
-                <LinkIcon className="mt-0.5 h-3.5 w-3.5 text-text-muted" />
+                <PdfAttachmentThumbnail
+                  storagePath={attachment.document?.storage_path}
+                  thumbnailPath={attachment.document?.thumbnail_path}
+                  title={
+                    attachment.title_snapshot ||
+                    attachment.document?.title ||
+                    "Attached PDF"
+                  }
+                />
                 <div className="min-w-0">
                   <div className="truncate text-xs font-medium text-text-default">
                     {attachment.title_snapshot ||

@@ -3,7 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { DocumentWithLatestJob } from "@/lib/types";
+import { Document, DocumentImportJob, DocumentWithLatestJob } from "@/lib/types";
+import { getDocumentFileUrl, getDocumentThumbnailUrl } from "@/lib/documents/utils";
 
 function isMissingDocumentSchemaError(error: PostgrestError | null) {
   const message = (error?.message ?? "").toLowerCase();
@@ -23,6 +24,7 @@ interface CreateDocumentImportArgs {
   flavor: "lattice" | "stream";
   enableTableStructure: boolean;
   debugDoclingTables: boolean;
+  fileHash?: string;
 }
 
 export function useDocuments(streamId: string) {
@@ -72,6 +74,8 @@ export function useDocuments(streamId: string) {
       return (documents ?? []).map((document) => ({
         ...document,
         latestJob: latestJobByDocumentId.get(document.id) ?? null,
+        fileUrl: getDocumentFileUrl(document),
+        thumbnailUrl: getDocumentThumbnailUrl(document),
       })) as DocumentWithLatestJob[];
     },
     enabled: !!streamId,
@@ -88,13 +92,16 @@ export function useDocuments(streamId: string) {
     refetchIntervalInBackground: true,
   });
 
-  const createImport = useMutation({
+  type CreateImportResponse = { error?: string; document?: Document; job?: DocumentImportJob } | null;
+
+  const createImport = useMutation<CreateImportResponse, Error, CreateDocumentImportArgs>({
     mutationFn: async ({
       file,
       title,
       flavor,
       enableTableStructure,
       debugDoclingTables,
+      fileHash,
     }: CreateDocumentImportArgs) => {
       const formData = new FormData();
       formData.append("file", file);
@@ -105,15 +112,16 @@ export function useDocuments(streamId: string) {
       formData.append("flavor", flavor);
       formData.append("enableTableStructure", String(enableTableStructure));
       formData.append("debugDoclingTables", String(debugDoclingTables));
+      if (fileHash) {
+        formData.append("fileHash", fileHash);
+      }
 
       const response = await fetch("/api/documents/imports", {
         method: "POST",
         body: formData,
       });
 
-      const payload = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
+      const payload = (await response.json().catch(() => null)) as CreateImportResponse;
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to queue document import");
       }

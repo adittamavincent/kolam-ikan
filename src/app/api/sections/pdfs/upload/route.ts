@@ -200,6 +200,13 @@ export async function POST(request: Request) {
     .from("document-files")
     .createSignedUrl(storagePath, 60 * 30);
 
+  if (signed.error) {
+    console.warn(
+      `Failed to create signed URL for ${storagePath}:`,
+      signed.error,
+    );
+  }
+
   return NextResponse.json({
     document: inserted,
     metadata: pdfMetadata,

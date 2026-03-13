@@ -4,7 +4,8 @@ import React, { useState, useRef, Fragment, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
-import { BlockNoteEditor as BlockNoteEditorType } from "@blocknote/core";
+import { BlockNoteEditor as BlockNoteEditorType, PartialBlock } from "@blocknote/core";
+import type { WhatsAppInjectPayload } from "./WhatsAppImportModal";
 import {
   Loader2,
   Send,
@@ -151,6 +152,56 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     null,
   );
   const selectedBranch = currentBranch ?? "main";
+
+  const attachedDocumentIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const section of sections) {
+      if (section.kind !== "PDF") continue;
+      for (const attachment of section.attachments) {
+        ids.add(attachment.documentId);
+      }
+    }
+    return Array.from(ids);
+  }, [sections]);
+
+  const { data: attachedDocumentStatuses, isLoading: attachedStatusLoading } =
+    useQuery({
+      queryKey: ["entry-creator-attached-doc-status", streamId, attachedDocumentIds],
+      queryFn: async () => {
+        if (attachedDocumentIds.length === 0) {
+          return new Map<string, string>();
+        }
+        const { data, error } = await supabase
+          .from("documents")
+          .select("id, import_status")
+          .in("id", attachedDocumentIds);
+        if (error) throw error;
+
+        const statusMap = new Map<string, string>();
+        for (const row of data ?? []) {
+          statusMap.set(row.id, row.import_status ?? "unknown");
+        }
+        return statusMap;
+      },
+      enabled: attachedDocumentIds.length > 0,
+    });
+
+  const unparsedAttachedCount = useMemo(() => {
+    if (attachedDocumentIds.length === 0) return 0;
+    if (!attachedDocumentStatuses) return attachedDocumentIds.length;
+
+    let count = 0;
+    for (const id of attachedDocumentIds) {
+      const status = attachedDocumentStatuses.get(id);
+      if (status !== "completed") count += 1;
+    }
+    return count;
+  }, [attachedDocumentIds, attachedDocumentStatuses]);
+
+  const hasUnparsedAttachments = unparsedAttachedCount > 0;
+  const commitBlockedByPdfStatus =
+    attachedDocumentIds.length > 0 &&
+    (attachedStatusLoading || hasUnparsedAttachments);
 
   const { data: branches, refetch: refetchBranches } = useQuery({
     queryKey: ["branches", streamId],
@@ -307,6 +358,101 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     setActiveInstances(sections.map((section) => section.instanceId));
   }, [sections, setActiveInstances]);
 
+  // WhatsApp chat inject listener
+  useEffect(() => {
+    const onInject = (event: Event) => {
+      const payload = (event as CustomEvent<WhatsAppInjectPayload>).detail;
+      if (payload.streamId !== streamId) return;
+
+      clearDraft();
+      editorRefs.current = {};
+      setDiscardedRecovery(true);
+
+      const newSections: SectionState[] = [];
+
+      for (const turn of payload.turns) {
+        const instanceId = crypto.randomUUID();
+
+        if (turn.type === "text") {
+          const blocks: PartialBlock[] = turn.messages.flatMap((msg, i) => {
+            const paragraphs: PartialBlock[] = msg.split("\n").map((line) => ({
+              type: "paragraph",
+              content: line.trim()
+                ? [{ type: "text", text: line, styles: {} }]
+                : [],
+            }));
+            return i > 0
+              ? [{ type: "paragraph", content: [] } as PartialBlock, ...paragraphs]
+              : paragraphs;
+          });
+          saveDraft(instanceId, turn.personaId, blocks, turn.personaName);
+          newSections.push({ instanceId, kind: "PERSONA" as const, personaId: turn.personaId });
+        } else {
+          // PDF turn — create one PDF section that may contain multiple attachments
+          const attachments = turn.attachments?.length
+            ? turn.attachments
+            : turn.documentId && turn.storagePath
+              ? [
+                  {
+                    documentId: turn.documentId,
+                    storagePath: turn.storagePath,
+                    titleSnapshot: turn.titleSnapshot ?? "Document",
+                  },
+                ]
+              : [];
+
+          if (attachments.length === 0) {
+            continue;
+          }
+
+          savePdfDraft(instanceId, {
+            displayMode: "inline",
+            attachments: attachments.map((attachment) => ({
+              documentId: attachment.documentId,
+              titleSnapshot: attachment.titleSnapshot ?? "Document",
+              annotationText: null,
+              referencedPersonaId: null,
+              referencedPage: null,
+            })),
+            content: [],
+          });
+          newSections.push({
+            instanceId,
+            kind: "PDF" as const,
+            displayMode: "inline",
+            attachments: attachments.map((attachment) => ({
+              documentId: attachment.documentId,
+              titleSnapshot: attachment.titleSnapshot ?? "Document",
+              pageCount: 0,
+              author: null,
+              creationDate: null,
+              storagePath: attachment.storagePath,
+              previewUrl: null,
+              annotationText: null,
+              referencedPersonaId: null,
+              referencedPage: null,
+            })),
+            note: "",
+            isUploading: false,
+          });
+        }
+      }
+
+      setSections(newSections);
+    };
+
+    window.addEventListener(
+      "kolam_whatsapp_import_inject",
+      onInject as EventListener,
+    );
+    return () => {
+      window.removeEventListener(
+        "kolam_whatsapp_import_inject",
+        onInject as EventListener,
+      );
+    };
+  }, [streamId, clearDraft, saveDraft, savePdfDraft]);
+
   // Keyboard shortcuts
   useKeyboard([
     {
@@ -334,6 +480,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   ]);
 
   const handleCommit = async () => {
+    if (commitBlockedByPdfStatus) {
+      console.warn(
+        "Commit blocked: one or more attached PDF documents are still queued/processing or failed.",
+      );
+      return;
+    }
+
     try {
       const committedEntryId = await commitDraft();
 
@@ -1140,9 +1293,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             </div>
             <button
               onClick={handleCommit}
-              disabled={status === "saving"}
+              disabled={status === "saving" || commitBlockedByPdfStatus}
               className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
-                status !== "saving"
+                status !== "saving" && !commitBlockedByPdfStatus
                   ? "bg-action-primary-bg text-white hover:bg-action-primary-hover"
                   : "bg-surface-subtle text-text-muted cursor-not-allowed"
               }`}
@@ -1150,6 +1303,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <Send className="h-3 w-3" />
               Commit
             </button>
+          </div>
+        )}
+
+        {commitBlockedByPdfStatus && (
+          <div className="mx-3 mb-2 rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+            {attachedStatusLoading
+              ? "Checking PDF parse status before commit..."
+              : `${unparsedAttachedCount} attached PDF file${unparsedAttachedCount === 1 ? " is" : "s are"} not fully parsed yet. Wait until status is Ready in import queue.`}
           </div>
         )}
       </div>

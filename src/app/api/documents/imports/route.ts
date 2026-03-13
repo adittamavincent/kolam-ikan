@@ -8,6 +8,8 @@ import {
 import { Document, DocumentImportJob } from "@/lib/types";
 import { CreateDocumentImportSchema } from "@/lib/validation/document";
 
+export const runtime = "nodejs";
+
 function sanitizeFilename(filename: string) {
   return filename.replace(/[^a-zA-Z0-9._-]+/g, "-");
 }
@@ -134,7 +136,13 @@ export async function POST(request: Request) {
 
   const formData = await request.formData().catch(() => null);
   if (!formData) {
-    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
+    return NextResponse.json(
+      {
+        error:
+          "Invalid form data. The upload payload may exceed the current request body limit.",
+      },
+      { status: 400 },
+    );
   }
 
   const file = formData.get("file");

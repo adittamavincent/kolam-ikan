@@ -44,6 +44,7 @@ function formatEta(seconds: number | null | undefined) {
 }
 
 function getStatusTone(status: string) {
+  if (status === "queued") return "bg-amber-500/15 text-amber-600";
   if (status === "completed") return "bg-emerald-500/15 text-emerald-600";
   if (status === "failed" || status === "canceled")
     return "bg-rose-500/15 text-rose-600";
@@ -52,7 +53,7 @@ function getStatusTone(status: string) {
 }
 
 function getStatusLabel(status: string) {
-  if (status === "queued") return "Queued";
+  if (status === "queued") return "Loading";
   if (status === "processing") return "Processing";
   if (status === "completed") return "Ready";
   if (status === "failed") return "Failed";
@@ -72,7 +73,7 @@ export function DocumentImportModal({
     createImport,
     cancelImport,
     cancelAllPendingImports,
-    deleteCanceledDocument,
+    deleteDocument,
   } = useDocuments(streamId);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
@@ -156,15 +157,15 @@ export function DocumentImportModal({
     }
   };
 
-  const handleDeleteCanceledDocument = async (documentId: string) => {
+  const handleDeleteDocument = async (documentId: string) => {
     setSubmitError(null);
     try {
-      await deleteCanceledDocument.mutateAsync({ documentId });
+      await deleteDocument.mutateAsync({ documentId });
     } catch (error) {
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "Failed to delete canceled document.",
+          : "Failed to delete document.",
       );
     }
   };
@@ -199,7 +200,7 @@ export function DocumentImportModal({
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-xl border border-border-default/60 bg-surface-subtle px-3 py-1.5 text-xs text-text-subtle">
                       <Clock3 className="h-3.5 w-3.5" />
-                      Processing begins immediately after upload
+                      Processing starts once queued in the import worker
                     </div>
                   </div>
 
@@ -456,8 +457,11 @@ export function DocumentImportModal({
                                 </div>
                               </div>
                               <span
-                                className={`shrink-0 rounded-xl px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getStatusTone(status)}`}
+                                className={`shrink-0 inline-flex items-center gap-1 rounded-xl px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getStatusTone(status)}`}
                               >
+                                {status === "queued" && (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                )}
                                 {getStatusLabel(status)}
                               </span>
                             </div>
@@ -471,7 +475,7 @@ export function DocumentImportModal({
                                   disabled={
                                     cancelImport.isPending ||
                                     cancelAllPendingImports.isPending ||
-                                    deleteCanceledDocument.isPending
+                                    deleteDocument.isPending
                                   }
                                   className="shrink-0 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
@@ -489,13 +493,30 @@ export function DocumentImportModal({
                                   Attach
                                 </button>
                               )}
+                              {status === "completed" && (
+                                <button
+                                  onClick={() => {
+                                    const confirmed = window.confirm(
+                                      "Delete this parsed file permanently? This removes it from storage and sections using it may break.",
+                                    );
+                                    if (!confirmed) return;
+                                    void handleDeleteDocument(document.id);
+                                  }}
+                                  disabled={
+                                    deleteDocument.isPending ||
+                                    cancelImport.isPending ||
+                                    cancelAllPendingImports.isPending
+                                  }
+                                  className="shrink-0 rounded-xl border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  Delete
+                                </button>
+                              )}
                               {status === "canceled" && (
                                 <button
-                                  onClick={() =>
-                                    handleDeleteCanceledDocument(document.id)
-                                  }
+                                  onClick={() => void handleDeleteDocument(document.id)}
                                   disabled={
-                                    deleteCanceledDocument.isPending ||
+                                    deleteDocument.isPending ||
                                     cancelImport.isPending ||
                                     cancelAllPendingImports.isPending
                                   }

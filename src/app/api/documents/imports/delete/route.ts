@@ -57,9 +57,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ deleted: true, alreadyDeleted: true });
   }
 
-  if (document.import_status !== "canceled") {
+  if (["queued", "processing"].includes(document.import_status)) {
     return NextResponse.json(
-      { error: "Only canceled documents can be deleted" },
+      { error: "Cannot delete a document while it is still processing" },
       { status: 409 },
     );
   }

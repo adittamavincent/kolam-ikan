@@ -66,6 +66,9 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [isPreparingDelete, setIsPreparingDelete] = useState(false);
   const [showDeleted, setShowDeleted] = useState(false);
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedPersonaIds, setSelectedPersonaIds] = useState<string[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [deleteUsageCount, setDeleteUsageCount] = useState(0);
   const [transferPersonaId, setTransferPersonaId] = useState("");
   const [isPermanent, setIsPermanent] = useState(false);
@@ -107,6 +110,80 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const transferCandidates = (personas ?? [])
     .filter((persona) => !persona.deleted_at)
     .filter((persona) => persona.id !== deletingPersona?.id);
+
+  const visiblePersonas = (personas ?? []).filter((persona) =>
+    showDeleted ? true : !persona.deleted_at,
+  );
+
+  const selectableVisiblePersonas = visiblePersonas.filter(
+    (persona) =>
+      !persona.deleted_at &&
+      !persona.is_system &&
+      persona.user_id === user?.id &&
+      persona.type === "HUMAN",
+  );
+
+  const allVisibleSelected =
+    selectableVisiblePersonas.length > 0 &&
+    selectableVisiblePersonas.every((persona) =>
+      selectedPersonaIds.includes(persona.id),
+    );
+
+  const togglePersonaSelection = (personaId: string) => {
+    setSelectedPersonaIds((prev) =>
+      prev.includes(personaId)
+        ? prev.filter((id) => id !== personaId)
+        : [...prev, personaId],
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      setSelectedPersonaIds([]);
+      return;
+    }
+    setSelectedPersonaIds(selectableVisiblePersonas.map((persona) => persona.id));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPersonaIds.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Delete ${selectedPersonaIds.length} selected persona${selectedPersonaIds.length === 1 ? "" : "s"}? Personas that are in use may fail and will be reported.`,
+    );
+    if (!confirmed) return;
+
+    setIsBulkDeleting(true);
+    setError(null);
+
+    const failedNames: string[] = [];
+    for (const personaId of selectedPersonaIds) {
+      const persona = personas?.find((item) => item.id === personaId);
+      if (!persona) continue;
+      try {
+        await deletePersona.mutateAsync({ id: personaId });
+      } catch {
+        failedNames.push(persona.name);
+      }
+    }
+
+    setIsBulkDeleting(false);
+    if (failedNames.length > 0) {
+      setError(
+        `Failed to delete ${failedNames.length} persona${failedNames.length === 1 ? "" : "s"}: ${failedNames.join(", ")}`,
+      );
+      setSelectedPersonaIds(
+        selectedPersonaIds.filter((id) => {
+          const persona = personas?.find((item) => item.id === id);
+          return !!persona && failedNames.includes(persona.name);
+        }),
+      );
+      return;
+    }
+
+    setSelectedPersonaIds([]);
+    setIsBulkMode(false);
+  };
 
   const handleDeleteRequest = async (persona: Persona) => {
     setError(null);
@@ -221,8 +298,8 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-2xl transform overflow-hidden rounded-xl bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
-                <div className="flex items-center justify-between mb-6">
+              <DialogPanel className="w-full max-w-xl transform overflow-hidden rounded-xl bg-surface-default p-4 text-left align-middle transition-all border border-border-default">
+                <div className="flex items-center justify-between mb-4">
                   <DialogTitle
                     as="h3"
                     className="text-lg font-medium leading-6 text-text-default"
@@ -467,7 +544,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   </form>
                 ) : (
                   <>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-3">
                       <button
                         onClick={() => {
                           setIsCreating(true);
@@ -481,39 +558,87 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         <Plus className="h-4 w-4" />
                         New Persona
                       </button>
-                      <label className="flex items-center gap-2 text-[11px] text-text-muted">
-                        <input
-                          type="checkbox"
-                          checked={showDeleted}
-                          onChange={() => setShowDeleted((value) => !value)}
-                        />
-                        Show deleted
-                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsBulkMode((prev) => !prev);
+                            setSelectedPersonaIds([]);
+                          }}
+                          className={`rounded-sm px-2 py-1 text-[11px] font-medium transition-colors ${
+                            isBulkMode
+                              ? "bg-status-error-bg/15 text-status-error-text"
+                              : "bg-surface-subtle text-text-muted hover:text-text-default"
+                          }`}
+                        >
+                          {isBulkMode ? "Exit Bulk" : "Bulk Delete"}
+                        </button>
+                        <label className="flex items-center gap-2 text-[11px] text-text-muted">
+                          <input
+                            type="checkbox"
+                            checked={showDeleted}
+                            onChange={() => setShowDeleted((value) => !value)}
+                          />
+                          Show deleted
+                        </label>
+                      </div>
                     </div>
+
+                    {isBulkMode && (
+                      <div className="mb-3 flex items-center justify-between gap-2 rounded-sm border border-border-subtle bg-surface-subtle/40 px-2.5 py-2 text-[11px]">
+                        <div className="text-text-muted">
+                          {selectedPersonaIds.length} selected
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={toggleSelectAllVisible}
+                            className="rounded-sm px-2 py-1 text-text-default hover:bg-surface-subtle"
+                          >
+                            {allVisibleSelected ? "Clear all" : "Select all"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleBulkDelete()}
+                            disabled={selectedPersonaIds.length === 0 || isBulkDeleting}
+                            className="inline-flex items-center gap-1 rounded-sm bg-status-error-bg px-2 py-1 font-medium text-status-error-text disabled:opacity-50"
+                          >
+                            {isBulkDeleting && (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            )}
+                            Delete selected
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {error && (
                       <div className="mb-3 flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg/10 p-2 rounded-sm">
                         <AlertCircle className="h-4 w-4" />
                         {error}
                       </div>
                     )}
-                    <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                    <div className="space-y-1.5 max-h-[65vh] overflow-y-auto pr-1">
                       {isLoading ? (
                         <div className="flex justify-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
                         </div>
                       ) : (
-                        personas
-                          ?.filter((persona) =>
-                            showDeleted ? true : !persona.deleted_at,
-                          )
-                          .map((persona) => (
+                        visiblePersonas.map((persona) => (
                             <div
                               key={persona.id}
-                              className={`flex items-center justify-between p-3 rounded-xl border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""}`}
+                              className={`flex items-center justify-between p-2 rounded-sm border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""}`}
                             >
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                {isBulkMode && !persona.deleted_at && !persona.is_system && persona.user_id === user?.id && persona.type === "HUMAN" && (
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedPersonaIds.includes(persona.id)}
+                                    onChange={() => togglePersonaSelection(persona.id)}
+                                    className="h-4 w-4 rounded-sm border-border-default"
+                                  />
+                                )}
                                 <div
-                                  className="h-10 w-10 rounded-sm flex items-center justify-center"
+                                  className="h-8 w-8 rounded-sm flex items-center justify-center"
                                   style={{
                                     backgroundColor: `${persona.color}20`,
                                     color: persona.color,
@@ -521,11 +646,11 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                 >
                                   <DynamicIcon
                                     name={persona.icon}
-                                    className="h-5 w-5"
+                                    className="h-4 w-4"
                                   />
                                 </div>
                                 <div>
-                                  <h4 className="font-medium text-text-default flex items-center gap-2">
+                                  <h4 className="text-sm font-medium text-text-default flex items-center gap-1.5">
                                     {persona.name}
                                     {persona.is_system && (
                                       <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 rounded-sm border border-border-subtle uppercase tracking-wider">
@@ -538,7 +663,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                       </span>
                                     )}
                                   </h4>
-                                  <p className="text-xs text-text-muted capitalize">
+                                  <p className="text-[11px] text-text-muted capitalize">
                                     {persona.type.toLowerCase()}
                                   </p>
                                 </div>

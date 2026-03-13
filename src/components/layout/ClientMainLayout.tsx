@@ -10,6 +10,7 @@ import {
   Columns,
 } from "lucide-react";
 import { DomainSwitcher } from "@/components/layout/DomainSwitcher";
+import { PersonaManager } from "@/components/features/persona/PersonaManager";
 import { Navigator } from "@/components/layout/Navigator";
 import { MainHeader } from "@/components/layout/MainHeader";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -70,6 +71,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const isBalanced = logWidth === 50 && canvasWidth === 50;
   const isCanvasMaximized = logWidth === 0 && canvasWidth === 100;
   const [searchOpen, setSearchOpen] = useState(false);
+  const [personaOpen, setPersonaOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<
     {
@@ -435,6 +437,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <DomainSwitcher
           userId={userId}
           onOpenGlobalSearch={() => setSearchOpen(true)}
+          onOpenPersona={() => setPersonaOpen(true)}
         />
       </div>
 
@@ -629,6 +632,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           </div>
         </Dialog>
       </Transition>
+      <PersonaManager isOpen={personaOpen} onClose={() => setPersonaOpen(false)} />
     </div>
   );
 }

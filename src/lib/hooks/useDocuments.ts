@@ -173,7 +173,7 @@ export function useDocuments(streamId: string) {
     },
   });
 
-  const deleteCanceledDocument = useMutation({
+  const deleteDocument = useMutation({
     mutationFn: async ({ documentId }: { documentId: string }) => {
       const response = await fetch("/api/documents/imports/delete", {
         method: "POST",
@@ -187,7 +187,7 @@ export function useDocuments(streamId: string) {
         error?: string;
       } | null;
       if (!response.ok) {
-        throw new Error(payload?.error ?? "Failed to delete canceled document");
+        throw new Error(payload?.error ?? "Failed to delete document");
       }
 
       return payload;
@@ -205,6 +205,8 @@ export function useDocuments(streamId: string) {
     createImport,
     cancelImport,
     cancelAllPendingImports,
-    deleteCanceledDocument,
+    deleteDocument,
+    // Backward-compatible alias.
+    deleteCanceledDocument: deleteDocument,
   };
 }

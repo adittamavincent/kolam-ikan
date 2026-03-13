@@ -33,23 +33,24 @@ import { CreateDomainModal } from "./CreateDomainModal";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { useDomains } from "@/lib/hooks/useDomains";
 import { EditDomainModal } from "./EditDomainModal";
-import { PersonaManager } from "@/components/features/persona/PersonaManager";
+// PersonaManager is controlled at layout level so the global entry stays in sync
 
 interface DomainSwitcherProps {
   userId: string;
   onOpenGlobalSearch?: () => void;
+  onOpenPersona?: () => void;
 }
 
 export function DomainSwitcher({
   userId,
   onOpenGlobalSearch,
+  onOpenPersona,
 }: DomainSwitcherProps) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingDomain, setEditingDomain] = useState<Domain | null>(null);
-  const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [hoveredDomainTooltip, setHoveredDomainTooltip] = useState<{
@@ -153,7 +154,7 @@ export function DomainSwitcher({
         </button>
 
         <button
-          onClick={() => setIsPersonaManagerOpen(true)}
+          onClick={() => onOpenPersona?.()}
           className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
           title="Manage Personas"
         >
@@ -434,10 +435,7 @@ export function DomainSwitcher({
         </Dialog>
       </Transition>
 
-      <PersonaManager
-        isOpen={isPersonaManagerOpen}
-        onClose={() => setIsPersonaManagerOpen(false)}
-      />
+      {/* PersonaManager is rendered at the layout level to keep global entries in sync */}
     </div>
   );
 }

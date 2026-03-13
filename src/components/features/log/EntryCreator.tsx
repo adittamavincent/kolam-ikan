@@ -24,6 +24,10 @@ import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { NavigationGuard } from "./NavigationGuard";
 import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
 import {
+  Dialog,
+  DialogBackdrop,
+  DialogPanel,
+  DialogTitle,
   Menu,
   MenuButton,
   MenuItem,
@@ -137,6 +141,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const [pdfPickerTargetInstanceId, setPdfPickerTargetInstanceId] = useState<
     string | null
   >(null);
+  const [parsedPreview, setParsedPreview] = useState<{
+    documentId: string;
+    title: string;
+    markdown: string;
+  } | null>(null);
+  const [parsedPreviewLoading, setParsedPreviewLoading] = useState(false);
+  const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
+    null,
+  );
   const selectedBranch = currentBranch ?? "main";
 
   const { data: branches, refetch: refetchBranches } = useQuery({
@@ -594,6 +607,41 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   };
 
+  const openParsedPreview = async (
+    documentId: string,
+    titleSnapshot: string,
+  ) => {
+    setParsedPreviewLoading(true);
+    setParsedPreviewError(null);
+
+    const { data, error } = await supabase
+      .from("documents")
+      .select("id, title, extracted_markdown, import_status")
+      .eq("id", documentId)
+      .single();
+
+    if (error) {
+      setParsedPreviewLoading(false);
+      setParsedPreviewError("Failed to load parsed content.");
+      return;
+    }
+
+    if (!data?.extracted_markdown || data.import_status !== "completed") {
+      setParsedPreviewLoading(false);
+      setParsedPreviewError(
+        "Parsed Docling content is not available yet for this document.",
+      );
+      return;
+    }
+
+    setParsedPreview({
+      documentId,
+      title: data.title || titleSnapshot,
+      markdown: data.extracted_markdown,
+    });
+    setParsedPreviewLoading(false);
+  };
+
   const sensors = useSensors(useSensor(PointerSensor));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -859,7 +907,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </button>
                           </div>
 
-                          <div className="p-4 min-h-20">
+                          <div className="p-4">
                             <BlockNoteEditor
                               initialContent={getDraftContent(instanceId)}
                               onChange={(content) => {
@@ -970,7 +1018,28 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               {effectiveAttachments.map((attachment) => (
                                 <div
                                   key={attachment.documentId}
-                                  className="rounded-lg border border-border-subtle bg-surface-default px-3 py-2"
+                                  className="cursor-pointer rounded-lg border border-border-subtle bg-surface-default px-3 py-2 transition-colors hover:bg-surface-subtle"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() =>
+                                    void openParsedPreview(
+                                      attachment.documentId,
+                                      attachment.titleSnapshot,
+                                    )
+                                  }
+                                  onKeyDown={(event) => {
+                                    if (
+                                      event.key === "Enter" ||
+                                      event.key === " "
+                                    ) {
+                                      event.preventDefault();
+                                      void openParsedPreview(
+                                        attachment.documentId,
+                                        attachment.titleSnapshot,
+                                      );
+                                    }
+                                  }}
+                                  title="Open parsed Docling content"
                                 >
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-2">
@@ -1000,6 +1069,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             href={attachment.previewUrl}
                                             target="_blank"
                                             rel="noreferrer"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                            }}
                                             className="rounded p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                                             aria-label="Open PDF preview"
                                           >
@@ -1029,6 +1101,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             attachment.documentId,
                                           )
                                         }
+                                        onMouseDown={(event) => {
+                                          event.stopPropagation();
+                                        }}
+                                        onClickCapture={(event) => {
+                                          event.stopPropagation();
+                                        }}
                                         className="rounded p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                                         aria-label={`Remove ${attachment.titleSnapshot}`}
                                       >
@@ -1085,6 +1163,60 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           void attachDocumentToPdfSection(pdfPickerTargetInstanceId, document);
         }}
       />
+
+      <Dialog
+        open={parsedPreviewLoading || !!parsedPreview || !!parsedPreviewError}
+        onClose={() => {
+          if (parsedPreviewLoading) return;
+          setParsedPreview(null);
+          setParsedPreviewError(null);
+        }}
+        className="relative z-50"
+      >
+        <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-border-default bg-surface-default shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
+              <DialogTitle className="text-sm font-semibold text-text-default">
+                {parsedPreview?.title ?? "Parsed PDF Content"}
+              </DialogTitle>
+              <button
+                type="button"
+                onClick={() => {
+                  setParsedPreview(null);
+                  setParsedPreviewError(null);
+                }}
+                disabled={parsedPreviewLoading}
+                className="rounded p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
+                aria-label="Close parsed content preview"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-40 max-h-[70vh] overflow-auto p-4">
+              {parsedPreviewLoading && (
+                <div className="flex items-center gap-2 text-sm text-text-muted">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading parsed content...
+                </div>
+              )}
+
+              {!parsedPreviewLoading && parsedPreviewError && (
+                <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
+                  {parsedPreviewError}
+                </div>
+              )}
+
+              {!parsedPreviewLoading && !parsedPreviewError && parsedPreview && (
+                <pre className="whitespace-pre-wrap wrap-break-word rounded-lg border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
+                  {parsedPreview.markdown}
+                </pre>
+              )}
+            </div>
+          </DialogPanel>
+        </div>
+      </Dialog>
     </div>
   );
 }

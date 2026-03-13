@@ -18,11 +18,6 @@ interface DocumentImportModalProps {
   onSelectDocument?: (document: DocumentWithLatestJob) => void;
 }
 
-function formatDate(value: string | null | undefined) {
-  if (!value) return "Unknown";
-  return new Date(value).toLocaleString();
-}
-
 function formatBytes(value: number | null) {
   if (value == null) return "Unknown size";
   if (value < 1024) return `${value} B`;
@@ -173,9 +168,8 @@ export function DocumentImportModal({
               <DialogTitle className="text-2xl font-bold text-text-default">
                 Import PDF
               </DialogTitle>
-              <p className="mt-1.5 text-sm text-text-muted">
-                Upload a source PDF into this stream and queue a Docling import
-                job. Worker execution lands through the callback route.
+              <p className="mt-1 text-sm text-text-muted">
+                Upload a PDF and queue it for processing.
               </p>
             </div>
             <button
@@ -281,11 +275,7 @@ export function DocumentImportModal({
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-xs text-text-muted">
-                  Files are stored in the private document bucket and queued for
-                  worker pickup.
-                </div>
+              <div className="flex justify-end">
                 <button
                   type="submit"
                   disabled={createImport.isPending}
@@ -339,137 +329,110 @@ export function DocumentImportModal({
                   </div>
                 )}
 
-                {documents.map((document) => (
-                  <div
-                    key={document.id}
-                    className="rounded-xl border border-border-default bg-surface-default px-4 py-3"
-                  >
-                    {(() => {
-                      const latestJob = document.latestJob;
-                      const status =
-                        latestJob?.status ?? document.import_status;
-                      const progressPercent =
-                        latestJob?.progress_percent ??
-                        (status === "completed" ? 100 : 0);
-                      const progressMessage = latestJob?.progress_message;
-                      const eta = formatEta(latestJob?.eta_seconds ?? null);
+                {documents.map((document) => {
+                  const latestJob = document.latestJob;
+                  const status = latestJob?.status ?? document.import_status;
+                  const progressPercent =
+                    latestJob?.progress_percent ??
+                    (status === "completed" ? 100 : 0);
+                  const progressMessage = latestJob?.progress_message;
+                  const eta = formatEta(latestJob?.eta_seconds ?? null);
+                  const isPending =
+                    status === "queued" || status === "processing";
+                  const showProgress =
+                    isPending ||
+                    (progressPercent > 0 && status !== "completed");
 
-                      return (
-                        <>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-text-default">
-                                {document.title}
-                              </div>
-                              <div className="truncate text-xs text-text-muted">
-                                {document.original_filename}
-                              </div>
-                            </div>
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${getStatusTone(status)}`}
-                            >
-                              {status}
+                  return (
+                    <div
+                      key={document.id}
+                      className="rounded-lg border border-border-default bg-surface-default px-3 py-2.5"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-text-default">
+                            {document.title}
+                          </div>
+                          <div className="flex items-center gap-1 text-xs text-text-muted">
+                            <span className="truncate">
+                              {document.original_filename}
+                            </span>
+                            <span className="shrink-0">·</span>
+                            <span className="shrink-0">
+                              {formatBytes(document.file_size_bytes)}
                             </span>
                           </div>
-
-                          <div className="mt-3 grid gap-1 text-xs text-text-muted">
-                            <div>
-                              Created: {formatDate(document.created_at)}
-                            </div>
-                            <div>
-                              Size: {formatBytes(document.file_size_bytes)}
-                            </div>
-                            <div>Latest job: {status}</div>
-                            {progressMessage && (
-                              <div>Progress: {progressMessage}</div>
-                            )}
-                            {eta && <div>ETA: {eta}</div>}
-                            {latestJob?.error_message && (
-                              <div className="text-rose-600">
-                                Error: {latestJob.error_message}
-                              </div>
-                            )}
+                        </div>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${getStatusTone(status)}`}
+                        >
+                          {status}
+                        </span>
+                        {isPending && (
+                          <button
+                            onClick={() => handleCancelDocument(document.id)}
+                            disabled={
+                              cancelImport.isPending ||
+                              cancelAllPendingImports.isPending ||
+                              deleteCanceledDocument.isPending
+                            }
+                            className="shrink-0 rounded border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                        {status === "completed" && onSelectDocument && (
+                          <button
+                            onClick={() => {
+                              onSelectDocument(document);
+                              handleClose();
+                            }}
+                            className="shrink-0 rounded border border-action-primary-bg bg-action-primary-bg px-2 py-0.5 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
+                          >
+                            Attach
+                          </button>
+                        )}
+                        {status === "canceled" && (
+                          <button
+                            onClick={() =>
+                              handleDeleteCanceledDocument(document.id)
+                            }
+                            disabled={
+                              deleteCanceledDocument.isPending ||
+                              cancelImport.isPending ||
+                              cancelAllPendingImports.isPending
+                            }
+                            className="shrink-0 rounded border border-border-default bg-surface-subtle px-2 py-0.5 text-xs font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                      {latestJob?.error_message && (
+                        <div className="mt-1 truncate text-xs text-rose-600">
+                          {latestJob.error_message}
+                        </div>
+                      )}
+                      {showProgress && (
+                        <div className="mt-2">
+                          <div className="h-1.5 overflow-hidden rounded-full bg-surface-subtle">
+                            <div
+                              className="h-full rounded-full bg-action-primary-bg transition-[width] duration-500"
+                              style={{ width: `${progressPercent}%` }}
+                            />
                           </div>
-
-                          {(status === "queued" || status === "processing") && (
-                            <div className="mt-3 flex justify-end">
-                              <button
-                                onClick={() =>
-                                  handleCancelDocument(document.id)
-                                }
-                                disabled={
-                                  cancelImport.isPending ||
-                                  cancelAllPendingImports.isPending ||
-                                  deleteCanceledDocument.isPending
-                                }
-                                className="rounded-md border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {cancelImport.isPending
-                                  ? "Canceling..."
-                                  : "Cancel"}
-                              </button>
-                            </div>
-                          )}
-
-                          {status === "completed" && onSelectDocument && (
-                            <div className="mt-3 flex justify-end">
-                              <button
-                                onClick={() => {
-                                  onSelectDocument(document);
-                                  handleClose();
-                                }}
-                                className="rounded-md border border-border-default bg-action-primary-bg px-2.5 py-1 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
-                              >
-                                Attach To Entry
-                              </button>
-                            </div>
-                          )}
-
-                          {status === "canceled" && (
-                            <div className="mt-3 flex justify-end">
-                              <button
-                                onClick={() =>
-                                  handleDeleteCanceledDocument(document.id)
-                                }
-                                disabled={
-                                  deleteCanceledDocument.isPending ||
-                                  cancelImport.isPending ||
-                                  cancelAllPendingImports.isPending
-                                }
-                                className="rounded-md border border-border-default bg-surface-subtle px-2.5 py-1 text-xs font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {deleteCanceledDocument.isPending
-                                  ? "Deleting..."
-                                  : "Delete"}
-                              </button>
-                            </div>
-                          )}
-
-                          {(status === "queued" ||
-                            status === "processing" ||
-                            progressPercent > 0) && (
-                            <div className="mt-3">
-                              <div className="mb-1 flex items-center justify-between text-[11px] text-text-muted">
-                                <span>{progressPercent}%</span>
-                                {status === "processing" && (
-                                  <span>
-                                    {progressMessage ?? "Processing document"}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="h-2 overflow-hidden rounded-full bg-surface-subtle">
-                                <div
-                                  className="h-full rounded-full bg-action-primary-bg transition-[width] duration-500"
-                                  style={{ width: `${progressPercent}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                ))}
+                          <div className="mt-0.5 flex justify-between text-[10px] text-text-muted">
+                            <span>
+                              {progressPercent}%
+                              {progressMessage ? ` · ${progressMessage}` : ""}
+                            </span>
+                            {eta && <span>ETA {eta}</span>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

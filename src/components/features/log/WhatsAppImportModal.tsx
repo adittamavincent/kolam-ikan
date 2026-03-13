@@ -953,7 +953,7 @@ export function WhatsAppImportModal({
       className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
     >
       <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" />
-      <div className="fixed inset-0 overflow-y-auto p-3 lg:p-4">
+      <div className="fixed inset-0 overflow-y-auto p-2 lg:p-3">
         <div className="flex min-h-full items-center justify-center">
           <DialogPanel className="flex w-full max-w-xl flex-col rounded-xl border border-border-default/70 bg-surface-default shadow-2xl transition duration-300 data-closed:scale-95 data-closed:translate-y-4 data-closed:opacity-0">
 
@@ -962,7 +962,7 @@ export function WhatsAppImportModal({
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-text-muted" />
                 <DialogTitle className="text-sm font-semibold text-text-default">
-                  Import WhatsApp Chat
+                  WhatsApp Import
                 </DialogTitle>
                 {step !== "paste" && (
                   <span className="rounded-xl bg-surface-subtle px-2 py-0.5 font-mono text-[10px] text-text-muted">
@@ -980,14 +980,13 @@ export function WhatsAppImportModal({
 
             {/* ─── Step 1: Paste ─────────────────────────────────────────── */}
             {step === "paste" && (
-              <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-3 p-3">
                 <p className="text-xs text-text-muted">
-                  Paste exported WhatsApp chat text, or upload the WhatsApp ZIP export for
-                  automatic chat + PDF matching. PDF references — including{" "}
+                  Paste chat text or upload ZIP. PDF references like{" "}
                   <code className="rounded-sm bg-surface-subtle px-1 py-0.5 text-[10px]">
                     &lt;attached: file.pdf&gt;
                   </code>{" "}
-                  and macOS pasteboard paths — are detected automatically.
+                  are detected automatically.
                 </p>
 
                 <input
@@ -1028,7 +1027,7 @@ export function WhatsAppImportModal({
                 <textarea
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
-                  className="h-64 w-full resize-none rounded-sm border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                  className="h-56 w-full resize-none rounded-sm border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                   placeholder={`[3/10/26, 7:42:30 PM] Alice: Hey!\n[3/10/26, 7:44:00 PM] Bob: Here is the doc\n[3/10/26, 7:44:01 PM] Bob: <attached: proposal.pdf>\n[3/10/26, 7:44:05 PM] Bob: /Users/you/.../proposal.pdf`}
                   spellCheck={false}
                 />
@@ -1069,8 +1068,8 @@ export function WhatsAppImportModal({
                         )}
                         {liveCleanedSenders > 0 && (
                           <span className="text-emerald-600 dark:text-emerald-400">
-                            Cleaned {liveCleanedSenders} sender name
-                            {liveCleanedSenders !== 1 ? "s" : ""} (removed ~ prefix)
+                            {liveCleanedSenders} sender name
+                            {liveCleanedSenders !== 1 ? "s" : ""} cleaned
                           </span>
                         )}
                       </>
@@ -1093,39 +1092,18 @@ export function WhatsAppImportModal({
 
             {/* ─── Step 2: Select range ─────────────────────────────────── */}
             {step === "range" && (
-              <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-3 p-3">
                 <div>
                   <p className="text-xs font-medium text-text-default">Select chat range</p>
-                  <p className="mt-0.5 text-[11px] text-text-muted">
-                    Choose chronological turns to import before persona mapping. Use the
-                    preview below to set start/end precisely.
-                  </p>
                 </div>
 
-                <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted flex items-center justify-between">
+                <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
                   <div>
                     Total turns: <span className="font-semibold text-text-default">{parsedTurns.length}</span>
                     {" · "}
                     Selected: <span className="font-semibold text-text-default">{selectedTurns.length}</span>
                     {" · "}
                     Importable: <span className="font-semibold text-text-default">{rangeImportableCount}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-[11px] text-text-muted">Quick adjust:</div>
-                    <button
-                      onClick={() => setRangeStart((s) => Math.max(0, s - 1))}
-                      title="Move start back"
-                      className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setRangeStart((s) => Math.min(s + 1, rangeEnd))}
-                      title="Move start forward"
-                      className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
                   </div>
                 </div>
 
@@ -1254,19 +1232,6 @@ export function WhatsAppImportModal({
                   )}
                 </div>
 
-                {selectedTurns.length > 0 && (
-                  <div className="rounded-sm border border-border-subtle px-3 py-2 text-[11px] text-text-muted">
-                    <p>
-                      Start: <span className="font-medium text-text-default">{selectedTurns[0]?.sender}</span>
-                      {selectedTurns[0]?.type === "pdf" ? " · PDF" : ""}
-                    </p>
-                    <p>
-                      End: <span className="font-medium text-text-default">{selectedTurns[selectedTurns.length - 1]?.sender}</span>
-                      {selectedTurns[selectedTurns.length - 1]?.type === "pdf" ? " · PDF" : ""}
-                    </p>
-                  </div>
-                )}
-
                 <div className="flex items-center justify-between">
                   <button
                     onClick={() => setStep("paste")}
@@ -1290,11 +1255,11 @@ export function WhatsAppImportModal({
 
             {/* ─── Step 3: Map personas ────────────────────────────────────── */}
             {step === "map" && (
-              <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-3 p-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-xs font-medium text-text-default">
-                      Map senders to personas
+                      Map senders
                     </p>
                     <p className="mt-0.5 text-[11px] text-text-muted">
                       {textTurns.length} text turn{textTurns.length !== 1 ? "s" : ""}
@@ -1403,8 +1368,8 @@ export function WhatsAppImportModal({
                     <span>
                       {pdfTurns.length} PDF file{pdfTurns.length !== 1 ? "s" : ""} detected.
                       {zipSourceName
-                        ? ` ${autoMatchCount} matched from ZIP and will queue automatically on the next step.`
-                        : " On the next screen you'll select files to queue. Processing starts only when you press Import."}
+                        ? ` ${autoMatchCount} matched from ZIP.`
+                        : " Select files in the next step."}
                     </span>
                   </div>
                 )}
@@ -1443,18 +1408,17 @@ export function WhatsAppImportModal({
 
             {/* ─── Step 4: Attach PDFs ─────────────────────────────────────── */}
             {step === "files" && (
-              <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-3 p-3">
                 <div>
                   <p className="text-xs font-medium text-text-default">
                     Attach PDF files
                   </p>
                   <p className="mt-0.5 text-[11px] text-text-muted">
-                    Select each detected PDF from your computer. Files are queued here,
-                    then uploaded and processed only when you press Import.
+                    Choose a file for each detected PDF, then press Import.
                   </p>
                   {zipSourceName && (
                     <p className="mt-1 text-[11px] text-blue-600 dark:text-blue-400">
-                      ZIP source: {zipSourceName} · {autoMatchCount}/{pdfTurns.length} PDF
+                      ZIP: {zipSourceName} · {autoMatchCount}/{pdfTurns.length} PDF
                       {pdfTurns.length !== 1 ? "s" : ""} auto-matched.
                     </p>
                   )}
@@ -1492,10 +1456,10 @@ export function WhatsAppImportModal({
                 {/* Summary */}
                 <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
                   <span className="font-semibold text-text-default">{plannedImportableCount}</span>{" "}
-                  section{plannedImportableCount !== 1 ? "s" : ""} planned
+                  section{plannedImportableCount !== 1 ? "s" : ""} ready
                   ({textTurns.length} text
                   {(doneUploadCount + queuedUploadCount) > 0 &&
-                    `, ${doneUploadCount + queuedUploadCount} PDF queued/ready`}).
+                    `, ${doneUploadCount + queuedUploadCount} PDF queued`}).
                   {skippedPdfs.length > 0 && (
                     <span className="ml-1">
                       {skippedPdfs.length} PDF{skippedPdfs.length !== 1 ? "s" : ""} skipped.
@@ -1655,7 +1619,7 @@ function PdfUploadRow({
       {/* Docling confirmation */}
       {isDone && upload.titleSnapshot && (
         <p className="text-[10px] text-text-muted">
-          Docling processing started for{" "}
+          Processing started for{" "}
           <span className="font-medium text-text-default">
             &quot;{upload.titleSnapshot}&quot;
           </span>
@@ -1664,7 +1628,7 @@ function PdfUploadRow({
 
       {isQueued && (
         <p className="text-[10px] text-text-muted">
-          Queued for processing. Docling starts when you press Import.
+          Queued. Starts after Import.
         </p>
       )}
 
@@ -1713,7 +1677,7 @@ function PdfUploadRow({
                 className="inline-flex items-center gap-1 rounded-sm bg-action-primary-bg px-2 py-1 text-[11px] font-medium text-action-primary-text hover:opacity-90"
               >
                 <Upload className="h-3 w-3" />
-                {isError ? "Choose different file" : "Select file"}
+                {isError ? "Choose another" : "Select file"}
               </button>
 
               <button

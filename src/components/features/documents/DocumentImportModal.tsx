@@ -157,32 +157,35 @@ export function DocumentImportModal({
         console.log("[DocumentImportModal] Processing retrieved files:", {
           count: retrievedFiles.length,
         });
-        (async () => {
-          for (const { file, hash } of retrievedFiles) {
-            try {
-              console.log("[DocumentImportModal] Queueing retrieved file:", {
-                fileName: file.name,
-                fileSize: file.size,
-                hash,
-              });
 
-              const derivedTitle = file.name.replace(/\.pdf$/i, "");
-              await createImport.mutateAsync({
-                file,
-                title: derivedTitle,
-                flavor: "lattice", // default
-                enableTableStructure: true, // default
-                debugDoclingTables: false, // default
-                fileHash: hash,
+        // Start all imports in parallel instead of awaiting each sequentially
+        const importPromises = retrievedFiles.map(({ file, hash }) => {
+          const derivedTitle = file.name.replace(/\.pdf$/i, "");
+          return createImport
+            .mutateAsync({
+              file,
+              title: derivedTitle,
+              flavor: "lattice", // default
+              enableTableStructure: true, // default
+              debugDoclingTables: false, // default
+              fileHash: hash,
+            })
+            .then((res) => {
+              console.log("[DocumentImportModal] queued retrieved file:", {
+                fileName: file.name,
+                result: !!res,
               });
-            } catch (error) {
+            })
+            .catch((error) => {
               console.error(
                 "[DocumentImportModal] Error queueing retrieved file:",
                 error,
               );
-            }
-          }
-        })();
+            });
+        });
+
+        // Fire-and-forget; ensure all promises are started
+        void Promise.allSettled(importPromises);
       }
     },
     [createImport],
@@ -360,63 +363,58 @@ export function DocumentImportModal({
     if (initialQueueKeyRef.current === queueKey) return;
     initialQueueKeyRef.current = queueKey;
 
-    (async () => {
-      for (const { file, hash } of validFiles) {
-        try {
-          console.log("[DocumentImportModal] Processing file for import:", {
-            fileExists: !!file,
-            fileName: file?.name,
-            fileSize: file?.size,
-            fileType: file?.type,
-            fileLastModified: file?.lastModified,
-            isFileInstance: file instanceof File,
-            hash,
-          });
+    // Kick off all imports in parallel so UI shows all queued items immediately
+    const importPromises = validFiles.map(async ({ file, hash }) => {
+      try {
+        console.log("[DocumentImportModal] Processing file for import:", {
+          fileExists: !!file,
+          fileName: file?.name,
+          fileSize: file?.size,
+          fileType: file?.type,
+          fileLastModified: file?.lastModified,
+          isFileInstance: file instanceof File,
+          hash,
+        });
 
-          if (!file || !file.name) {
-            console.error(
-              "[DocumentImportModal] File or file.name is undefined!",
-              { file },
-            );
-            setSubmitError(
-              "Error: Received file without a valid name. Please try again.",
-            );
-            continue;
-          }
-
-          const derivedTitle = file.name.replace(/\.pdf$/i, "");
-          console.log("[DocumentImportModal] Derived title from filename:", {
-            original: file.name,
-            derived: derivedTitle,
-          });
-
-          const result = await createImport.mutateAsync({
-            file,
-            title: derivedTitle,
-            flavor,
-            enableTableStructure,
-            debugDoclingTables,
-            fileHash: hash,
-          });
-
-          const docId = result?.document?.id;
-          if (docId) {
-            const blobUrl = URL.createObjectURL(file);
-            setLocalThumbnails((prev) => ({
-              ...prev,
-              [docId]: blobUrl,
-            }));
-          }
-        } catch (error) {
-          console.error("[DocumentImportModal] Import error:", error);
-          setSubmitError(
-            error instanceof Error
-              ? error.message
-              : "Failed to queue document import.",
-          );
+        if (!file || !file.name) {
+          console.error("[DocumentImportModal] File or file.name is undefined!", { file });
+          setSubmitError("Error: Received file without a valid name. Please try again.");
+          return null;
         }
+
+        const derivedTitle = file.name.replace(/\.pdf$/i, "");
+        console.log("[DocumentImportModal] Derived title from filename:", {
+          original: file.name,
+          derived: derivedTitle,
+        });
+
+        const result = await createImport.mutateAsync({
+          file,
+          title: derivedTitle,
+          flavor,
+          enableTableStructure,
+          debugDoclingTables,
+          fileHash: hash,
+        });
+
+        const docId = result?.document?.id;
+        if (docId) {
+          const blobUrl = URL.createObjectURL(file);
+          setLocalThumbnails((prev) => ({
+            ...prev,
+            [docId]: blobUrl,
+          }));
+        }
+
+        return result;
+      } catch (error) {
+        console.error("[DocumentImportModal] Import error:", error);
+        setSubmitError(error instanceof Error ? error.message : "Failed to queue document import.");
+        return null;
       }
-    })();
+    });
+
+    void Promise.allSettled(importPromises);
   }, [
     isOpen,
     initialQueuedFiles,

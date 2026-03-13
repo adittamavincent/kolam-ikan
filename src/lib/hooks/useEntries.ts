@@ -126,11 +126,11 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       if (error && isMissingColumnError(error)) {
         const fallback = await buildQuery(ENTRIES_SELECT_LEGACY);
         if (fallback.error) throw fallback.error;
-        return fallback.data as EntryWithSections[];
+        return fallback.data as unknown as EntryWithSections[];
       }
 
       if (error) throw error;
-      return data as EntryWithSections[];
+      return data as unknown as EntryWithSections[];
     },
     initialPageParam: 0,
     initialData: cachedEntries
@@ -494,11 +494,11 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     if (error && isMissingColumnError(error)) {
       const fallback = await buildExportQuery(ENTRIES_SELECT_LEGACY);
       if (fallback.error) throw fallback.error;
-      return fallback.data as EntryWithSections[];
+      return fallback.data as unknown as EntryWithSections[];
     }
 
     if (error) throw error;
-    return data as EntryWithSections[];
+    return data as unknown as EntryWithSections[];
   };
 
   return {

@@ -992,7 +992,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
         {/* Persona picker */}
         <div
-          className={`flex items-center gap-2 flex-wrap px-3 py-2 bg-surface-subtle/50 rounded-t-xl ${sections.length > 0 ? "border-b border-border-default/50" : "rounded-b-xl"}`}
+          className={`flex items-center gap-2 flex-wrap px-3 py-1 bg-surface-subtle/50 rounded-t-xl ${sections.length > 0 ? "border-b border-border-default/50" : "rounded-b-xl"}`}
         >
           <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
             New Entry as

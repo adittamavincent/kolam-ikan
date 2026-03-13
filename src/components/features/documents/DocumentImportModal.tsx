@@ -485,7 +485,7 @@ export function DocumentImportModal({
       onClose={handleClose}
       className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
     >
-      <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+      <DialogBackdrop className="fixed inset-0 bg-black/25 backdrop-blur-xs transition-opacity" />
 
       <div
         className="fixed inset-0 overflow-y-auto p-3 lg:p-4"
@@ -499,72 +499,60 @@ export function DocumentImportModal({
         <div className="flex min-h-full items-start justify-center">
           <DialogPanel
             ref={dialogPanelRef}
-            className="my-auto flex min-h-0 w-full max-w-7xl flex-col gap-4 rounded-xl border border-border-default/70 bg-surface-default/95 p-4 shadow-[0_32px_90px_-18px_rgba(0,0,0,0.32)] backdrop-blur-xl transition duration-300 ease-out data-closed:translate-y-4 data-closed:scale-95 data-closed:opacity-0"
+            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3 rounded-xl border border-border-default/70 bg-surface-default/95 p-3 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.32)] backdrop-blur-xl transition duration-300 ease-out data-closed:translate-y-4 data-closed:scale-95 data-closed:opacity-0"
           >
-            <div className="grid min-h-0 gap-4 xl:grid-cols-[minmax(0,1.55fr)_420px] xl:items-start">
+            <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1.6fr)_360px] xl:items-start">
               <form
                 onSubmit={handleSubmit}
-                className="flex min-h-0 flex-col gap-2 rounded-xl border border-border-default/60 bg-surface-subtle/45 p-4"
+                className="flex min-h-0 flex-col gap-3 rounded-xl border border-border-default/60 bg-surface-subtle/45 p-3"
               >
-                <div className="flex flex-col gap-3 rounded-xl border border-border-default/60 bg-surface-default p-4">
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
-                        <UploadCloud className="h-4 w-4 text-action-primary-bg" />
-                        Queue a new import
-                      </div>
-                      <p className="mt-1 text-sm text-text-subtle">
-                        Best for structured reports, invoices, and long-form
-                        PDFs.
-                      </p>
-                    </div>
-                    <div className="inline-flex items-center gap-2 rounded-xl border border-border-default/60 bg-surface-subtle px-3 py-1.5 text-xs text-text-subtle">
-                      <Clock3 className="h-3.5 w-3.5" />
-                      Processing starts once queued in the import worker
-                    </div>
+                <div className="flex items-center justify-between rounded-xl border border-border-default/60 bg-surface-default px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
+                    <UploadCloud className="h-4 w-4 text-action-primary-bg" />
+                    Import PDF
                   </div>
+                  <div className="inline-flex items-center gap-2 text-xs text-text-muted">
+                    <Clock3 className="h-3.5 w-3.5" />
+                    Queue first, process in background
+                  </div>
+                </div>
 
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_280px]">
-                    <label className="flex flex-col gap-2 rounded-xl border border-dashed border-action-primary-bg/30 bg-surface-subtle/35 p-4 text-sm text-text-default transition-colors hover:border-action-primary-bg/50 hover:bg-surface-subtle/55">
-                      <span className="font-medium">PDF file</span>
-                      <span className="text-xs leading-5 text-text-muted">
-                        Choose a single PDF to ingest. Large files stay tracked
-                        in the queue on the right.
-                      </span>
-                      <input
-                        type="file"
-                        accept="application/pdf,.pdf"
-                        onChange={(event) =>
-                          setSelectedFile(event.target.files?.[0] ?? null)
-                        }
-                        className="mt-1 block w-full rounded-xl border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file:rounded-sm file:border-0 file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
-                      />
-                    </label>
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_280px]">
+                  <label className="flex flex-col gap-2 rounded-xl border border-dashed border-action-primary-bg/30 bg-surface-default p-4 text-sm text-text-default transition-colors hover:border-action-primary-bg/50 hover:bg-surface-subtle/35">
+                    <span className="font-medium">PDF file</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      onChange={(event) =>
+                        setSelectedFile(event.target.files?.[0] ?? null)
+                      }
+                      className="block w-full rounded-xl border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file:rounded-sm file:border-0 file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
+                    />
+                    <span className="text-xs text-text-muted">
+                      One PDF per import.
+                    </span>
+                  </label>
 
-                    <div className="rounded-xl border border-border-default/60 bg-surface-subtle/45 p-4 text-sm text-text-muted">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-                        Current file
+                  <div className="rounded-xl border border-border-default/60 bg-surface-default p-4 text-sm text-text-muted">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                      Selected
+                    </div>
+                    <div className="mt-3 flex items-start gap-3">
+                      <div className="relative shrink-0">
+                        <PdfAttachmentThumbnail
+                          url={selectedFilePreviewUrl}
+                          storagePath={null}
+                          thumbnailPath={null}
+                          title={selectedFile?.name ?? "No file selected"}
+                        />
                       </div>
-                      <div className="mt-3 flex items-start gap-3">
-                        <div className="relative shrink-0">
-                          <PdfAttachmentThumbnail
-                            url={selectedFilePreviewUrl}
-                            storagePath={null}
-                            thumbnailPath={null}
-                            title={selectedFile?.name ?? "No file selected"}
-                          />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-text-default">
+                          {selectedFile?.name ?? "No file selected"}
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-text-default">
-                            {selectedFile?.name ?? "No file selected"}
-                          </div>
-                          <div className="mt-1 text-xs text-text-muted">
-                            {formatBytes(selectedFile?.size ?? null)}
-                          </div>
+                        <div className="mt-1 text-xs text-text-muted">
+                          {formatBytes(selectedFile?.size ?? null)}
                         </div>
-                      </div>
-                      <div className="mt-4 rounded-xl border border-border-default/60 bg-surface-default px-3 py-2 text-xs leading-5 text-text-subtle">
-                        Title defaults to the filename if you leave it blank.
                       </div>
                     </div>
                   </div>
@@ -589,7 +577,6 @@ export function DocumentImportModal({
                       <span className="font-medium text-text-subtle">
                         {derivedTitle || "the filename"}
                       </span>
-                      .
                     </span>
                   </label>
 
@@ -613,7 +600,7 @@ export function DocumentImportModal({
                       <span className="font-medium text-text-subtle">
                         lattice
                       </span>{" "}
-                      for visible table borders,{" "}
+                      for table borders, {" "}
                       <span className="font-medium text-text-subtle">
                         stream
                       </span>{" "}
@@ -636,10 +623,7 @@ export function DocumentImportModal({
                       <div className="font-medium text-text-default">
                         Enable Docling table structure
                       </div>
-                      <div className="mt-1 text-xs leading-5 text-text-muted">
-                        Preserve row and column relationships for richer
-                        downstream extraction.
-                      </div>
+                      <div className="mt-1 text-xs leading-5 text-text-muted">Keep table rows and columns linked.</div>
                     </div>
                   </label>
 
@@ -656,10 +640,7 @@ export function DocumentImportModal({
                       <div className="font-medium text-text-default">
                         Export Docling debug metadata
                       </div>
-                      <div className="mt-1 text-xs leading-5 text-text-muted">
-                        Include table diagnostics when you need to inspect
-                        extraction quality.
-                      </div>
+                      <div className="mt-1 text-xs leading-5 text-text-muted">Include diagnostics for troubleshooting.</div>
                     </div>
                   </label>
                 </div>
@@ -671,15 +652,12 @@ export function DocumentImportModal({
                   </div>
                 )}
 
-                <div className="flex flex-col gap-2.5 rounded-xl border border-border-default/60 bg-surface-default p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 rounded-xl border border-border-default/60 bg-surface-default p-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-text-default">
                       Ready to queue
                     </div>
-                    <div className="mt-1 text-xs leading-5 text-text-muted">
-                      The import will appear instantly in the activity list and
-                      update as processing progresses.
-                    </div>
+                    <div className="mt-1 text-xs leading-5 text-text-muted">Shows up instantly in the queue.</div>
                   </div>
                   <button
                     type="submit"
@@ -696,17 +674,13 @@ export function DocumentImportModal({
                 </div>
               </form>
 
-              <div className="flex min-h-0 w-full flex-col items-stretch gap-2 rounded-xl border border-border-default/60 bg-surface-subtle/45 p-4">
+              <div className="flex min-h-0 w-full flex-col items-stretch gap-2 rounded-xl border border-border-default/60 bg-surface-subtle/45 p-3">
                 {cancelableDocuments.length > 0 && (
-                  <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-default/60 bg-surface-default px-4 py-3 text-xs text-text-muted">
+                  <div className="flex w-full items-center justify-between gap-3 rounded-xl border border-border-default/60 bg-surface-default px-3 py-2 text-xs text-text-muted">
                     <div>
                       <div className="font-semibold text-text-default">
                         {cancelableDocuments.length} active import
                         {cancelableDocuments.length === 1 ? "" : "s"}
-                      </div>
-                      <div className="mt-1 text-text-muted">
-                        Cancel everything in one action if the queue needs to be
-                        reset.
                       </div>
                     </div>
                     <button
@@ -730,15 +704,11 @@ export function DocumentImportModal({
                   )}
 
                   {!isLoading && documents.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-border-default/80 bg-surface-default px-5 py-8 text-sm text-text-muted">
+                    <div className="rounded-xl border border-dashed border-border-default/80 bg-surface-default px-4 py-6 text-sm text-text-muted">
                       <div className="flex items-center gap-2 text-text-default">
                         <CheckCircle2 className="h-4 w-4 text-action-primary-bg" />
                         Nothing queued yet
                       </div>
-                      <p className="mt-2 max-w-sm leading-6 text-text-subtle">
-                        Your imported PDFs will show up here with live progress,
-                        errors, and quick actions.
-                      </p>
                     </div>
                   )}
 

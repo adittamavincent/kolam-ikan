@@ -952,7 +952,7 @@ export function WhatsAppImportModal({
       onClose={handleClose}
       className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
     >
-      <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+      <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" />
       <div className="fixed inset-0 overflow-y-auto p-3 lg:p-4">
         <div className="flex min-h-full items-center justify-center">
           <DialogPanel className="flex w-full max-w-xl flex-col rounded-xl border border-border-default/70 bg-surface-default shadow-2xl transition duration-300 data-closed:scale-95 data-closed:translate-y-4 data-closed:opacity-0">

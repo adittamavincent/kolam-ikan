@@ -4,5 +4,7 @@
     "**/node_modules/**": true
   },
   "css.lint.unknownAtRules": "ignore",
-  "python.defaultInterpreterPath": "${workspaceFolder}/services/docling-worker/.venv/bin/python"
+  "python.defaultInterpreterPath": "${workspaceFolder}/services/docling-worker/.venv/bin/python",
+  "python.terminal.activateEnvironment": false,
+  "python.terminal.activateEnvInCurrentTerminal": false
 }

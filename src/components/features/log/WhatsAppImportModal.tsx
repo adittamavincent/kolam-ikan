@@ -65,7 +65,8 @@ const getPendingFileIds = (): string[] => {
 const setPendingFileIds = (ids: string[]): void => {
   if (typeof window === "undefined") return;
   window.kolam_pending_file_ids = ids;
-  console.log("[WhatsApp] Set pending file IDs:", ids);
+  if (process.env.NODE_ENV !== "production")
+    console.debug("[WhatsApp] Set pending file IDs:", ids);
 };
 
 const generateFileId = (): string =>
@@ -790,13 +791,14 @@ export function WhatsAppImportModal({
   const handleProcessAndConfirm = async () => {
     if (!canConfirmFiles) return;
 
-    console.log(
-      "[WhatsApp] handleProcessAndConfirm started with selectedTurns:",
-      {
-        count: selectedTurns.length,
-        types: selectedTurns.map((t) => t.type),
-      },
-    );
+    if (process.env.NODE_ENV !== "production")
+      console.debug(
+        "[WhatsApp] handleProcessAndConfirm started with selectedTurns:",
+        {
+          count: selectedTurns.length,
+          types: selectedTurns.map((t) => t.type),
+        },
+      );
 
     // Transfer all text turns and any already-completed PDFs to EntryCreator
     // Transfer all pending PDF files to the Docling document import handler
@@ -821,7 +823,8 @@ export function WhatsAppImportModal({
       } else if (turn.type === "pdf") {
         const upload = uploads[turn.id];
 
-        console.log("[WhatsApp] Processing PDF turn:", {
+        if (process.env.NODE_ENV !== "production")
+          console.debug("[WhatsApp] Processing PDF turn:", {
           turnId: turn.id,
           filename: turn.filename,
           fullPath: turn.fullPath,
@@ -829,7 +832,7 @@ export function WhatsAppImportModal({
           uploadFile: upload?.file
             ? { name: upload.file.name, size: upload.file.size }
             : null,
-        });
+          });
 
         // If already uploaded (done) → include in inject payload
         if (
@@ -864,11 +867,12 @@ export function WhatsAppImportModal({
         else if (upload?.file && upload.status === "pending") {
           const file = upload.file;
 
-          console.log("[WhatsApp] Queuing PDF file for transfer:", {
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-          });
+          if (process.env.NODE_ENV !== "production")
+            console.debug("[WhatsApp] Queuing PDF file for transfer:", {
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+            });
           const hash = await calculateFileHash(file);
 
           if (!transferFiles.find((f) => f.file === file)) {
@@ -908,10 +912,11 @@ export function WhatsAppImportModal({
 
     // Dispatch all text turns and PDFs (including pending ones) to EntryCreator
     if (payloadTurns.length > 0) {
-      console.log("[WhatsApp] Dispatching kolam_whatsapp_import_inject:", {
-        turnCount: payloadTurns.length,
-        streamId,
-      });
+      if (process.env.NODE_ENV !== "production")
+        console.debug("[WhatsApp] Dispatching kolam_whatsapp_import_inject:", {
+          turnCount: payloadTurns.length,
+          streamId,
+        });
       window.dispatchEvent(
         new CustomEvent("kolam_whatsapp_import_inject", {
           detail: {
@@ -936,18 +941,19 @@ export function WhatsAppImportModal({
       // Store pending file IDs so they're available when DocumentImportModal opens
       setPendingFileIds(fileIds);
 
-      console.log(
-        "[WhatsApp] Storing files in temp store and dispatching kolam_header_documents_import:",
-        {
-          fileCount: transferFiles.length,
-          fileIds,
-          files: transferFiles.map((f) => ({
-            name: f.file.name,
-            size: f.file.size,
-            hash: f.hash,
-          })),
-        },
-      );
+      if (process.env.NODE_ENV !== "production")
+        console.debug(
+          "[WhatsApp] Storing files in temp store and dispatching kolam_header_documents_import:",
+          {
+            fileCount: transferFiles.length,
+            fileIds,
+            files: transferFiles.map((f) => ({
+              name: f.file.name,
+              size: f.file.size,
+              hash: f.hash,
+            })),
+          },
+        );
       window.dispatchEvent(
         new CustomEvent("kolam_header_documents_import", {
           detail: { fileIds },

@@ -221,7 +221,7 @@ export function DocumentImportModal({
   const derivedTitle = useMemo(() => {
     if (title.trim()) return title.trim();
     if (!selectedFile || !selectedFile.name) {
-      console.warn(
+      console.debug(
         "[DocumentImportModal] derivedTitle: selectedFile or name is missing",
         {
           selectedFileExists: !!selectedFile,

@@ -115,19 +115,21 @@ export function PdfAttachmentThumbnail({
       try {
         // Step 1: Try server-generated thumbnail first if thumbnailPath is provided
         if (thumbnailPath && !skipThumbnail) {
-          console.debug(
-            "PdfAttachmentThumbnail: checking for server-generated thumbnail",
-            thumbnailPath,
-          );
+          if (process.env.NODE_ENV !== "production")
+            console.debug(
+              "PdfAttachmentThumbnail: checking for server-generated thumbnail",
+              thumbnailPath,
+            );
           const { data: thumbData } = supabase.storage
             .from("thumbnails")
             .getPublicUrl(thumbnailPath);
 
           if (!canceled && thumbData?.publicUrl) {
-            console.debug(
-              "PdfAttachmentThumbnail: found server-generated thumbnail",
-              thumbData.publicUrl,
-            );
+            if (process.env.NODE_ENV !== "production")
+              console.debug(
+                "PdfAttachmentThumbnail: found server-generated thumbnail",
+                thumbData.publicUrl,
+              );
             fetchedStoragePathRef.current = thumbnailPath;
             setResolvedUrl(thumbData.publicUrl);
             setIsFromCache(true);
@@ -137,10 +139,11 @@ export function PdfAttachmentThumbnail({
 
         // Step 2: Try legacy cached thumbnail (storagePath.png) if storagePath is provided
         if (storagePath && !skipThumbnail) {
-          console.debug(
-            "PdfAttachmentThumbnail: checking for legacy cached thumbnail",
-            storagePath,
-          );
+          if (process.env.NODE_ENV !== "production")
+            console.debug(
+              "PdfAttachmentThumbnail: checking for legacy cached thumbnail",
+              storagePath,
+            );
           const thumbPath = `${storagePath}.png`;
 
           const { data: thumbData } = supabase.storage
@@ -148,10 +151,11 @@ export function PdfAttachmentThumbnail({
             .getPublicUrl(thumbPath);
 
           if (!canceled && thumbData?.publicUrl) {
-            console.debug(
-              "PdfAttachmentThumbnail: found legacy cached thumbnail",
-              thumbData.publicUrl,
-            );
+            if (process.env.NODE_ENV !== "production")
+              console.debug(
+                "PdfAttachmentThumbnail: found legacy cached thumbnail",
+                thumbData.publicUrl,
+              );
             fetchedStoragePathRef.current = storagePath;
             setResolvedUrl(thumbData.publicUrl);
             setIsFromCache(true);
@@ -214,10 +218,11 @@ export function PdfAttachmentThumbnail({
     let canceled = false;
 
     async function renderFirstPage() {
-      console.debug("PdfAttachmentThumbnail: renderFirstPage start", {
-        resolvedUrl,
-        storagePath,
-      });
+      if (process.env.NODE_ENV !== "production")
+        console.debug("PdfAttachmentThumbnail: renderFirstPage start", {
+          resolvedUrl,
+          storagePath,
+        });
 
       if (!resolvedUrl || !canvasRef.current) {
         setHasRendered(false);
@@ -242,10 +247,11 @@ export function PdfAttachmentThumbnail({
           /\.(png|jpe?g|webp|gif|bmp|avif)(\?.*)?$/i.test(resolvedUrl) ||
           resolvedUrl.startsWith("data:image/");
         if (isImage || isFromCache) {
-          console.debug("PdfAttachmentThumbnail: drawing image/thumbnail", {
-            resolvedUrl,
-            isFromCache,
-          });
+          if (process.env.NODE_ENV !== "production")
+            console.debug("PdfAttachmentThumbnail: drawing image/thumbnail", {
+              resolvedUrl,
+              isFromCache,
+            });
           const img = new Image();
           img.crossOrigin = "anonymous";
           const imgLoad = new Promise<void>((resolve, reject) => {
@@ -329,11 +335,12 @@ export function PdfAttachmentThumbnail({
             : "/js/pdf.worker.min.mjs";
         pdfjs.GlobalWorkerOptions.workerSrc = localWorkerUrl;
 
-        console.debug("PdfAttachmentThumbnail: loading PDF", {
-          resolvedUrl,
-          version,
-          workerSrc: pdfjs.GlobalWorkerOptions.workerSrc,
-        });
+        if (process.env.NODE_ENV !== "production")
+          console.debug("PdfAttachmentThumbnail: loading PDF", {
+            resolvedUrl,
+            version,
+            workerSrc: pdfjs.GlobalWorkerOptions.workerSrc,
+          });
 
         // Fetch the PDF content
         const resp = await fetch(resolvedUrl);
@@ -349,10 +356,11 @@ export function PdfAttachmentThumbnail({
         }
 
         const arrayBuffer = await resp.arrayBuffer();
-        console.debug(
-          "PdfAttachmentThumbnail: PDF bytes fetched",
-          arrayBuffer.byteLength,
-        );
+        if (process.env.NODE_ENV !== "production")
+          console.debug(
+            "PdfAttachmentThumbnail: PDF bytes fetched",
+            arrayBuffer.byteLength,
+          );
 
         const loadingTask = pdfjs.getDocument({
           data: new Uint8Array(arrayBuffer),
@@ -380,10 +388,12 @@ export function PdfAttachmentThumbnail({
         }
 
         const pdfDoc = pdf as unknown as PDFDocumentLike;
-        console.debug("PdfAttachmentThumbnail: PDF document loaded");
+        if (process.env.NODE_ENV !== "production")
+          console.debug("PdfAttachmentThumbnail: PDF document loaded");
 
         const page = await pdfDoc.getPage(1);
-        console.debug("PdfAttachmentThumbnail: first page retrieved");
+        if (process.env.NODE_ENV !== "production")
+          console.debug("PdfAttachmentThumbnail: first page retrieved");
 
         if (canceled || !canvasRef.current) {
           if (typeof pdfDoc.destroy === "function") await pdfDoc.destroy();
@@ -428,18 +438,20 @@ export function PdfAttachmentThumbnail({
         const offsetY = (cssH - viewport.height) / 2;
         context.translate(offsetX, offsetY);
 
-        console.debug("PdfAttachmentThumbnail: rendering page to canvas...", {
-          scale,
-          viewportWidth: viewport.width,
-          viewportHeight: viewport.height,
-        });
+        if (process.env.NODE_ENV !== "production")
+          console.debug("PdfAttachmentThumbnail: rendering page to canvas...", {
+            scale,
+            viewportWidth: viewport.width,
+            viewportHeight: viewport.height,
+          });
         await page.render({
           canvasContext: context,
           viewport,
         }).promise;
 
         context.restore();
-        console.debug("PdfAttachmentThumbnail: render complete");
+        if (process.env.NODE_ENV !== "production")
+          console.debug("PdfAttachmentThumbnail: render complete");
 
         if (typeof pdfDoc.destroy === "function") await pdfDoc.destroy();
         if (!canceled) {
@@ -448,10 +460,11 @@ export function PdfAttachmentThumbnail({
           // FUTURE PROOF: If we just successfully rendered a PDF (not from cache),
           // upload the thumbnail to the storage cache for next time.
           if (storagePath && !isFromCache) {
-            console.debug(
-              "PdfAttachmentThumbnail: auto-uploading rendered thumbnail to cache",
-              storagePath,
-            );
+            if (process.env.NODE_ENV !== "production")
+              console.debug(
+                "PdfAttachmentThumbnail: auto-uploading rendered thumbnail to cache",
+                storagePath,
+              );
             canvas.toBlob(async (blob) => {
               if (!blob) return;
               try {
@@ -468,10 +481,11 @@ export function PdfAttachmentThumbnail({
                 );
 
                 if (uploadResp.ok) {
-                  console.debug(
-                    "PdfAttachmentThumbnail: Successfully cached thumbnail for",
-                    storagePath,
-                  );
+                  if (process.env.NODE_ENV !== "production")
+                    console.debug(
+                      "PdfAttachmentThumbnail: Successfully cached thumbnail for",
+                      storagePath,
+                    );
                 } else {
                   console.warn(
                     "PdfAttachmentThumbnail: Failed to cache thumbnail",
@@ -529,9 +543,10 @@ export function PdfAttachmentThumbnail({
           // If we have a storagePath and the current resolvedUrl (which might be the prop URL) failed,
           // clear it to trigger a fresh signed URL fetch on the next attempt.
           if (storagePath && resolvedUrl === url) {
-            console.debug(
-              "PdfAttachmentThumbnail: prop URL failed, triggering fresh signed URL fetch from storagePath",
-            );
+            if (process.env.NODE_ENV !== "production")
+              console.debug(
+                "PdfAttachmentThumbnail: prop URL failed, triggering fresh signed URL fetch from storagePath",
+              );
             fetchedStoragePathRef.current = null; // Ensure we allow a re-fetch
             setResolvedUrl(null);
           }

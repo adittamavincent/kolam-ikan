@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pyright: reportMissingImports=false
+
 import logging
 import math
 import os
@@ -11,7 +13,7 @@ from urllib.parse import urlparse
 import camelot
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException
-from pdf2image import convert_from_path
+from pdf2image import convert_from_path  # type: ignore
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
 from tqdm import tqdm

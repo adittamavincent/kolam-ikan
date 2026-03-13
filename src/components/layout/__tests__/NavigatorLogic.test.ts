@@ -23,7 +23,6 @@ const createCabinet = (
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   deleted_at: null,
-  archived_at: null,
 });
 
 const createStream = (id: string, cabinetId: string | null): Stream => ({
@@ -38,8 +37,6 @@ const createStream = (id: string, cabinetId: string | null): Stream => ({
   deleted_at: null,
   description: null,
   sort_order: 0,
-  archived_at: null,
-  parent_stream_id: null,
 });
 
 describe("getVisibleActiveNodeId", () => {

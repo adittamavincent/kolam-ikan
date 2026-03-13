@@ -3,8 +3,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { Document, DocumentImportJob, DocumentWithLatestJob } from "@/lib/types";
-import { getDocumentFileUrl, getDocumentThumbnailUrl } from "@/lib/documents/utils";
+import {
+  Document,
+  DocumentImportJob,
+  DocumentWithLatestJob,
+} from "@/lib/types";
+import {
+  getDocumentFileUrl,
+  getDocumentThumbnailUrl,
+} from "@/lib/documents/utils";
 
 function isMissingDocumentSchemaError(error: PostgrestError | null) {
   const message = (error?.message ?? "").toLowerCase();
@@ -92,9 +99,17 @@ export function useDocuments(streamId: string) {
     refetchIntervalInBackground: true,
   });
 
-  type CreateImportResponse = { error?: string; document?: Document; job?: DocumentImportJob } | null;
+  type CreateImportResponse = {
+    error?: string;
+    document?: Document;
+    job?: DocumentImportJob;
+  } | null;
 
-  const createImport = useMutation<CreateImportResponse, Error, CreateDocumentImportArgs>({
+  const createImport = useMutation<
+    CreateImportResponse,
+    Error,
+    CreateDocumentImportArgs
+  >({
     mutationFn: async ({
       file,
       title,
@@ -121,7 +136,9 @@ export function useDocuments(streamId: string) {
         body: formData,
       });
 
-      const payload = (await response.json().catch(() => null)) as CreateImportResponse;
+      const payload = (await response
+        .json()
+        .catch(() => null)) as CreateImportResponse;
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to queue document import");
       }

@@ -39,7 +39,10 @@ export function PdfAttachmentThumbnail({
 }: PdfAttachmentThumbnailProps) {
   type PDFPageLike = {
     getViewport: (opts: { scale: number }) => { width: number; height: number };
-    render: (opts: { canvasContext: CanvasRenderingContext2D; viewport: { width: number; height: number } }) => { promise: Promise<void> };
+    render: (opts: {
+      canvasContext: CanvasRenderingContext2D;
+      viewport: { width: number; height: number };
+    }) => { promise: Promise<void> };
   };
 
   type PDFDocumentLike = {
@@ -57,7 +60,6 @@ export function PdfAttachmentThumbnail({
       isEvalSupported?: boolean;
     }) => { promise: Promise<PDFDocumentLike> };
   };
-
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fetchedStoragePathRef = useRef<string | null>(null);
@@ -99,7 +101,12 @@ export function PdfAttachmentThumbnail({
     // BUT only skip if we don't have a storagePath or thumbnailPath (because if we have either, we want to check for thumbnails first)
     if (url && resolvedUrl === url && !storagePath && !thumbnailPath) return;
     // 3. We ALREADY fetched a signed URL for this exact storagePath/thumbnailPath and we haven't cleared it
-    if (resolvedUrl && ((fetchedStoragePathRef.current === storagePath) || (fetchedStoragePathRef.current === thumbnailPath))) return;
+    if (
+      resolvedUrl &&
+      (fetchedStoragePathRef.current === storagePath ||
+        fetchedStoragePathRef.current === thumbnailPath)
+    )
+      return;
 
     const supabase = createClient();
     let canceled = false;
@@ -108,13 +115,19 @@ export function PdfAttachmentThumbnail({
       try {
         // Step 1: Try server-generated thumbnail first if thumbnailPath is provided
         if (thumbnailPath && !skipThumbnail) {
-          console.debug("PdfAttachmentThumbnail: checking for server-generated thumbnail", thumbnailPath);
+          console.debug(
+            "PdfAttachmentThumbnail: checking for server-generated thumbnail",
+            thumbnailPath,
+          );
           const { data: thumbData } = supabase.storage
             .from("thumbnails")
             .getPublicUrl(thumbnailPath);
 
           if (!canceled && thumbData?.publicUrl) {
-            console.debug("PdfAttachmentThumbnail: found server-generated thumbnail", thumbData.publicUrl);
+            console.debug(
+              "PdfAttachmentThumbnail: found server-generated thumbnail",
+              thumbData.publicUrl,
+            );
             fetchedStoragePathRef.current = thumbnailPath;
             setResolvedUrl(thumbData.publicUrl);
             setIsFromCache(true);
@@ -124,7 +137,10 @@ export function PdfAttachmentThumbnail({
 
         // Step 2: Try legacy cached thumbnail (storagePath.png) if storagePath is provided
         if (storagePath && !skipThumbnail) {
-          console.debug("PdfAttachmentThumbnail: checking for legacy cached thumbnail", storagePath);
+          console.debug(
+            "PdfAttachmentThumbnail: checking for legacy cached thumbnail",
+            storagePath,
+          );
           const thumbPath = `${storagePath}.png`;
 
           const { data: thumbData } = supabase.storage
@@ -132,32 +148,47 @@ export function PdfAttachmentThumbnail({
             .getPublicUrl(thumbPath);
 
           if (!canceled && thumbData?.publicUrl) {
-            console.debug("PdfAttachmentThumbnail: found legacy cached thumbnail", thumbData.publicUrl);
+            console.debug(
+              "PdfAttachmentThumbnail: found legacy cached thumbnail",
+              thumbData.publicUrl,
+            );
             fetchedStoragePathRef.current = storagePath;
             setResolvedUrl(thumbData.publicUrl);
             setIsFromCache(true);
             return;
           }
         } else {
-          console.debug("PdfAttachmentThumbnail: skipping cached thumbnail fetch (previously failed)", { storagePath, thumbnailPath });
+          console.debug(
+            "PdfAttachmentThumbnail: skipping cached thumbnail fetch (previously failed)",
+            { storagePath, thumbnailPath },
+          );
         }
 
         // Step 3: Fallback to the original PDF if no thumbnail exists or we skipped it
         if (storagePath) {
-          console.debug("PdfAttachmentThumbnail: falling back to original PDF", storagePath);
+          console.debug(
+            "PdfAttachmentThumbnail: falling back to original PDF",
+            storagePath,
+          );
           const bucket = "document-files";
           const { data, error } = await supabase.storage
             .from(bucket)
             .createSignedUrl(storagePath, 60 * 60);
 
           if (error) {
-            console.warn(`PDF object not found or error in storage: ${storagePath}`, error);
+            console.warn(
+              `PDF object not found or error in storage: ${storagePath}`,
+              error,
+            );
             if (!canceled) setHasRendered(false);
             return;
           }
 
           if (!canceled && data?.signedUrl) {
-            console.debug("PdfAttachmentThumbnail: obtained fresh signedUrl for PDF", data.signedUrl);
+            console.debug(
+              "PdfAttachmentThumbnail: obtained fresh signedUrl for PDF",
+              data.signedUrl,
+            );
             fetchedStoragePathRef.current = storagePath;
             setResolvedUrl(data.signedUrl);
             setIsFromCache(false);
@@ -165,7 +196,10 @@ export function PdfAttachmentThumbnail({
           }
         }
       } catch (err) {
-        console.error("Error in getSignedUrl for PDF thumbnail:", err, { storagePath, thumbnailPath });
+        console.error("Error in getSignedUrl for PDF thumbnail:", err, {
+          storagePath,
+          thumbnailPath,
+        });
         if (!canceled) setHasRendered(false);
       }
     }
@@ -180,7 +214,10 @@ export function PdfAttachmentThumbnail({
     let canceled = false;
 
     async function renderFirstPage() {
-      console.debug("PdfAttachmentThumbnail: renderFirstPage start", { resolvedUrl, storagePath });
+      console.debug("PdfAttachmentThumbnail: renderFirstPage start", {
+        resolvedUrl,
+        storagePath,
+      });
 
       if (!resolvedUrl || !canvasRef.current) {
         setHasRendered(false);
@@ -188,7 +225,12 @@ export function PdfAttachmentThumbnail({
           const ctx = canvasRef.current.getContext("2d");
           if (ctx) {
             // Note: Use the internal canvas size, not the CSS size, to fully clear it
-            ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+            ctx.clearRect(
+              0,
+              0,
+              canvasRef.current.width,
+              canvasRef.current.height,
+            );
           }
         }
         return;
@@ -196,9 +238,14 @@ export function PdfAttachmentThumbnail({
 
       try {
         // If the resolved URL points to an image (preview cover OR cached thumbnail), draw it to the canvas
-        const isImage = /\.(png|jpe?g|webp|gif|bmp|avif)(\?.*)?$/i.test(resolvedUrl) || resolvedUrl.startsWith("data:image/");
+        const isImage =
+          /\.(png|jpe?g|webp|gif|bmp|avif)(\?.*)?$/i.test(resolvedUrl) ||
+          resolvedUrl.startsWith("data:image/");
         if (isImage || isFromCache) {
-          console.debug("PdfAttachmentThumbnail: drawing image/thumbnail", { resolvedUrl, isFromCache });
+          console.debug("PdfAttachmentThumbnail: drawing image/thumbnail", {
+            resolvedUrl,
+            isFromCache,
+          });
           const img = new Image();
           img.crossOrigin = "anonymous";
           const imgLoad = new Promise<void>((resolve, reject) => {
@@ -218,7 +265,9 @@ export function PdfAttachmentThumbnail({
           } catch (loadErr) {
             // If the thumbnail failed to load, fall back to PDF rendering if we have a storagePath
             if (isFromCache && storagePath && !canceled) {
-              console.warn("PdfAttachmentThumbnail: cached thumbnail failed to load, falling back to PDF rendering");
+              console.warn(
+                "PdfAttachmentThumbnail: cached thumbnail failed to load, falling back to PDF rendering",
+              );
               setIsFromCache(false);
               setSkipThumbnail(true);
               setResolvedUrl(null); // This will trigger a fresh fetch from document-files in the other effect
@@ -230,7 +279,8 @@ export function PdfAttachmentThumbnail({
           if (canceled || !canvasRef.current) return;
 
           const canvas = canvasRef.current;
-          const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+          const dpr =
+            typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
           const cssW = 48;
           const cssH = 64;
           canvas.width = Math.round(cssW * dpr);
@@ -263,27 +313,34 @@ export function PdfAttachmentThumbnail({
           );
           throw importErr;
         }
-        
-        const pdfjs = (pdfjsModule.default || pdfjsModule) as unknown as PdfJsModule;
+
+        const pdfjs = (pdfjsModule.default ||
+          pdfjsModule) as unknown as PdfJsModule;
         const version = pdfjs.version || "5.5.207";
-        
+
         // Prioritize local worker as it's most reliable for the current environment.
         // Use an absolute URL to avoid basePath/CSP issues in some deployments.
-        const localWorkerUrl = typeof window !== "undefined"
-          ? new URL("/js/pdf.worker.min.mjs", window.location.origin).toString()
-          : "/js/pdf.worker.min.mjs";
+        const localWorkerUrl =
+          typeof window !== "undefined"
+            ? new URL(
+                "/js/pdf.worker.min.mjs",
+                window.location.origin,
+              ).toString()
+            : "/js/pdf.worker.min.mjs";
         pdfjs.GlobalWorkerOptions.workerSrc = localWorkerUrl;
 
-        console.debug("PdfAttachmentThumbnail: loading PDF", { 
-          resolvedUrl, 
-          version, 
-          workerSrc: pdfjs.GlobalWorkerOptions.workerSrc 
+        console.debug("PdfAttachmentThumbnail: loading PDF", {
+          resolvedUrl,
+          version,
+          workerSrc: pdfjs.GlobalWorkerOptions.workerSrc,
         });
 
         // Fetch the PDF content
         const resp = await fetch(resolvedUrl);
         if (!resp.ok) {
-          const bodyText = await resp.text().catch(() => "<unreadable response>");
+          const bodyText = await resp
+            .text()
+            .catch(() => "<unreadable response>");
           throw new Error(
             `Failed to fetch PDF (status=${resp.status} ${resp.statusText}) ${
               bodyText ? `body=${bodyText.substring(0, 200)}` : ""
@@ -292,9 +349,12 @@ export function PdfAttachmentThumbnail({
         }
 
         const arrayBuffer = await resp.arrayBuffer();
-        console.debug("PdfAttachmentThumbnail: PDF bytes fetched", arrayBuffer.byteLength);
+        console.debug(
+          "PdfAttachmentThumbnail: PDF bytes fetched",
+          arrayBuffer.byteLength,
+        );
 
-        const loadingTask = pdfjs.getDocument({ 
+        const loadingTask = pdfjs.getDocument({
           data: new Uint8Array(arrayBuffer),
           useWorkerFetch: false,
           isEvalSupported: false,
@@ -311,7 +371,7 @@ export function PdfAttachmentThumbnail({
           // Retry once with unpkg if local worker fails (though local should be fine)
           const unpkgWorkerUrl = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
           pdfjs.GlobalWorkerOptions.workerSrc = unpkgWorkerUrl;
-          const retryTask = pdfjs.getDocument({ 
+          const retryTask = pdfjs.getDocument({
             data: new Uint8Array(arrayBuffer),
             useWorkerFetch: false,
             isEvalSupported: false,
@@ -321,7 +381,7 @@ export function PdfAttachmentThumbnail({
 
         const pdfDoc = pdf as unknown as PDFDocumentLike;
         console.debug("PdfAttachmentThumbnail: PDF document loaded");
-        
+
         const page = await pdfDoc.getPage(1);
         console.debug("PdfAttachmentThumbnail: first page retrieved");
 
@@ -332,12 +392,16 @@ export function PdfAttachmentThumbnail({
 
         // compute a viewport that fits exactly into our 48x64 container
         const canvas = canvasRef.current;
-        const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
+        const dpr =
+          typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
         const cssW = 48;
         const cssH = 64;
 
         const unscaledViewport = page.getViewport({ scale: 1 });
-        const scale = Math.min(cssW / unscaledViewport.width, cssH / unscaledViewport.height);
+        const scale = Math.min(
+          cssW / unscaledViewport.width,
+          cssH / unscaledViewport.height,
+        );
         const viewport = page.getViewport({ scale });
 
         // Set backing store size (resolution)
@@ -364,7 +428,11 @@ export function PdfAttachmentThumbnail({
         const offsetY = (cssH - viewport.height) / 2;
         context.translate(offsetX, offsetY);
 
-        console.debug("PdfAttachmentThumbnail: rendering page to canvas...", { scale, viewportWidth: viewport.width, viewportHeight: viewport.height });
+        console.debug("PdfAttachmentThumbnail: rendering page to canvas...", {
+          scale,
+          viewportWidth: viewport.width,
+          viewportHeight: viewport.height,
+        });
         await page.render({
           canvasContext: context,
           viewport,
@@ -372,7 +440,7 @@ export function PdfAttachmentThumbnail({
 
         context.restore();
         console.debug("PdfAttachmentThumbnail: render complete");
-        
+
         if (typeof pdfDoc.destroy === "function") await pdfDoc.destroy();
         if (!canceled) {
           setHasRendered(true);
@@ -380,26 +448,41 @@ export function PdfAttachmentThumbnail({
           // FUTURE PROOF: If we just successfully rendered a PDF (not from cache),
           // upload the thumbnail to the storage cache for next time.
           if (storagePath && !isFromCache) {
-            console.debug("PdfAttachmentThumbnail: auto-uploading rendered thumbnail to cache", storagePath);
+            console.debug(
+              "PdfAttachmentThumbnail: auto-uploading rendered thumbnail to cache",
+              storagePath,
+            );
             canvas.toBlob(async (blob) => {
               if (!blob) return;
               try {
                 const formData = new FormData();
                 formData.append("file", blob, "thumbnail.png");
                 formData.append("storagePath", storagePath);
-                
-                const uploadResp = await fetch("/api/documents/thumbnails/upload", {
-                  method: "POST",
-                  body: formData,
-                });
-                
+
+                const uploadResp = await fetch(
+                  "/api/documents/thumbnails/upload",
+                  {
+                    method: "POST",
+                    body: formData,
+                  },
+                );
+
                 if (uploadResp.ok) {
-                  console.debug("PdfAttachmentThumbnail: Successfully cached thumbnail for", storagePath);
+                  console.debug(
+                    "PdfAttachmentThumbnail: Successfully cached thumbnail for",
+                    storagePath,
+                  );
                 } else {
-                  console.warn("PdfAttachmentThumbnail: Failed to cache thumbnail", await uploadResp.text());
+                  console.warn(
+                    "PdfAttachmentThumbnail: Failed to cache thumbnail",
+                    await uploadResp.text(),
+                  );
                 }
               } catch (uploadErr) {
-                console.warn("PdfAttachmentThumbnail: Error uploading thumbnail to cache", uploadErr);
+                console.warn(
+                  "PdfAttachmentThumbnail: Error uploading thumbnail to cache",
+                  uploadErr,
+                );
               }
             }, "image/png");
           }
@@ -425,7 +508,10 @@ export function PdfAttachmentThumbnail({
           // Preview rendering can fail for transient signed URLs or unsupported files.
           // Keep this non-fatal and avoid surfacing noisy console errors.
           if (process.env.NODE_ENV !== "production") {
-            console.warn("PdfAttachmentThumbnail: preview fallback", errorDetails);
+            console.warn(
+              "PdfAttachmentThumbnail: preview fallback",
+              errorDetails,
+            );
           }
 
           // Retry once on transient failure (e.g. PDF worker failure or signed URL hiccup).
@@ -454,7 +540,12 @@ export function PdfAttachmentThumbnail({
           if (canvasRef.current) {
             const ctx = canvasRef.current.getContext("2d");
             if (ctx) {
-              ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+              ctx.clearRect(
+                0,
+                0,
+                canvasRef.current.width,
+                canvasRef.current.height,
+              );
             }
           }
         }

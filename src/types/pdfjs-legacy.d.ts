@@ -22,7 +22,9 @@ declare module "pdfjs-dist/legacy/build/pdf" {
 
   export interface PDFJSLibrary {
     GlobalWorkerOptions: { workerSrc: string };
-    getDocument(source: { data?: ArrayBuffer | Uint8Array } | { url?: string }): { promise: Promise<PDFDocumentLike> };
+    getDocument(
+      source: { data?: ArrayBuffer | Uint8Array } | { url?: string },
+    ): { promise: Promise<PDFDocumentLike> };
   }
 
   const pdfjsLib: PDFJSLibrary;
@@ -58,7 +60,9 @@ declare module "pdfjs-dist" {
 
   export interface PDFJSLibrary {
     GlobalWorkerOptions: { workerSrc: string };
-    getDocument(source: { data?: ArrayBuffer } | { url?: string }): { promise: Promise<PDFDocumentLike> };
+    getDocument(source: { data?: ArrayBuffer } | { url?: string }): {
+      promise: Promise<PDFDocumentLike>;
+    };
   }
 
   const pdfjsLib: PDFJSLibrary;

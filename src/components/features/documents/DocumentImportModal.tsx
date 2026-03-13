@@ -566,7 +566,9 @@ export function DocumentImportModal({
                   <label className="flex flex-col gap-2 rounded-xl border border-dashed border-action-primary-bg/30 bg-surface-default p-4 text-sm text-text-default transition-colors hover:border-action-primary-bg/50 hover:bg-surface-subtle/35">
                     <div className="flex items-center justify-between gap-8">
                       <span className="font-medium">PDF file</span>
-                      <span className="text-xs text-text-muted">One PDF per import.</span>
+                      <span className="text-xs text-text-muted">
+                        One PDF per import.
+                      </span>
                     </div>
                     <input
                       type="file"
@@ -791,13 +793,15 @@ export function DocumentImportModal({
                         {(isPending || status !== "processing") && (
                           <button
                             type="button"
-                            aria-label={isPending ? "Cancel import" : "Delete document"}
+                            aria-label={
+                              isPending ? "Cancel import" : "Delete document"
+                            }
                             onClick={() => {
                               if (isPending) {
                                 handleCancelDocument(document.id);
                               } else {
                                 const confirmed = window.confirm(
-                                  "Delete this parsed file permanently? This removes it from storage and sections using it may break."
+                                  "Delete this parsed file permanently? This removes it from storage and sections using it may break.",
                                 );
                                 if (!confirmed) return;
                                 void handleDeleteDocument(document.id);
@@ -810,8 +814,17 @@ export function DocumentImportModal({
                             }
                             className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-xl bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus:outline-none disabled:opacity-60"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="h-5 w-5"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                clipRule="evenodd"
+                              />
                             </svg>
                           </button>
                         )}
@@ -901,7 +914,10 @@ export function DocumentImportModal({
                               <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
                                 {/* Progress Message */}
                                 {progressMessage && (
-                                  <span className="truncate shrink min-w-0" title={progressMessage}>
+                                  <span
+                                    className="truncate shrink min-w-0"
+                                    title={progressMessage}
+                                  >
                                     {progressMessage}
                                   </span>
                                 )}

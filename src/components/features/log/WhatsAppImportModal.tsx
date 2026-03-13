@@ -34,12 +34,18 @@ import { useQueryClient } from "@tanstack/react-query";
 // Use a Map to temporarily store File objects since they don't serialize well through events
 declare global {
   interface Window {
-    kolam_temp_files?: Map<string, { file: File; hash?: string; blobUrl?: string }>;  
+    kolam_temp_files?: Map<
+      string,
+      { file: File; hash?: string; blobUrl?: string }
+    >;
     kolam_pending_file_ids?: string[];
   }
 }
 
-const getTempFileStore = (): Map<string, { file: File; hash?: string; blobUrl?: string }> => {
+const getTempFileStore = (): Map<
+  string,
+  { file: File; hash?: string; blobUrl?: string }
+> => {
   if (typeof window === "undefined") return new Map();
   if (!window.kolam_temp_files) {
     window.kolam_temp_files = new Map();
@@ -62,7 +68,8 @@ const setPendingFileIds = (ids: string[]): void => {
   console.log("[WhatsApp] Set pending file IDs:", ids);
 };
 
-const generateFileId = (): string => `file_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+const generateFileId = (): string =>
+  `file_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 import JSZip from "jszip";
 import { calculateFileHash } from "@/lib/utils/hash";
 
@@ -71,7 +78,12 @@ import { calculateFileHash } from "@/lib/utils/hash";
 export interface WhatsAppInjectPayload {
   streamId: string;
   turns: Array<
-    | { type: "text"; personaId: string; personaName: string; messages: string[] }
+    | {
+        type: "text";
+        personaId: string;
+        personaName: string;
+        messages: string[];
+      }
     | {
         type: "pdf";
         personaId: string;
@@ -158,13 +170,22 @@ interface ClassifiedText {
   mediaKind?: string;
 }
 
-function derivePreferredPdfTitle(caption?: string, fallbackFilename?: string): string | undefined {
+function derivePreferredPdfTitle(
+  caption?: string,
+  fallbackFilename?: string,
+): string | undefined {
   const trimmed = (caption ?? "").trim();
   if (!trimmed) return undefined;
 
   const beforeMeta = trimmed.split("•")[0]?.trim() ?? trimmed;
-  const cleaned = beforeMeta.replace(/\s{2,}/g, " ").replace(/\.pdf$/i, "").trim();
-  const fallbackBase = (fallbackFilename ?? "").replace(/\.pdf$/i, "").trim().toLowerCase();
+  const cleaned = beforeMeta
+    .replace(/\s{2,}/g, " ")
+    .replace(/\.pdf$/i, "")
+    .trim();
+  const fallbackBase = (fallbackFilename ?? "")
+    .replace(/\.pdf$/i, "")
+    .trim()
+    .toLowerCase();
   if (!cleaned || cleaned.toLowerCase() === fallbackBase) return undefined;
   return cleaned;
 }
@@ -194,15 +215,14 @@ function classifyText(raw?: string): ClassifiedText {
   const attachedM = t.match(/^<attached:\s*(.+?)>\s*$/i);
   if (attachedM) {
     const name = attachedM[1].trim();
-    if (/\.pdf$/i.test(name)) return { type: "pdf", cleanText: t, filename: name };
+    if (/\.pdf$/i.test(name))
+      return { type: "pdf", cleanText: t, filename: name };
     const ext = name.split(".").pop()?.toLowerCase() ?? "file";
     return { type: "media", cleanText: t, mediaKind: ext, filename: name };
   }
 
   // Absolute path ending in .pdf (macOS pasteboard, Windows, Unix)
-  const pdfPathM = t.match(
-    /^(\/[^\n\r]+\.pdf|[A-Za-z]:[\\\/][^\n\r]+\.pdf)$/i,
-  );
+  const pdfPathM = t.match(/^(\/[^\n\r]+\.pdf|[A-Za-z]:[\\\/][^\n\r]+\.pdf)$/i);
   if (pdfPathM) {
     const fullPath = pdfPathM[1].trim();
     const filename = fullPath.replace(/\\/g, "/").split("/").pop()!;
@@ -223,7 +243,11 @@ function classifyText(raw?: string): ClassifiedText {
     /^(image|video|audio|sticker|GIF|voice message|video note|document)\s+omitted$/i,
   );
   if (omittedM)
-    return { type: "media", cleanText: t, mediaKind: omittedM[1].toLowerCase() };
+    return {
+      type: "media",
+      cleanText: t,
+      mediaKind: omittedM[1].toLowerCase(),
+    };
   if (/^<Media omitted>$/.test(t))
     return { type: "media", cleanText: t, mediaKind: "media" };
 
@@ -243,7 +267,8 @@ function countCleanedSenders(msgs: RawMessage[]): number {
 function parseRawMessages(raw: string): RawMessage[] {
   const lines = raw.split("\n");
   const result: RawMessage[] = [];
-  let current: { sender: string; senderRaw: string; text: string } | null = null;
+  let current: { sender: string; senderRaw: string; text: string } | null =
+    null;
   const flush = () => {
     if (!current) return;
     const classified = classifyText(current.text);
@@ -261,24 +286,24 @@ function parseRawMessages(raw: string): RawMessage[] {
     for (const [, line] of lines.entries()) {
       lastLine = line;
       const normalizedLine = normalizeWhatsAppHeaderLine(line);
-    const iosM = normalizedLine.match(IOS_MSG_RE);
-    const androidM = !iosM ? normalizedLine.match(ANDROID_MSG_RE) : null;
-    const m = iosM ?? androidM;
+      const iosM = normalizedLine.match(IOS_MSG_RE);
+      const androidM = !iosM ? normalizedLine.match(ANDROID_MSG_RE) : null;
+      const m = iosM ?? androidM;
 
-    if (m) {
-      flush();
-      const senderRaw = stripInvisible(m[2]);
-      const sender = normalizeSenderName(senderRaw) || senderRaw || "Unknown";
-      const msgText = stripInvisible(m[3]).trim();
-      if (sender) current = { sender, senderRaw, text: msgText };
-    } else if (current) {
-      const trimmed = stripInvisible(line).trimEnd();
+      if (m) {
+        flush();
+        const senderRaw = stripInvisible(m[2]);
+        const sender = normalizeSenderName(senderRaw) || senderRaw || "Unknown";
+        const msgText = stripInvisible(m[3]).trim();
+        if (sender) current = { sender, senderRaw, text: msgText };
+      } else if (current) {
+        const trimmed = stripInvisible(line).trimEnd();
         if (trimmed) current.text += "\n" + trimmed;
-        }
       }
-    } catch (err) {
+    }
+  } catch (err) {
     // Help debugging: log the offending line and rethrow
-     
+
     console.error("parseRawMessages failed processing line:", lastLine, err);
     throw err;
   }
@@ -339,12 +364,9 @@ function getMappableSenders(turns: ParsedTurn[]): string[] {
 
 function normalizeAttachmentKey(value?: string): string {
   const inVal = value ?? "";
-  return inVal
-    .replace(/\\/g, "/")
-    .split("/")
-    .pop()
-    ?.trim()
-    ?.toLowerCase() ?? "";
+  return (
+    inVal.replace(/\\/g, "/").split("/").pop()?.trim()?.toLowerCase() ?? ""
+  );
 }
 
 function formatBytes(bytes: number | undefined | null): string {
@@ -385,7 +407,11 @@ function findBestPdfForTurn(
 
 async function parseWhatsAppZip(zipFile: File): Promise<ParsedZipData> {
   const zip = await JSZip.loadAsync(zipFile);
-  const txtEntries: Array<{ path: string; content: string; messageCount: number }> = [];
+  const txtEntries: Array<{
+    path: string;
+    content: string;
+    messageCount: number;
+  }> = [];
   const pdfByKey: Record<string, File[]> = {};
 
   for (const [path, entry] of Object.entries(zip.files)) {
@@ -419,7 +445,8 @@ async function parseWhatsAppZip(zipFile: File): Promise<ParsedZipData> {
   }
 
   txtEntries.sort((a, b) => {
-    if (b.messageCount !== a.messageCount) return b.messageCount - a.messageCount;
+    if (b.messageCount !== a.messageCount)
+      return b.messageCount - a.messageCount;
     const aHasChat = /chat/i.test(a.path);
     const bHasChat = /chat/i.test(b.path);
     if (aHasChat !== bHasChat) return bHasChat ? 1 : -1;
@@ -440,16 +467,25 @@ function buildAutoMap(
 ): Record<string, string> {
   const autoMap: Record<string, string> = {};
   for (const sender of senders) {
-    const match = personas?.find((p) => p.name.toLowerCase() === sender.toLowerCase());
+    const match = personas?.find(
+      (p) => p.name.toLowerCase() === sender.toLowerCase(),
+    );
     if (match) autoMap[sender] = match.id;
   }
   return autoMap;
 }
 
 const PERSONA_COLORS = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e",
-  "#f97316", "#eab308", "#22c55e", "#0ea5e9",
-  "#14b8a6", "#a855f7",
+  "#6366f1",
+  "#8b5cf6",
+  "#ec4899",
+  "#f43f5e",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#0ea5e9",
+  "#14b8a6",
+  "#a855f7",
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -476,7 +512,9 @@ export function WhatsAppImportModal({
   const [rangeEnd, setRangeEnd] = useState(0);
   const [mappableSenders, setMappableSenders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const [creatingPersonaFor, setCreatingPersonaFor] = useState<string | null>(null);
+  const [creatingPersonaFor, setCreatingPersonaFor] = useState<string | null>(
+    null,
+  );
   const [creatingAllPersonas, setCreatingAllPersonas] = useState(false);
   const [uploads, setUploads] = useState<Record<string, PdfUploadState>>({});
   const [zipSourceName, setZipSourceName] = useState<string | null>(null);
@@ -489,7 +527,11 @@ export function WhatsAppImportModal({
   // Preview tooltip state (custom tooltip with configurable timing)
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [tooltipContent, setTooltipContent] = useState<string | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{
+    left: number;
+    top: number;
+    width: number;
+  } | null>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const TOOLTIP_SHOW_DELAY = 300; // ms (slower show)
@@ -502,7 +544,11 @@ export function WhatsAppImportModal({
     };
   }, []);
 
-  const handlePreviewMouseEnter = (e: React.MouseEvent, idx: number, content: string) => {
+  const handlePreviewMouseEnter = (
+    e: React.MouseEvent,
+    idx: number,
+    content: string,
+  ) => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
@@ -546,13 +592,20 @@ export function WhatsAppImportModal({
   const hasPdfTurns = pdfTurns.length > 0;
   const allMapped = mappableSenders.every((s) => !!mapping[s]);
   const unmappedCount = mappableSenders.filter((s) => !mapping[s]).length;
-  const anyUploading = Object.values(uploads).some((u) => u.status === "uploading");
-  const doneUploadCount = Object.values(uploads).filter((u) => u.status === "done").length;
+  const anyUploading = Object.values(uploads).some(
+    (u) => u.status === "uploading",
+  );
+  const doneUploadCount = Object.values(uploads).filter(
+    (u) => u.status === "done",
+  ).length;
   const queuedUploadCount = Object.values(uploads).filter(
     (u) => u.status === "pending" && !!u.file,
   ).length;
-  const skippedPdfs = pdfTurns.filter((t) => uploads[t.id]?.status === "skipped");
-  const plannedImportableCount = textTurns.length + doneUploadCount + queuedUploadCount;
+  const skippedPdfs = pdfTurns.filter(
+    (t) => uploads[t.id]?.status === "skipped",
+  );
+  const plannedImportableCount =
+    textTurns.length + doneUploadCount + queuedUploadCount;
   const allPdfsPrepared = pdfTurns.every((turn) => {
     const upload = uploads[turn.id];
     if (!upload) return false;
@@ -570,8 +623,12 @@ export function WhatsAppImportModal({
   const liveMediaCount = liveTurns.filter((t) => t.type === "media").length;
   const liveImportable = liveTurns.filter((t) => t.type !== "media").length;
   const liveCleanedSenders = countCleanedSenders(liveMsgs);
-  const autoMatchCount = pdfTurns.filter((t) => findBestPdfForTurn(t, zipPdfIndex)).length;
-  const rangeImportableCount = selectedTurns.filter((t) => t.type !== "media").length;
+  const autoMatchCount = pdfTurns.filter((t) =>
+    findBestPdfForTurn(t, zipPdfIndex),
+  ).length;
+  const rangeImportableCount = selectedTurns.filter(
+    (t) => t.type !== "media",
+  ).length;
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
 
@@ -726,21 +783,20 @@ export function WhatsAppImportModal({
     }
   };
 
-  const handleFileSelect = (
-    turnId: string,
-    file: File,
-  ) => {
+  const handleFileSelect = (turnId: string, file: File) => {
     setUploads((prev) => ({ ...prev, [turnId]: { status: "pending", file } }));
   };
 
   const handleProcessAndConfirm = async () => {
     if (!canConfirmFiles) return;
 
-     
-    console.log("[WhatsApp] handleProcessAndConfirm started with selectedTurns:", {
-      count: selectedTurns.length,
-      types: selectedTurns.map((t) => t.type),
-    });
+    console.log(
+      "[WhatsApp] handleProcessAndConfirm started with selectedTurns:",
+      {
+        count: selectedTurns.length,
+        types: selectedTurns.map((t) => t.type),
+      },
+    );
 
     // Transfer all text turns and any already-completed PDFs to EntryCreator
     // Transfer all pending PDF files to the Docling document import handler
@@ -756,46 +812,65 @@ export function WhatsAppImportModal({
 
       if (turn.type === "text") {
         // All text turns go directly to EntryCreator
-        payloadTurns.push({ type: "text", personaId, personaName, messages: turn.messages! });
+        payloadTurns.push({
+          type: "text",
+          personaId,
+          personaName,
+          messages: turn.messages!,
+        });
       } else if (turn.type === "pdf") {
         const upload = uploads[turn.id];
-         
+
         console.log("[WhatsApp] Processing PDF turn:", {
           turnId: turn.id,
           filename: turn.filename,
           fullPath: turn.fullPath,
           uploadStatus: upload?.status,
-          uploadFile: upload?.file ? { name: upload.file.name, size: upload.file.size } : null,
+          uploadFile: upload?.file
+            ? { name: upload.file.name, size: upload.file.size }
+            : null,
         });
-        
+
         // If already uploaded (done) → include in inject payload
-        if (upload?.status === "done" && upload.documentId && upload.storagePath) {
+        if (
+          upload?.status === "done" &&
+          upload.documentId &&
+          upload.storagePath
+        ) {
           const attachment = {
             documentId: upload.documentId,
             storagePath: upload.storagePath,
             thumbnailPath: upload.thumbnailPath,
             titleSnapshot:
-              upload.titleSnapshot ?? turn.preferredTitle ?? turn.filename ?? "Document",
+              upload.titleSnapshot ??
+              turn.preferredTitle ??
+              turn.filename ??
+              "Document",
           };
 
           const last = payloadTurns[payloadTurns.length - 1];
           if (last?.type === "pdf" && last.personaId === personaId) {
             last.attachments.push(attachment);
           } else {
-            payloadTurns.push({ type: "pdf", personaId, personaName, attachments: [attachment] });
+            payloadTurns.push({
+              type: "pdf",
+              personaId,
+              personaName,
+              attachments: [attachment],
+            });
           }
-        } 
+        }
         // If pending with a file → include placeholder in inject + transfer to document import handler
         else if (upload?.file && upload.status === "pending") {
           const file = upload.file;
-          
+
           console.log("[WhatsApp] Queuing PDF file for transfer:", {
             fileName: file.name,
             fileSize: file.size,
             fileType: file.type,
           });
           const hash = await calculateFileHash(file);
-          
+
           if (!transferFiles.find((f) => f.file === file)) {
             transferFiles.push({ file, hash });
           }
@@ -807,7 +882,10 @@ export function WhatsAppImportModal({
           // The actual documentId will be added once Dockling processing completes
           const attachment = {
             titleSnapshot:
-              upload.titleSnapshot ?? turn.preferredTitle ?? turn.filename ?? "Document",
+              upload.titleSnapshot ??
+              turn.preferredTitle ??
+              turn.filename ??
+              "Document",
             fileHash: hash,
             previewUrl: blobUrl,
           };
@@ -816,7 +894,12 @@ export function WhatsAppImportModal({
           if (last?.type === "pdf" && last.personaId === personaId) {
             last.attachments.push(attachment);
           } else {
-            payloadTurns.push({ type: "pdf", personaId, personaName, attachments: [attachment] });
+            payloadTurns.push({
+              type: "pdf",
+              personaId,
+              personaName,
+              attachments: [attachment],
+            });
           }
         }
         // If skipped or error, ignore
@@ -825,14 +908,16 @@ export function WhatsAppImportModal({
 
     // Dispatch all text turns and PDFs (including pending ones) to EntryCreator
     if (payloadTurns.length > 0) {
-       
       console.log("[WhatsApp] Dispatching kolam_whatsapp_import_inject:", {
         turnCount: payloadTurns.length,
         streamId,
       });
       window.dispatchEvent(
         new CustomEvent("kolam_whatsapp_import_inject", {
-          detail: { streamId, turns: payloadTurns } satisfies WhatsAppInjectPayload,
+          detail: {
+            streamId,
+            turns: payloadTurns,
+          } satisfies WhatsAppInjectPayload,
         }),
       );
     }
@@ -851,15 +936,18 @@ export function WhatsAppImportModal({
       // Store pending file IDs so they're available when DocumentImportModal opens
       setPendingFileIds(fileIds);
 
-      console.log("[WhatsApp] Storing files in temp store and dispatching kolam_header_documents_import:", {
-        fileCount: transferFiles.length,
-        fileIds,
-        files: transferFiles.map((f) => ({
-          name: f.file.name,
-          size: f.file.size,
-          hash: f.hash,
-        })),
-      });
+      console.log(
+        "[WhatsApp] Storing files in temp store and dispatching kolam_header_documents_import:",
+        {
+          fileCount: transferFiles.length,
+          fileIds,
+          files: transferFiles.map((f) => ({
+            name: f.file.name,
+            size: f.file.size,
+            hash: f.hash,
+          })),
+        },
+      );
       window.dispatchEvent(
         new CustomEvent("kolam_header_documents_import", {
           detail: { fileIds },
@@ -871,7 +959,9 @@ export function WhatsAppImportModal({
     handleClose();
   };
 
-  const handleConfirm = (uploadsSnapshot: Record<string, PdfUploadState> = uploads) => {
+  const handleConfirm = (
+    uploadsSnapshot: Record<string, PdfUploadState> = uploads,
+  ) => {
     const payloadTurns: WhatsAppInjectPayload["turns"] = [];
 
     for (const turn of selectedTurns) {
@@ -882,10 +972,20 @@ export function WhatsAppImportModal({
       const personaName = persona?.name ?? turn.sender;
 
       if (turn.type === "text") {
-        payloadTurns.push({ type: "text", personaId, personaName, messages: turn.messages! });
+        payloadTurns.push({
+          type: "text",
+          personaId,
+          personaName,
+          messages: turn.messages!,
+        });
       } else {
         const upload = uploadsSnapshot[turn.id];
-        if (!upload || upload.status !== "done" || !upload.documentId || !upload.storagePath)
+        if (
+          !upload ||
+          upload.status !== "done" ||
+          !upload.documentId ||
+          !upload.storagePath
+        )
           continue;
         const attachment = {
           documentId: upload.documentId,
@@ -916,7 +1016,10 @@ export function WhatsAppImportModal({
 
     window.dispatchEvent(
       new CustomEvent("kolam_whatsapp_import_inject", {
-        detail: { streamId, turns: payloadTurns } satisfies WhatsAppInjectPayload,
+        detail: {
+          streamId,
+          turns: payloadTurns,
+        } satisfies WhatsAppInjectPayload,
       }),
     );
     handleClose();
@@ -956,7 +1059,6 @@ export function WhatsAppImportModal({
       <div className="fixed inset-0 overflow-y-auto p-2 lg:p-3">
         <div className="flex min-h-full items-center justify-center">
           <DialogPanel className="flex w-full max-w-xl flex-col rounded-xl border border-border-default/70 bg-surface-default shadow-2xl transition duration-300 data-closed:scale-95 data-closed:translate-y-4 data-closed:opacity-0">
-
             {/* ─── Header ────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
               <div className="flex items-center gap-2">
@@ -1016,11 +1118,16 @@ export function WhatsAppImportModal({
                   </button>
                   {zipSourceName && (
                     <span className="text-[11px] text-text-muted">
-                      Loaded: <span className="font-medium text-text-default">{zipSourceName}</span>
+                      Loaded:{" "}
+                      <span className="font-medium text-text-default">
+                        {zipSourceName}
+                      </span>
                     </span>
                   )}
                   {zipLoadError && (
-                    <span className="text-[11px] text-red-500">{zipLoadError}</span>
+                    <span className="text-[11px] text-red-500">
+                      {zipLoadError}
+                    </span>
                   )}
                 </div>
 
@@ -1057,7 +1164,8 @@ export function WhatsAppImportModal({
                         {livePdfCount > 0 && (
                           <span className="flex items-center gap-1 font-medium text-blue-500">
                             <FileText className="h-3 w-3" />
-                            {livePdfCount} PDF{livePdfCount !== 1 ? "s" : ""} detected
+                            {livePdfCount} PDF{livePdfCount !== 1 ? "s" : ""}{" "}
+                            detected
                           </span>
                         )}
                         {liveMediaCount > 0 && (
@@ -1080,7 +1188,11 @@ export function WhatsAppImportModal({
                 <div className="flex justify-end">
                   <button
                     onClick={handleParseAndNext}
-                    disabled={!rawText.trim() || liveMsgs.length === 0 || liveImportable === 0}
+                    disabled={
+                      !rawText.trim() ||
+                      liveMsgs.length === 0 ||
+                      liveImportable === 0
+                    }
                     className="inline-flex items-center gap-1.5 rounded-sm bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
                   >
                     Next
@@ -1094,16 +1206,27 @@ export function WhatsAppImportModal({
             {step === "range" && (
               <div className="flex flex-col gap-3 p-3">
                 <div>
-                  <p className="text-xs font-medium text-text-default">Select chat range</p>
+                  <p className="text-xs font-medium text-text-default">
+                    Select chat range
+                  </p>
                 </div>
 
                 <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
                   <div>
-                    Total turns: <span className="font-semibold text-text-default">{parsedTurns.length}</span>
+                    Total turns:{" "}
+                    <span className="font-semibold text-text-default">
+                      {parsedTurns.length}
+                    </span>
                     {" · "}
-                    Selected: <span className="font-semibold text-text-default">{selectedTurns.length}</span>
+                    Selected:{" "}
+                    <span className="font-semibold text-text-default">
+                      {selectedTurns.length}
+                    </span>
                     {" · "}
-                    Importable: <span className="font-semibold text-text-default">{rangeImportableCount}</span>
+                    Importable:{" "}
+                    <span className="font-semibold text-text-default">
+                      {rangeImportableCount}
+                    </span>
                   </div>
                 </div>
 
@@ -1115,28 +1238,41 @@ export function WhatsAppImportModal({
                         onClick={() => setRangeStart((s) => Math.max(0, s - 1))}
                         className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
                         aria-label="decrement start"
-                      >-</button>
+                      >
+                        -
+                      </button>
                       <input
                         type="number"
                         min={1}
                         max={Math.max(1, parsedTurns.length)}
-                        value={Math.min(rangeStart + 1, Math.max(1, parsedTurns.length))}
+                        value={Math.min(
+                          rangeStart + 1,
+                          Math.max(1, parsedTurns.length),
+                        )}
                         onChange={(e) => {
                           const max = Math.max(1, parsedTurns.length);
-                          const next = Math.min(
-                            Math.max(1, Number.parseInt(e.target.value || "1", 10) || 1),
-                            max,
-                          ) - 1;
+                          const next =
+                            Math.min(
+                              Math.max(
+                                1,
+                                Number.parseInt(e.target.value || "1", 10) || 1,
+                              ),
+                              max,
+                            ) - 1;
                           setRangeStart(next);
                           if (next > rangeEnd) setRangeEnd(next);
                         }}
                         className="rounded-sm border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
                       />
                       <button
-                        onClick={() => setRangeStart((s) => Math.min(s + 1, rangeEnd))}
+                        onClick={() =>
+                          setRangeStart((s) => Math.min(s + 1, rangeEnd))
+                        }
                         className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
                         aria-label="increment start"
-                      >+</button>
+                      >
+                        +
+                      </button>
                     </div>
                   </label>
 
@@ -1144,31 +1280,48 @@ export function WhatsAppImportModal({
                     To turn
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setRangeEnd((e) => Math.max(e - 1, rangeStart))}
+                        onClick={() =>
+                          setRangeEnd((e) => Math.max(e - 1, rangeStart))
+                        }
                         className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
                         aria-label="decrement end"
-                      >-</button>
+                      >
+                        -
+                      </button>
                       <input
                         type="number"
                         min={1}
                         max={Math.max(1, parsedTurns.length)}
-                        value={Math.min(rangeEnd + 1, Math.max(1, parsedTurns.length))}
+                        value={Math.min(
+                          rangeEnd + 1,
+                          Math.max(1, parsedTurns.length),
+                        )}
                         onChange={(e) => {
                           const max = Math.max(1, parsedTurns.length);
-                          const next = Math.min(
-                            Math.max(1, Number.parseInt(e.target.value || "1", 10) || 1),
-                            max,
-                          ) - 1;
+                          const next =
+                            Math.min(
+                              Math.max(
+                                1,
+                                Number.parseInt(e.target.value || "1", 10) || 1,
+                              ),
+                              max,
+                            ) - 1;
                           setRangeEnd(next);
                           if (next < rangeStart) setRangeStart(next);
                         }}
                         className="rounded-sm border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
                       />
                       <button
-                        onClick={() => setRangeEnd((e) => Math.min(e + 1, parsedTurns.length - 1))}
+                        onClick={() =>
+                          setRangeEnd((e) =>
+                            Math.min(e + 1, parsedTurns.length - 1),
+                          )
+                        }
                         className="rounded-sm border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
                         aria-label="increment end"
-                      >+</button>
+                      >
+                        +
+                      </button>
                     </div>
                   </label>
                 </div>
@@ -1184,12 +1337,17 @@ export function WhatsAppImportModal({
                       let preview = "";
                       let fullPreview = "";
                       if (t.type === "text") {
-                        fullPreview = (t.messages && t.messages.join("\n\n")) || "";
+                        fullPreview =
+                          (t.messages && t.messages.join("\n\n")) || "";
                         preview = t.messages?.[0]?.slice(0, 120) ?? "";
                       } else if (t.type === "pdf") {
                         const filename = t.filename ?? "document.pdf";
-                        const matchedFile = uploads[t.id]?.file ?? findBestPdfForTurn(t, zipPdfIndex);
-                        const sizeStr = matchedFile ? ` (${formatBytes(matchedFile.size)})` : "";
+                        const matchedFile =
+                          uploads[t.id]?.file ??
+                          findBestPdfForTurn(t, zipPdfIndex);
+                        const sizeStr = matchedFile
+                          ? ` (${formatBytes(matchedFile.size)})`
+                          : "";
                         preview = `PDF: ${filename}${sizeStr}`;
                         fullPreview = preview;
                       } else {
@@ -1203,14 +1361,22 @@ export function WhatsAppImportModal({
                         >
                           <div
                             className="min-w-0 flex-1 text-[11px]"
-                            onMouseEnter={(e) => handlePreviewMouseEnter(e, idx, fullPreview)}
+                            onMouseEnter={(e) =>
+                              handlePreviewMouseEnter(e, idx, fullPreview)
+                            }
                             onMouseLeave={handlePreviewMouseLeave}
                           >
                             <div className="flex items-center gap-2">
-                              <span className="font-mono text-[11px] text-text-muted">#{idx + 1}</span>
-                              <span className="font-medium text-text-default truncate">{t.sender}</span>
+                              <span className="font-mono text-[11px] text-text-muted">
+                                #{idx + 1}
+                              </span>
+                              <span className="font-medium text-text-default truncate">
+                                {t.sender}
+                              </span>
                             </div>
-                            <div className="truncate text-[10px] text-text-muted">{preview}</div>
+                            <div className="truncate text-[10px] text-text-muted">
+                              {preview}
+                            </div>
                           </div>
 
                           <div className="flex items-center gap-1">
@@ -1218,12 +1384,16 @@ export function WhatsAppImportModal({
                               onClick={() => setRangeStart(idx)}
                               title="Set as start"
                               className="rounded-sm border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
-                            >Start</button>
+                            >
+                              Start
+                            </button>
                             <button
                               onClick={() => setRangeEnd(idx)}
                               title="Set as end"
                               className="rounded-sm border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
-                            >End</button>
+                            >
+                              End
+                            </button>
                           </div>
                           {/* Tooltip is rendered in a portal to avoid affecting layout */}
                         </div>
@@ -1262,7 +1432,8 @@ export function WhatsAppImportModal({
                       Map senders
                     </p>
                     <p className="mt-0.5 text-[11px] text-text-muted">
-                      {textTurns.length} text turn{textTurns.length !== 1 ? "s" : ""}
+                      {textTurns.length} text turn
+                      {textTurns.length !== 1 ? "s" : ""}
                       {pdfTurns.length > 0 &&
                         ` · ${pdfTurns.length} PDF attachment${pdfTurns.length !== 1 ? "s" : ""}`}
                       {mediaTurns.length > 0 &&
@@ -1280,7 +1451,9 @@ export function WhatsAppImportModal({
                 <div className="flex flex-col gap-2">
                   {mappableSenders.map((sender, idx) => {
                     const assignedId = mapping[sender];
-                    const assignedPersona = personas?.find((p) => p.id === assignedId);
+                    const assignedPersona = personas?.find(
+                      (p) => p.id === assignedId,
+                    );
                     const isCreating = creatingPersonaFor === sender;
 
                     return (
@@ -1301,9 +1474,14 @@ export function WhatsAppImportModal({
                                 color: assignedPersona.color,
                               }}
                             >
-                              <DynamicIcon name={assignedPersona.icon} className="h-3 w-3" />
+                              <DynamicIcon
+                                name={assignedPersona.icon}
+                                className="h-3 w-3"
+                              />
                             </div>
-                            <span className="text-xs text-text-default">{assignedPersona.name}</span>
+                            <span className="text-xs text-text-default">
+                              {assignedPersona.name}
+                            </span>
                             <button
                               onClick={() =>
                                 setMapping((prev) => {
@@ -1325,7 +1503,10 @@ export function WhatsAppImportModal({
                               if (val === "__create__") {
                                 void handleCreatePersona(sender, idx);
                               } else if (val) {
-                                setMapping((prev) => ({ ...prev, [sender]: val }));
+                                setMapping((prev) => ({
+                                  ...prev,
+                                  [sender]: val,
+                                }));
                               }
                             }}
                             disabled={isCreating}
@@ -1356,7 +1537,9 @@ export function WhatsAppImportModal({
                       disabled={creatingAllPersonas}
                       className="inline-flex items-center gap-1.5 rounded-sm border border-border-default px-2.5 py-1 text-[11px] text-text-default hover:bg-surface-subtle disabled:opacity-50"
                     >
-                      {creatingAllPersonas && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                      {creatingAllPersonas && (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      )}
                       Create all missing personas ({unmappedCount})
                     </button>
                   </div>
@@ -1366,7 +1549,8 @@ export function WhatsAppImportModal({
                   <div className="flex items-start gap-1.5 rounded-sm border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
                     <Info className="mt-0.5 h-3 w-3 shrink-0" />
                     <span>
-                      {pdfTurns.length} PDF file{pdfTurns.length !== 1 ? "s" : ""} detected.
+                      {pdfTurns.length} PDF file
+                      {pdfTurns.length !== 1 ? "s" : ""} detected.
                       {zipSourceName
                         ? ` ${autoMatchCount} matched from ZIP.`
                         : " Select files in the next step."}
@@ -1399,7 +1583,8 @@ export function WhatsAppImportModal({
                       className="inline-flex items-center gap-1.5 rounded-sm bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
                     >
                       <Check className="h-3.5 w-3.5" />
-                      Import {textTurns.length} turn{textTurns.length !== 1 ? "s" : ""}
+                      Import {textTurns.length} turn
+                      {textTurns.length !== 1 ? "s" : ""}
                     </button>
                   )}
                 </div>
@@ -1418,7 +1603,8 @@ export function WhatsAppImportModal({
                   </p>
                   {zipSourceName && (
                     <p className="mt-1 text-[11px] text-blue-600 dark:text-blue-400">
-                      ZIP: {zipSourceName} · {autoMatchCount}/{pdfTurns.length} PDF
+                      ZIP: {zipSourceName} · {autoMatchCount}/{pdfTurns.length}{" "}
+                      PDF
                       {pdfTurns.length !== 1 ? "s" : ""} auto-matched.
                     </p>
                   )}
@@ -1426,7 +1612,9 @@ export function WhatsAppImportModal({
 
                 <div className="flex flex-col gap-2">
                   {pdfTurns.map((turn) => {
-                    const upload = uploads[turn.id] ?? { status: "pending" as const };
+                    const upload = uploads[turn.id] ?? {
+                      status: "pending" as const,
+                    };
                     return (
                       <PdfUploadRow
                         key={turn.id}
@@ -1455,14 +1643,18 @@ export function WhatsAppImportModal({
 
                 {/* Summary */}
                 <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
-                  <span className="font-semibold text-text-default">{plannedImportableCount}</span>{" "}
-                  section{plannedImportableCount !== 1 ? "s" : ""} ready
-                  ({textTurns.length} text
-                  {(doneUploadCount + queuedUploadCount) > 0 &&
-                    `, ${doneUploadCount + queuedUploadCount} PDF queued`}).
+                  <span className="font-semibold text-text-default">
+                    {plannedImportableCount}
+                  </span>{" "}
+                  section{plannedImportableCount !== 1 ? "s" : ""} ready (
+                  {textTurns.length} text
+                  {doneUploadCount + queuedUploadCount > 0 &&
+                    `, ${doneUploadCount + queuedUploadCount} PDF queued`}
+                  ).
                   {skippedPdfs.length > 0 && (
                     <span className="ml-1">
-                      {skippedPdfs.length} PDF{skippedPdfs.length !== 1 ? "s" : ""} skipped.
+                      {skippedPdfs.length} PDF
+                      {skippedPdfs.length !== 1 ? "s" : ""} skipped.
                     </span>
                   )}
                 </div>
@@ -1498,17 +1690,25 @@ export function WhatsAppImportModal({
                 </div>
               </div>
             )}
-
           </DialogPanel>
         </div>
         {/* Portal tooltip: render global tooltip so it doesn't affect modal layout */}
-        {typeof document !== "undefined" && tooltipVisible && tooltipContent && tooltipPos
+        {typeof document !== "undefined" &&
+        tooltipVisible &&
+        tooltipContent &&
+        tooltipPos
           ? createPortal(
               <div
-                style={{ left: tooltipPos.left, top: tooltipPos.top, width: tooltipPos.width }}
+                style={{
+                  left: tooltipPos.left,
+                  top: tooltipPos.top,
+                  width: tooltipPos.width,
+                }}
                 className="fixed z-50 rounded-sm border border-border-default bg-surface-default p-2 text-xs text-text-default shadow-lg"
               >
-                <div className="whitespace-pre-wrap wrap-break-word text-[12px]">{tooltipContent}</div>
+                <div className="whitespace-pre-wrap wrap-break-word text-[12px]">
+                  {tooltipContent}
+                </div>
               </div>,
               document.body,
             )
@@ -1578,7 +1778,9 @@ function PdfUploadRow({
           />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-medium text-text-default">{filename}</p>
+          <p className="truncate text-xs font-medium text-text-default">
+            {filename}
+          </p>
           {turn.fullPath && (
             <p
               className="truncate font-mono text-[10px] text-text-muted"
@@ -1588,16 +1790,20 @@ function PdfUploadRow({
             </p>
           )}
           <p className="text-[10px] text-text-muted">
-            Sent by {" "}
+            Sent by{" "}
             <span className="font-medium text-text-default">{turn.sender}</span>
           </p>
           {upload.file && (
-            <p className="text-[10px] text-text-muted">Size: {formatBytes(upload.file.size)}</p>
+            <p className="text-[10px] text-text-muted">
+              Size: {formatBytes(upload.file.size)}
+            </p>
           )}
         </div>
 
         {/* Status indicator */}
-        {isUploading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-action-primary-bg" />}
+        {isUploading && (
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-action-primary-bg" />
+        )}
         {isDone && (
           <span className="flex shrink-0 items-center gap-1 rounded-xl bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
             <Check className="h-3 w-3" />
@@ -1634,7 +1840,9 @@ function PdfUploadRow({
 
       {/* Error message */}
       {isError && (
-        <p className="wrap-break-word text-[10px] text-red-500">{upload.error}</p>
+        <p className="wrap-break-word text-[10px] text-red-500">
+          {upload.error}
+        </p>
       )}
 
       {/* Action buttons */}

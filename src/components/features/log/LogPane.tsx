@@ -858,7 +858,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const stashCount = stashedIds.size;
   const showLoadingState =
     !hasHydrated ||
-    ((isEntriesLoading || isEntriesFetching) && branchTimelineItems.length === 0);
+    ((isEntriesLoading || isEntriesFetching) &&
+      branchTimelineItems.length === 0);
   const showEmptyState =
     hasHydrated &&
     branchTimelineItems.length === 0 &&

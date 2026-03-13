@@ -50,7 +50,9 @@ export async function extractPdfMetadata(
   const pdf = await loadingTask.promise;
   const pdfWithMeta = pdf as {
     numPages: number;
-    getMetadata?: () => Promise<{ info: { Title?: string; Author?: string; CreationDate?: string } }>;
+    getMetadata?: () => Promise<{
+      info: { Title?: string; Author?: string; CreationDate?: string };
+    }>;
     destroy?: () => Promise<void>;
   };
 

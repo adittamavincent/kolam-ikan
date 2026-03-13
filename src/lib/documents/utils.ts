@@ -23,7 +23,9 @@ export function getDocumentThumbnailUrl(document: Document): string | null {
   return data.publicUrl;
 }
 
-export function getDocumentSignedFileUrl(document: Document): Promise<string | null> {
+export function getDocumentSignedFileUrl(
+  document: Document,
+): Promise<string | null> {
   if (!document.storage_path) return Promise.resolve(null);
 
   const supabase = createClient();

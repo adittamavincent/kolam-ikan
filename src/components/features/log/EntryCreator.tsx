@@ -1,10 +1,20 @@
 "use client";
 
-import React, { useState, useRef, Fragment, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  Fragment,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
-import { BlockNoteEditor as BlockNoteEditorType, PartialBlock } from "@blocknote/core";
+import {
+  BlockNoteEditor as BlockNoteEditorType,
+  PartialBlock,
+} from "@blocknote/core";
 import type { WhatsAppInjectPayload } from "./WhatsAppImportModal";
 import {
   Loader2,
@@ -181,7 +191,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     return Array.from(ids);
   }, [sections]);
 
-  const { documents: importedDocuments, isLoading: isDocumentsLoading } = useDocuments(streamId);
+  const { documents: importedDocuments, isLoading: isDocumentsLoading } =
+    useDocuments(streamId);
 
   const attachedDocDetails = useMemo(() => {
     const map = new Map<string, DocumentWithLatestJob>();
@@ -195,7 +206,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   const unparsedAttachedCount = useMemo(() => {
     if (attachedDocumentIds.length === 0) return 0;
-    
+
     let count = 0;
     for (const id of attachedDocumentIds) {
       const doc = attachedDocDetails.get(id);
@@ -222,7 +233,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     },
     enabled: !!streamId,
   });
-
 
   // Refs for editors to clear them
   const editorRefs = useRef<Record<string, BlockNoteEditorType>>({});
@@ -291,7 +301,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         return a.name.localeCompare(b.name);
       })
       .slice(0, 3);
-  // Recompute when persona ids/names change or when usage counts change.
+    // Recompute when persona ids/names change or when usage counts change.
   }, [personaUsageCounts, personas]);
 
   const trackPersonaUsage = (personaId: string) => {
@@ -352,10 +362,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   }, [initialDrafts, isLoading, sections.length, discardedRecovery]);
 
   const persistPdfSection = useCallback(
-    (
-      instanceId: string,
-      draft?: Extract<SectionState, { kind: "PDF" }>,
-    ) => {
+    (instanceId: string, draft?: Extract<SectionState, { kind: "PDF" }>) => {
       const section =
         draft ??
         sections.find((s) => s.instanceId === instanceId && s.kind === "PDF");
@@ -407,11 +414,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             att.fileHash && sourceMeta.fileHash === att.fileHash;
 
           if (isMatchById || isMatchByHash) {
-            const nextPreviewUrl = sourceMeta.previewUrl ?? att.previewUrl ?? null;
+            const nextPreviewUrl =
+              sourceMeta.previewUrl ?? att.previewUrl ?? null;
             const nextPageCount = sourceMeta.pageCount ?? att.pageCount ?? 0;
             const nextAuthor = sourceMeta.extractedAuthor ?? att.author ?? null;
-            const nextCreationDate = sourceMeta.extractedCreationDate ?? doc.created_at ?? att.creationDate ?? null;
-            
+            const nextCreationDate =
+              sourceMeta.extractedCreationDate ??
+              doc.created_at ??
+              att.creationDate ??
+              null;
+
             if (
               att.documentId !== doc.id ||
               att.storagePath !== doc.storage_path ||
@@ -501,11 +513,18 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 : [],
             }));
             return i > 0
-              ? [{ type: "paragraph", content: [] } as PartialBlock, ...paragraphs]
+              ? [
+                  { type: "paragraph", content: [] } as PartialBlock,
+                  ...paragraphs,
+                ]
               : paragraphs;
           });
           saveDraft(instanceId, turn.personaId, blocks, turn.personaName);
-          newSections.push({ instanceId, kind: "PERSONA" as const, personaId: turn.personaId });
+          newSections.push({
+            instanceId,
+            kind: "PERSONA" as const,
+            personaId: turn.personaId,
+          });
         } else {
           // PDF turn — create one PDF section that may contain multiple attachments
           const attachments = turn.attachments;
@@ -796,7 +815,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
 
     let previewUrl: string | null = null;
-    
+
     try {
       if (!document.storage_path) {
         console.warn(`Document ${document.id} has no storage_path`);
@@ -815,7 +834,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         }
       }
     } catch (error) {
-      console.error(`Error creating signed URL for document ${document.id}:`, error);
+      console.error(
+        `Error creating signed URL for document ${document.id}:`,
+        error,
+      );
     }
 
     const sourceMetadata = (document.source_metadata ?? {}) as {
@@ -914,7 +936,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   ) => {
     const nextTab =
       preferredTab ??
-      (importStatus === "completed" && attachment.documentId ? "parsed" : "pdf");
+      (importStatus === "completed" && attachment.documentId
+        ? "parsed"
+        : "pdf");
 
     setAttachmentPreview({
       documentId: attachment.documentId,
@@ -1333,21 +1357,38 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           ) : (
                             <div className="space-y-2">
                               {effectiveAttachments.map((attachment) => {
-                                const docDetail = attachment.documentId ? attachedDocDetails.get(attachment.documentId) : null;
+                                const docDetail = attachment.documentId
+                                  ? attachedDocDetails.get(
+                                      attachment.documentId,
+                                    )
+                                  : null;
                                 const latestJob = docDetail?.latestJob;
-                                const importStatus = docDetail?.import_status ?? latestJob?.status;
-                                const isProcessing = importStatus === "queued" || importStatus === "processing";
-                                const canOpenParsed = importStatus === "completed" && !!attachment.documentId;
-                                const progressPercent = latestJob?.progress_percent ?? 0;
-                                const progressMessage = latestJob?.progress_message;
+                                const importStatus =
+                                  docDetail?.import_status ?? latestJob?.status;
+                                const isProcessing =
+                                  importStatus === "queued" ||
+                                  importStatus === "processing";
+                                const canOpenParsed =
+                                  importStatus === "completed" &&
+                                  !!attachment.documentId;
+                                const progressPercent =
+                                  latestJob?.progress_percent ?? 0;
+                                const progressMessage =
+                                  latestJob?.progress_message;
 
                                 return (
                                   <div
-                                    key={attachment.documentId || attachment.fileHash || attachment.titleSnapshot}
-                                    className={`relative overflow-hidden rounded-sm border border-border-subtle bg-surface-default px-3 py-2 transition-colors ${
-                                      "cursor-default"
-                                    }`}
-                                    title={isProcessing ? "Processing Docling..." : "Attachment actions"}
+                                    key={
+                                      attachment.documentId ||
+                                      attachment.fileHash ||
+                                      attachment.titleSnapshot
+                                    }
+                                    className={`relative overflow-hidden rounded-sm border border-border-subtle bg-surface-default px-3 py-2 transition-colors ${"cursor-default"}`}
+                                    title={
+                                      isProcessing
+                                        ? "Processing Docling..."
+                                        : "Attachment actions"
+                                    }
                                   >
                                     {/* Progress bar background */}
                                     {isProcessing && (
@@ -1363,7 +1404,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                           <PdfAttachmentThumbnail
                                             url={attachment.previewUrl}
                                             storagePath={attachment.storagePath}
-                                            thumbnailPath={attachment.thumbnailPath ?? docDetail?.thumbnail_path ?? null}
+                                            thumbnailPath={
+                                              attachment.thumbnailPath ??
+                                              docDetail?.thumbnail_path ??
+                                              null
+                                            }
                                             title={attachment.titleSnapshot}
                                           />
                                           {isProcessing && (
@@ -1469,10 +1514,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               );
                                             } else {
                                               // Remove pending attachment
-                                              updatePdfSection(instanceId, (s) => ({
-                                                ...s,
-                                                attachments: s.attachments.filter(a => a !== attachment)
-                                              }));
+                                              updatePdfSection(
+                                                instanceId,
+                                                (s) => ({
+                                                  ...s,
+                                                  attachments:
+                                                    s.attachments.filter(
+                                                      (a) => a !== attachment,
+                                                    ),
+                                                }),
+                                              );
                                             }
                                           }}
                                           onMouseDown={(event) => {
@@ -1562,7 +1613,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
               <div className="min-w-0 flex-1">
                 <DialogTitle className="truncate text-sm font-semibold text-text-default">
-                  {attachmentPreview?.title ?? parsedPreview?.title ?? "PDF Preview"}
+                  {attachmentPreview?.title ??
+                    parsedPreview?.title ??
+                    "PDF Preview"}
                 </DialogTitle>
                 <div className="mt-2 flex items-center gap-1.5">
                   <button
@@ -1584,7 +1637,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                       setActivePreviewTab("parsed");
                       if (
                         attachmentPreview?.documentId &&
-                        parsedPreview?.documentId !== attachmentPreview.documentId
+                        parsedPreview?.documentId !==
+                          attachmentPreview.documentId
                       ) {
                         void openParsedPreview(
                           attachmentPreview.documentId,
@@ -1614,8 +1668,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             </div>
 
             <div className="min-h-40 max-h-[70vh] overflow-auto p-4">
-              {activePreviewTab === "pdf" && (
-                attachmentPreview?.previewUrl ? (
+              {activePreviewTab === "pdf" &&
+                (attachmentPreview?.previewUrl ? (
                   <iframe
                     src={attachmentPreview.previewUrl}
                     className="h-[68vh] w-full rounded-sm border border-border-subtle bg-surface-subtle"
@@ -1625,35 +1679,41 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">
                     Preview is not available for this attachment yet.
                   </div>
-                )
-              )}
+                ))}
 
               {activePreviewTab === "parsed" && (
                 <>
                   {attachmentPreview?.importStatus !== "completed" && (
                     <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
-                      Parsed Docling output is not ready yet. Wait until import status is completed.
+                      Parsed Docling output is not ready yet. Wait until import
+                      status is completed.
                     </div>
                   )}
 
-                  {attachmentPreview?.importStatus === "completed" && parsedPreviewLoading && (
-                    <div className="flex items-center gap-2 text-sm text-text-muted">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading parsed content...
-                    </div>
-                  )}
+                  {attachmentPreview?.importStatus === "completed" &&
+                    parsedPreviewLoading && (
+                      <div className="flex items-center gap-2 text-sm text-text-muted">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading parsed content...
+                      </div>
+                    )}
 
-                  {attachmentPreview?.importStatus === "completed" && !parsedPreviewLoading && parsedPreviewError && (
-                    <div className="rounded-sm border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
-                      {parsedPreviewError}
-                    </div>
-                  )}
+                  {attachmentPreview?.importStatus === "completed" &&
+                    !parsedPreviewLoading &&
+                    parsedPreviewError && (
+                      <div className="rounded-sm border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
+                        {parsedPreviewError}
+                      </div>
+                    )}
 
-                  {attachmentPreview?.importStatus === "completed" && !parsedPreviewLoading && !parsedPreviewError && parsedPreview && (
-                    <pre className="whitespace-pre-wrap wrap-break-word rounded-sm border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
-                      {parsedPreview.markdown}
-                    </pre>
-                  )}
+                  {attachmentPreview?.importStatus === "completed" &&
+                    !parsedPreviewLoading &&
+                    !parsedPreviewError &&
+                    parsedPreview && (
+                      <pre className="whitespace-pre-wrap wrap-break-word rounded-sm border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
+                        {parsedPreview.markdown}
+                      </pre>
+                    )}
                 </>
               )}
             </div>

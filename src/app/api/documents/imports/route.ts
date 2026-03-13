@@ -249,7 +249,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingDoc) {
-      // If we found an existing document with the same hash in the same stream, 
+      // If we found an existing document with the same hash in the same stream,
       // we can return it instead of creating a new one.
       return NextResponse.json({
         message: "Document already exists, reusing existing one",

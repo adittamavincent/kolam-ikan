@@ -142,7 +142,9 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
       setSelectedPersonaIds([]);
       return;
     }
-    setSelectedPersonaIds(selectableVisiblePersonas.map((persona) => persona.id));
+    setSelectedPersonaIds(
+      selectableVisiblePersonas.map((persona) => persona.id),
+    );
   };
 
   const handleBulkDelete = async () => {
@@ -600,7 +602,9 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           <button
                             type="button"
                             onClick={() => void handleBulkDelete()}
-                            disabled={selectedPersonaIds.length === 0 || isBulkDeleting}
+                            disabled={
+                              selectedPersonaIds.length === 0 || isBulkDeleting
+                            }
                             className="inline-flex items-center gap-1 rounded-sm bg-status-error-bg px-2 py-1 font-medium text-status-error-text disabled:opacity-50"
                           >
                             {isBulkDeleting && (
@@ -624,126 +628,134 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         </div>
                       ) : (
                         visiblePersonas.map((persona) => (
-                            <div
-                              key={persona.id}
-                              className={`flex items-center justify-between p-2 rounded-sm border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""}`}
-                            >
-                              <div className="flex items-center gap-2">
-                                {isBulkMode && !persona.deleted_at && !persona.is_system && persona.user_id === user?.id && persona.type === "HUMAN" && (
+                          <div
+                            key={persona.id}
+                            className={`flex items-center justify-between p-2 rounded-sm border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isBulkMode &&
+                                !persona.deleted_at &&
+                                !persona.is_system &&
+                                persona.user_id === user?.id &&
+                                persona.type === "HUMAN" && (
                                   <input
                                     type="checkbox"
-                                    checked={selectedPersonaIds.includes(persona.id)}
-                                    onChange={() => togglePersonaSelection(persona.id)}
+                                    checked={selectedPersonaIds.includes(
+                                      persona.id,
+                                    )}
+                                    onChange={() =>
+                                      togglePersonaSelection(persona.id)
+                                    }
                                     className="h-4 w-4 rounded-sm border-border-default"
                                   />
                                 )}
-                                <div
-                                  className="h-8 w-8 rounded-sm flex items-center justify-center"
-                                  style={{
-                                    backgroundColor: `${persona.color}20`,
-                                    color: persona.color,
-                                  }}
-                                >
-                                  <DynamicIcon
-                                    name={persona.icon}
-                                    className="h-4 w-4"
-                                  />
-                                </div>
-                                <div>
-                                  <h4 className="text-sm font-medium text-text-default flex items-center gap-1.5">
-                                    {persona.name}
-                                    {persona.is_system && (
-                                      <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 rounded-sm border border-border-subtle uppercase tracking-wider">
-                                        System
-                                      </span>
-                                    )}
-                                    {persona.deleted_at && (
-                                      <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 rounded-sm border border-status-error-text/20 uppercase tracking-wider">
-                                        Deleted
-                                      </span>
-                                    )}
-                                  </h4>
-                                  <p className="text-[11px] text-text-muted capitalize">
-                                    {persona.type.toLowerCase()}
-                                  </p>
-                                </div>
+                              <div
+                                className="h-8 w-8 rounded-sm flex items-center justify-center"
+                                style={{
+                                  backgroundColor: `${persona.color}20`,
+                                  color: persona.color,
+                                }}
+                              >
+                                <DynamicIcon
+                                  name={persona.icon}
+                                  className="h-4 w-4"
+                                />
                               </div>
-
-                              {!persona.is_system &&
-                                persona.user_id === user?.id &&
-                                persona.type === "HUMAN" && (
-                                  <div className="flex items-center gap-1">
-                                    {persona.deleted_at ? (
-                                      <>
-                                        <button
-                                          onClick={async () => {
-                                            await updatePersona.mutateAsync({
-                                              id: persona.id,
-                                              updates: { deleted_at: null },
-                                            });
-                                          }}
-                                          className="px-2 py-1 text-xs text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
-                                          title="Restore"
-                                        >
-                                          Restore
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            handleDeleteRequest(persona)
-                                          }
-                                          disabled={
-                                            isPreparingDelete ||
-                                            hardDeletePersona.isPending
-                                          }
-                                          className="px-2 py-1 text-xs text-status-error-text hover:bg-status-error-bg/10 rounded-sm transition-colors"
-                                          title="Delete permanently"
-                                        >
-                                          {isPreparingDelete ? (
-                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                          ) : (
-                                            "Delete Permanently"
-                                          )}
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <button
-                                          onClick={() => {
-                                            setEditingPersona(persona);
-                                            setDeletingPersona(null);
-                                            setName(persona.name);
-                                            setIcon(persona.icon);
-                                            setColor(persona.color);
-                                            setError(null);
-                                          }}
-                                          className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
-                                          title="Edit"
-                                        >
-                                          <Pencil className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                          onClick={() =>
-                                            handleDeleteRequest(persona)
-                                          }
-                                          disabled={
-                                            isPreparingDelete ||
-                                            deletePersona.isPending
-                                          }
-                                          className="p-2 text-text-muted hover:text-status-error-text hover:bg-status-error-bg/10 rounded-sm transition-colors"
-                                          title="Delete"
-                                        >
-                                          {isPreparingDelete ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <Trash2 className="h-4 w-4" />
-                                          )}
-                                        </button>
-                                      </>
-                                    )}
-                                  </div>
-                                )}
+                              <div>
+                                <h4 className="text-sm font-medium text-text-default flex items-center gap-1.5">
+                                  {persona.name}
+                                  {persona.is_system && (
+                                    <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 rounded-sm border border-border-subtle uppercase tracking-wider">
+                                      System
+                                    </span>
+                                  )}
+                                  {persona.deleted_at && (
+                                    <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 rounded-sm border border-status-error-text/20 uppercase tracking-wider">
+                                      Deleted
+                                    </span>
+                                  )}
+                                </h4>
+                                <p className="text-[11px] text-text-muted capitalize">
+                                  {persona.type.toLowerCase()}
+                                </p>
+                              </div>
                             </div>
-                          ))
+
+                            {!persona.is_system &&
+                              persona.user_id === user?.id &&
+                              persona.type === "HUMAN" && (
+                                <div className="flex items-center gap-1">
+                                  {persona.deleted_at ? (
+                                    <>
+                                      <button
+                                        onClick={async () => {
+                                          await updatePersona.mutateAsync({
+                                            id: persona.id,
+                                            updates: { deleted_at: null },
+                                          });
+                                        }}
+                                        className="px-2 py-1 text-xs text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
+                                        title="Restore"
+                                      >
+                                        Restore
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteRequest(persona)
+                                        }
+                                        disabled={
+                                          isPreparingDelete ||
+                                          hardDeletePersona.isPending
+                                        }
+                                        className="px-2 py-1 text-xs text-status-error-text hover:bg-status-error-bg/10 rounded-sm transition-colors"
+                                        title="Delete permanently"
+                                      >
+                                        {isPreparingDelete ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                          "Delete Permanently"
+                                        )}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => {
+                                          setEditingPersona(persona);
+                                          setDeletingPersona(null);
+                                          setName(persona.name);
+                                          setIcon(persona.icon);
+                                          setColor(persona.color);
+                                          setError(null);
+                                        }}
+                                        className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle rounded-sm transition-colors"
+                                        title="Edit"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteRequest(persona)
+                                        }
+                                        disabled={
+                                          isPreparingDelete ||
+                                          deletePersona.isPending
+                                        }
+                                        className="p-2 text-text-muted hover:text-status-error-text hover:bg-status-error-bg/10 rounded-sm transition-colors"
+                                        title="Delete"
+                                      >
+                                        {isPreparingDelete ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-4 w-4" />
+                                        )}
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                          </div>
+                        ))
                       )}
                     </div>
                   </>

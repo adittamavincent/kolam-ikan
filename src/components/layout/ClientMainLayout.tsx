@@ -632,7 +632,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           </div>
         </Dialog>
       </Transition>
-      <PersonaManager isOpen={personaOpen} onClose={() => setPersonaOpen(false)} />
+      <PersonaManager
+        isOpen={personaOpen}
+        onClose={() => setPersonaOpen(false)}
+      />
     </div>
   );
 }

@@ -1946,49 +1946,49 @@ export function Navigator({}: NavigatorProps) {
       >
         {/* Header */}
         <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-subtle bg-surface-default px-3">
-            <h2
-              className="truncate text-sm font-semibold text-text-default"
-              title={currentDomainName}
-            >
-              {currentDomainName}
-            </h2>
-            <div className="flex items-center gap-0.5">
-              {!isCabinetOnly && (
-                <button
-                  type="button"
-                  onClick={handleHeaderCreateStream}
-                  disabled={isCreateStreamDisabled}
-                  aria-label="New stream"
-                  title={
-                    canCreateStreamFromSelection
-                      ? "New Stream"
-                      : "New Stream (Root is restricted)"
-                  }
-                  className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
-                >
-                  <FilePlus className="h-4 w-4" />
-                </button>
-              )}
+          <h2
+            className="truncate text-sm font-semibold text-text-default"
+            title={currentDomainName}
+          >
+            {currentDomainName}
+          </h2>
+          <div className="flex items-center gap-0.5">
+            {!isCabinetOnly && (
               <button
                 type="button"
-                onClick={handleHeaderCreateCabinet}
-                disabled={isCreateCabinetDisabled}
-                aria-label="New cabinet"
-                title="New Cabinet"
+                onClick={handleHeaderCreateStream}
+                disabled={isCreateStreamDisabled}
+                aria-label="New stream"
+                title={
+                  canCreateStreamFromSelection
+                    ? "New Stream"
+                    : "New Stream (Root is restricted)"
+                }
                 className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
               >
-                <FolderPlus className="h-4 w-4" />
+                <FilePlus className="h-4 w-4" />
               </button>
-              <button
-                type="button"
-                onClick={hideSidebar}
-                aria-label="Collapse sidebar"
-                title="Collapse sidebar"
-                className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
-              >
-                <PanelLeftClose className="h-4 w-4" />
-              </button>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={handleHeaderCreateCabinet}
+              disabled={isCreateCabinetDisabled}
+              aria-label="New cabinet"
+              title="New Cabinet"
+              className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+            >
+              <FolderPlus className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={hideSidebar}
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              className="rounded-sm p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </div>
         </header>
 
         {/* Tree View */}

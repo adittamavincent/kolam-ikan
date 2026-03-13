@@ -13,7 +13,10 @@ import { Sparkles } from "lucide-react";
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
   const [isDocumentImportOpen, setIsDocumentImportOpen] = useState(false);
-  const [incomingDocumentFiles, setIncomingDocumentFiles] = useState<Array<{ file: File; hash?: string }> | null>(null);
+  const [incomingDocumentFiles, setIncomingDocumentFiles] = useState<Array<{
+    file: File;
+    hash?: string;
+  }> | null>(null);
   const [isWhatsAppImportOpen, setIsWhatsAppImportOpen] = useState(false);
   const { logWidth } = useLayout();
   useRealtimeEntries(streamId);
@@ -29,12 +32,24 @@ export function StreamView({ streamId }: { streamId: string }) {
 
     const onOpenWhatsAppImport = () => setIsWhatsAppImportOpen(true);
 
-    window.addEventListener("kolam_header_documents_import", onOpenDocumentImport as EventListener);
-    window.addEventListener("kolam_header_whatsapp_import", onOpenWhatsAppImport);
+    window.addEventListener(
+      "kolam_header_documents_import",
+      onOpenDocumentImport as EventListener,
+    );
+    window.addEventListener(
+      "kolam_header_whatsapp_import",
+      onOpenWhatsAppImport,
+    );
 
     return () => {
-      window.removeEventListener("kolam_header_documents_import", onOpenDocumentImport as EventListener);
-      window.removeEventListener("kolam_header_whatsapp_import", onOpenWhatsAppImport);
+      window.removeEventListener(
+        "kolam_header_documents_import",
+        onOpenDocumentImport as EventListener,
+      );
+      window.removeEventListener(
+        "kolam_header_whatsapp_import",
+        onOpenWhatsAppImport,
+      );
     };
   }, []);
 

@@ -1945,8 +1945,7 @@ export function Navigator({}: NavigatorProps) {
         className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? "opacity-70 pointer-events-none" : ""}`}
       >
         {/* Header */}
-        <div className="border-b border-border-subtle px-3 py-2">
-          <div className="flex items-center justify-between gap-2">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-subtle bg-surface-default px-3">
             <h2
               className="truncate text-sm font-semibold text-text-default"
               title={currentDomainName}
@@ -1990,8 +1989,7 @@ export function Navigator({}: NavigatorProps) {
                 <PanelLeftClose className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        </div>
+        </header>
 
         {/* Tree View */}
         <div

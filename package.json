@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "fetch:pdf-worker": "node scripts/fetch-pdf-worker.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

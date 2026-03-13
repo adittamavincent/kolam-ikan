@@ -54,3 +54,6 @@ next-env.d.ts
 
 # virtual environment
 .venv
+
+# Local pdf.js worker (regenerated via script; keep out of repo)
+public/js/pdf.worker.min.mjs

@@ -47,6 +47,7 @@ import {
   isCreationAllowed,
 } from "@/lib/utils/navigation";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   Dialog,
   DialogPanel,
@@ -2249,72 +2250,25 @@ export function Navigator({}: NavigatorProps) {
           document.body,
         )}
 
-      <Transition appear show={!!deleteTarget} as={Fragment}>
-        <Dialog
-          as="div"
-          className="relative z-100"
-          onClose={() => setDeleteTarget(null)}
-        >
-          <TransitionChild
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-black/40" />
-          </TransitionChild>
-          <div className="fixed inset-0 flex items-center justify-center p-4">
-            <TransitionChild
-              as={Fragment}
-              enter="ease-out duration-200"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-150"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
-            >
-              <DialogPanel className="w-full max-w-sm  border border-border-default bg-surface-default p-5">
-                <div className="flex items-start justify-between">
-                  <DialogTitle className="text-sm font-semibold text-text-default">
-                    Delete{" "}
-                    {deleteTarget?.type === "cabinet" ? "Cabinet" : "Stream"}
-                  </DialogTitle>
-                  <button
-                    onClick={() => setDeleteTarget(null)}
-                    className=" p-1 text-text-muted hover:bg-surface-subtle"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <p className="mt-2 text-xs text-text-subtle">
-                  This will remove{" "}
-                  <span className="font-semibold text-text-default">
-                    {deleteItem?.name ?? "this item"}
-                  </span>
-                  .
-                </p>
-                <div className="mt-4 flex justify-end gap-2">
-                  <button
-                    onClick={() => setDeleteTarget(null)}
-                    className=" border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeleteConfirm}
-                    className=" bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </DialogPanel>
-            </TransitionChild>
-          </div>
-        </Dialog>
-      </Transition>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title={`Delete ${deleteTarget?.type === "cabinet" ? "Cabinet" : "Stream"}`}
+        description={
+          <>
+            This will remove <strong>{deleteItem?.name ?? "this item"}</strong>.
+          </>
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={
+          deleteTarget?.type === "cabinet"
+            ? deleteCabinetMutation.isPending
+            : deleteStreamMutation.isPending
+        }
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+      />
 
       <Transition appear show={!!moveTarget} as={Fragment}>
         <Dialog as="div" className="relative z-100" onClose={closeMoveDialog}>

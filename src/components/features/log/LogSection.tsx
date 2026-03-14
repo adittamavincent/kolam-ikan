@@ -14,10 +14,14 @@ import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
 import { Check, FileText } from "lucide-react";
 import { PartialBlock } from "@blocknote/core";
 import { useMemo } from "react";
-import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
+import { PdfAttachmentItem } from "./PdfAttachmentItem";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
+}
+
+function isParsedReadyStatus(status?: string | null): boolean {
+  return status === "completed" || status === "done";
 }
 
 interface LogSectionProps {
@@ -26,6 +30,12 @@ interface LogSectionProps {
   highlightTerm?: string;
   editable?: boolean;
   onContentChange?: (content: PartialBlock[]) => void;
+  onPreviewAttachment?: (
+    attachment: NonNullable<
+      SectionWithPersona["section_pdf_attachments"]
+    >[number],
+    tab: "pdf" | "parsed",
+  ) => void;
 }
 
 export function LogSection({
@@ -34,6 +44,7 @@ export function LogSection({
   highlightTerm,
   editable = false,
   onContentChange,
+  onPreviewAttachment,
 }: LogSectionProps) {
   const { personas } = usePersonas({ streamId, includeShadow: true });
   const { updateSectionPersona } = usePersonaMutations();
@@ -153,36 +164,46 @@ export function LogSection({
           </div>
 
           <div className="space-y-1">
-            {(section.section_pdf_attachments ?? []).map((attachment) => (
-              <div
-                key={attachment.id}
-                className="flex items-start gap-2  border border-border-subtle bg-surface-subtle/40 px-2 py-1.5"
-              >
-                <PdfAttachmentThumbnail
-                  storagePath={attachment.document?.storage_path}
-                  thumbnailPath={attachment.document?.thumbnail_path}
+            {(section.section_pdf_attachments ?? []).map((attachment) => {
+              const importStatus =
+                attachment.document?.import_status ??
+                attachment.document?.latestJob?.status ??
+                null;
+              const canOpenParsed =
+                isParsedReadyStatus(importStatus) &&
+                !!(attachment.document_id ?? attachment.document?.id);
+
+              return (
+                <PdfAttachmentItem
+                  key={attachment.id}
+                  keyId={attachment.id}
+                  variant="log"
                   title={
                     attachment.title_snapshot ||
                     attachment.document?.title ||
                     "Attached PDF"
                   }
-                  importStatus={attachment.document?.import_status ?? null}
-                  progressPercent={attachment.document?.latestJob?.progress_percent ?? null}
+                  annotationText={attachment.annotation_text}
+                  storagePath={attachment.document?.storage_path}
+                  thumbnailPath={attachment.document?.thumbnail_path}
+                  importStatus={importStatus}
+                  progressPercent={
+                    attachment.document?.latestJob?.progress_percent ?? 0
+                  }
+                  canOpenParsed={canOpenParsed}
+                  onPreviewPdf={
+                    onPreviewAttachment
+                      ? () => onPreviewAttachment(attachment, "pdf")
+                      : undefined
+                  }
+                  onPreviewParsed={
+                    onPreviewAttachment
+                      ? () => onPreviewAttachment(attachment, "parsed")
+                      : undefined
+                  }
                 />
-                <div className="min-w-0">
-                  <div className="truncate text-xs font-medium text-text-default">
-                    {attachment.title_snapshot ||
-                      attachment.document?.title ||
-                      "Attached PDF"}
-                  </div>
-                  {attachment.annotation_text && (
-                    <div className="text-[11px] text-text-muted">
-                      {attachment.annotation_text}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {(section.section_pdf_attachments ?? []).length === 0 && (
               <div className="text-[11px] text-text-muted">
                 No PDF attachments in this section.

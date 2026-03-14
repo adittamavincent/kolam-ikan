@@ -167,6 +167,25 @@ function isMissingShadowColumnError(error: unknown): boolean {
   );
 }
 
+function isShadowPersonaUniqueScopeError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const typed = error as { code?: unknown; message?: unknown };
+  const code = typeof typed.code === "string" ? typed.code : "";
+  const message =
+    typeof typed.message === "string" ? typed.message.toLowerCase() : "";
+
+  return (
+    code === "23505" &&
+    (message.includes("idx_unique_active_persona_name_by_scope") ||
+      message.includes("duplicate key value violates unique constraint"))
+  );
+}
+
+function normalizePersonaNameKey(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
 }
@@ -190,8 +209,9 @@ function normalizeWhatsAppHeaderLine(s?: string): string {
 
 function stripInvisible(s?: string): string {
   const inStr = s ?? "";
-  // Strip leading Unicode directional / invisible marks WhatsApp inserts
-  return inStr.replace(/^[\u200E\u200F\u202A-\u202E\u2066-\u2069]+/, "").trim();
+  // Strip only leading Unicode directional/invisible marks WhatsApp inserts.
+  // Do not trim whitespace so multiline markdown/list formatting is preserved.
+  return inStr.replace(/^[\u200E\u200F\u202A-\u202E\u2066-\u2069]+/, "");
 }
 
 function normalizeSenderName(rawSender?: string): string {
@@ -231,7 +251,7 @@ function derivePreferredPdfTitle(
 }
 
 function classifyText(raw?: string): ClassifiedText {
-  const t = stripInvisible(raw);
+  const t = stripInvisible(raw).trim();
 
   // Inline attachment marker, e.g.:
   // "Caption • 11 pages <attached: 00000008-my-file.pdf>"
@@ -324,8 +344,9 @@ function parseRawMessages(raw: string): RawMessage[] {
   let lastLine = "";
   try {
     for (const [, line] of lines.entries()) {
-      lastLine = line;
-      const normalizedLine = normalizeWhatsAppHeaderLine(line);
+      const cleanLine = line.replace(/\r$/, "");
+      lastLine = cleanLine;
+      const normalizedLine = normalizeWhatsAppHeaderLine(cleanLine);
       const iosM = normalizedLine.match(IOS_MSG_RE);
       const androidM = !iosM ? normalizedLine.match(ANDROID_MSG_RE) : null;
       const m = iosM ?? androidM;
@@ -337,8 +358,9 @@ function parseRawMessages(raw: string): RawMessage[] {
         const msgText = stripInvisible(m[3]).trim();
         if (sender) current = { sender, senderRaw, text: msgText };
       } else if (current) {
-        const trimmed = stripInvisible(line).trimEnd();
-        if (trimmed) current.text += "\n" + trimmed;
+        // Preserve blank lines and indentation so markdown-like blocks remain intact.
+        const continuation = stripInvisible(cleanLine);
+        current.text += "\n" + continuation;
       }
     }
   } catch (err) {
@@ -691,6 +713,11 @@ export function WhatsAppImportModal({
   ).length;
   const globalPersonas = (personas ?? []).filter((p) => !isShadowPersona(p));
   const shadowPersonas = (personas ?? []).filter((p) => isShadowPersona(p));
+  const existingShadowReuseCount = mappableSenders.filter((sender) =>
+    shadowPersonas.some(
+      (persona) => persona.name.toLowerCase() === sender.toLowerCase(),
+    ),
+  ).length;
 
   type PersonaCreateRow = {
     name: string;
@@ -702,7 +729,72 @@ export function WhatsAppImportModal({
   };
 
   const insertPersonasWithShadowFallback = async (rows: PersonaCreateRow[]) => {
-    const shadowRows = rows.map((row) => ({
+    if (rows.length === 0) {
+      return {
+        data: [] as Array<{ id: string; name: string }>,
+        error: null as unknown,
+        fallbackUsed: false,
+      };
+    }
+
+    const dedupedRows = Object.values(
+      rows.reduce<Record<string, PersonaCreateRow>>((acc, row) => {
+        const key = normalizePersonaNameKey(row.name);
+        if (!acc[key]) acc[key] = row;
+        return acc;
+      }, {}),
+    );
+
+    const requestedNames = dedupedRows.map((row) => row.name);
+    const userId = dedupedRows[0].user_id;
+
+    const existingShadowResult = await supabase
+      .from("personas")
+      .select("id, name")
+      .eq("user_id", userId)
+      .eq("is_shadow", true)
+      .eq("shadow_stream_id", streamId)
+      .is("deleted_at", null)
+      .in("name", requestedNames);
+
+    if (existingShadowResult.error) {
+      if (isMissingShadowColumnError(existingShadowResult.error)) {
+        const legacyResult = await supabase
+          .from("personas")
+          .insert(dedupedRows)
+          .select("id, name");
+        return {
+          data: legacyResult.data ?? null,
+          error: legacyResult.error,
+          fallbackUsed: true,
+        };
+      }
+
+      return {
+        data: null,
+        error: existingShadowResult.error,
+        fallbackUsed: false,
+      };
+    }
+
+    const existingRows = existingShadowResult.data ?? [];
+    const existingNameKeys = new Set(
+      existingRows.map((row) => normalizePersonaNameKey(row.name)),
+    );
+
+    const rowsToInsert = dedupedRows.filter(
+      (row) => !existingNameKeys.has(normalizePersonaNameKey(row.name)),
+    );
+
+    if (rowsToInsert.length === 0) {
+      return {
+        data: existingRows,
+        error: null as unknown,
+        fallbackUsed: false,
+      };
+    }
+
+    const shadowRows = rowsToInsert.map((row) => ({
       ...row,
       is_shadow: true,
       shadow_stream_id: streamId,
@@ -712,14 +804,33 @@ export function WhatsAppImportModal({
     const shadowResult = await supabase
       .from("personas")
       .insert(shadowRows)
-      .select();
+      .select("id, name");
 
     if (!shadowResult.error && shadowResult.data) {
       return {
-        data: shadowResult.data,
+        data: [...existingRows, ...shadowResult.data],
         error: null as unknown,
         fallbackUsed: false,
       };
+    }
+
+    if (isShadowPersonaUniqueScopeError(shadowResult.error)) {
+      const retryExistingResult = await supabase
+        .from("personas")
+        .select("id, name")
+        .eq("user_id", userId)
+        .eq("is_shadow", true)
+        .eq("shadow_stream_id", streamId)
+        .is("deleted_at", null)
+        .in("name", requestedNames);
+
+      if (!retryExistingResult.error && retryExistingResult.data) {
+        return {
+          data: retryExistingResult.data,
+          error: null as unknown,
+          fallbackUsed: false,
+        };
+      }
     }
 
     if (!isMissingShadowColumnError(shadowResult.error)) {
@@ -730,7 +841,10 @@ export function WhatsAppImportModal({
       };
     }
 
-    const legacyResult = await supabase.from("personas").insert(rows).select();
+    const legacyResult = await supabase
+      .from("personas")
+      .insert(dedupedRows)
+      .select("id, name");
     return {
       data: legacyResult.data ?? null,
       error: legacyResult.error,
@@ -1680,7 +1794,10 @@ export function WhatsAppImportModal({
                     </p>
                     <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
                       <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5">
-                        Will create (shadow): {createdShadowCount}
+                        Using existing (shadow): {existingShadowReuseCount}
+                      </span>
+                      <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5">
+                        Created this session (shadow): {createdShadowCount}
                       </span>
                     </div>
                   </div>

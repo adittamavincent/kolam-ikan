@@ -12,6 +12,11 @@ import {
 import { useEntries } from "@/lib/hooks/useEntries";
 import { EntryCreator } from "./EntryCreator";
 import { LogSection } from "./LogSection";
+import {
+  PdfAttachmentPreviewData,
+  PdfAttachmentPreviewDialog,
+  ParsedPreviewData,
+} from "./PdfAttachmentPreviewDialog";
 import { CanvasSnapshotCard } from "./CanvasSnapshotCard";
 import { CanvasDraftCard } from "./CanvasDraftCard";
 import { useStream } from "@/lib/hooks/useStream";
@@ -38,7 +43,7 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
-import { EntryWithSections } from "@/lib/types";
+import { EntryWithSections, SectionPdfAttachmentWithDocument } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { PartialBlock } from "@blocknote/core";
@@ -89,6 +94,10 @@ function getSupabaseErrorMessage(error: unknown): string {
 }
 
 type EntryConfirmType = "reset" | "delete";
+
+function isParsedReadyStatus(status?: string | null): boolean {
+  return status === "completed" || status === "done";
+}
 
 /** Compute line-level diff between two strings; returns array of diff lines */
 type DiffLine = { type: "eq" | "add" | "del"; text: string };
@@ -343,6 +352,18 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     type: EntryConfirmType;
     entry: EntryWithSections;
   } | null>(null);
+  const [attachmentPreview, setAttachmentPreview] =
+    useState<PdfAttachmentPreviewData | null>(null);
+  const [activePreviewTab, setActivePreviewTab] = useState<"pdf" | "parsed">(
+    "pdf",
+  );
+  const [parsedPreview, setParsedPreview] = useState<ParsedPreviewData | null>(
+    null,
+  );
+  const [parsedPreviewLoading, setParsedPreviewLoading] = useState(false);
+  const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
+    null,
+  );
   const params = useParams();
   const domainId = (params?.domain as string | undefined) ?? "";
 
@@ -435,6 +456,103 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     },
     enabled: !!streamId,
   });
+
+  const openLogParsedPreview = useCallback(
+    async (documentId: string, titleSnapshot: string) => {
+      setParsedPreviewLoading(true);
+      setParsedPreviewError(null);
+
+      const { data, error } = await supabase
+        .from("documents")
+        .select("id, title, extracted_markdown, import_status")
+        .eq("id", documentId)
+        .single();
+
+      if (error) {
+        setParsedPreviewLoading(false);
+        setParsedPreviewError("Failed to load parsed content.");
+        return;
+      }
+
+      if (!data?.extracted_markdown || !isParsedReadyStatus(data.import_status)) {
+        setParsedPreviewLoading(false);
+        setParsedPreviewError(
+          "Parsed Docling content is not available yet for this document.",
+        );
+        return;
+      }
+
+      setParsedPreview({
+        documentId,
+        title: data.title || titleSnapshot,
+        markdown: data.extracted_markdown,
+      });
+      setParsedPreviewLoading(false);
+    },
+    [supabase],
+  );
+
+  const openLogAttachmentPreview = useCallback(
+    async (
+      attachment: SectionPdfAttachmentWithDocument,
+      preferredTab?: "pdf" | "parsed",
+    ) => {
+      const importStatus =
+        attachment.document?.import_status ??
+        attachment.document?.latestJob?.status ??
+        undefined;
+      const documentId = attachment.document_id ?? attachment.document?.id;
+      const title =
+        attachment.title_snapshot ||
+        attachment.document?.title ||
+        "Attached PDF";
+
+      let previewUrl: string | null = null;
+      const storagePath = attachment.document?.storage_path;
+      if (storagePath) {
+        const signed = await supabase.storage
+          .from("document-files")
+          .createSignedUrl(storagePath, 60 * 30);
+        if (!signed.error && signed.data?.signedUrl) {
+          previewUrl = signed.data.signedUrl;
+        }
+      }
+
+      const nextTab =
+        preferredTab ??
+        (isParsedReadyStatus(importStatus) && documentId ? "parsed" : "pdf");
+
+      setAttachmentPreview({
+        documentId,
+        title,
+        previewUrl,
+        importStatus,
+      });
+      setActivePreviewTab(nextTab);
+      setParsedPreview(null);
+      setParsedPreviewError(null);
+
+      if (nextTab === "parsed" && documentId) {
+        void openLogParsedPreview(documentId, title);
+      }
+    },
+    [openLogParsedPreview, supabase],
+  );
+
+  const closeLogAttachmentPreview = useCallback(() => {
+    if (parsedPreviewLoading) return;
+    setAttachmentPreview(null);
+    setParsedPreview(null);
+    setParsedPreviewError(null);
+    setActivePreviewTab("pdf");
+  }, [parsedPreviewLoading]);
+
+  const handleLogAttachmentPreview = useCallback(
+    (attachment: SectionPdfAttachmentWithDocument, tab: "pdf" | "parsed") => {
+      void openLogAttachmentPreview(attachment, tab);
+    },
+    [openLogAttachmentPreview],
+  );
 
   const { data: branches, refetch: refetchBranches } = useQuery({
     queryKey: ["branches", streamId],
@@ -1290,6 +1408,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     key={section.id}
                                     section={section}
                                     streamId={streamId}
+                                    onPreviewAttachment={handleLogAttachmentPreview}
                                     editable={isAmending}
                                     onContentChange={(content) => {
                                       if (!isAmending) return;
@@ -1354,6 +1473,20 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       </div>
 
       {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
+      <PdfAttachmentPreviewDialog
+        open={!!attachmentPreview}
+        onClose={closeLogAttachmentPreview}
+        attachmentPreview={attachmentPreview}
+        activePreviewTab={activePreviewTab}
+        onActivePreviewTabChange={setActivePreviewTab}
+        parsedPreview={parsedPreview}
+        parsedPreviewLoading={parsedPreviewLoading}
+        parsedPreviewError={parsedPreviewError}
+        onRequestParsedPreview={(documentId, titleSnapshot) => {
+          void openLogParsedPreview(documentId, titleSnapshot);
+        }}
+      />
+
       {contextMenu &&
         typeof window !== "undefined" &&
         createPortal(

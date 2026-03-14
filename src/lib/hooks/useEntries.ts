@@ -35,7 +35,7 @@ const ENTRIES_SELECT_FULL = `
       id, section_id, document_id, sort_order, title_snapshot,
       annotation_text, referenced_persona_id, referenced_page,
       created_at, updated_at,
-      document:documents (id, title, storage_path, thumbnail_path)
+      document:documents (id, title, storage_path, thumbnail_path, import_status)
     )
   )
 `;

@@ -771,7 +771,7 @@ export function DocumentImportModal({
                     <button
                       onClick={handleCancelAllPending}
                       disabled={cancelAllPendingImports.isPending}
-                      className="shrink-0 rounded-xl border border-border-default bg-surface-subtle px-3 py-2 font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                      className="shrink-0 rounded-xl border border-border-default bg-surface-subtle px-2 py-1 font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {cancelAllPendingImports.isPending
                         ? "Canceling..."

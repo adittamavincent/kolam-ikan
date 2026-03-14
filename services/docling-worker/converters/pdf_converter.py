@@ -1,7 +1,8 @@
 import logging
+import tempfile
 import threading
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 try:
     import camelot
@@ -23,6 +24,7 @@ except Exception:
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.document_converter import DocumentConverter, PdfFormatOption
+from progress_tracker import DoclingProgressInterceptor, PageProgress
 
 logger = logging.getLogger("pdf_converter")
 
@@ -71,7 +73,56 @@ def _ocr_page(pdf_path: Path, page_number: int, ocr_lang: str) -> str:
         return ""
     return pytesseract.image_to_string(images[0], lang=ocr_lang) or ""
 
-def convert_pdf(file_path: Path, content_type: str, file_name: str, options: Any) -> Tuple[str, dict[str, Any]]:
+
+def _convert_pdf_page_by_page(
+    conv: DocumentConverter,
+    file_path: Path,
+    tracker: PageProgress,
+    on_progress: Callable[[PageProgress], None] | None,
+) -> tuple[str, Any | None]:
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+    except Exception:
+        logger.debug("PyPDF2 unavailable for per-page conversion; falling back to single-pass")
+        with DoclingProgressInterceptor(tracker):
+            result = conv.convert(str(file_path))
+        return result.document.export_to_markdown(), result.document
+
+    reader = PdfReader(str(file_path))
+    page_markdown_parts: list[str] = []
+
+    for page_index, page in enumerate(reader.pages, start=1):
+        temp_page_path: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_page:
+                temp_page_path = Path(temp_page.name)
+                writer = PdfWriter()
+                writer.add_page(page)
+                writer.write(temp_page)
+
+            page_result = conv.convert(str(temp_page_path))
+            try:
+                page_markdown_parts.append(page_result.document.export_to_markdown())
+            except Exception:
+                logger.exception("Docling export_to_markdown failed for page %s", page_index)
+                page_markdown_parts.append("")
+        finally:
+            if temp_page_path and temp_page_path.exists():
+                temp_page_path.unlink(missing_ok=True)
+
+        tracker.tick(completed=page_index, total=tracker.total_pages)
+        if on_progress:
+            on_progress(tracker)
+
+    return "\n\n".join(part for part in page_markdown_parts if part.strip()), None
+
+def convert_pdf(
+    file_path: Path,
+    content_type: str,
+    file_name: str,
+    options: Any,
+    on_progress: Callable[[PageProgress], None] | None = None,
+) -> Tuple[str, dict[str, Any]]:
     try:
         ok, err = validate_pdf(file_path)
         if not ok:
@@ -80,15 +131,43 @@ def convert_pdf(file_path: Path, content_type: str, file_name: str, options: Any
         flavor = getattr(options, "flavor", "lattice")
         ocr_lang = getattr(options, "ocrLang", "ind")
 
+        total_pages = 1
+        if pdfplumber is not None:
+            try:
+                with pdfplumber.open(str(file_path)) as pdf:
+                    total_pages = max(1, len(pdf.pages))
+            except Exception:
+                logger.debug("Could not pre-count pages for %s", file_name)
+
+        tracker = PageProgress(total_pages=total_pages, stage="layout detection")
+        if on_progress:
+            on_progress(tracker)
+
         # Keep Docling focused on body text to drastically improve speed, table content comes from Camelot.
         conv = _get_converter(enable_table_structure=False)
-        result = conv.convert(str(file_path))
+        docling_document: Any | None = None
+        if on_progress and total_pages > 1:
+            markdown_text, docling_document = _convert_pdf_page_by_page(
+                conv,
+                file_path,
+                tracker,
+                on_progress,
+            )
+        else:
+            with DoclingProgressInterceptor(tracker):
+                result = conv.convert(str(file_path))
 
-        try:
-            markdown_text = result.document.export_to_markdown()
-        except Exception:
-            logger.exception("Docling export_to_markdown failed; falling back to naive text join")
-            markdown_text = "\n\n".join((getattr(p, "text", "") for p in getattr(result.document, "pages", [])))
+            docling_document = result.document
+            try:
+                markdown_text = result.document.export_to_markdown()
+            except Exception:
+                logger.exception("Docling export_to_markdown failed; falling back to naive text join")
+                markdown_text = "\n\n".join((getattr(p, "text", "") for p in getattr(result.document, "pages", [])))
+
+        tracker.stage = "table extraction"
+        tracker.completed_pages = max(tracker.completed_pages, tracker.total_pages)
+        if on_progress:
+            on_progress(tracker)
 
         # Tables extraction via Camelot ONLY
         table_blocks: List[str] = []
@@ -133,8 +212,11 @@ def convert_pdf(file_path: Path, content_type: str, file_name: str, options: Any
         metadata = {
             "camelotTables": tables_count,
             "ocrPages": list(ocr_replacements.keys()),
-            "pageCount": len(getattr(result.document, "pages", [])) if hasattr(result.document, "pages") else 0,
-            "docling_document": result.document
+            "pageCount": max(
+                tracker.total_pages,
+                len(getattr(docling_document, "pages", [])) if docling_document is not None and hasattr(docling_document, "pages") else 0,
+            ),
+            "docling_document": docling_document,
         }
 
         return final_md, metadata

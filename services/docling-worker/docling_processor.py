@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from converters.pdf_converter import convert_pdf
+
+if TYPE_CHECKING:
+    from progress_tracker import PageProgress
 
 
 @dataclass
@@ -28,9 +31,20 @@ class DoclingProcessor:
     def __init__(self, options: DoclingProcessorOptions | None = None) -> None:
         self.options = options or DoclingProcessorOptions()
 
-    def process_to_markdown(self, pdf_path: Path, flavor: str = "lattice") -> tuple[str, dict[str, Any]]:
+    def process_to_markdown(
+        self,
+        pdf_path: Path,
+        flavor: str = "lattice",
+        on_progress: Callable[["PageProgress"], None] | None = None,
+    ) -> tuple[str, dict[str, Any]]:
         adapter = _OptionsAdapter(flavor=flavor, ocr_lang=self.options.ocr_lang)
-        markdown, metadata = convert_pdf(pdf_path, "application/pdf", pdf_path.name, adapter)
+        markdown, metadata = convert_pdf(
+            pdf_path,
+            "application/pdf",
+            pdf_path.name,
+            adapter,
+            on_progress=on_progress,
+        )
         if metadata.get("error"):
             raise ValueError(metadata["error"])
         return markdown, metadata

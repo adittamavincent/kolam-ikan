@@ -20,6 +20,7 @@ from supabase import create_client, Client
 
 from converters import convert_to_markdown
 from docling.chunking import HierarchicalChunker
+from progress_tracker import PageProgress
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("docling-worker")
@@ -365,13 +366,50 @@ async def process_import(request: ImportRequest) -> None:
         )
 
         loop = asyncio.get_running_loop()
+        last_reported_percent = 35
+        first_docling_tick_sent = False
+
+        def on_docling_progress(tracker: PageProgress) -> None:
+            nonlocal last_reported_percent, first_docling_tick_sent
+
+            docling_percent = tracker.percent
+            overall_percent = 35 + int(docling_percent * 0.40)
+            if overall_percent > 74:
+                overall_percent = 74
+
+            # Force an immediate update on the first event or transition to table extraction
+            is_new_stage = tracker.stage == "table extraction" and overall_percent >= 74
+            force_first = not first_docling_tick_sent
+
+            if not force_first and not is_new_stage:
+               if overall_percent < last_reported_percent + 3 and overall_percent < 74:
+                   return
+               if overall_percent <= last_reported_percent:
+                   return
+
+            first_docling_tick_sent = True
+            last_reported_percent = overall_percent
+
+            asyncio.run_coroutine_threadsafe(
+                send_progress(
+                    request,
+                    status="processing",
+                    progress_percent=overall_percent,
+                    progress_message=tracker.message,
+                    eta_seconds=tracker.eta_seconds,
+                ),
+                loop,
+            )
+
         markdown, extraction_metadata = await loop.run_in_executor(
             None,
-            convert_to_markdown,
-            temp_file_path,
-            request.contentType,
-            request.fileName,
-            request.parserConfig,
+            lambda: convert_to_markdown(
+                temp_file_path,
+                request.contentType,
+                request.fileName,
+                request.parserConfig,
+                on_progress=on_docling_progress,
+            ),
         )
         if extraction_metadata.get("error"):
             raise RuntimeError(extraction_metadata["error"])
@@ -433,16 +471,16 @@ async def create_import(request: ImportRequest, background_tasks: BackgroundTask
     # queue and mark them 'processing' when it starts them.
     await import_queue.put(request)
 
-    try:
-        await send_progress(
-            request,
-            status="queued",
-            progress_percent=0,
-            progress_message="Queued for import",
-            eta_seconds=None,
-        )
-    except Exception:
-        logger.exception("Failed to send queued callback for job %s", request.jobId)
+    # Fire the initial queued callback in the background so we don't
+    # block the HTTP response and cause a deadlock with the Next.js dev server.
+    background_tasks.add_task(
+        send_progress,
+        request,
+        status="queued",
+        progress_percent=0,
+        progress_message="Queued for import",
+        eta_seconds=None,
+    )
 
     return {
         "accepted": True,

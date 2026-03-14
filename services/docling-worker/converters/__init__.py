@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Tuple
 
 from .pdf_converter import convert_pdf
 from .office_converter import convert_office
@@ -9,6 +9,9 @@ from .image_converter import convert_image
 from .audio_converter import convert_audio
 from .web_converter import convert_web
 
+if TYPE_CHECKING:
+    from progress_tracker import PageProgress
+
 logger = logging.getLogger("converters")
 
 def convert_to_markdown(
@@ -16,6 +19,7 @@ def convert_to_markdown(
     content_type: str,
     file_name: str,
     options: Any,
+    on_progress: Callable[["PageProgress"], None] | None = None,
 ) -> Tuple[str, dict[str, Any]]:
     """Dispatches to the correct converter based on content type."""
     ctype = (content_type or "").lower()
@@ -26,7 +30,7 @@ def convert_to_markdown(
 
     # PDF
     if ctype == "application/pdf" or file_name.lower().endswith(".pdf"):
-        return convert_pdf(file_path, content_type, file_name, options)
+        return convert_pdf(file_path, content_type, file_name, options, on_progress=on_progress)
 
     # Office
     office_types = [

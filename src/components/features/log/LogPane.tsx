@@ -1101,8 +1101,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto overscroll-contain px-3">
-            <div className="pb-3 pt-2">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-2">
+            <div className="py-2">
               {sortOrder === "newest" && (
                 <div className="mb-2 space-y-1.5">
                   <EntryCreator

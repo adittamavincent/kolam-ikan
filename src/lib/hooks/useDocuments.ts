@@ -102,7 +102,10 @@ export function useDocuments(streamId: string) {
   type CreateImportResponse = {
     error?: string;
     document?: Document;
+    documentId?: string;
     job?: DocumentImportJob;
+    reused?: boolean;
+    message?: string;
   } | null;
 
   const createImport = useMutation<

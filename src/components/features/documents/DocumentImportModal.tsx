@@ -123,6 +123,7 @@ export function DocumentImportModal({
   const [enableTableStructure, setEnableTableStructure] = useState(true);
   const [debugDoclingTables, setDebugDoclingTables] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitWarning, setSubmitWarning] = useState<string | null>(null);
   const [localThumbnails, setLocalThumbnails] = useState<
     Record<string, string>
   >({});
@@ -130,6 +131,10 @@ export function DocumentImportModal({
   const [documentToDelete, setDocumentToDelete] = useState<
     DocumentWithLatestJob | null
   >(null);
+  const [duplicateConfirmState, setDuplicateConfirmState] = useState<{
+    file: File;
+    existingDoc: DocumentWithLatestJob;
+  } | null>(null);
 
   useEffect(() => {
     localThumbnailsRef.current = localThumbnails;
@@ -266,6 +271,7 @@ export function DocumentImportModal({
 
   const handleClose = useCallback(() => {
     setSubmitError(null);
+    setSubmitWarning(null);
     revokeLocalThumbnails();
     getConsumedInitialQueueKeys().clear();
     setFileInputKey((k) => k + 1);
@@ -428,8 +434,12 @@ export function DocumentImportModal({
           fileHash: hash,
         });
 
-        const docId = result?.document?.id;
-        if (docId) {
+        if (result?.reused) {
+          setSubmitWarning(`The file "${file.name}" has already been processed and was reused.`);
+        }
+
+        const docId = result?.document?.id || result?.documentId;
+        if (docId && !result?.reused) {
           const blobUrl = URL.createObjectURL(file);
           setLocalThumbnails((prev) => ({
             ...prev,
@@ -490,8 +500,12 @@ export function DocumentImportModal({
         fileHash,
       });
 
-      const docId = result?.document?.id;
-      if (docId) {
+      if (result?.reused) {
+        setSubmitWarning(`The file "${selectedFile.name}" has already been processed and was reused.`);
+      }
+
+      const docId = result?.document?.id || result?.documentId;
+      if (docId && !result?.reused) {
         // Create a dedicated blob URL for the list view so it survives selectedFile clearance
         const blobUrl = URL.createObjectURL(selectedFile);
         setLocalThumbnails((prev) => ({
@@ -612,9 +626,34 @@ export function DocumentImportModal({
                       key={fileInputKey}
                       type="file"
                       accept="application/pdf,.pdf"
-                      onChange={(event) =>
-                        setSelectedFile(event.target.files?.[0] ?? null)
-                      }
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        
+                        setSubmitWarning(null);
+                        setSubmitError(null);
+                        
+                        if (file) {
+                          try {
+                            const hash = await calculateFileHash(file);
+                            const existingDoc = documents.find(
+                              (d) => (d.source_metadata as Record<string, unknown>)?.fileHash === hash
+                            );
+                            if (existingDoc && onSelectDocument) {
+                              setDuplicateConfirmState({ file, existingDoc });
+                              event.target.value = "";
+                              return;
+                            } else if (existingDoc) {
+                               setSubmitWarning(`The file "${file.name}" is already in this library as "${existingDoc.title}".`);
+                            }
+                          } catch (err) {
+                            console.error("Failed to hash file", err);
+                          }
+                        }
+                        
+                        setSelectedFile(file);
+                        // Reset input so same file can be selected again
+                        event.target.value = "";
+                      }}
                       className="block w-full  border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file: file:border-0 file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
                     />
                   </label>
@@ -744,6 +783,13 @@ export function DocumentImportModal({
                   <div className="flex items-start gap-3  border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-600">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     {submitError}
+                  </div>
+                )}
+
+                {submitWarning && (
+                  <div className="flex items-start gap-3 border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {submitWarning}
                   </div>
                 )}
 
@@ -991,6 +1037,33 @@ export function DocumentImportModal({
         onCancel={() => setDocumentToDelete(null)}
         onConfirm={() => {
           void handleConfirmDocumentDeletion();
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(duplicateConfirmState)}
+        title="File Already Imported"
+        description={
+          duplicateConfirmState
+            ? `The file "${duplicateConfirmState.file.name}" has already been imported as "${duplicateConfirmState.existingDoc.title}". Would you like to select the existing one instead?`
+            : ""
+        }
+        confirmLabel="Use Existing"
+        cancelLabel="Upload Anyway"
+        onCancel={() => {
+          if (!duplicateConfirmState) return;
+          setSelectedFile(duplicateConfirmState.file);
+          setSubmitWarning(
+            `The file "${duplicateConfirmState.file.name}" is already in this library as "${duplicateConfirmState.existingDoc.title}".`
+          );
+          setDuplicateConfirmState(null);
+        }}
+        onConfirm={() => {
+          if (!duplicateConfirmState) return;
+          if (onSelectDocument) {
+            onSelectDocument(duplicateConfirmState.existingDoc);
+            handleClose();
+          }
+          setDuplicateConfirmState(null);
         }}
       />
     </>

@@ -52,6 +52,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
 import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
+import { calculateFileHash } from "@/lib/utils/hash";
 import { PersonaManager } from "@/components/features/persona/PersonaManager";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { NavigationGuard } from "@/components/features/log/NavigationGuard";
@@ -196,6 +197,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   );
   const [personaManagerOpen, setPersonaManagerOpen] = useState(false);
   const [clearSectionsDialogOpen, setClearSectionsDialogOpen] = useState(false);
+  const [duplicateCheck, setDuplicateCheck] = useState<{
+    file: File;
+    hash: string;
+    existingDoc: DocumentWithLatestJob;
+    instanceId: string;
+  } | null>(null);
 
   const selectedBranch = currentBranch ?? "main";
 
@@ -1569,10 +1576,36 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     type="file"
                                     accept="application/pdf"
                                     className="hidden"
-                                    onChange={(e) => {
+                                    onChange={async (e) => {
                                       const file = e.target.files?.[0];
                                       if (!file) return;
-                                      setImportModalFiles([{ file }]);
+
+                                      e.target.value = ""; // Clear file
+
+                                      try {
+                                        const hash = await calculateFileHash(file);
+                                        const existingDoc = importedDocuments.find(
+                                          (d) =>
+                                            (d.source_metadata as Record<string, unknown>)
+                                              ?.fileHash === hash,
+                                        );
+
+                                        if (existingDoc) {
+                                          setDuplicateCheck({
+                                            file,
+                                            hash,
+                                            existingDoc,
+                                            instanceId,
+                                          });
+                                          return;
+                                        }
+
+                                        setImportModalFiles([{ file, hash }]);
+                                      } catch (error) {
+                                        console.error("Hash error:", error);
+                                        setImportModalFiles([{ file }]);
+                                      }
+                                      
                                       setPdfPickerTargetInstanceId(instanceId);
                                     }}
                                   />
@@ -2010,6 +2043,31 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         destructive
         onCancel={() => setClearSectionsDialogOpen(false)}
         onConfirm={confirmClearSections}
+      />
+      <ConfirmDialog
+        open={!!duplicateCheck}
+        title="File Already Imported"
+        description={
+          duplicateCheck
+            ? `The file "${duplicateCheck.file.name}" has already been processed as "${duplicateCheck.existingDoc.title}". Would you like to use the existing document instead of re-uploading?`
+            : ""
+        }
+        confirmLabel="Use Existing"
+        cancelLabel="Upload Anyway"
+        onCancel={() => {
+          if (!duplicateCheck) return;
+          setImportModalFiles([{ file: duplicateCheck.file, hash: duplicateCheck.hash }]);
+          setPdfPickerTargetInstanceId(duplicateCheck.instanceId);
+          setDuplicateCheck(null);
+        }}
+        onConfirm={() => {
+          if (!duplicateCheck) return;
+          void attachDocumentToPdfSection(
+            duplicateCheck.instanceId,
+            duplicateCheck.existingDoc,
+          );
+          setDuplicateCheck(null);
+        }}
       />
     </>
   );

@@ -118,6 +118,7 @@ export function DocumentImportModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [flavor, setFlavor] = useState<"lattice" | "stream">("lattice");
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [enableTableStructure, setEnableTableStructure] = useState(true);
   const [debugDoclingTables, setDebugDoclingTables] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -263,6 +264,9 @@ export function DocumentImportModal({
     setSubmitError(null);
     revokeLocalThumbnails();
     getConsumedInitialQueueKeys().clear();
+    setFileInputKey((k) => k + 1);
+    setSelectedFile(null);
+    setTitle("");
     onClose();
   }, [onClose, revokeLocalThumbnails]);
 
@@ -492,6 +496,7 @@ export function DocumentImportModal({
         }));
       }
 
+      setFileInputKey((k) => k + 1);
       setSelectedFile(null);
       setTitle("");
       setFlavor("lattice");
@@ -592,6 +597,7 @@ export function DocumentImportModal({
                       </span>
                     </div>
                     <input
+                      key={fileInputKey}
                       type="file"
                       accept="application/pdf,.pdf"
                       onChange={(event) =>

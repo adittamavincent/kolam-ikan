@@ -106,7 +106,7 @@ export function ConfirmDialog({
                     {title}
                   </Dialog.Title>
                   {description && (
-                    <Dialog.Description className="text-sm text-text-muted">
+                    <Dialog.Description as="div" className="text-sm text-text-muted">
                       {description}
                     </Dialog.Description>
                   )}

@@ -4,7 +4,10 @@ from pathlib import Path
 from typing import Any, Tuple
 import yaml
 import pandas as pd
-import html2text
+try:
+    import html2text  # type: ignore[import]
+except Exception:
+    html2text = None
 
 logger = logging.getLogger("text_converter")
 
@@ -47,9 +50,12 @@ def convert_text(file_path: Path, content_type: str, file_name: str, options: An
                 md_text = f"```yaml\n{text_content}\n```"
                 
         elif ctype == "text/html" or ext in ["html", "htm"]:
-            h = html2text.HTML2Text()
-            h.ignore_links = False
-            md_text = h.handle(text_content)
+            if html2text is None:
+                md_text = text_content
+            else:
+                h = html2text.HTML2Text()
+                h.ignore_links = False
+                md_text = h.handle(text_content)
             
         else: # TXT, MD, etc.
             md_text = text_content

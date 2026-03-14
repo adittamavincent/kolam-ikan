@@ -2,7 +2,10 @@ import logging
 from pathlib import Path
 from typing import Any, Tuple
 from PIL import Image, ImageEnhance
-import pytesseract
+try:
+    import pytesseract  # type: ignore[import]
+except Exception:
+    pytesseract = None
 
 logger = logging.getLogger("image_converter")
 
@@ -17,6 +20,8 @@ def convert_image(file_path: Path, content_type: str, file_name: str, options: A
             enhancer = ImageEnhance.Sharpness(img)
             img = enhancer.enhance(2.0)
             
+            if pytesseract is None:
+                raise RuntimeError("pytesseract is not available in this environment")
             text = pytesseract.image_to_string(img, lang=ocr_lang)
             
         md_text = text.strip()

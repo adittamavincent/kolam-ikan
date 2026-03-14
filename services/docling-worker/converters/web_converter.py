@@ -3,7 +3,10 @@ from pathlib import Path
 from typing import Any, Tuple
 import json
 import httpx
-import html2text
+try:
+    import html2text  # type: ignore[import]
+except Exception:
+    html2text = None
 
 try:
     from bs4 import BeautifulSoup
@@ -46,10 +49,12 @@ def convert_web(file_path: Path, content_type: str, file_name: str, options: Any
                 for tag in soup(["nav", "footer", "aside", "script", "style"]):
                     tag.decompose()
                 html_content = str(soup)
-
-            h = html2text.HTML2Text()
-            h.ignore_links = False
-            md_text = h.handle(html_content)
+            if html2text is None:
+                md_text = html_content
+            else:
+                h = html2text.HTML2Text()
+                h.ignore_links = False
+                md_text = h.handle(html_content)
         elif "application/json" in final_ctype:
             try:
                 obj = json.loads(html_content)

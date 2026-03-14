@@ -5,18 +5,18 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Tuple
 
 try:
-    import camelot
+    import camelot  # type: ignore[import]
 except Exception:
     camelot = None
 
 try:
-    import pdfplumber
+    import pdfplumber  # type: ignore[import]
 except Exception:
     pdfplumber = None
 
 try:
-    import pytesseract
-    from pdf2image import convert_from_path
+    import pytesseract  # type: ignore[import]
+    from pdf2image import convert_from_path  # type: ignore[import]
 except Exception:
     pytesseract = None
     convert_from_path = None
@@ -55,7 +55,7 @@ def validate_pdf(pdf_path: Path) -> Tuple[bool, str]:
         return False, "empty-file"
 
     try:
-        from PyPDF2 import PdfReader
+        from PyPDF2 import PdfReader  # type: ignore[import]
         with open(pdf_path, "rb") as fh:
             reader = PdfReader(fh)
             if reader.is_encrypted:
@@ -81,7 +81,7 @@ def _convert_pdf_page_by_page(
     on_progress: Callable[[PageProgress], None] | None,
 ) -> tuple[str, Any | None]:
     try:
-        from PyPDF2 import PdfReader, PdfWriter
+        from PyPDF2 import PdfReader, PdfWriter  # type: ignore[import]
     except Exception:
         logger.debug("PyPDF2 unavailable for per-page conversion; falling back to single-pass")
         with DoclingProgressInterceptor(tracker):

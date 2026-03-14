@@ -25,6 +25,7 @@ import {
   Upload,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 import { createClient } from "@/lib/supabase/client";
@@ -501,11 +502,27 @@ function buildAutoMap(
     | Array<{
         id: string;
         name: string;
+        is_shadow?: boolean | null;
+        shadow_stream_id?: string | null;
       }>
     | undefined,
+  streamId?: string,
 ): Record<string, string> {
   const autoMap: Record<string, string> = {};
   for (const sender of senders) {
+    // Prefer an existing shadow persona for this stream
+    const shadowMatch = personas?.find(
+      (p) =>
+        p.is_shadow &&
+        p.shadow_stream_id === streamId &&
+        p.name.toLowerCase() === sender.toLowerCase(),
+    );
+    if (shadowMatch) {
+      autoMap[sender] = shadowMatch.id;
+      continue;
+    }
+
+    // Fallback to any persona with matching name (global)
     const match = personas?.find(
       (p) => p.name.toLowerCase() === sender.toLowerCase(),
     );
@@ -564,6 +581,8 @@ export function WhatsAppImportModal({
   const [zipLoading, setZipLoading] = useState(false);
   const [zipAutoUploadRan, setZipAutoUploadRan] = useState(false);
   const zipInputRef = useRef<HTMLInputElement>(null);
+  const [confirmExitOpen, setConfirmExitOpen] = useState(false);
+  const [createdShadowCount, setCreatedShadowCount] = useState(0);
 
   // Preview tooltip state (custom tooltip with configurable timing)
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -773,11 +792,83 @@ export function WhatsAppImportModal({
     }
   };
 
-  const handleRangeNext = () => {
+  const handleRangeNext = async () => {
     if (selectedTurns.length === 0) return;
     const senders = getMappableSenders(selectedTurns);
     setMappableSenders(senders);
-    setMapping(buildAutoMap(senders, personas));
+    const auto = buildAutoMap(senders, personas, streamId);
+    setMapping(auto);
+
+    // Ensure a shadow persona exists for every sender — create missing shadows
+    const shadowMap: Record<string, string> = {};
+    for (const s of senders) {
+      const existingShadow = personas?.find(
+        (p) =>
+          p.is_shadow && p.shadow_stream_id === streamId &&
+          p.name.toLowerCase() === s.toLowerCase(),
+      );
+      if (existingShadow) shadowMap[s] = existingShadow.id;
+    }
+
+    const toCreate = senders.filter((s) => !shadowMap[s]);
+    if (toCreate.length > 0) {
+      setCreatingAllPersonas(true);
+      setMapError(null);
+      setMapNotice(null);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const rows: PersonaCreateRow[] = toCreate.map((sender, idx) => ({
+          name: sender,
+          color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
+          icon: "user",
+          type: "HUMAN",
+          user_id: user.id,
+          is_system: false,
+        }));
+
+        const { data, error, fallbackUsed } =
+          await insertPersonasWithShadowFallback(rows);
+
+        if (error || !data) {
+          setMapError(getSupabaseErrorMessage(error));
+          return;
+        }
+
+        if (fallbackUsed) {
+          setMapNotice(
+            "Shadow columns are not available yet. Missing personas were created in legacy global mode.",
+          );
+        }
+
+        await queryClient.invalidateQueries({
+          predicate: (query) =>
+            Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+        });
+
+        // Map created rows by name (shadow rows take precedence)
+        const createdMap: Record<string, string> = {};
+        for (const created of data) {
+          createdMap[created.name] = created.id;
+        }
+
+        // Record created persona IDs for this import session (count them regardless
+        // of whether the DB used shadow columns or fell back to legacy insert).
+        setCreatedShadowCount((prev) => prev + data.length);
+
+        setMapping((prev) => {
+          // start from previous mapping, apply any global auto matches,
+          // then override with existing shadows and newly created shadows
+          const next = { ...prev, ...auto, ...shadowMap, ...createdMap };
+          return next;
+        });
+      } finally {
+        setCreatingAllPersonas(false);
+      }
+    }
     setUploads({});
     setMapError(null);
     setMapNotice(null);
@@ -854,6 +945,8 @@ export function WhatsAppImportModal({
         predicate: (query) =>
           Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
       });
+      // Record created persona id for this session (shadow or legacy).
+      setCreatedShadowCount((prev) => prev + 1);
       setMapping((prev) => ({ ...prev, [sender]: first.id }));
     } finally {
       setCreatingPersonaFor(null);
@@ -900,6 +993,10 @@ export function WhatsAppImportModal({
         predicate: (query) =>
           Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
       });
+
+      // Record created persona ids for this session (shadow or legacy).
+      setCreatedShadowCount((prev) => prev + data.length);
+
       setMapping((prev) => {
         const next = { ...prev };
         for (const created of data) {
@@ -1181,6 +1278,7 @@ export function WhatsAppImportModal({
     setMapNotice(null);
     setZipLoading(false);
     setZipAutoUploadRan(false);
+    setCreatedShadowCount(0);
     onClose();
   };
 
@@ -1193,7 +1291,11 @@ export function WhatsAppImportModal({
   return (
     <Dialog
       open={isOpen}
-      onClose={handleClose}
+      onClose={() => {
+        // If user progressed past the paste step show confirmation
+        if (step !== "paste") setConfirmExitOpen(true);
+        else handleClose();
+      }}
       className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
     >
       <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" />
@@ -1214,7 +1316,10 @@ export function WhatsAppImportModal({
                 )}
               </div>
               <button
-                onClick={handleClose}
+                onClick={() => {
+                  if (step !== "paste") setConfirmExitOpen(true);
+                  else handleClose();
+                }}
                 className=" p-1 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
               >
                 <X className="h-4 w-4" />
@@ -1582,10 +1687,7 @@ export function WhatsAppImportModal({
                     </p>
                     <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
                       <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5">
-                        Global: {globalPersonas.length}
-                      </span>
-                      <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:text-amber-400">
-                        Shadow: {shadowPersonas.length}
+                        Will create (shadow): {createdShadowCount}
                       </span>
                     </div>
                   </div>
@@ -1901,6 +2003,19 @@ export function WhatsAppImportModal({
             )
           : null}
       </div>
+      <ConfirmDialog
+        open={confirmExitOpen}
+        title="Discard import?"
+        description="Are you sure you want to exit? You will lose all imported data and progress."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        destructive
+        onCancel={() => setConfirmExitOpen(false)}
+        onConfirm={() => {
+          setConfirmExitOpen(false);
+          handleClose();
+        }}
+      />
     </Dialog>
   );
 }

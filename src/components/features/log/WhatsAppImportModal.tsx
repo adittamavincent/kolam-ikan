@@ -1431,20 +1431,20 @@ export function WhatsAppImportModal({
                   </div>
                 )}
 
-                <div className="flex justify-end">
-                  <button
-                    onClick={handleParseAndNext}
-                    disabled={
-                      !rawText.trim() ||
-                      liveMsgs.length === 0 ||
-                      liveImportable === 0
-                    }
-                    className="inline-flex items-center gap-1.5  bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
-                  >
-                    Next
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                <StepFooter
+                  onNext={handleParseAndNext}
+                  nextDisabled={
+                    !rawText.trim() ||
+                    liveMsgs.length === 0 ||
+                    liveImportable === 0
+                  }
+                  nextContent={
+                    <>
+                      Next
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </>
+                  }
+                />
               </div>
             )}
 
@@ -1648,24 +1648,17 @@ export function WhatsAppImportModal({
                   )}
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setStep("paste")}
-                    className="inline-flex items-center gap-1.5  px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Back
-                  </button>
-
-                  <button
-                    onClick={handleRangeNext}
-                    disabled={rangeImportableCount === 0}
-                    className="inline-flex items-center gap-1.5  bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
-                  >
-                    Next: Map Personas
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                <StepFooter
+                  onBack={() => setStep("paste")}
+                  onNext={handleRangeNext}
+                  nextDisabled={rangeImportableCount === 0}
+                  nextContent={
+                    <>
+                      Next: Map Personas
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </>
+                  }
+                />
               </div>
             )}
 
@@ -1847,36 +1840,25 @@ export function WhatsAppImportModal({
                   </div>
                 )}
 
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setStep("range")}
-                    className="inline-flex items-center gap-1.5  px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Back
-                  </button>
-
-                  {hasPdfTurns ? (
-                    <button
-                      onClick={handleMapNext}
-                      disabled={!allMapped}
-                      className="inline-flex items-center gap-1.5  bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
-                    >
-                      Next: Attach PDFs
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleMapNext}
-                      disabled={!allMapped || textTurns.length === 0}
-                      className="inline-flex items-center gap-1.5  bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      Import {textTurns.length} turn
-                      {textTurns.length !== 1 ? "s" : ""}
-                    </button>
-                  )}
-                </div>
+                <StepFooter
+                  onBack={() => setStep("range")}
+                  onNext={handleMapNext}
+                  nextDisabled={!allMapped || (!hasPdfTurns && textTurns.length === 0)}
+                  nextContent={
+                    hasPdfTurns ? (
+                      <>
+                        Next: Attach PDFs
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        Import {textTurns.length} turn
+                        {textTurns.length !== 1 ? "s" : ""}
+                      </>
+                    )
+                  }
+                />
               </div>
             )}
 
@@ -1948,22 +1930,13 @@ export function WhatsAppImportModal({
                   )}
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setStep("map")}
-                    disabled={anyUploading}
-                    className="inline-flex items-center gap-1.5  px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Back
-                  </button>
-
-                  <button
-                    onClick={() => void handleProcessAndConfirm()}
-                    disabled={!canConfirmFiles}
-                    className="inline-flex items-center gap-1.5  bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
-                  >
-                    {anyUploading ? (
+                <StepFooter
+                  onBack={() => setStep("map")}
+                  backDisabled={anyUploading}
+                  onNext={() => void handleProcessAndConfirm()}
+                  nextDisabled={!canConfirmFiles}
+                  nextContent={
+                    anyUploading ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         Processing PDFs…
@@ -1974,9 +1947,9 @@ export function WhatsAppImportModal({
                         Process & Import {plannedImportableCount} section
                         {plannedImportableCount !== 1 ? "s" : ""}
                       </>
-                    )}
-                  </button>
-                </div>
+                    )
+                  }
+                />
               </div>
             )}
           </DialogPanel>
@@ -2017,6 +1990,74 @@ export function WhatsAppImportModal({
         }}
       />
     </Dialog>
+  );
+}
+
+// ─── StepFooter sub-component ──────────────────────────────────────────────────
+
+interface StepFooterProps {
+  onBack?: () => void;
+  backDisabled?: boolean;
+  onNext: () => void;
+  nextDisabled?: boolean;
+  nextContent: React.ReactNode;
+}
+
+function StepFooter({
+  onBack,
+  backDisabled,
+  onNext,
+  nextDisabled,
+  nextContent,
+}: StepFooterProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        // Prevent intercepting Enter when the user is interacting with form controls or standard buttons
+        const active = document.activeElement as HTMLElement | null;
+        if (active) {
+          const tag = active.tagName.toUpperCase();
+          if (["TEXTAREA", "INPUT", "SELECT", "BUTTON"].includes(tag)) {
+            return;
+          }
+        }
+        
+        if (!nextDisabled) {
+          e.preventDefault();
+          onNext();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onNext, nextDisabled]);
+
+  return (
+    <div
+      className={`flex items-center ${
+        onBack ? "justify-between" : "justify-end"
+      }`}
+    >
+      {onBack && (
+        <button
+          onClick={onBack}
+          disabled={backDisabled}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          Back
+        </button>
+      )}
+
+      <button
+        onClick={onNext}
+        disabled={nextDisabled}
+        className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
+      >
+        {nextContent}
+      </button>
+    </div>
   );
 }
 

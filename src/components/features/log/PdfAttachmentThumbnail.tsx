@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, X, Loader2, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 const promiseConstructor = Promise as unknown as {
@@ -29,6 +29,8 @@ interface PdfAttachmentThumbnailProps {
   storagePath?: string | null;
   thumbnailPath?: string | null;
   title: string;
+  importStatus?: string | null;
+  progressPercent?: number | null;
 }
 
 export function PdfAttachmentThumbnail({
@@ -36,6 +38,8 @@ export function PdfAttachmentThumbnail({
   storagePath,
   thumbnailPath,
   title,
+  importStatus = null,
+  progressPercent = null,
 }: PdfAttachmentThumbnailProps) {
   type PDFPageLike = {
     getViewport: (opts: { scale: number }) => { width: number; height: number };
@@ -98,8 +102,18 @@ export function PdfAttachmentThumbnail({
     // 1. No storagePath is provided AND no thumbnailPath is provided
     if (!storagePath && !thumbnailPath) return;
     // 2. We have a prop `url` AND it is currently active (resolvedUrl === url)
-    // BUT only skip if we don't have a storagePath or thumbnailPath (because if we have either, we want to check for thumbnails first)
-    if (url && resolvedUrl === url && !storagePath && !thumbnailPath) return;
+    // BUT only skip if we don't have a storagePath or thumbnailPath (because
+    // if we have either, we want to check for thumbnails first). However,
+    // when the import is queued/processing we should still attempt to check
+    // for thumbnails since they may appear while queued.
+    if (
+      url &&
+      resolvedUrl === url &&
+      !storagePath &&
+      !thumbnailPath &&
+      !["queued", "processing"].includes(importStatus ?? "")
+    )
+      return;
     // 3. We ALREADY fetched a signed URL for this exact storagePath/thumbnailPath and we haven't cleared it
     if (
       resolvedUrl &&
@@ -125,15 +139,31 @@ export function PdfAttachmentThumbnail({
             .getPublicUrl(thumbnailPath);
 
           if (!canceled && thumbData?.publicUrl) {
-            if (process.env.NODE_ENV !== "production")
-              console.debug(
-                "PdfAttachmentThumbnail: found server-generated thumbnail",
-                thumbData.publicUrl,
-              );
-            fetchedStoragePathRef.current = thumbnailPath;
-            setResolvedUrl(thumbData.publicUrl);
-            setIsFromCache(true);
-            return;
+            // Verify the thumbnail actually exists (some buckets may return a
+            // public URL even if the object isn't present). Use HEAD to avoid
+            // downloading the asset.
+            try {
+              const headResp = await fetch(thumbData.publicUrl, { method: "HEAD" });
+              if (headResp.ok) {
+                if (process.env.NODE_ENV !== "production")
+                  console.debug(
+                    "PdfAttachmentThumbnail: found server-generated thumbnail",
+                    thumbData.publicUrl,
+                  );
+                fetchedStoragePathRef.current = thumbnailPath;
+                setResolvedUrl(thumbData.publicUrl);
+                setIsFromCache(true);
+                return;
+              }
+            } catch (e) {
+              // If HEAD fails (CORS/unsupported), fall back to attempting GET in next phase.
+              if (process.env.NODE_ENV !== "production")
+                console.debug(
+                  "PdfAttachmentThumbnail: HEAD check failed for thumbnail",
+                  thumbData.publicUrl,
+                  e,
+                );
+            }
           }
         }
 
@@ -145,21 +175,32 @@ export function PdfAttachmentThumbnail({
               storagePath,
             );
           const thumbPath = `${storagePath}.png`;
-
           const { data: thumbData } = supabase.storage
             .from("thumbnails")
             .getPublicUrl(thumbPath);
 
           if (!canceled && thumbData?.publicUrl) {
-            if (process.env.NODE_ENV !== "production")
-              console.debug(
-                "PdfAttachmentThumbnail: found legacy cached thumbnail",
-                thumbData.publicUrl,
-              );
-            fetchedStoragePathRef.current = storagePath;
-            setResolvedUrl(thumbData.publicUrl);
-            setIsFromCache(true);
-            return;
+            try {
+              const headResp = await fetch(thumbData.publicUrl, { method: "HEAD" });
+              if (headResp.ok) {
+                if (process.env.NODE_ENV !== "production")
+                  console.debug(
+                    "PdfAttachmentThumbnail: found legacy cached thumbnail",
+                    thumbData.publicUrl,
+                  );
+                fetchedStoragePathRef.current = storagePath;
+                setResolvedUrl(thumbData.publicUrl);
+                setIsFromCache(true);
+                return;
+              }
+            } catch (e) {
+              if (process.env.NODE_ENV !== "production")
+                console.debug(
+                  "PdfAttachmentThumbnail: HEAD check failed for legacy thumbnail",
+                  thumbData.publicUrl,
+                  e,
+                );
+            }
           }
         } else {
           console.debug(
@@ -212,7 +253,21 @@ export function PdfAttachmentThumbnail({
     return () => {
       canceled = true;
     };
-  }, [url, storagePath, thumbnailPath, resolvedUrl, skipThumbnail]);
+  }, [url, storagePath, thumbnailPath, resolvedUrl, skipThumbnail, importStatus]);
+
+  // When importStatus updates, clear cached fetch state so we re-attempt
+  // thumbnail/signed URL resolution. This helps when a thumbnail or file
+  // appears after the import job progresses (queued -> processing -> done).
+  useEffect(() => {
+    // Only trigger a recheck when importStatus is meaningful
+    if (!importStatus) return;
+    fetchedStoragePathRef.current = null;
+    renderAttemptsRef.current = 0;
+    setIsFromCache(false);
+    setSkipThumbnail(false);
+    // Clear resolvedUrl to force the getSignedUrl effect to run
+    setResolvedUrl(null);
+  }, [importStatus, storagePath, thumbnailPath]);
 
   useEffect(() => {
     let canceled = false;
@@ -581,12 +636,38 @@ export function PdfAttachmentThumbnail({
         className="h-16 w-12 object-cover"
         aria-label={`Thumbnail preview for ${title}`}
       />
+      {/* Informative overlays based on import status / render result */}
       {!hasRendered && (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-surface-subtle"
+          className="absolute inset-0 flex flex-col items-center justify-center bg-surface-subtle"
           aria-label={`PDF thumbnail unavailable for ${title}`}
         >
-          <FileText className="h-4 w-4 text-text-muted" />
+          {importStatus === "failed" || importStatus === "error" ? (
+            <div className="flex flex-col items-center gap-1">
+              <div className="rounded-full bg-rose-600/90 p-1 text-white">
+                <X className="h-4 w-4" />
+              </div>
+              <div className="text-[10px] font-semibold text-rose-600">Failed</div>
+            </div>
+          ) : importStatus === "processing" || importStatus === "queued" || importStatus === "uploading" ? (
+            <div className="flex flex-col items-center gap-1">
+              <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
+              {typeof progressPercent === "number" ? (
+                <div className="text-[10px] font-semibold text-text-default">{progressPercent}%</div>
+              ) : (
+                <div className="text-[10px] text-text-muted">Processing</div>
+              )}
+            </div>
+          ) : (
+            <FileText className="h-4 w-4 text-text-muted" />
+          )}
+        </div>
+      )}
+
+      {/* Small success badge when available */}
+      {hasRendered && (importStatus === "completed" || importStatus === "done") && (
+        <div className="absolute right-0 top-0 m-1 rounded-full bg-green-500/90 p-0.5 text-white">
+          <Check className="h-3 w-3" />
         </div>
       )}
     </div>

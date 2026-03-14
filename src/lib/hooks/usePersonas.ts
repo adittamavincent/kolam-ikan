@@ -10,7 +10,7 @@ export function usePersonas({
   const { user } = useAuth();
 
   const query = useQuery({
-    queryKey: ["personas", user?.id],
+    queryKey: ["personas", user?.id, includeDeleted],
     queryFn: async ({ signal }) => {
       let query = supabase
         .from("personas")

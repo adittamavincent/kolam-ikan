@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-const https = require('https');
+import fs from 'fs';
+import path from 'path';
+import https from 'https';
+import { fileURLToPath } from 'url';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.join(__dirname, '..', 'public', 'js');
 const OUT_FILE = path.join(OUT_DIR, 'pdf.worker.min.mjs');
 
@@ -18,7 +20,7 @@ function tryCopyFromNodeModules() {
       console.log('Copied pdf.worker.min.mjs from node_modules to', OUT_FILE);
       return true;
     }
-  } catch (err) {
+  } catch {
     // ignore
   }
   return false;

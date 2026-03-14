@@ -150,6 +150,8 @@ export function LogSection({
                     attachment.document?.title ||
                     "Attached PDF"
                   }
+                  importStatus={attachment.document?.import_status ?? null}
+                  progressPercent={attachment.document?.latestJob?.progress_percent ?? null}
                 />
                 <div className="min-w-0">
                   <div className="truncate text-xs font-medium text-text-default">

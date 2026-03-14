@@ -31,9 +31,6 @@ import {
   Eye,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
-import { useKeyboard } from "@/lib/hooks/useKeyboard";
-import { NavigationGuard } from "./NavigationGuard";
-import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
 import {
   Dialog,
   DialogBackdrop,
@@ -50,6 +47,9 @@ import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
+import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
+import { useKeyboard } from "@/lib/hooks/useKeyboard";
+import { NavigationGuard } from "@/components/features/log/NavigationGuard";
 import {
   DndContext,
   closestCenter,
@@ -291,7 +291,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   }, [personaUsageCounts, personaUsageStorageKey]);
 
-  const quickPersonas = useMemo(() => {
+  const quickPersonas = (() => {
     if (!personas?.length) return [];
     return [...personas]
       .sort((a, b) => {
@@ -301,8 +301,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         return a.name.localeCompare(b.name);
       })
       .slice(0, 3);
-    // Recompute when persona ids/names change or when usage counts change.
-  }, [personaUsageCounts, personas]);
+  })();
+
+ 
 
   const trackPersonaUsage = (personaId: string) => {
     setPersonaUsageCounts((prev) => ({
@@ -362,15 +363,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   }, [initialDrafts, isLoading, sections.length, discardedRecovery]);
 
   const persistPdfSection = useCallback(
-    (instanceId: string, draft?: Extract<SectionState, { kind: "PDF" }>) => {
-      const section =
-        draft ??
-        sections.find((s) => s.instanceId === instanceId && s.kind === "PDF");
-      if (!section || section.kind !== "PDF") return;
+    (
+      instanceId: string,
+      draft: Extract<SectionState, { kind: "PDF" }>,
+    ) => {
+      if (!draft || draft.kind !== "PDF") return;
 
       savePdfDraft(instanceId, {
-        displayMode: section.displayMode,
-        attachments: section.attachments.map((attachment) => ({
+        displayMode: draft.displayMode,
+        attachments: draft.attachments.map((attachment) => ({
           documentId: attachment.documentId,
           storagePath: attachment.storagePath,
           titleSnapshot: attachment.titleSnapshot,
@@ -382,7 +383,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         content: [],
       });
     },
-    [sections, savePdfDraft],
+    [savePdfDraft],
   );
 
   // Watch imported documents and automatically update pending attachments
@@ -411,7 +412,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         const nextAttachments = section.attachments.map((att) => {
           const isMatchById = att.documentId === doc.id;
           const isMatchByHash =
-            att.fileHash && sourceMeta.fileHash === att.fileHash;
+            !att.documentId &&
+            !!att.fileHash &&
+            sourceMeta.fileHash === att.fileHash;
 
           if (isMatchById || isMatchByHash) {
             const nextPreviewUrl =
@@ -1410,6 +1413,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               null
                                             }
                                             title={attachment.titleSnapshot}
+                                            importStatus={importStatus ?? null}
+                                            progressPercent={progressPercent ?? 0}
                                           />
                                           {isProcessing && (
                                             <div className="absolute inset-0 flex items-center justify-center rounded-sm bg-black/5 backdrop-blur-[1px]">
@@ -1564,6 +1569,29 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <span className="mx-1">→</span>
               <span className="font-medium">{selectedBranch || "main"}</span>
             </div>
+            {commitBlockedByPdfStatus && (
+              <div className="inline-flex items-center gap-2 ml-3 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+                  <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-3 w-3 shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <path d="M12 9v4" />
+                  <path d="M12 17h.01" />
+                </svg>
+                <span>
+                  {isDocumentsLoading
+                    ? "Checking PDFs"
+                    : `${unparsedAttachedCount} PDF${unparsedAttachedCount === 1 ? "" : "s"} not ready`}
+                </span>
+              </div>
+            )}
             <button
               onClick={handleCommit}
               disabled={status === "saving" || commitBlockedByPdfStatus}
@@ -1576,14 +1604,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <Send className="h-3 w-3" />
               Commit
             </button>
-          </div>
-        )}
-
-        {commitBlockedByPdfStatus && (
-          <div className="mx-3 mb-2 rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-            {isDocumentsLoading
-              ? "Checking PDF parse status before commit..."
-              : `${unparsedAttachedCount} attached PDF file${unparsedAttachedCount === 1 ? " is" : "s are"} not fully parsed yet. Wait until status is Ready in import queue.`}
           </div>
         )}
       </div>

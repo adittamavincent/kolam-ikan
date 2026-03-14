@@ -23,6 +23,7 @@ declare global {
       { file: File; hash?: string; blobUrl?: string }
     >;
     kolam_pending_file_ids?: string[];
+    kolam_consumed_initial_queue_keys?: Set<string>;
   }
 }
 
@@ -45,6 +46,14 @@ const getPendingFileIds = (): string[] => {
 const setPendingFileIds = (ids: string[]): void => {
   if (typeof window === "undefined") return;
   window.kolam_pending_file_ids = ids;
+};
+
+const getConsumedInitialQueueKeys = (): Set<string> => {
+  if (typeof window === "undefined") return new Set();
+  if (!window.kolam_consumed_initial_queue_keys) {
+    window.kolam_consumed_initial_queue_keys = new Set();
+  }
+  return window.kolam_consumed_initial_queue_keys;
 };
 
 interface DocumentImportModalProps {
@@ -245,6 +254,7 @@ export function DocumentImportModal({
   const handleClose = useCallback(() => {
     setSubmitError(null);
     revokeLocalThumbnails();
+    getConsumedInitialQueueKeys().clear();
     onClose();
   }, [onClose, revokeLocalThumbnails]);
 
@@ -361,7 +371,12 @@ export function DocumentImportModal({
       .join("|");
 
     if (initialQueueKeyRef.current === queueKey) return;
+
+    const consumedQueueKeys = getConsumedInitialQueueKeys();
+    if (consumedQueueKeys.has(queueKey)) return;
+
     initialQueueKeyRef.current = queueKey;
+    consumedQueueKeys.add(queueKey);
 
     // Kick off all imports in parallel so UI shows all queued items immediately
     const importPromises = validFiles.map(async ({ file, hash }) => {
@@ -829,12 +844,14 @@ export function DocumentImportModal({
                         {/* Top Part */}
                         <div className="flex items-center justify-between gap-3">
                           {/* Thumbnail */}
-                          <div className="relative shrink-0">
+                            <div className="relative shrink-0">
                             <PdfAttachmentThumbnail
                               url={localThumbnails[document.id] || null}
                               storagePath={document.storage_path}
                               thumbnailPath={document.thumbnail_path}
                               title={document.title}
+                              importStatus={status}
+                              progressPercent={progressPercent}
                             />
                           </div>
                           {/* Right */}

@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+import asyncio
 
 import camelot
 import httpx
@@ -26,6 +27,41 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("docling-worker")
 
 app = FastAPI(title="Kolam Ikan Docling Worker", version="0.1.0")
+
+# In-process queue for sequential processing. Jobs are accepted and marked
+# 'queued' immediately; the consumer pulls jobs off the queue one-at-a-time
+# and runs `process_import` so we never run multiple imports concurrently.
+import_queue: "asyncio.Queue[ImportRequest]" = asyncio.Queue()
+
+
+async def import_worker() -> None:
+    logger.info("Import worker started, processing jobs sequentially")
+    while True:
+        request = await import_queue.get()
+        try:
+            # Mark job as processing before actually starting heavy work
+            try:
+                await send_progress(
+                    request,
+                    status="processing",
+                    progress_percent=5,
+                    progress_message="Starting import",
+                    eta_seconds=None,
+                )
+            except Exception:
+                logger.exception("Failed to send processing start callback for %s", request.jobId)
+
+            await process_import(request)
+        except Exception:
+            logger.exception("Unhandled error while processing import %s", request.jobId)
+        finally:
+            import_queue.task_done()
+
+
+@app.on_event("startup")
+async def start_import_worker() -> None:
+    # Spawn the background consumer task
+    asyncio.create_task(import_worker())
 
 
 LOCALHOST_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -166,25 +202,64 @@ async def send_progress(
 
 
 def convert_pdf_to_markdown(pdf_path: Path, flavor: str) -> tuple[str, dict[str, Any]]:
-    text_converter = build_docling_converter(enable_table_structure=False)
-    result = text_converter.convert(str(pdf_path))
-    markdown_text = result.document.export_to_markdown()
+    # Use the shared DoclingProcessor to handle advanced parsing and OCR-on-demand
+    try:
+        # local import so this file doesn't fail if the processor is refactored
+        from docling_processor import DoclingProcessor
 
-    tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=flavor)
+        processor = DoclingProcessor()
+        final_md, metadata = processor.process_to_markdown(pdf_path, flavor=flavor)
+        return final_md, metadata
+    except Exception:
+        logger.exception("DoclingProcessor failed; falling back to simple pipeline")
+        # Fallback: previous simple behavior, but be defensive around camelot
+        text_converter = build_docling_converter(enable_table_structure=False)
+        result = text_converter.convert(str(pdf_path))
+        try:
+            markdown_text = result.document.export_to_markdown()
+        except Exception:
+            logger.exception("Fallback export_to_markdown failed; using naive join")
+            markdown_text = "\n\n".join((getattr(p, "text", "") for p in getattr(result.document, "pages", [])))
 
-    table_markdown_blocks: list[str] = []
-    for i, table in enumerate(tqdm(tables, desc="Extracting tables", leave=False)):
-        df = table.df
-        md_table = df.to_markdown(index=False)
-        table_markdown_blocks.append(f"\n\n### Table {i + 1}\n\n{md_table}\n")
+        tables = []
+        try:
+            camelot_tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=flavor)
+            for t in camelot_tables:
+                try:
+                    df = t.df
+                    tables.append(df)
+                except Exception:
+                    logger.exception("Failed to convert camelot table to DataFrame in fallback")
+        except Exception:
+            logger.exception("Camelot fallback failed during simple pipeline; attempting alternate flavor")
+            # try alternate flavor before giving up
+            alt_flavor = "stream" if flavor == "lattice" else "lattice"
+            try:
+                camelot_tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=alt_flavor)
+                for t in camelot_tables:
+                    try:
+                        df = t.df
+                        tables.append(df)
+                    except Exception:
+                        logger.exception("Failed to convert camelot table to DataFrame with alt flavor")
+            except Exception:
+                logger.exception("Alternate Camelot flavor also failed; continuing without camelot tables")
 
-    final_md = markdown_text + "\n".join(table_markdown_blocks)
-    metadata = {
-        "doclingTables": len(result.document.tables),
-        "camelotTables": len(tables),
-        "camelotFlavor": flavor,
-    }
-    return final_md, metadata
+        table_markdown_blocks: list[str] = []
+        for i, df in enumerate(tables):
+            try:
+                md_table = df.to_markdown(index=False)
+                table_markdown_blocks.append(f"\n\n### Table {i + 1}\n\n{md_table}\n")
+            except Exception:
+                logger.exception("Failed to render fallback table %s to markdown", i)
+
+        final_md = markdown_text + "\n".join(table_markdown_blocks)
+        metadata = {
+            "doclingTables": len(getattr(result.document, "tables", [])),
+            "camelotTables": len(tables),
+            "camelotFlavor": flavor,
+        }
+        return final_md, metadata
 
 
 def generate_and_upload_thumbnail(pdf_path: Path, document_id: str) -> str | None:
@@ -243,27 +318,32 @@ def generate_and_upload_thumbnail(pdf_path: Path, document_id: str) -> str | Non
 async def process_import(request: ImportRequest) -> None:
     temp_file_path: Path | None = None
     try:
-        await send_progress(
-            request,
-            status="processing",
-            progress_percent=10,
-            progress_message="Downloading PDF from storage",
-            eta_seconds=max(10, math.ceil(request.fileSizeBytes / (512 * 1024)) * 8),
-        )
-
         storage_url = rewrite_localhost_url(
             request.fileUrl,
             os.getenv("DOC_IMPORT_STORAGE_BASE_URL", "").strip() or None,
         )
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.get(storage_url)
-            response.raise_for_status()
-            pdf_bytes = response.content
-
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-            temp_file.write(pdf_bytes)
-            temp_file_path = Path(temp_file.name)
+        # Stream download in chunks to avoid large memory spikes and add simple retries
+        download_timeout = float(os.getenv("DOC_IMPORT_DOWNLOAD_TIMEOUT", "300"))
+        max_attempts = int(os.getenv("DOC_IMPORT_MAX_DOWNLOAD_ATTEMPTS", "3"))
+        last_exc: Exception | None = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                async with httpx.AsyncClient(timeout=download_timeout) as client:
+                    async with client.stream("GET", storage_url) as response:
+                        response.raise_for_status()
+                        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
+                            temp_file_path = Path(temp_file.name)
+                            async for chunk in response.aiter_bytes(chunk_size=8192):
+                                if chunk:
+                                    temp_file.write(chunk)
+                last_exc = None
+                break
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Download attempt %s failed for %s", attempt, storage_url)
+                last_exc = exc
+        if last_exc is not None:
+            raise last_exc
 
         await send_progress(
             request,
@@ -275,12 +355,14 @@ async def process_import(request: ImportRequest) -> None:
 
         thumbnail_path = generate_and_upload_thumbnail(temp_file_path, request.documentId)
 
+        file_size = temp_file_path.stat().st_size if temp_file_path and temp_file_path.exists() else request.fileSizeBytes
+
         await send_progress(
             request,
             status="processing",
             progress_percent=35,
             progress_message="Running Docling and table extraction",
-            eta_seconds=max(8, math.ceil(len(pdf_bytes) / (512 * 1024)) * 6),
+            eta_seconds=max(8, math.ceil(file_size / (512 * 1024)) * 6),
         )
 
         markdown, extraction_metadata = convert_pdf_to_markdown(
@@ -340,11 +422,25 @@ async def create_import(request: ImportRequest, background_tasks: BackgroundTask
     if request.parserConfig.flavor not in {"lattice", "stream"}:
         raise HTTPException(status_code=400, detail="Unsupported Camelot flavor")
 
-    background_tasks.add_task(process_import, request)
+    # Enqueue the request for sequential processing and notify the caller
+    # that the job is queued. The `import_worker` will pick jobs off the
+    # queue and mark them 'processing' when it starts them.
+    await import_queue.put(request)
+
+    try:
+        await send_progress(
+            request,
+            status="queued",
+            progress_percent=0,
+            progress_message="Queued for import",
+            eta_seconds=None,
+        )
+    except Exception:
+        logger.exception("Failed to send queued callback for job %s", request.jobId)
 
     return {
         "accepted": True,
         "jobId": request.jobId,
-        "message": "Import job accepted",
+        "message": "Import job queued",
         "worker": os.getenv("HOSTNAME", "local"),
     }

@@ -140,5 +140,5 @@ export interface SectionWithPersona extends Omit<
 }
 
 export interface SectionPdfAttachmentWithDocument extends SectionPdfAttachment {
-  document?: Document;
+  document?: DocumentWithLatestJob;
 }

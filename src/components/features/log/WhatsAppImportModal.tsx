@@ -28,6 +28,7 @@ import { usePersonas } from "@/lib/hooks/usePersonas";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 import { createClient } from "@/lib/supabase/client";
+import { useDocuments } from "@/lib/hooks/useDocuments";
 import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Global temp file store ──────────────────────────────────────────────────
@@ -505,6 +506,7 @@ export function WhatsAppImportModal({
   const { personas } = usePersonas();
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { createImport } = useDocuments(streamId);
 
   const [step, setStep] = useState<Step>("paste");
   const [rawText, setRawText] = useState("");
@@ -738,7 +740,10 @@ export function WhatsAppImportModal({
         .select()
         .single();
       if (error || !data) return;
-      await queryClient.invalidateQueries({ queryKey: ["personas"] });
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+      });
       setMapping((prev) => ({ ...prev, [sender]: data.id }));
     } finally {
       setCreatingPersonaFor(null);
@@ -771,7 +776,10 @@ export function WhatsAppImportModal({
         .select();
       if (error || !data) return;
 
-      await queryClient.invalidateQueries({ queryKey: ["personas"] });
+      await queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+      });
       setMapping((prev) => {
         const next = { ...prev };
         for (const created of data) {
@@ -929,24 +937,61 @@ export function WhatsAppImportModal({
 
     // Transfer all pending PDF files to the document import handler for Docling processing
     if (transferFiles.length > 0) {
+      // Start imports immediately so thumbnails and queued documents begin resolving
+
       const tempStore = getTempFileStore();
-      const fileIds = transferFiles.map((fileData) => {
+      const queuedFileIds: string[] = [];
+
+      for (const fileData of transferFiles) {
         const id = generateFileId();
         // Create blob URL for preview
         const blobUrl = URL.createObjectURL(fileData.file);
         tempStore.set(id, { ...fileData, blobUrl });
-        return id;
-      });
+        queuedFileIds.push(id);
+
+        // Try to queue the import right away so thumbnails start generating.
+        // If queueing fails, fallback to leaving the file in the temp store and
+        // relying on DocumentImportModal to pick it up.
+        (async () => {
+          try {
+            const derivedTitle = fileData.file.name.replace(/\.pdf$/i, "");
+            const result = await createImport.mutateAsync({
+              file: fileData.file,
+              title: derivedTitle,
+              flavor: "lattice",
+              enableTableStructure: true,
+              debugDoclingTables: false,
+              fileHash: fileData.hash,
+            });
+
+            if (result?.document?.id) {
+              // Store document id mapping in temp store so other components can
+              // pick it up if needed. Keep blobUrl as well for immediate preview.
+              const entry = {
+                file: fileData.file,
+                hash: fileData.hash,
+                blobUrl,
+                documentId: result.document.id,
+                storagePath: result.document.storage_path,
+                thumbnailPath: result.document.thumbnail_path,
+              };
+              tempStore.set(id, entry as unknown as { file: File; hash?: string; blobUrl?: string });
+            }
+          } catch (err) {
+            console.warn("[WhatsApp] createImport failed, will fallback to temp store", err);
+          }
+        })();
+      }
 
       // Store pending file IDs so they're available when DocumentImportModal opens
-      setPendingFileIds(fileIds);
+      setPendingFileIds(queuedFileIds);
 
       if (process.env.NODE_ENV !== "production")
         console.debug(
           "[WhatsApp] Storing files in temp store and dispatching kolam_header_documents_import:",
           {
             fileCount: transferFiles.length,
-            fileIds,
+            fileIds: queuedFileIds,
             files: transferFiles.map((f) => ({
               name: f.file.name,
               size: f.file.size,
@@ -954,9 +999,10 @@ export function WhatsAppImportModal({
             })),
           },
         );
+
       window.dispatchEvent(
         new CustomEvent("kolam_header_documents_import", {
-          detail: { fileIds },
+          detail: { fileIds: queuedFileIds },
         }),
       );
     }
@@ -1777,6 +1823,7 @@ function PdfUploadRow({
             storagePath={upload.storagePath}
             thumbnailPath={upload.thumbnailPath}
             title={filename}
+            importStatus={isError ? "failed" : isUploading ? "processing" : isQueued ? "queued" : isDone ? "completed" : null}
           />
         ) : (
           <FileText

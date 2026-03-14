@@ -11,7 +11,7 @@ import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
-import { Check, FileText } from "lucide-react";
+import { Check } from "lucide-react";
 import { PartialBlock } from "@blocknote/core";
 import { useMemo } from "react";
 import { PdfAttachmentItem } from "./PdfAttachmentItem";
@@ -48,7 +48,6 @@ export function LogSection({
 }: LogSectionProps) {
   const { personas } = usePersonas({ streamId, includeShadow: true });
   const { updateSectionPersona } = usePersonaMutations();
-  const isPdfSection = section.section_type === "PDF";
 
   const currentPersona = section.persona;
   const displayName =
@@ -137,83 +136,12 @@ export function LogSection({
     () => (personas ?? []).filter((persona) => isShadowPersona(persona)),
     [personas],
   );
-
-  if (isPdfSection) {
-    return (
-      <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/40  border border-border-subtle">
-        <div className="shrink-0 pt-1">
-          <div className="flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-subtle border border-border-subtle">
-            <FileText className="h-4 w-4" />
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-text-default">
-              PDF Section
-            </span>
-            <span className="text-[10px] text-text-muted">
-              •{" "}
-              {section.updated_at
-                ? new Date(section.updated_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })
-                : ""}
-            </span>
-          </div>
-
-          <div className="space-y-1">
-            {(section.section_pdf_attachments ?? []).map((attachment) => {
-              const importStatus =
-                attachment.document?.import_status ??
-                attachment.document?.latestJob?.status ??
-                null;
-              const canOpenParsed =
-                isParsedReadyStatus(importStatus) &&
-                !!(attachment.document_id ?? attachment.document?.id);
-
-              return (
-                <PdfAttachmentItem
-                  key={attachment.id}
-                  keyId={attachment.id}
-                  variant="log"
-                  title={
-                    attachment.title_snapshot ||
-                    attachment.document?.title ||
-                    "Attached PDF"
-                  }
-                  annotationText={attachment.annotation_text}
-                  storagePath={attachment.document?.storage_path}
-                  thumbnailPath={attachment.document?.thumbnail_path}
-                  importStatus={importStatus}
-                  progressPercent={
-                    attachment.document?.latestJob?.progress_percent ?? 0
-                  }
-                  canOpenParsed={canOpenParsed}
-                  onPreviewPdf={
-                    onPreviewAttachment
-                      ? () => onPreviewAttachment(attachment, "pdf")
-                      : undefined
-                  }
-                  onPreviewParsed={
-                    onPreviewAttachment
-                      ? () => onPreviewAttachment(attachment, "parsed")
-                      : undefined
-                  }
-                />
-              );
-            })}
-            {(section.section_pdf_attachments ?? []).length === 0 && (
-              <div className="text-[11px] text-text-muted">
-                No PDF attachments in this section.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const attachments = section.section_pdf_attachments ?? [];
+  const hasAttachments = attachments.length > 0;
+  const shouldShowEditor =
+    section.section_type !== "PDF" || editableContent.length > 0;
+  const showEmptyAttachmentsNotice =
+    section.section_type === "PDF" && !hasAttachments;
 
   return (
     <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 ">
@@ -360,21 +288,74 @@ export function LogSection({
           </span>
         </div>
 
-        <div
-          className={`${editable ? "blocknote-editable" : "blocknote-readonly"} prose prose-sm dark:prose-invert max-w-none`}
-        >
-          <BlockNoteEditor
-            key={
-              editable
-                ? `editable-${section.id}`
-                : `readonly-${section.id}-${section.updated_at ?? "na"}`
-            }
-            initialContent={editable ? editableContent : trimmedContent}
-            editable={editable}
-            onChange={editable ? onContentChange : undefined}
-            highlightTerm={editable ? undefined : highlightTerm}
-          />
-        </div>
+        {shouldShowEditor && (
+          <div
+            className={`${editable ? "blocknote-editable" : "blocknote-readonly"} prose prose-sm dark:prose-invert max-w-none`}
+          >
+            <BlockNoteEditor
+              key={
+                editable
+                  ? `editable-${section.id}`
+                  : `readonly-${section.id}-${section.updated_at ?? "na"}`
+              }
+              initialContent={editable ? editableContent : trimmedContent}
+              editable={editable}
+              onChange={editable ? onContentChange : undefined}
+              highlightTerm={editable ? undefined : highlightTerm}
+            />
+          </div>
+        )}
+
+        {hasAttachments && (
+          <div className="space-y-1">
+            {attachments.map((attachment) => {
+              const importStatus =
+                attachment.document?.import_status ??
+                attachment.document?.latestJob?.status ??
+                null;
+              const canOpenParsed =
+                isParsedReadyStatus(importStatus) &&
+                !!(attachment.document_id ?? attachment.document?.id);
+
+              return (
+                <PdfAttachmentItem
+                  key={attachment.id}
+                  keyId={attachment.id}
+                  variant="log"
+                  title={
+                    attachment.title_snapshot ||
+                    attachment.document?.title ||
+                    "Attached PDF"
+                  }
+                  annotationText={attachment.annotation_text}
+                  storagePath={attachment.document?.storage_path}
+                  thumbnailPath={attachment.document?.thumbnail_path}
+                  importStatus={importStatus}
+                  progressPercent={
+                    attachment.document?.latestJob?.progress_percent ?? 0
+                  }
+                  canOpenParsed={canOpenParsed}
+                  onPreviewPdf={
+                    onPreviewAttachment
+                      ? () => onPreviewAttachment(attachment, "pdf")
+                      : undefined
+                  }
+                  onPreviewParsed={
+                    onPreviewAttachment
+                      ? () => onPreviewAttachment(attachment, "parsed")
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {showEmptyAttachmentsNotice && (
+          <div className="text-[11px] text-text-muted">
+            No PDF attachments in this section.
+          </div>
+        )}
       </div>
     </div>
   );

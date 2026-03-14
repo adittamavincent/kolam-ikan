@@ -64,6 +64,37 @@ function isMissingColumnError(
   );
 }
 
+function orderBySortOrder<T extends { sort_order?: number | null }>(
+  items: T[] | undefined,
+): T[] {
+  if (!Array.isArray(items) || items.length === 0) return [];
+
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => {
+      const aOrder = a.item.sort_order;
+      const bOrder = b.item.sort_order;
+
+      if (typeof aOrder === "number" && typeof bOrder === "number") {
+        return aOrder - bOrder;
+      }
+      if (typeof aOrder === "number") return -1;
+      if (typeof bOrder === "number") return 1;
+      return a.index - b.index;
+    })
+    .map(({ item }) => item);
+}
+
+function normalizeEntryOrder(entries: EntryWithSections[]): EntryWithSections[] {
+  return entries.map((entry) => ({
+    ...entry,
+    sections: orderBySortOrder(entry.sections).map((section) => ({
+      ...section,
+      section_pdf_attachments: orderBySortOrder(section.section_pdf_attachments),
+    })),
+  }));
+}
+
 export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
@@ -88,7 +119,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         updatedAt?: number;
       };
 
-      const items = Array.isArray(parsed.items) ? parsed.items : null;
+      const items = Array.isArray(parsed.items)
+        ? normalizeEntryOrder(parsed.items)
+        : null;
       const updatedAt =
         typeof parsed.updatedAt === "number" ? parsed.updatedAt : 0;
 
@@ -126,11 +159,13 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       if (error && isMissingColumnError(error)) {
         const fallback = await buildQuery(ENTRIES_SELECT_LEGACY);
         if (fallback.error) throw fallback.error;
-        return fallback.data as unknown as EntryWithSections[];
+        return normalizeEntryOrder(
+          (fallback.data as unknown as EntryWithSections[]) ?? [],
+        );
       }
 
       if (error) throw error;
-      return data as unknown as EntryWithSections[];
+      return normalizeEntryOrder((data as unknown as EntryWithSections[]) ?? []);
     },
     initialPageParam: 0,
     initialData: cachedEntries
@@ -494,11 +529,13 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     if (error && isMissingColumnError(error)) {
       const fallback = await buildExportQuery(ENTRIES_SELECT_LEGACY);
       if (fallback.error) throw fallback.error;
-      return fallback.data as unknown as EntryWithSections[];
+      return normalizeEntryOrder(
+        (fallback.data as unknown as EntryWithSections[]) ?? [],
+      );
     }
 
     if (error) throw error;
-    return data as unknown as EntryWithSections[];
+    return normalizeEntryOrder((data as unknown as EntryWithSections[]) ?? []);
   };
 
   return {

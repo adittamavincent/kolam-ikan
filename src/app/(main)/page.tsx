@@ -117,10 +117,10 @@ function QuickActionSkeleton() {
     <div className="flex items-center gap-3 border border-border-subtle bg-surface-default p-3">
       <div className="h-8 w-8 shrink-0 bg-surface-elevated" />
       <div className="min-w-0 flex-1">
-        <div className="flex h-[18px] items-center">
+        <div className="flex h-4.5 items-center">
           <div className="h-3 w-24 bg-surface-elevated" />
         </div>
-        <div className="mt-0.5 flex h-[16px] items-center">
+        <div className="mt-0.5 flex h-4 items-center">
           <div className="h-2 w-32 bg-surface-elevated" />
         </div>
       </div>

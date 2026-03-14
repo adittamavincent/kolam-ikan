@@ -17,7 +17,6 @@ import {
   FilePlus,
   FolderPlus,
   PanelLeftClose,
-  Globe,
 } from "lucide-react";
 import {
   Fragment,
@@ -187,8 +186,8 @@ const CreationInput = ({
   return (
     <div className="mb-0.5">
       <div
-        className="flex items-center gap-2  px-2 py-1.5 text-sm"
-        style={{ marginLeft: `${paddingLeftRem}rem` }}
+        className="flex items-center gap-2 pr-2 py-0 text-sm"
+        style={{ paddingLeft: `calc(${paddingLeftRem}rem + 0.5rem)` }}
       >
         {type === "cabinet" ? (
           <div
@@ -288,6 +287,7 @@ interface CabinetNodeProps {
   onDragEnd: () => void;
   draggedItem: { id: string; type: NavItemType } | null;
   dragOverId: string | null;
+  stripeIndices: Map<string, number>;
 }
 
 interface StreamNodeProps {
@@ -296,6 +296,7 @@ interface StreamNodeProps {
   displayName: string;
   kindBadge?: string;
   disambiguation?: Disambiguation;
+  stripeIndex?: number;
   activeNode: { id: string; type: "cabinet" | "stream" } | null;
   editingItemId: string | null;
   editingName: string;
@@ -338,6 +339,7 @@ const StreamNode = ({
   displayName,
   kindBadge,
   disambiguation,
+  stripeIndex,
   activeNode,
   editingItemId,
   editingName,
@@ -389,41 +391,42 @@ const StreamNode = ({
       }}
     >
       <div
-        className={`flex min-w-0 flex-1 items-center gap-2  px-2 py-1.5 text-sm transition-all duration-200 cursor-pointer
+        className={`flex min-w-0 flex-1 items-center gap-2 pr-2 py-0.5 text-sm cursor-pointer
             ${
               isStreamActive
-                ? "bg-action-primary-bg/10 text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20"
-                : "text-text-subtle hover:bg-surface-subtle hover:text-text-default"
-            } ${!isStreamActive && isNewlyCreated ? "bg-action-primary-bg/10 ring-1 ring-action-primary-bg/30" : ""}
+                ? "text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20"
+                : "text-text-subtle hover:text-text-default"
+            } ${!isStreamActive && isNewlyCreated ? "ring-1 ring-action-primary-bg/30" : ""}
+            ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
             ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
-        style={{ marginLeft: `${getStreamPaddingRem(depth)}rem` }}
+        style={{ paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)` }}
         draggable={!isStreamEditing}
-        onDragStart={(e) => {
-          e.stopPropagation();
-          onDragStart(e, stream.id, "stream");
-        }}
-        onDragEnd={onDragEnd}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!isStreamEditing) {
-            handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
-          }
-        }}
-        onContextMenu={(event) => handleContextMenu(event, stream.id, "stream")}
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
-          }
-        }}
-      >
+          onDragStart={(e) => {
+            e.stopPropagation();
+            onDragStart(e, stream.id, "stream");
+          }}
+          onDragEnd={onDragEnd}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isStreamEditing) {
+              handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
+            }
+          }}
+          onContextMenu={(event) => handleContextMenu(event, stream.id, "stream")}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
+            }
+          }}
+        >
         <div
           className="flex shrink-0 items-center justify-center"
           style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
         >
           <FileText
-            className={`h-4 w-4 transition-colors ${
+            className={`h-4 w-4 ${
               isStreamActive
                 ? "text-action-primary-bg"
                 : "text-text-muted group-hover:text-text-subtle"
@@ -472,6 +475,7 @@ const CabinetNode = ({
   cabinetDisambiguation,
   streamDisambiguation,
   expandedCabinets,
+  stripeIndices,
   activeNode,
   editingItemId,
   editingName,
@@ -517,6 +521,8 @@ const CabinetNode = ({
   const ariaLabel = disambiguation
     ? `${cabinet.name} (${disambiguation.index} of ${disambiguation.total})`
     : cabinet.name;
+    
+  const stripeIndex = stripeIndices?.get(cabinet.id);
 
   return (
     <div
@@ -539,37 +545,38 @@ const CabinetNode = ({
       }}
     >
       <div
-        className={`flex items-center gap-2  px-2 py-1.5 text-sm transition-all duration-150 group cursor-pointer
+        className={`flex items-center gap-2 pr-2 py-0.5 text-sm group cursor-pointer
             ${
               isActive
-                ? "bg-action-primary-bg/10 text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium"
-                : "text-text-subtle hover:bg-surface-subtle"
-            } ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
-        style={{ marginLeft: `${getCabinetPaddingRem(depth)}rem` }}
+                ? "text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium"
+                : "text-text-subtle"
+            } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
+            ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
+        style={{ paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)` }}
         draggable={!isEditing}
-        onDragStart={(e) => {
-          e.stopPropagation();
-          onDragStart(e, cabinet.id, "cabinet");
-        }}
-        onDragEnd={onDragEnd}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleItemClick(cabinet.id, "cabinet", cabinet.name, !!isActive);
-        }}
-        onContextMenu={(event) =>
-          handleContextMenu(event, cabinet.id, "cabinet")
-        }
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
+          onDragStart={(e) => {
+            e.stopPropagation();
+            onDragStart(e, cabinet.id, "cabinet");
+          }}
+          onDragEnd={onDragEnd}
+          onClick={(e) => {
+            e.stopPropagation();
             handleItemClick(cabinet.id, "cabinet", cabinet.name, !!isActive);
+          }}
+          onContextMenu={(event) =>
+            handleContextMenu(event, cabinet.id, "cabinet")
           }
-          if (e.key === "ArrowRight" && !isExpanded) {
-            e.preventDefault();
-            toggleCabinet(cabinet.id);
-          }
-          if (e.key === "ArrowLeft" && isExpanded) {
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleItemClick(cabinet.id, "cabinet", cabinet.name, !!isActive);
+            }
+            if (e.key === "ArrowRight" && !isExpanded) {
+              e.preventDefault();
+              toggleCabinet(cabinet.id);
+            }
+            if (e.key === "ArrowLeft" && isExpanded) {
             e.preventDefault();
             toggleCabinet(cabinet.id);
           }
@@ -650,6 +657,7 @@ const CabinetNode = ({
               cabinetDisambiguation={cabinetDisambiguation}
               streamDisambiguation={streamDisambiguation}
               expandedCabinets={expandedCabinets}
+              stripeIndices={stripeIndices}
               activeNode={activeNode}
               editingItemId={editingItemId}
               editingName={editingName}
@@ -697,6 +705,7 @@ const CabinetNode = ({
               depth={depth + 1}
               displayName={stream.name}
               disambiguation={streamDisambiguation.get(stream.id)}
+              stripeIndex={stripeIndices?.get(stream.id)}
               activeNode={activeNode}
               editingItemId={editingItemId}
               editingName={editingName}
@@ -758,6 +767,7 @@ export function Navigator({}: NavigatorProps) {
     id: string;
     type: "cabinet" | "stream";
   } | null>(null);
+  const [forceNoHighlight, setForceNoHighlight] = useState(false);
   // Track the last stream ID that triggered an auto-expand to prevent re-expanding on refresh/update
   const lastAutoExpandedStreamRef = useRef<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -1463,7 +1473,7 @@ export function Navigator({}: NavigatorProps) {
         ? manualActiveNode
         : null
     : null;
-  const activeNode = validManualActiveNode ?? routeActiveNode;
+  const activeNode = forceNoHighlight ? null : (validManualActiveNode ?? routeActiveNode);
 
   const isStreamNewlyCreated = (id: string) => id === justCreatedStreamId;
 
@@ -1640,6 +1650,7 @@ export function Navigator({}: NavigatorProps) {
   useEffect(() => {
     lastNavigatedPathRef.current = null;
     pendingStreamNavigationRef.current = null;
+    setForceNoHighlight(false);
   }, [pathname]);
 
   // Click handling logic
@@ -1651,6 +1662,8 @@ export function Navigator({}: NavigatorProps) {
   ) => {
     // Block interaction if a navigation is already pending
     if (isPending) return;
+
+    setForceNoHighlight(false);
 
     const now = Date.now();
     const lastClick = lastClickRef.current;
@@ -1669,7 +1682,7 @@ export function Navigator({}: NavigatorProps) {
         toggleCabinet(id);
       }
     } else {
-      setManualActiveNode(null);
+      setManualActiveNode({ id, type: "stream" });
 
       // Block interaction with optimistic (temp) streams — the onSuccess
       // callback will auto-navigate once the real ID is available.
@@ -1931,6 +1944,36 @@ export function Navigator({}: NavigatorProps) {
         )
       : (cabinets ?? []);
 
+  // Compute flattened list of visible items dynamically for striping
+  const stripeIndices = new Map<string, number>();
+  let visibleCount = 0;
+
+  rootGlobalStreams.forEach((stream) => {
+    stripeIndices.set(stream.id, visibleCount++);
+  });
+
+  // Calculate visible indices recursively
+  const traverseVisibleCabinet = (cabinetId: string) => {
+    stripeIndices.set(cabinetId, visibleCount++);
+    if (expandedCabinets.has(cabinetId)) {
+      const children = cabinetTree.getChildren(cabinetId);
+      children.forEach((child) => traverseVisibleCabinet(child.id));
+
+      const cStreams = streams?.filter((s) => s.cabinet_id === cabinetId) || [];
+      cStreams.forEach((s) => {
+        stripeIndices.set(s.id, visibleCount++);
+      });
+    }
+  };
+
+  cabinetTree.roots.forEach((cabinet) => {
+    traverseVisibleCabinet(cabinet.id);
+  });
+
+  rootRegularStreams.forEach((stream) => {
+    stripeIndices.set(stream.id, visibleCount++);
+  });
+
   if (!domainId) {
     return (
       <div className="flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle p-4">
@@ -1993,50 +2036,48 @@ export function Navigator({}: NavigatorProps) {
 
         {/* Tree View */}
         <div
-          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-action-primary-bg/5" : ""}`}
+          className={`flex-1 overflow-y-auto transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-action-primary-bg/5" : ""}`}
           role="tree"
+          onClick={() => {
+            setManualActiveNode(null);
+            setForceNoHighlight(true);
+          }}
           onDragOver={(e) => handleDragOver(e, null)}
           onDrop={(e) => handleDrop(e, null)}
         >
-          {rootGlobalStreams.length > 0 && (
-            <div className="mb-2">
-              <div className="mb-1 flex items-center gap-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-action-primary-bg">
-                <Globe className="h-3 w-3" />
-                <span>Global Streams</span>
-              </div>
-              {rootGlobalStreams.map((stream) => (
-                <StreamNode
-                  key={stream.id}
-                  stream={stream}
-                  depth={0}
-                  displayName={stream.name}
-                  kindBadge="Global"
-                  disambiguation={streamDisambiguation.get(stream.id)}
-                  activeNode={activeNode}
-                  editingItemId={editingItemId}
-                  editingName={editingName}
-                  editInputRef={editInputRef}
-                  setEditingName={setEditingName}
-                  handleKeyDown={handleKeyDown}
-                  handleRename={handleRename}
-                  handleItemClick={handleItemClick}
-                  handleContextMenu={handleContextMenu}
-                  isNewlyCreated={isStreamNewlyCreated(stream.id)}
-                  onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  onDragEnd={handleDragEnd}
-                  draggedItem={draggedItem}
-                  dragOverId={dragOverId}
-                />
-              ))}
-            </div>
-          )}
+          {rootGlobalStreams.length > 0 &&
+            rootGlobalStreams.map((stream) => (
+              <StreamNode
+                key={stream.id}
+                stream={stream}
+                depth={0}
+                displayName={stream.name}
+                kindBadge="Global"
+                disambiguation={streamDisambiguation.get(stream.id)}
+                stripeIndex={stripeIndices.get(stream.id)}
+                activeNode={activeNode}
+                editingItemId={editingItemId}
+                editingName={editingName}
+                editInputRef={editInputRef}
+                setEditingName={setEditingName}
+                handleKeyDown={handleKeyDown}
+                handleRename={handleRename}
+                handleItemClick={handleItemClick}
+                handleContextMenu={handleContextMenu}
+                isNewlyCreated={isStreamNewlyCreated(stream.id)}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onDragEnd={handleDragEnd}
+                draggedItem={draggedItem}
+                dragOverId={dragOverId}
+              />
+            ))}
 
           {rootGlobalStreams.length > 0 && hasNonGlobalTreeItems && (
             <div
-              className="my-2 border-t border-border-subtle"
+              className="border-t border-border-subtle"
               role="separator"
               aria-label="Global stream separator"
             />
@@ -2051,6 +2092,7 @@ export function Navigator({}: NavigatorProps) {
               cabinetDisambiguation={cabinetDisambiguation}
               streamDisambiguation={streamDisambiguation}
               expandedCabinets={expandedCabinets}
+              stripeIndices={stripeIndices}
               activeNode={activeNode}
               editingItemId={editingItemId}
               editingName={editingName}
@@ -2087,6 +2129,7 @@ export function Navigator({}: NavigatorProps) {
               depth={0}
               displayName={stream.name}
               disambiguation={streamDisambiguation.get(stream.id)}
+              stripeIndex={stripeIndices.get(stream.id)}
               activeNode={activeNode}
               editingItemId={editingItemId}
               editingName={editingName}

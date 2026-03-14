@@ -14,6 +14,9 @@ RUN apt-get update \
       libxext6 \
       libxrender1 \
       poppler-utils \
+      ffmpeg \
+      tesseract-ocr \
+      tesseract-ocr-ind \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/requirements.txt
@@ -21,6 +24,8 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /app/requirements.txt
 
 COPY app.py /app/app.py
+COPY docling_processor.py /app/docling_processor.py
+COPY converters /app/converters
 
 EXPOSE 8090
 

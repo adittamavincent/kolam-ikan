@@ -2,6 +2,7 @@ from __future__ import annotations
 
 # pyright: reportMissingImports=false
 
+import asyncio
 import logging
 import math
 import os
@@ -9,19 +10,16 @@ import tempfile
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
-import asyncio
 
-import camelot
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pdf2image import convert_from_path  # type: ignore
+from PIL import Image
 from pydantic import BaseModel, Field
 from supabase import create_client, Client
-from tqdm import tqdm
 
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
+from converters import convert_to_markdown
+from docling.chunking import HierarchicalChunker
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("docling-worker")
@@ -60,7 +58,10 @@ async def import_worker() -> None:
 
 @app.on_event("startup")
 async def start_import_worker() -> None:
-    # Spawn the background consumer task
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, _prewarm_models)
+
+    # Spawn the background consumer task after models are warmed.
     asyncio.create_task(import_worker())
 
 
@@ -86,6 +87,9 @@ class ParserConfig(BaseModel):
     flavor: str = Field(default="lattice")
     enableTableStructure: bool = Field(default=True)
     debugDoclingTables: bool = Field(default=False)
+    ocrLang: str = Field(default="ind")
+    whisperModel: str = Field(default="base")
+    webStripBoilerplate: bool = Field(default=True)
 
 
 class ImportRequest(BaseModel):
@@ -102,13 +106,15 @@ class ImportRequest(BaseModel):
     callbackToken: str
 
 
-def build_docling_converter(enable_table_structure: bool) -> DocumentConverter:
-    pipeline_options = PdfPipelineOptions(do_table_structure=enable_table_structure)
-    return DocumentConverter(
-        format_options={
-            InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
-        }
-    )
+def _prewarm_models() -> None:
+    """Best-effort prewarm to avoid first-job cold start."""
+    try:
+        from converters.pdf_converter import _get_converter
+
+        _get_converter(enable_table_structure=False)
+        logger.info("Prewarmed Docling PDF converter")
+    except Exception:
+        logger.exception("Failed to prewarm converter models")
 
 
 def chunk_markdown(markdown: str, chunk_size: int = 1400, overlap: int = 200) -> list[dict[str, Any]]:
@@ -146,6 +152,32 @@ def chunk_markdown(markdown: str, chunk_size: int = 1400, overlap: int = 200) ->
         index += 1
 
     return chunks
+
+
+def chunk_document(docling_document: Any, fallback_markdown: str) -> list[dict[str, Any]]:
+    if docling_document is None:
+        return chunk_markdown(fallback_markdown)
+
+    try:
+        chunker = HierarchicalChunker()
+        chunks: list[dict[str, Any]] = []
+        for i, chunk in enumerate(chunker.chunk(docling_document)):
+            chunks.append(
+                {
+                    "chunkIndex": i,
+                    "chunkMarkdown": chunk.text,
+                    "tokenCount": max(1, int(len(chunk.text.split()) * 1.3)),
+                    "metadata": {
+                        "headings": getattr(chunk.meta, "headings", []),
+                        "pageNumbers": getattr(chunk.meta, "page_numbers", []),
+                        "strategy": "hierarchical",
+                    },
+                }
+            )
+        return chunks
+    except Exception:
+        logger.exception("Hierarchical chunking failed, falling back to char_window")
+        return chunk_markdown(fallback_markdown)
 
 
 async def post_callback(request: ImportRequest, payload: dict[str, Any]) -> None:
@@ -188,7 +220,9 @@ async def send_progress(
     if extracted_markdown is not None:
         payload["extractedMarkdown"] = extracted_markdown
     if extraction_metadata is not None:
-        payload["extractionMetadata"] = extraction_metadata
+        safe_meta = dict(extraction_metadata)
+        safe_meta.pop("docling_document", None)
+        payload["extractionMetadata"] = safe_meta
     if warning_messages is not None:
         payload["warningMessages"] = warning_messages
     if error_message is not None:
@@ -201,80 +235,34 @@ async def send_progress(
     await post_callback(request, payload)
 
 
-def convert_pdf_to_markdown(pdf_path: Path, flavor: str) -> tuple[str, dict[str, Any]]:
-    # Use the shared DoclingProcessor to handle advanced parsing and OCR-on-demand
-    try:
-        # local import so this file doesn't fail if the processor is refactored
-        from docling_processor import DoclingProcessor
-
-        processor = DoclingProcessor()
-        final_md, metadata = processor.process_to_markdown(pdf_path, flavor=flavor)
-        return final_md, metadata
-    except Exception:
-        logger.exception("DoclingProcessor failed; falling back to simple pipeline")
-        # Fallback: previous simple behavior, but be defensive around camelot
-        text_converter = build_docling_converter(enable_table_structure=False)
-        result = text_converter.convert(str(pdf_path))
-        try:
-            markdown_text = result.document.export_to_markdown()
-        except Exception:
-            logger.exception("Fallback export_to_markdown failed; using naive join")
-            markdown_text = "\n\n".join((getattr(p, "text", "") for p in getattr(result.document, "pages", [])))
-
-        tables = []
-        try:
-            camelot_tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=flavor)
-            for t in camelot_tables:
-                try:
-                    df = t.df
-                    tables.append(df)
-                except Exception:
-                    logger.exception("Failed to convert camelot table to DataFrame in fallback")
-        except Exception:
-            logger.exception("Camelot fallback failed during simple pipeline; attempting alternate flavor")
-            # try alternate flavor before giving up
-            alt_flavor = "stream" if flavor == "lattice" else "lattice"
-            try:
-                camelot_tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=alt_flavor)
-                for t in camelot_tables:
-                    try:
-                        df = t.df
-                        tables.append(df)
-                    except Exception:
-                        logger.exception("Failed to convert camelot table to DataFrame with alt flavor")
-            except Exception:
-                logger.exception("Alternate Camelot flavor also failed; continuing without camelot tables")
-
-        table_markdown_blocks: list[str] = []
-        for i, df in enumerate(tables):
-            try:
-                md_table = df.to_markdown(index=False)
-                table_markdown_blocks.append(f"\n\n### Table {i + 1}\n\n{md_table}\n")
-            except Exception:
-                logger.exception("Failed to render fallback table %s to markdown", i)
-
-        final_md = markdown_text + "\n".join(table_markdown_blocks)
-        metadata = {
-            "doclingTables": len(getattr(result.document, "tables", [])),
-            "camelotTables": len(tables),
-            "camelotFlavor": flavor,
-        }
-        return final_md, metadata
-
-
-def generate_and_upload_thumbnail(pdf_path: Path, document_id: str) -> str | None:
-    """Generate a thumbnail from the first page of the PDF and upload to Supabase storage."""
+def generate_and_upload_thumbnail(
+    source_path: Path,
+    document_id: str,
+    content_type: str,
+    file_name: str,
+) -> str | None:
+    """Generate thumbnail for supported types and upload to Supabase storage."""
     temp_thumb_path: Path | None = None
     try:
-        # Generate thumbnail from first page
-        images = convert_from_path(str(pdf_path), first_page=1, last_page=1, size=(300, 400))
-        if not images:
-            logger.warning("No images generated from PDF for document %s", document_id)
+        lowered_name = file_name.lower()
+        ctype = content_type.lower()
+
+        if ctype == "application/pdf" or lowered_name.endswith(".pdf"):
+            images = convert_from_path(str(source_path), first_page=1, last_page=1, size=(300, 400))
+            if not images:
+                logger.warning("No images generated from PDF for document %s", document_id)
+                return None
+            thumb_image = images[0]
+        elif ctype.startswith("image/") or lowered_name.endswith((".png", ".jpg", ".jpeg", ".tiff", ".webp")):
+            with Image.open(source_path) as image:
+                thumb_image = image.copy()
+            thumb_image.thumbnail((300, 400))
+        else:
+            # DOCX/PPTX/audio/URL types intentionally skip thumbnail generation.
             return None
 
-        # Save thumbnail to temporary file
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_thumb:
-            images[0].save(temp_thumb.name, "PNG")
+            thumb_image.save(temp_thumb.name, "PNG")
             temp_thumb_path = Path(temp_thumb.name)
 
         # Upload to Supabase storage
@@ -304,7 +292,7 @@ def generate_and_upload_thumbnail(pdf_path: Path, document_id: str) -> str | Non
             logger.error("Failed to upload thumbnail for document %s: empty upload response", document_id)
             return None
 
-        logger.info("Generated and uploaded thumbnail for document %s", document_id)
+        logger.info("Generated and uploaded thumbnail for %s", document_id)
         return thumbnail_path
 
     except Exception:
@@ -323,20 +311,26 @@ async def process_import(request: ImportRequest) -> None:
             os.getenv("DOC_IMPORT_STORAGE_BASE_URL", "").strip() or None,
         )
 
-        # Stream download in chunks to avoid large memory spikes and add simple retries
+        # Stream download in chunks to avoid large memory spikes and add simple retries.
         download_timeout = float(os.getenv("DOC_IMPORT_DOWNLOAD_TIMEOUT", "300"))
         max_attempts = int(os.getenv("DOC_IMPORT_MAX_DOWNLOAD_ATTEMPTS", "3"))
         last_exc: Exception | None = None
+        suffix = Path(request.fileName).suffix or ".bin"
         for attempt in range(1, max_attempts + 1):
             try:
-                async with httpx.AsyncClient(timeout=download_timeout) as client:
-                    async with client.stream("GET", storage_url) as response:
-                        response.raise_for_status()
-                        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as temp_file:
-                            temp_file_path = Path(temp_file.name)
-                            async for chunk in response.aiter_bytes(chunk_size=8192):
-                                if chunk:
-                                    temp_file.write(chunk)
+                if request.contentType == "text/url" or request.fileName.startswith(("http://", "https://")):
+                    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as temp_file:
+                        temp_file_path = Path(temp_file.name)
+                        temp_file.write(request.fileName)
+                else:
+                    async with httpx.AsyncClient(timeout=download_timeout) as client:
+                        async with client.stream("GET", storage_url) as response:
+                            response.raise_for_status()
+                            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+                                temp_file_path = Path(temp_file.name)
+                                async for chunk in response.aiter_bytes(chunk_size=8192):
+                                    if chunk:
+                                        temp_file.write(chunk)
                 last_exc = None
                 break
             except Exception as exc:  # noqa: BLE001
@@ -353,7 +347,12 @@ async def process_import(request: ImportRequest) -> None:
             eta_seconds=5,
         )
 
-        thumbnail_path = generate_and_upload_thumbnail(temp_file_path, request.documentId)
+        thumbnail_path = generate_and_upload_thumbnail(
+            temp_file_path,
+            request.documentId,
+            request.contentType,
+            request.fileName,
+        )
 
         file_size = temp_file_path.stat().st_size if temp_file_path and temp_file_path.exists() else request.fileSizeBytes
 
@@ -361,14 +360,21 @@ async def process_import(request: ImportRequest) -> None:
             request,
             status="processing",
             progress_percent=35,
-            progress_message="Running Docling and table extraction",
+            progress_message="Converting to markdown",
             eta_seconds=max(8, math.ceil(file_size / (512 * 1024)) * 6),
         )
 
-        markdown, extraction_metadata = convert_pdf_to_markdown(
+        loop = asyncio.get_running_loop()
+        markdown, extraction_metadata = await loop.run_in_executor(
+            None,
+            convert_to_markdown,
             temp_file_path,
-            flavor=request.parserConfig.flavor,
+            request.contentType,
+            request.fileName,
+            request.parserConfig,
         )
+        if extraction_metadata.get("error"):
+            raise RuntimeError(extraction_metadata["error"])
 
         await send_progress(
             request,
@@ -378,7 +384,7 @@ async def process_import(request: ImportRequest) -> None:
             eta_seconds=6,
         )
 
-        chunks = chunk_markdown(markdown)
+        chunks = chunk_document(extraction_metadata.get("docling_document"), markdown)
 
         await send_progress(
             request,

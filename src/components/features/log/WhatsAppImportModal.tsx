@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   Dialog,
@@ -28,7 +28,6 @@ import { usePersonas } from "@/lib/hooks/usePersonas";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 import { createClient } from "@/lib/supabase/client";
-import { useDocuments } from "@/lib/hooks/useDocuments";
 import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Global temp file store ──────────────────────────────────────────────────
@@ -506,7 +505,6 @@ export function WhatsAppImportModal({
   const { personas } = usePersonas();
   const queryClient = useQueryClient();
   const supabase = createClient();
-  const { createImport } = useDocuments(streamId);
 
   const [step, setStep] = useState<Step>("paste");
   const [rawText, setRawText] = useState("");
@@ -948,39 +946,6 @@ export function WhatsAppImportModal({
         const blobUrl = URL.createObjectURL(fileData.file);
         tempStore.set(id, { ...fileData, blobUrl });
         queuedFileIds.push(id);
-
-        // Try to queue the import right away so thumbnails start generating.
-        // If queueing fails, fallback to leaving the file in the temp store and
-        // relying on DocumentImportModal to pick it up.
-        (async () => {
-          try {
-            const derivedTitle = fileData.file.name.replace(/\.pdf$/i, "");
-            const result = await createImport.mutateAsync({
-              file: fileData.file,
-              title: derivedTitle,
-              flavor: "lattice",
-              enableTableStructure: true,
-              debugDoclingTables: false,
-              fileHash: fileData.hash,
-            });
-
-            if (result?.document?.id) {
-              // Store document id mapping in temp store so other components can
-              // pick it up if needed. Keep blobUrl as well for immediate preview.
-              const entry = {
-                file: fileData.file,
-                hash: fileData.hash,
-                blobUrl,
-                documentId: result.document.id,
-                storagePath: result.document.storage_path,
-                thumbnailPath: result.document.thumbnail_path,
-              };
-              tempStore.set(id, entry as unknown as { file: File; hash?: string; blobUrl?: string });
-            }
-          } catch (err) {
-            console.warn("[WhatsApp] createImport failed, will fallback to temp store", err);
-          }
-        })();
       }
 
       // Store pending file IDs so they're available when DocumentImportModal opens
@@ -1788,16 +1753,19 @@ function PdfUploadRow({
   onUnskip: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const previewUrl = useMemo(() => {
-    if (!upload.file) return undefined;
-    return URL.createObjectURL(upload.file);
-  }, [upload.file]);
+  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    if (!upload.file) {
+      setTimeout(() => setPreviewUrl(undefined), 0);
+      return;
+    }
+    const url = URL.createObjectURL(upload.file);
+    setTimeout(() => setPreviewUrl(url), 0);
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      URL.revokeObjectURL(url);
     };
-  }, [previewUrl]);
+  }, [upload.file]);
 
   const filename = turn.filename ?? "document.pdf";
   const isSkipped = upload.status === "skipped";

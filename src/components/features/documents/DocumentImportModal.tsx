@@ -184,6 +184,14 @@ export function DocumentImportModal({
                 fileName: file.name,
                 result: !!res,
               });
+              const docId = res?.document?.id;
+              if (docId) {
+                const blobUrl = URL.createObjectURL(file);
+                setLocalThumbnails((prev) => ({
+                  ...prev,
+                  [docId]: blobUrl,
+                }));
+              }
             })
             .catch((error) => {
               console.error(

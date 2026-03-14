@@ -261,6 +261,11 @@ export function PdfAttachmentThumbnail({
   useEffect(() => {
     // Only trigger a recheck when importStatus is meaningful
     if (!importStatus) return;
+
+    // Keep local blob previews intact while upload metadata has not been
+    // persisted yet (e.g. WhatsApp import step 4 pending state).
+    if (!storagePath && !thumbnailPath) return;
+
     fetchedStoragePathRef.current = null;
     renderAttemptsRef.current = 0;
     setIsFromCache(false);
@@ -428,18 +433,39 @@ export function PdfAttachmentThumbnail({
           pdf = await loadingTask.promise;
         } catch (loadErr) {
           console.warn(
-            "PdfAttachmentThumbnail: getDocument promise failed. Retrying with unpkg worker...",
+            "PdfAttachmentThumbnail: getDocument failed with worker. Retrying without worker...",
             loadErr,
           );
-          // Retry once with unpkg if local worker fails (though local should be fine)
-          const unpkgWorkerUrl = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
-          pdfjs.GlobalWorkerOptions.workerSrc = unpkgWorkerUrl;
-          const retryTask = pdfjs.getDocument({
-            data: new Uint8Array(arrayBuffer),
-            useWorkerFetch: false,
-            isEvalSupported: false,
-          });
-          pdf = await retryTask.promise;
+
+          try {
+            // Fallback for contexts where worker bootstrapping is flaky.
+            const noWorkerTask = pdfjs.getDocument({
+              data: new Uint8Array(arrayBuffer),
+              useWorkerFetch: false,
+              isEvalSupported: false,
+              disableWorker: true,
+            } as unknown as {
+              data?: Uint8Array;
+              url?: string;
+              useWorkerFetch?: boolean;
+              isEvalSupported?: boolean;
+            });
+            pdf = await noWorkerTask.promise;
+          } catch (noWorkerErr) {
+            console.warn(
+              "PdfAttachmentThumbnail: no-worker retry failed. Retrying with unpkg worker...",
+              noWorkerErr,
+            );
+            // Final retry with unpkg worker if local worker and no-worker mode fail.
+            const unpkgWorkerUrl = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
+            pdfjs.GlobalWorkerOptions.workerSrc = unpkgWorkerUrl;
+            const retryTask = pdfjs.getDocument({
+              data: new Uint8Array(arrayBuffer),
+              useWorkerFetch: false,
+              isEvalSupported: false,
+            });
+            pdf = await retryTask.promise;
+          }
         }
 
         const pdfDoc = pdf as unknown as PDFDocumentLike;
@@ -637,7 +663,7 @@ export function PdfAttachmentThumbnail({
         aria-label={`Thumbnail preview for ${title}`}
       />
       {/* Informative overlays based on import status / render result */}
-      {!hasRendered && (
+      {!hasRendered && !(importStatus === "queued" && !!url) && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center bg-surface-subtle"
           aria-label={`PDF thumbnail unavailable for ${title}`}
@@ -649,7 +675,7 @@ export function PdfAttachmentThumbnail({
               </div>
               <div className="text-[10px] font-semibold text-rose-600">Failed</div>
             </div>
-          ) : importStatus === "processing" || importStatus === "queued" || importStatus === "uploading" ? (
+          ) : importStatus === "processing" || importStatus === "uploading" ? (
             <div className="flex flex-col items-center gap-1">
               <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
               {typeof progressPercent === "number" ? (

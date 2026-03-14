@@ -164,7 +164,8 @@ class DoclingProcessor:
         if not ok:
             raise ValueError(f"Invalid PDF: {err}")
 
-        conv = self._build_converter(enable_table_structure=True)
+        # Keep Docling focused on body text to drastically improve speed, table content comes from Camelot.
+        conv = self._build_converter(enable_table_structure=False)
 
         # Convert using Docling (streaming inside DocumentConverter to avoid large memory footprint)
         result = conv.convert(str(pdf_path))
@@ -175,6 +176,23 @@ class DoclingProcessor:
         except Exception:
             logger.exception("Docling export_to_markdown failed; falling back to naive text join")
             markdown_text = "\n\n".join((getattr(p, "text", "") for p in getattr(result.document, "pages", [])))
+
+        # Append Camelot tables just like the faster local script
+        try:
+            tables = camelot.read_pdf(str(pdf_path), pages="all", flavor=flavor)
+            table_markdown_blocks: List[str] = []
+            for i, table in enumerate(tables):
+                try:
+                    df = table.df
+                    md_table = df.to_markdown(index=False)
+                    table_markdown_blocks.append(f"\n\n### Table {i + 1}\n\n{md_table}\n")
+                except Exception:
+                    logger.exception(f"Failed to export Camelot table {i + 1} to markdown")
+            
+            if table_markdown_blocks:
+                markdown_text += "".join(table_markdown_blocks)
+        except Exception:
+            logger.exception("Camelot table extraction failed in process_to_markdown")
 
         # Detect scanned pages and OCR them, then replace/augment the markdown for those pages
         ocr_replacements: Dict[int, str] = {}

@@ -151,38 +151,6 @@ function getSupabaseErrorMessage(error: unknown): string {
   return message;
 }
 
-function isMissingShadowColumnError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-
-  const typed = error as { code?: unknown; message?: unknown };
-  if (typed.code === "42703") return true;
-
-  const message =
-    typeof typed.message === "string" ? typed.message.toLowerCase() : "";
-
-  return (
-    message.includes("is_shadow") ||
-    message.includes("shadow_stream_id") ||
-    message.includes("shadow_document_id") ||
-    message.includes("schema cache")
-  );
-}
-
-function isShadowPersonaUniqueScopeError(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-
-  const typed = error as { code?: unknown; message?: unknown };
-  const code = typeof typed.code === "string" ? typed.code : "";
-  const message =
-    typeof typed.message === "string" ? typed.message.toLowerCase() : "";
-
-  return (
-    code === "23505" &&
-    (message.includes("idx_unique_active_persona_name_by_scope") ||
-      message.includes("duplicate key value violates unique constraint"))
-  );
-}
-
 function normalizePersonaNameKey(name: string): string {
   return name.trim().toLowerCase();
 }
@@ -722,12 +690,11 @@ export function WhatsAppImportModal({
     is_system: false;
   };
 
-  const insertPersonasWithShadowFallback = async (rows: PersonaCreateRow[]) => {
+  const insertMissingPersonas = async (rows: PersonaCreateRow[]) => {
     if (rows.length === 0) {
       return {
         data: [] as Array<{ id: string; name: string }>,
         error: null as unknown,
-        fallbackUsed: false,
       };
     }
 
@@ -742,36 +709,21 @@ export function WhatsAppImportModal({
     const requestedNames = dedupedRows.map((row) => row.name);
     const userId = dedupedRows[0].user_id;
 
-    const existingShadowResult = await supabase
+    const existingResult = await supabase
       .from("personas")
       .select("id, name")
       .eq("user_id", userId)
-      .eq("is_shadow", true)
-      .eq("shadow_stream_id", streamId)
       .is("deleted_at", null)
       .in("name", requestedNames);
 
-    if (existingShadowResult.error) {
-      if (isMissingShadowColumnError(existingShadowResult.error)) {
-        const legacyResult = await supabase
-          .from("personas")
-          .insert(dedupedRows)
-          .select("id, name");
-        return {
-          data: legacyResult.data ?? null,
-          error: legacyResult.error,
-          fallbackUsed: true,
-        };
-      }
-
+    if (existingResult.error) {
       return {
         data: null,
-        error: existingShadowResult.error,
-        fallbackUsed: false,
+        error: existingResult.error,
       };
     }
 
-    const existingRows = existingShadowResult.data ?? [];
+    const existingRows = existingResult.data ?? [];
     const existingNameKeys = new Set(
       existingRows.map((row) => normalizePersonaNameKey(row.name)),
     );
@@ -784,65 +736,44 @@ export function WhatsAppImportModal({
       return {
         data: existingRows,
         error: null as unknown,
-        fallbackUsed: false,
       };
     }
 
     const shadowRows = rowsToInsert.map((row) => ({
       ...row,
       is_shadow: true,
-      shadow_stream_id: streamId,
-      shadow_document_id: null,
     }));
 
-    const shadowResult = await supabase
+    const insertResult = await supabase
       .from("personas")
       .insert(shadowRows)
       .select("id, name");
 
-    if (!shadowResult.error && shadowResult.data) {
-      return {
-        data: [...existingRows, ...shadowResult.data],
-        error: null as unknown,
-        fallbackUsed: false,
-      };
-    }
+    if (insertResult.error) {
+      if (insertResult.error.code === "23505") {
+        const retryExistingResult = await supabase
+          .from("personas")
+          .select("id, name")
+          .eq("user_id", userId)
+          .is("deleted_at", null)
+          .in("name", requestedNames);
 
-    if (isShadowPersonaUniqueScopeError(shadowResult.error)) {
-      const retryExistingResult = await supabase
-        .from("personas")
-        .select("id, name")
-        .eq("user_id", userId)
-        .eq("is_shadow", true)
-        .eq("shadow_stream_id", streamId)
-        .is("deleted_at", null)
-        .in("name", requestedNames);
-
-      if (!retryExistingResult.error && retryExistingResult.data) {
-        return {
-          data: retryExistingResult.data,
-          error: null as unknown,
-          fallbackUsed: false,
-        };
+        if (!retryExistingResult.error && retryExistingResult.data) {
+          return {
+            data: retryExistingResult.data,
+            error: null as unknown,
+          };
+        }
       }
-    }
-
-    if (!isMissingShadowColumnError(shadowResult.error)) {
       return {
         data: null,
-        error: shadowResult.error,
-        fallbackUsed: false,
+        error: insertResult.error,
       };
     }
 
-    const legacyResult = await supabase
-      .from("personas")
-      .insert(dedupedRows)
-      .select("id, name");
     return {
-      data: legacyResult.data ?? null,
-      error: legacyResult.error,
-      fallbackUsed: true,
+      data: [...existingRows, ...(insertResult.data ?? [])],
+      error: null as unknown,
     };
   };
 
@@ -944,15 +875,11 @@ export function WhatsAppImportModal({
         is_system: false,
       }));
 
-      const { data, error, fallbackUsed } = await insertPersonasWithShadowFallback(rows);
+      const { data, error } = await insertMissingPersonas(rows);
 
       if (error || !data) {
         setMapError(getSupabaseErrorMessage(error));
         return null;
-      }
-
-      if (fallbackUsed) {
-        setMapNotice("Shadow columns are not available yet. Missing personas were created in legacy global mode.");
       }
 
       await queryClient.invalidateQueries({

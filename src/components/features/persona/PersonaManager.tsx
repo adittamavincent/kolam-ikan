@@ -650,26 +650,36 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
                         </div>
                       ) : (
-                        visiblePersonas.map((persona) => (
-                          <div
-                            key={persona.id}
-                            className={`flex items-center justify-between p-2  border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              {isBulkMode &&
-                                !persona.deleted_at &&
-                                !persona.is_system &&
-                                persona.user_id === user?.id &&
-                                (persona.type === "HUMAN" || isShadowPersona(persona)) && (
+                        visiblePersonas.map((persona) => {
+                          const isSelectable =
+                            isBulkMode &&
+                            !persona.deleted_at &&
+                            !persona.is_system &&
+                            persona.user_id === user?.id &&
+                            (persona.type === "HUMAN" || isShadowPersona(persona));
+
+                          return (
+                            <div
+                              key={persona.id}
+                              onClick={(e) => {
+                                if (
+                                  isSelectable &&
+                                  !(e.target as HTMLElement).closest("button")
+                                ) {
+                                  togglePersonaSelection(persona.id);
+                                }
+                              }}
+                              className={`flex items-center justify-between p-2  border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""} ${isSelectable ? "cursor-pointer" : ""}`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {isSelectable && (
                                   <input
                                     type="checkbox"
                                     checked={selectedPersonaIds.includes(
                                       persona.id,
                                     )}
-                                    onChange={() =>
-                                      togglePersonaSelection(persona.id)
-                                    }
-                                    className="h-4 w-4  border-border-default"
+                                    readOnly
+                                    className="h-4 w-4 pointer-events-none border-border-default"
                                   />
                                 )}
                               <div
@@ -783,7 +793,8 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                 </div>
                               )}
                           </div>
-                        ))
+                        );
+                      })
                       )}
                     </div>
                   </>

@@ -764,7 +764,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   };
 
   const confirmClearSections = () => {
-    sections.forEach((section) => removeSection(section.instanceId));
+    setSections([]);
+    void clearDraft();
     setClearSectionsDialogOpen(false);
   };
 
@@ -885,38 +886,92 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       referencedPage: null,
     };
 
-    let draftToPersist: Extract<SectionState, { kind: "PDF" }> | null = null;
-    updatePdfSection(instanceId, (section) => {
-      const updated: Extract<SectionState, { kind: "PDF" }> = {
-        ...section,
-        isUploading: false,
-        attachments: [...section.attachments, nextAttachment],
-      };
-      draftToPersist = updated;
-      return updated;
-    });
+    setSections((prev) => {
+      const draftToPersist = prev.find(
+        (s) => s.instanceId === instanceId && s.kind === "PDF"
+      ) as Extract<SectionState, { kind: "PDF" }> | undefined;
 
-    if (draftToPersist) {
-      persistPdfSection(instanceId, draftToPersist);
-    }
+      if (draftToPersist) {
+        const updated: Extract<SectionState, { kind: "PDF" }> = {
+          ...draftToPersist,
+          isUploading: false,
+          attachments: [...draftToPersist.attachments, nextAttachment],
+        };
+        Promise.resolve().then(() => persistPdfSection(instanceId, updated));
+        return prev.map((s) => (s.instanceId === instanceId && s.kind === "PDF" ? updated : s));
+      }
+      return prev;
+    });
   };
 
-  const removePdfAttachment = (instanceId: string, documentId: string) => {
-    let draftToPersist: Extract<SectionState, { kind: "PDF" }> | null = null;
-    updatePdfSection(instanceId, (section) => {
-      const updated: Extract<SectionState, { kind: "PDF" }> = {
-        ...section,
-        attachments: section.attachments.filter(
-          (attachment) => attachment.documentId !== documentId,
-        ),
-      };
-      draftToPersist = updated;
-      return updated;
+  const removePdfAttachment = (
+    instanceId: string,
+    attachmentToRemove: PdfAttachmentState,
+    attachmentIndex: number,
+    source: "section" | "draft",
+  ) => {
+    const matchesAttachment = (
+      candidate: {
+        documentId?: string;
+        fileHash?: string;
+        storagePath?: string;
+        titleSnapshot: string;
+      },
+      target: {
+        documentId?: string;
+        fileHash?: string;
+        storagePath?: string;
+        titleSnapshot: string;
+      },
+    ) => {
+      if (target.documentId && candidate.documentId) {
+        return candidate.documentId === target.documentId;
+      }
+      if (target.fileHash && candidate.fileHash) {
+        return candidate.fileHash === target.fileHash;
+      }
+      if (target.storagePath && candidate.storagePath) {
+        return candidate.storagePath === target.storagePath;
+      }
+      return (
+        candidate.titleSnapshot === target.titleSnapshot &&
+        (candidate.fileHash ?? "") === (target.fileHash ?? "") &&
+        (candidate.documentId ?? "") === (target.documentId ?? "")
+      );
+    };
+
+    const section = sections.find(
+      (s) => s.instanceId === instanceId && s.kind === "PDF",
+    ) as Extract<SectionState, { kind: "PDF" }> | undefined;
+    const draft = getPdfDraft(instanceId);
+
+    const nextDraftAttachments = draft.attachments.filter((attachment, index) =>
+      source === "draft"
+        ? index !== attachmentIndex
+        : !matchesAttachment(attachment, attachmentToRemove),
+    );
+
+    savePdfDraft(instanceId, {
+      displayMode: section?.displayMode ?? draft.displayMode,
+      personaId: section?.personaId ?? null,
+      personaName: section?.personaName ?? undefined,
+      attachments: nextDraftAttachments,
+      content: [],
     });
 
-    if (draftToPersist) {
-      persistPdfSection(instanceId, draftToPersist);
-    }
+    setSections((prev) =>
+      prev.map((s) => {
+        if (s.instanceId !== instanceId || s.kind !== "PDF") return s;
+        return {
+          ...s,
+          attachments: s.attachments.filter((attachment, index) =>
+            source === "section"
+              ? index !== attachmentIndex
+              : !matchesAttachment(attachment, attachmentToRemove),
+          ),
+        };
+      }),
+    );
   };
 
   const openParsedPreview = async (
@@ -1424,8 +1479,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   { kind: "PDF" }
                 >;
                 const pdfDraft = getPdfDraft(instanceId);
+                const attachmentsSource: "section" | "draft" =
+                  pdfSection.attachments.length > 0 ? "section" : "draft";
                 const effectiveAttachments =
-                  pdfSection.attachments.length > 0
+                  attachmentsSource === "section"
                     ? pdfSection.attachments
                     : pdfDraft.attachments.map((attachment) => ({
                         documentId: attachment.documentId ?? "",
@@ -1567,7 +1624,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              {effectiveAttachments.map((attachment) => {
+                              {effectiveAttachments.map((attachment, attachmentIndex) => {
                                 const docDetail = attachment.documentId
                                   ? attachedDocDetails.get(
                                       attachment.documentId,
@@ -1718,38 +1775,31 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             )}
                                           </a>
                                         )}
-                                        <button
-                                          onClick={() => {
-                                            if (attachment.documentId) {
+                                          <button
+                                            type="button"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
                                               removePdfAttachment(
                                                 instanceId,
-                                                attachment.documentId,
+                                                attachment,
+                                                attachmentIndex,
+                                                attachmentsSource,
                                               );
-                                            } else {
-                                              // Remove pending attachment
-                                              updatePdfSection(
-                                                instanceId,
-                                                (s) => ({
-                                                  ...s,
-                                                  attachments:
-                                                    s.attachments.filter(
-                                                      (a) => a !== attachment,
-                                                    ),
-                                                }),
-                                              );
-                                            }
-                                          }}
-                                          onMouseDown={(event) => {
-                                            event.stopPropagation();
-                                          }}
-                                          onClickCapture={(event) => {
-                                            event.stopPropagation();
-                                          }}
-                                          className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                                          aria-label={`Remove ${attachment.titleSnapshot}`}
-                                        >
-                                          <X className="h-3.5 w-3.5" />
-                                        </button>
+                                            }}
+                                            onMouseDown={(event) => {
+                                              event.stopPropagation();
+                                            }}
+                                            onPointerDown={(event) => {
+                                              event.stopPropagation();
+                                            }}
+                                            onTouchStart={(event) => {
+                                              event.stopPropagation();
+                                            }}
+                                            className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                            aria-label={`Remove ${attachment.titleSnapshot}`}
+                                          >
+                                            <X className="h-3.5 w-3.5" />
+                                          </button>
                                       </div>
                                     </div>
                                   </div>

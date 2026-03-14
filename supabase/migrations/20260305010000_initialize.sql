@@ -13,13 +13,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "public";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "public";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_trgm" WITH SCHEMA "public";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm" WITH SCHEMA "extensions";
 
 
 CREATE SCHEMA IF NOT EXISTS "public";
@@ -586,7 +586,7 @@ CREATE INDEX "idx_canvases_search_text" ON "public"."canvases" USING "gin" ("to_
 
 
 
-CREATE INDEX "idx_canvases_search_text_trgm" ON "public"."canvases" USING "gin" ("search_text" "public"."gin_trgm_ops");
+CREATE INDEX "idx_canvases_search_text_trgm" ON "public"."canvases" USING "gin" ("search_text" "extensions"."gin_trgm_ops");
 
 
 
@@ -614,7 +614,7 @@ CREATE INDEX "idx_sections_search_text" ON "public"."sections" USING "gin" ("to_
 
 
 
-CREATE INDEX "idx_sections_search_text_trgm" ON "public"."sections" USING "gin" ("search_text" "public"."gin_trgm_ops");
+CREATE INDEX "idx_sections_search_text_trgm" ON "public"."sections" USING "gin" ("search_text" "extensions"."gin_trgm_ops");
 
 
 

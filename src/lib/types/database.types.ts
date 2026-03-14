@@ -849,8 +849,6 @@ export type Database = {
       }
       jsonb_to_text: { Args: { jsonb_data: Json }; Returns: string }
       revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
       user_can_access_stream: {
         Args: { p_stream_id: string }
         Returns: boolean

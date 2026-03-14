@@ -1024,10 +1024,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         <div
           className={`flex items-center gap-2 flex-wrap px-3 py-1 bg-surface-subtle/50  ${sections.length > 0 ? "border-b border-border-default/50" : ""}`}
         >
-          <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
-            New Entry as
-          </span>
-
           {quickPersonas.map((persona) => (
             <button
               key={`quick-persona-${persona.id}`}

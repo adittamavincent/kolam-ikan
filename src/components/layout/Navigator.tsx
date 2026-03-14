@@ -263,7 +263,6 @@ interface CabinetNodeProps {
     id: string,
     type: "cabinet" | "stream",
     name: string,
-    isActive: boolean,
   ) => void;
   toggleCabinet: (id: string) => void;
   router: ReturnType<typeof useRouter>;
@@ -316,7 +315,6 @@ interface StreamNodeProps {
     id: string,
     type: "cabinet" | "stream",
     name: string,
-    isActive: boolean,
   ) => void;
   handleContextMenu: (
     event: React.MouseEvent,
@@ -399,28 +397,30 @@ const StreamNode = ({
             } ${!isStreamActive && isNewlyCreated ? "ring-1 ring-action-primary-bg/30" : ""}
             ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
             ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
-        style={{ paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)` }}
+        style={{
+          paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)`,
+        }}
         draggable={!isStreamEditing}
-          onDragStart={(e) => {
-            e.stopPropagation();
-            onDragStart(e, stream.id, "stream");
-          }}
-          onDragEnd={onDragEnd}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!isStreamEditing) {
-              handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
-            }
-          }}
-          onContextMenu={(event) => handleContextMenu(event, stream.id, "stream")}
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleItemClick(stream.id, "stream", stream.name, !!isStreamActive);
-            }
-          }}
-        >
+        onDragStart={(e) => {
+          e.stopPropagation();
+          onDragStart(e, stream.id, "stream");
+        }}
+        onDragEnd={onDragEnd}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!isStreamEditing) {
+            handleItemClick(stream.id, "stream", stream.name);
+          }
+        }}
+        onContextMenu={(event) => handleContextMenu(event, stream.id, "stream")}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleItemClick(stream.id, "stream", stream.name);
+          }
+        }}
+      >
         <div
           className="flex shrink-0 items-center justify-center"
           style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
@@ -521,7 +521,7 @@ const CabinetNode = ({
   const ariaLabel = disambiguation
     ? `${cabinet.name} (${disambiguation.index} of ${disambiguation.total})`
     : cabinet.name;
-    
+
   const stripeIndex = stripeIndices?.get(cabinet.id);
 
   return (
@@ -552,31 +552,33 @@ const CabinetNode = ({
                 : "text-text-subtle"
             } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
             ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
-        style={{ paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)` }}
+        style={{
+          paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)`,
+        }}
         draggable={!isEditing}
-          onDragStart={(e) => {
-            e.stopPropagation();
-            onDragStart(e, cabinet.id, "cabinet");
-          }}
-          onDragEnd={onDragEnd}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleItemClick(cabinet.id, "cabinet", cabinet.name, !!isActive);
-          }}
-          onContextMenu={(event) =>
-            handleContextMenu(event, cabinet.id, "cabinet")
+        onDragStart={(e) => {
+          e.stopPropagation();
+          onDragStart(e, cabinet.id, "cabinet");
+        }}
+        onDragEnd={onDragEnd}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleItemClick(cabinet.id, "cabinet", cabinet.name);
+        }}
+        onContextMenu={(event) =>
+          handleContextMenu(event, cabinet.id, "cabinet")
+        }
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleItemClick(cabinet.id, "cabinet", cabinet.name);
           }
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleItemClick(cabinet.id, "cabinet", cabinet.name, !!isActive);
-            }
-            if (e.key === "ArrowRight" && !isExpanded) {
-              e.preventDefault();
-              toggleCabinet(cabinet.id);
-            }
-            if (e.key === "ArrowLeft" && isExpanded) {
+          if (e.key === "ArrowRight" && !isExpanded) {
+            e.preventDefault();
+            toggleCabinet(cabinet.id);
+          }
+          if (e.key === "ArrowLeft" && isExpanded) {
             e.preventDefault();
             toggleCabinet(cabinet.id);
           }
@@ -1473,7 +1475,9 @@ export function Navigator({}: NavigatorProps) {
         ? manualActiveNode
         : null
     : null;
-  const activeNode = forceNoHighlight ? null : (validManualActiveNode ?? routeActiveNode);
+  const activeNode = forceNoHighlight
+    ? null
+    : (validManualActiveNode ?? routeActiveNode);
 
   const isStreamNewlyCreated = (id: string) => id === justCreatedStreamId;
 
@@ -1658,22 +1662,23 @@ export function Navigator({}: NavigatorProps) {
     id: string,
     type: "cabinet" | "stream",
     name: string,
-    isActive: boolean,
   ) => {
-    // Block interaction if a navigation is already pending
-    if (isPending) return;
-
-    setForceNoHighlight(false);
-
     const now = Date.now();
     const lastClick = lastClickRef.current;
+    const isDoubleClick = lastClick && lastClick.id === id && now - lastClick.time < 300;
+
+    // Block interaction if a navigation is already pending
+    // Allow double clicks to punch through and trigger rename
+    if (isPending && !isDoubleClick) return;
+
+    setForceNoHighlight(false);
 
     if (type === "cabinet") {
       setManualActiveNode({ id, type: "cabinet" });
       // Cabinet logic (applied to ALL cabinets, highlighted or not):
-      // 1. Rapid successive clicks (< 500ms) -> Rename
+      // 1. Rapid successive clicks (< 300ms) -> Rename
       // 2. Single click / Slow click -> Toggle Expand/Collapse
-      if (lastClick && lastClick.id === id && now - lastClick.time < 500) {
+      if (isDoubleClick) {
         setEditingItemId(id);
         setEditingName(name);
         lastClickRef.current = null;
@@ -1692,8 +1697,15 @@ export function Navigator({}: NavigatorProps) {
       }
 
       // Stream logic
-      // Highlighted streams: Slow click (> 500ms) -> Rename (Legacy behavior)
       // All streams: Click -> Navigate
+      // Double Click -> Rename
+      if (isDoubleClick) {
+        setEditingItemId(id);
+        setEditingName(name);
+        lastClickRef.current = null; // Reset
+        return;
+      }
+
       if (pendingStreamNavigationRef.current) {
         const elapsed = now - pendingStreamNavigationRef.current.startedAt;
         if (elapsed < 15000) {
@@ -1703,29 +1715,14 @@ export function Navigator({}: NavigatorProps) {
         pendingStreamNavigationRef.current = null;
       }
 
-      if (
-        isActive &&
-        lastClick &&
-        lastClick.id === id &&
-        now - lastClick.time > 500
-      ) {
-        setEditingItemId(id);
-        setEditingName(name);
-        lastClickRef.current = null; // Reset
-        return;
-      }
-
-      // Prevent rapid double-click navigation
-      if (lastClick && lastClick.id === id && now - lastClick.time < 500) {
-        return;
-      }
-
       const targetPath = `/${domainId}/${id}`;
       if (
         pathname === targetPath ||
         lastNavigatedPathRef.current === targetPath
-      )
+      ) {
+        lastClickRef.current = { id, time: now };
         return;
+      }
 
       startTransition(() => {
         lastNavigatedPathRef.current = targetPath;

@@ -14,6 +14,7 @@ import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { Persona } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -75,6 +76,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedPersonaIds, setSelectedPersonaIds] = useState<string[]>([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [deleteUsageCount, setDeleteUsageCount] = useState(0);
   const [transferPersonaId, setTransferPersonaId] = useState("");
   const [isPermanent, setIsPermanent] = useState(false);
@@ -153,14 +155,15 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     );
   };
 
+  const requestBulkDelete = () => {
+    if (selectedPersonaIds.length === 0) return;
+    setIsBulkDeleteDialogOpen(true);
+  };
+
   const handleBulkDelete = async () => {
     if (selectedPersonaIds.length === 0) return;
 
-    const confirmed = window.confirm(
-      `Delete ${selectedPersonaIds.length} selected persona${selectedPersonaIds.length === 1 ? "" : "s"}? Personas that are in use may fail and will be reported.`,
-    );
-    if (!confirmed) return;
-
+    setIsBulkDeleteDialogOpen(false);
     setIsBulkDeleting(true);
     setError(null);
 
@@ -198,6 +201,13 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     setSelectedPersonaIds([]);
     setIsBulkMode(false);
   };
+
+  const bulkDeleteCount = selectedPersonaIds.length;
+  const bulkDeleteTitle = `Delete ${bulkDeleteCount} selected persona${
+    bulkDeleteCount === 1 ? "" : "s"
+  }?`;
+  const bulkDeleteDescription =
+    "Personas that are in use may fail and will be reported.";
 
   const handleDeleteRequest = async (persona: Persona) => {
     setError(null);
@@ -287,10 +297,11 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   };
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <TransitionChild
-          as={Fragment}
+    <>
+      <Transition appear show={isOpen} as={Fragment}>
+        <Dialog as="div" className="relative z-50" onClose={onClose}>
+          <TransitionChild
+            as={Fragment}
           enter="ease-out duration-300"
           enterFrom="opacity-0"
           enterTo="opacity-100"
@@ -613,7 +624,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           </button>
                           <button
                             type="button"
-                            onClick={() => void handleBulkDelete()}
+                            onClick={requestBulkDelete}
                             disabled={
                               selectedPersonaIds.length === 0 || isBulkDeleting
                             }
@@ -783,5 +794,19 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
         </div>
       </Dialog>
     </Transition>
+      <ConfirmDialog
+        open={isBulkDeleteDialogOpen}
+        title={bulkDeleteTitle}
+        description={bulkDeleteDescription}
+        confirmLabel="Delete selected"
+        cancelLabel="Cancel"
+        destructive
+        loading={isBulkDeleting}
+        onCancel={() => setIsBulkDeleteDialogOpen(false)}
+        onConfirm={() => {
+          void handleBulkDelete();
+        }}
+      />
+    </>
   );
 }

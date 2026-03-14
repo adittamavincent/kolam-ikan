@@ -46,6 +46,7 @@ import {
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
 import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
@@ -192,6 +193,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     null,
   );
   const [personaManagerOpen, setPersonaManagerOpen] = useState(false);
+  const [clearSectionsDialogOpen, setClearSectionsDialogOpen] = useState(false);
 
   const selectedBranch = currentBranch ?? "main";
 
@@ -756,6 +758,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   };
 
+  const requestClearSections = () => {
+    if (sections.length === 0) return;
+    setClearSectionsDialogOpen(true);
+  };
+
+  const confirmClearSections = () => {
+    sections.forEach((section) => removeSection(section.instanceId));
+    setClearSectionsDialogOpen(false);
+  };
+
   const changePersona = (instanceId: string, newPersonaId: string) => {
     const section = sections.find((s) => s.instanceId === instanceId);
     if (
@@ -1169,11 +1181,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
           {sections.length > 0 && (
             <button
-              onClick={() => {
-                if (window.confirm("Are you sure you want to delete all sections?")) {
-                  sections.forEach((section) => removeSection(section.instanceId));
-                }
-              }}
+              onClick={requestClearSections}
               className="ml-auto rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
               title="Delete all sections"
             >
@@ -1950,6 +1958,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     <PersonaManager
       isOpen={personaManagerOpen}
       onClose={() => setPersonaManagerOpen(false)}
+    />
+    <ConfirmDialog
+      open={clearSectionsDialogOpen}
+      title="Delete all sections?"
+      description="This removes every section from the editor and cannot be undone."
+      confirmLabel="Delete sections"
+      cancelLabel="Cancel"
+      destructive
+      onCancel={() => setClearSectionsDialogOpen(false)}
+      onConfirm={confirmClearSections}
     />
     </>
   );

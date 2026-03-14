@@ -14,6 +14,7 @@ import { InteractionSwitcher } from "./InteractionSwitcher";
 import { ContextBag } from "./ContextBag";
 import { XMLGenerator } from "./XMLGenerator";
 import { ResponseParser, type ResponseParserHandle } from "./ResponseParser";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface BridgeModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     canParse: false,
     hasParsed: false,
   });
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const parserRef = useRef<ResponseParserHandle>(null);
 
@@ -121,20 +123,28 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const handleParse = () => parserRef.current?.parse();
   const handleApply = () => parserRef.current?.apply();
   const handleReset = () => {
-    if (confirm("Clear all inputs and results?")) {
-      setUserInput("");
-      parserRef.current?.reset();
-    }
+    setIsResetDialogOpen(true);
   };
 
+  const confirmReset = () => {
+    setIsResetDialogOpen(false);
+    setUserInput("");
+    parserRef.current?.reset();
+  };
+
+  const resetDialogTitle = "Clear all inputs and results?";
+  const resetDialogDescription =
+    "This resets your instructions and parsed output. Changes cannot be undone.";
+
   return (
-    <Dialog
-      open={isOpen}
-      onClose={onClose}
-      className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
-    >
-      {/* Backdrop */}
-      <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+    <>
+      <Dialog
+        open={isOpen}
+        onClose={onClose}
+        className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
+      >
+        {/* Backdrop */}
+        <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
 
       {/* Modal */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -262,5 +272,16 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
         </DialogPanel>
       </div>
     </Dialog>
+      <ConfirmDialog
+        open={isResetDialogOpen}
+        title={resetDialogTitle}
+        description={resetDialogDescription}
+        confirmLabel="Clear"
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setIsResetDialogOpen(false)}
+        onConfirm={confirmReset}
+      />
+    </>
   );
 }

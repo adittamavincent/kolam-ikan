@@ -43,6 +43,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { PartialBlock } from "@blocknote/core";
 import { useParams } from "next/navigation";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,8 @@ function getSupabaseErrorMessage(error: unknown): string {
   if (parts.length > 0) return parts.join(" | ");
   return maybeError.code ? `Code ${maybeError.code}` : "Unknown error";
 }
+
+type EntryConfirmType = "reset" | "delete";
 
 /** Compute line-level diff between two strings; returns array of diff lines */
 type DiffLine = { type: "eq" | "add" | "del"; text: string };
@@ -147,7 +150,8 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
   const deletions = diffs.filter((d) => d.type === "del").length;
 
   return (
-    <div
+    <>
+      <div
       className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/50"
       onClick={onClose}
     >
@@ -218,6 +222,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
         </div>
       </div>
     </div>
+  </>
   );
 }
 
@@ -334,6 +339,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     left: 0,
     top: 0,
   });
+  const [entryConfirm, setEntryConfirm] = useState<{
+    type: EntryConfirmType;
+    entry: EntryWithSections;
+  } | null>(null);
   const params = useParams();
   const domainId = (params?.domain as string | undefined) ?? "";
 
@@ -392,6 +401,17 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     personaId: filterPersonaId,
     sortOrder,
   });
+
+  const handleConfirmEntryAction = () => {
+    if (!entryConfirm) return;
+    const { type, entry } = entryConfirm;
+    setEntryConfirm(null);
+    if (type === "reset") {
+      resetToEntry.mutate(entry);
+    } else {
+      deleteEntry.mutate(entry.id);
+    }
+  };
 
   const { stream } = useStream(streamId);
   const { timelineItems } = useTimelineItems(streamId, entryList, {
@@ -728,22 +748,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         toggleStash(entry.id);
         break;
       case "reset":
-        if (
-          confirm(
-            `git reset --hard ${shortHash(entry.id)}\n\nThis will delete all entries newer than this one. Continue?`,
-          )
-        ) {
-          resetToEntry.mutate(entry);
-        }
+        setEntryConfirm({ type: "reset", entry });
         break;
       case "delete":
-        if (
-          confirm(
-            `git rm -- entry ${shortHash(entry.id)}\n\nDelete this entry?`,
-          )
-        ) {
-          deleteEntry.mutate(entry.id);
-        }
+        setEntryConfirm({ type: "delete", entry });
         break;
     }
   };
@@ -1067,10 +1075,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   ]);
 
   return (
-    <div
-      className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
-      style={containerStyle}
-    >
+    <>
+      <div
+        className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
+        style={containerStyle}
+      >
       <div className="flex h-full flex-col" style={contentStyle}>
         {/* Content: Graph View OR Commit List */}
         {graphView ? (
@@ -1507,5 +1516,51 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           document.body,
         )}
     </div>
+      <ConfirmDialog
+        open={Boolean(entryConfirm)}
+        title={
+          entryConfirm
+            ? entryConfirm.type === "reset"
+              ? `Reset entry ${shortHash(entryConfirm.entry.id)}?`
+              : `Delete entry ${shortHash(entryConfirm.entry.id)}?`
+            : ""
+        }
+        description={
+          entryConfirm ? (
+            entryConfirm.type === "reset" ? (
+              <div className="space-y-1">
+                <p className="text-xs font-mono text-text-default">
+                  git reset --hard {shortHash(entryConfirm.entry.id)}
+                </p>
+                <p className="text-sm text-text-muted">
+                  This will delete all entries newer than this one.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-xs font-mono text-text-default">
+                  git rm -- entry {shortHash(entryConfirm.entry.id)}
+                </p>
+                <p className="text-sm text-text-muted">
+                  Delete this entry from history.
+                </p>
+              </div>
+            )
+          ) : null
+        }
+        confirmLabel={
+          entryConfirm?.type === "reset" ? "Reset entry" : "Delete entry"
+        }
+        cancelLabel="Cancel"
+        destructive={entryConfirm?.type === "delete"}
+        loading={
+          entryConfirm?.type === "reset"
+            ? resetToEntry.isPending
+            : deleteEntry.isPending
+        }
+        onCancel={() => setEntryConfirm(null)}
+        onConfirm={handleConfirmEntryAction}
+      />
+    </>
   );
 }

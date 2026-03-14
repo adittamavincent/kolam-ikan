@@ -14,6 +14,7 @@ import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { PdfAttachmentThumbnail } from "@/components/features/log/PdfAttachmentThumbnail";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 // ─── Temp file store access ──────────────────────────────────────────────────
 declare global {
@@ -126,6 +127,9 @@ export function DocumentImportModal({
     Record<string, string>
   >({});
   const localThumbnailsRef = useRef<Record<string, string>>({});
+  const [documentToDelete, setDocumentToDelete] = useState<
+    DocumentWithLatestJob | null
+  >(null);
 
   useEffect(() => {
     localThumbnailsRef.current = localThumbnails;
@@ -547,12 +551,20 @@ export function DocumentImportModal({
     }
   };
 
+  const handleConfirmDocumentDeletion = async () => {
+    if (!documentToDelete) return;
+    const { id } = documentToDelete;
+    setDocumentToDelete(null);
+    await handleDeleteDocument(id);
+  };
+
   return (
-    <Dialog
-      open={isOpen}
-      onClose={handleClose}
-      className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
-    >
+    <>
+      <Dialog
+        open={isOpen}
+        onClose={handleClose}
+        className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
+      >
       <DialogBackdrop className="fixed inset-0 bg-black/25 backdrop-blur-xs transition-opacity" />
 
       <div
@@ -818,26 +830,22 @@ export function DocumentImportModal({
                       >
                         {/* X Icon Action Button */}
                         {(isPending || status !== "processing") && (
-                          <button
-                            type="button"
-                            aria-label={
-                              isPending ? "Cancel import" : "Delete document"
-                            }
-                            onClick={() => {
-                              if (isPending) {
-                                handleCancelDocument(document.id);
-                              } else {
-                                const confirmed = window.confirm(
-                                  "Delete this parsed file permanently? This removes it from storage and sections using it may break.",
-                                );
-                                if (!confirmed) return;
-                                void handleDeleteDocument(document.id);
-                              }
-                            }}
-                            disabled={
-                              cancelImport.isPending ||
-                              cancelAllPendingImports.isPending ||
-                              deleteDocument.isPending
+                                <button
+                                  type="button"
+                                  aria-label={
+                                    isPending ? "Cancel import" : "Delete document"
+                                  }
+                                  onClick={() => {
+                                    if (isPending) {
+                                      void handleCancelDocument(document.id);
+                                      return;
+                                    }
+                                    setDocumentToDelete(document);
+                                  }}
+                                  disabled={
+                                    cancelImport.isPending ||
+                                    cancelAllPendingImports.isPending ||
+                                    deleteDocument.isPending
                             }
                             className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center rounded-xl bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus:outline-none disabled:opacity-60"
                           >
@@ -846,14 +854,14 @@ export function DocumentImportModal({
                               viewBox="0 0 20 20"
                               fill="currentColor"
                               className="h-5 w-5"
-                            >
-                              <path
-                                fillRule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clipRule="evenodd"
-                              />
-                            </svg>
-                          </button>
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                </button>
                         )}
                         {/* Top Part */}
                         <div className="flex items-center justify-between gap-3">
@@ -966,6 +974,25 @@ export function DocumentImportModal({
           </DialogPanel>
         </div>
       </div>
-    </Dialog>
+      </Dialog>
+      <ConfirmDialog
+        open={Boolean(documentToDelete)}
+        title="Delete parsed file permanently?"
+        description={
+          <span>
+            This removes it from storage and any sections that rely on it may
+            break.
+            {documentToDelete?.title ? ` File: ${documentToDelete?.title}` : ""}
+          </span>
+        }
+        confirmLabel="Delete file"
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setDocumentToDelete(null)}
+        onConfirm={() => {
+          void handleConfirmDocumentDeletion();
+        }}
+      />
+    </>
   );
 }

@@ -291,6 +291,22 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   }, [personaUsageCounts, personaUsageStorageKey]);
 
+  // Clean up persona usage counts for deleted personas
+  useEffect(() => {
+    if (personas) {
+      const existingIds = new Set(personas.map((p) => p.id));
+      setPersonaUsageCounts((prev) => {
+        const filtered = { ...prev };
+        Object.keys(filtered).forEach((id) => {
+          if (!existingIds.has(id)) {
+            delete filtered[id];
+          }
+        });
+        return filtered;
+      });
+    }
+  }, [personas]);
+
   const quickPersonas = (() => {
     if (!personas?.length) return [];
     return [...personas]

@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogPanel,
@@ -57,6 +58,7 @@ const PRESET_COLORS = [
 export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const supabase = createClient();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { personas, isLoading } = usePersonas({ includeDeleted: true });
   const { createPersona, updatePersona, deletePersona, hardDeletePersona } =
     usePersonaMutations();
@@ -168,6 +170,10 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
         failedNames.push(persona.name);
       }
     }
+
+    // Ensure queries are invalidated after bulk delete
+    queryClient.invalidateQueries({ queryKey: ["personas", user?.id, false] });
+    queryClient.invalidateQueries({ queryKey: ["personas", user?.id, true] });
 
     setIsBulkDeleting(false);
     if (failedNames.length > 0) {

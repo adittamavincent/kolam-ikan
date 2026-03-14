@@ -122,7 +122,7 @@ export function MainHeader() {
         {streamId && stream && (
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-sm font-medium text-text-default">
-              {stream.cabinet?.domain?.name}
+              {stream.cabinet?.name}
             </span>
             <span className="text-text-muted">/</span>
             <span className="truncate text-sm font-semibold text-text-default">

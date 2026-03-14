@@ -7,7 +7,6 @@ import {
 } from "@/lib/documents/bootstrap";
 
 type CancelPayload = {
-  streamId?: string;
   documentId?: string;
   cancelAll?: boolean;
 };
@@ -22,11 +21,8 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as CancelPayload | null;
-  if (!body?.streamId) {
-    return NextResponse.json(
-      { error: "streamId is required" },
-      { status: 400 },
-    );
+  if (!body) {
+    return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
   }
 
   if (!body.cancelAll && !body.documentId) {
@@ -36,26 +32,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: streamAccess, error: streamError } = await supabase
-    .from("streams")
-    .select("id")
-    .eq("id", body.streamId)
-    .single();
-
-  if (streamError || !streamAccess) {
-    return NextResponse.json(
-      { error: "You do not have access to this stream" },
-      { status: 403 },
-    );
-  }
-
   const nowIso = new Date().toISOString();
 
   if (body.cancelAll) {
     const { data: pendingDocuments, error: pendingError } = await admin
       .from("documents")
       .select("id")
-      .eq("stream_id", body.streamId)
+      .eq("created_by", authData.user.id)
       .in("import_status", ["queued", "processing"])
       .is("deleted_at", null);
 
@@ -81,7 +64,7 @@ export async function POST(request: Request) {
         error_message: "Canceled by user",
         completed_at: nowIso,
       })
-      .eq("stream_id", body.streamId)
+      .eq("created_by", authData.user.id)
       .in("status", ["queued", "processing"])
       .in("document_id", documentIds);
 
@@ -98,7 +81,7 @@ export async function POST(request: Request) {
           error_message: "Canceled by user",
           completed_at: nowIso,
         })
-        .eq("stream_id", body.streamId)
+        .eq("created_by", authData.user.id)
         .in("status", ["queued", "processing"])
         .in("document_id", documentIds);
 
@@ -114,7 +97,7 @@ export async function POST(request: Request) {
       .update({
         import_status: "canceled",
       })
-      .eq("stream_id", body.streamId)
+      .eq("created_by", authData.user.id)
       .in("id", documentIds)
       .in("import_status", ["queued", "processing"]);
 
@@ -135,12 +118,12 @@ export async function POST(request: Request) {
     .from("documents")
     .select("id, stream_id, import_status")
     .eq("id", body.documentId!)
-    .eq("stream_id", body.streamId)
+    .eq("created_by", authData.user.id)
     .single();
 
   if (documentFetchError || !document) {
     return NextResponse.json(
-      { error: "Document not found in this stream" },
+      { error: "Document not found" },
       { status: 404 },
     );
   }
@@ -162,7 +145,7 @@ export async function POST(request: Request) {
       error_message: "Canceled by user",
       completed_at: nowIso,
     })
-    .eq("stream_id", body.streamId)
+    .eq("created_by", authData.user.id)
     .eq("document_id", body.documentId!)
     .in("status", ["queued", "processing"]);
 
@@ -179,7 +162,7 @@ export async function POST(request: Request) {
         error_message: "Canceled by user",
         completed_at: nowIso,
       })
-      .eq("stream_id", body.streamId)
+      .eq("created_by", authData.user.id)
       .eq("document_id", body.documentId!)
       .in("status", ["queued", "processing"]);
 
@@ -199,7 +182,7 @@ export async function POST(request: Request) {
       import_status: "canceled",
     })
     .eq("id", body.documentId!)
-    .eq("stream_id", body.streamId)
+    .eq("created_by", authData.user.id)
     .in("import_status", ["queued", "processing"]);
 
   if (singleDocumentError) {

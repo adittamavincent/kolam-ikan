@@ -39,12 +39,17 @@ export function useDocuments(streamId: string) {
   const queryClient = useQueryClient();
 
   const documentsQuery = useQuery({
-    queryKey: ["documents", streamId],
+    queryKey: ["documents", "user"],
     queryFn: async () => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) {
+        return [] as DocumentWithLatestJob[];
+      }
+
       const { data: documents, error } = await supabase
         .from("documents")
         .select("*")
-        .eq("stream_id", streamId)
+        .eq("created_by", authData.user.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
@@ -58,7 +63,7 @@ export function useDocuments(streamId: string) {
       const { data: jobs, error: jobError } = await supabase
         .from("document_import_jobs")
         .select("*")
-        .eq("stream_id", streamId)
+        .eq("created_by", authData.user.id)
         .order("created_at", { ascending: false });
 
       if (jobError) {
@@ -85,7 +90,7 @@ export function useDocuments(streamId: string) {
         thumbnailUrl: getDocumentThumbnailUrl(document),
       })) as DocumentWithLatestJob[];
     },
-    enabled: !!streamId,
+    enabled: true,
     refetchInterval: (query) => {
       const documents =
         (query.state.data as DocumentWithLatestJob[] | undefined) ?? [];
@@ -149,7 +154,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
     },
   });
 
@@ -160,7 +165,7 @@ export function useDocuments(streamId: string) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ streamId, documentId }),
+        body: JSON.stringify({ documentId }),
       });
 
       const payload = (await response.json().catch(() => null)) as {
@@ -173,7 +178,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
     },
   });
 
@@ -184,7 +189,7 @@ export function useDocuments(streamId: string) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ streamId, cancelAll: true }),
+        body: JSON.stringify({ cancelAll: true }),
       });
 
       const payload = (await response.json().catch(() => null)) as {
@@ -197,7 +202,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
     },
   });
 
@@ -208,7 +213,7 @@ export function useDocuments(streamId: string) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ streamId, documentId }),
+        body: JSON.stringify({ documentId }),
       });
 
       const payload = (await response.json().catch(() => null)) as {
@@ -221,7 +226,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
     },
   });
 

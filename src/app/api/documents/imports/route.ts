@@ -233,7 +233,7 @@ export async function POST(request: Request) {
   const filename = sanitizeFilename(file.name || "document.pdf");
   const documentId = crypto.randomUUID();
   const jobId = crypto.randomUUID();
-  const storagePath = `${input.data.streamId}/${documentId}/${filename}`;
+  const storagePath = `${authData.user.id}/${documentId}/${filename}`;
   const titleValue =
     input.data.title?.trim() || filename.replace(/\.pdf$/i, "");
 
@@ -242,14 +242,14 @@ export async function POST(request: Request) {
     const { data: existingDoc } = await admin
       .from("documents")
       .select("id, title, storage_path, import_status")
-      .eq("stream_id", input.data.streamId)
+      .eq("created_by", authData.user.id)
       .contains("source_metadata", { fileHash: input.data.fileHash })
       .is("deleted_at", null)
       .limit(1)
       .maybeSingle();
 
     if (existingDoc) {
-      // If we found an existing document with the same hash in the same stream,
+      // If we found an existing document with the same hash for this user,
       // we can return it instead of creating a new one.
       return NextResponse.json({
         message: "Document already exists, reusing existing one",

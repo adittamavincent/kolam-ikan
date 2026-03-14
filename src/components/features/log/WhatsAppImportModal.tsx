@@ -590,9 +590,6 @@ export function WhatsAppImportModal({
   const [rangeEnd, setRangeEnd] = useState(0);
   const [mappableSenders, setMappableSenders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
-  const [creatingPersonaFor, setCreatingPersonaFor] = useState<string | null>(
-    null,
-  );
   const [creatingAllPersonas, setCreatingAllPersonas] = useState(false);
   const [uploads, setUploads] = useState<Record<string, PdfUploadState>>({});
   const [zipSourceName, setZipSourceName] = useState<string | null>(null);
@@ -605,6 +602,7 @@ export function WhatsAppImportModal({
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
   const [createdShadowCount, setCreatedShadowCount] = useState(0);
+  const [existingShadowReuseCount, setExistingShadowReuseCount] = useState(0);
 
   // Preview tooltip state (custom tooltip with configurable timing)
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -713,11 +711,6 @@ export function WhatsAppImportModal({
   ).length;
   const globalPersonas = (personas ?? []).filter((p) => !isShadowPersona(p));
   const shadowPersonas = (personas ?? []).filter((p) => isShadowPersona(p));
-  const existingShadowReuseCount = mappableSenders.filter((sender) =>
-    shadowPersonas.some(
-      (persona) => persona.name.toLowerCase() === sender.toLowerCase(),
-    ),
-  ).length;
 
   type PersonaCreateRow = {
     name: string;
@@ -870,6 +863,8 @@ export function WhatsAppImportModal({
     setMapError(null);
     setMapNotice(null);
     setZipAutoUploadRan(false);
+    setCreatedShadowCount(0);
+    setExistingShadowReuseCount(0);
     setStep("range");
   };
 
@@ -896,6 +891,8 @@ export function WhatsAppImportModal({
       setMapError(null);
       setMapNotice(null);
       setZipAutoUploadRan(false);
+      setCreatedShadowCount(0);
+      setExistingShadowReuseCount(0);
       setStep("range");
     } catch (error) {
       setZipLoadError(
@@ -910,32 +907,42 @@ export function WhatsAppImportModal({
     if (selectedTurns.length === 0) return;
     const senders = getMappableSenders(selectedTurns);
     setMappableSenders(senders);
+
+    const existingShadowsBySender = senders.filter((s) =>
+      personas?.some(
+        (p) =>
+          p.is_shadow &&
+          p.shadow_stream_id === streamId &&
+          p.name.toLowerCase() === s.toLowerCase(),
+      ),
+    );
+    setExistingShadowReuseCount(existingShadowsBySender.length);
+
     const auto = buildAutoMap(senders, personas, streamId);
     setMapping(auto);
+    setUploads({});
+    setMapError(null);
+    setMapNotice(null);
+    setZipAutoUploadRan(false);
+    setStep("map");
+  };
 
-    // Ensure a shadow persona exists for every sender — create missing shadows
-    const shadowMap: Record<string, string> = {};
-    for (const s of senders) {
-      const existingShadow = personas?.find(
-        (p) =>
-          p.is_shadow && p.shadow_stream_id === streamId &&
-          p.name.toLowerCase() === s.toLowerCase(),
-      );
-      if (existingShadow) shadowMap[s] = existingShadow.id;
-    }
+  const handleMapNext = async () => {
+    setMapError(null);
+    setMapNotice(null);
 
-    const toCreate = senders.filter((s) => !shadowMap[s]);
-    if (toCreate.length > 0) {
+    let nextMapping: Record<string, string> = { ...mapping };
+    const missing = mappableSenders.filter((sender) => !nextMapping[sender]);
+
+    if (missing.length > 0) {
       setCreatingAllPersonas(true);
-      setMapError(null);
-      setMapNotice(null);
       try {
         const {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) return;
 
-        const rows: PersonaCreateRow[] = toCreate.map((sender, idx) => ({
+        const rows: PersonaCreateRow[] = missing.map((sender, idx) => ({
           name: sender,
           color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
           icon: "user",
@@ -963,39 +970,27 @@ export function WhatsAppImportModal({
             Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
         });
 
-        // Map created rows by name (shadow rows take precedence)
         const createdMap: Record<string, string> = {};
         for (const created of data) {
           createdMap[created.name] = created.id;
         }
 
-        // Record created persona IDs for this import session (count them regardless
-        // of whether the DB used shadow columns or fell back to legacy insert).
         setCreatedShadowCount((prev) => prev + data.length);
-
-        setMapping((prev) => {
-          // start from previous mapping, apply any global auto matches,
-          // then override with existing shadows and newly created shadows
-          const next = { ...prev, ...auto, ...shadowMap, ...createdMap };
-          return next;
-        });
+        nextMapping = { ...nextMapping, ...createdMap };
+        setMapping(nextMapping);
       } finally {
         setCreatingAllPersonas(false);
       }
     }
-    setUploads({});
-    setMapError(null);
-    setMapNotice(null);
-    setZipAutoUploadRan(false);
-    setStep("map");
-  };
 
-  const handleMapNext = () => {
-    if (!allMapped) return;
+    const fullyMapped = mappableSenders.every((sender) => !!nextMapping[sender]);
+    if (!fullyMapped) return;
+
     if (!hasPdfTurns) {
-      handleConfirm();
+      handleConfirm(uploads, nextMapping);
       return;
     }
+
     // Initialize upload slots
     setUploads((prev) => {
       const next: Record<string, PdfUploadState> = { ...prev };
@@ -1013,113 +1008,6 @@ export function WhatsAppImportModal({
         if (!matched) continue;
         handleFileSelect(t.id, matched);
       }
-    }
-  };
-
-  const handleCreatePersona = async (sender: string, colorIdx: number) => {
-    setCreatingPersonaFor(sender);
-    setMapError(null);
-    setMapNotice(null);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const color = PERSONA_COLORS[colorIdx % PERSONA_COLORS.length];
-
-      const { data, error, fallbackUsed } = await insertPersonasWithShadowFallback([
-        {
-          name: sender,
-          color,
-          icon: "user",
-          type: "HUMAN",
-          user_id: user.id,
-          is_system: false,
-        },
-      ]);
-
-      if (error || !data) {
-        setMapError(getSupabaseErrorMessage(error));
-        return;
-      }
-
-      if (fallbackUsed) {
-        setMapNotice(
-          "Shadow columns are not available yet. Persona was created in legacy global mode for now.",
-        );
-      }
-
-      const first = data[0];
-      if (!first) {
-        setMapError("Failed to create persona");
-        return;
-      }
-
-      await queryClient.invalidateQueries({
-        predicate: (query) =>
-          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
-      });
-      // Record created persona id for this session (shadow or legacy).
-      setCreatedShadowCount((prev) => prev + 1);
-      setMapping((prev) => ({ ...prev, [sender]: first.id }));
-    } finally {
-      setCreatingPersonaFor(null);
-    }
-  };
-
-  const handleCreateAllMissingPersonas = async () => {
-    const missing = mappableSenders.filter((sender) => !mapping[sender]);
-    if (missing.length === 0) return;
-
-    setCreatingAllPersonas(true);
-    setMapError(null);
-    setMapNotice(null);
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const rows: PersonaCreateRow[] = missing.map((sender, idx) => ({
-        name: sender,
-        color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
-        icon: "user",
-        type: "HUMAN",
-        user_id: user.id,
-        is_system: false,
-      }));
-
-      const { data, error, fallbackUsed } =
-        await insertPersonasWithShadowFallback(rows);
-
-      if (error || !data) {
-        setMapError(getSupabaseErrorMessage(error));
-        return;
-      }
-
-      if (fallbackUsed) {
-        setMapNotice(
-          "Shadow columns are not available yet. Missing personas were created in legacy global mode.",
-        );
-      }
-
-      await queryClient.invalidateQueries({
-        predicate: (query) =>
-          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
-      });
-
-      // Record created persona ids for this session (shadow or legacy).
-      setCreatedShadowCount((prev) => prev + data.length);
-
-      setMapping((prev) => {
-        const next = { ...prev };
-        for (const created of data) {
-          next[created.name] = created.id;
-        }
-        return next;
-      });
-    } finally {
-      setCreatingAllPersonas(false);
     }
   };
 
@@ -1311,12 +1199,13 @@ export function WhatsAppImportModal({
 
   const handleConfirm = (
     uploadsSnapshot: Record<string, PdfUploadState> = uploads,
+    mappingSnapshot: Record<string, string> = mapping,
   ) => {
     const payloadTurns: WhatsAppInjectPayload["turns"] = [];
 
     for (const turn of selectedTurns) {
       if (turn.type === "media") continue;
-      const personaId = mapping[turn.sender];
+      const personaId = mappingSnapshot[turn.sender];
       if (!personaId) continue;
       const persona = personas?.find((p) => p.id === personaId);
       const personaName = persona?.name ?? turn.sender;
@@ -1393,6 +1282,7 @@ export function WhatsAppImportModal({
     setZipLoading(false);
     setZipAutoUploadRan(false);
     setCreatedShadowCount(0);
+    setExistingShadowReuseCount(0);
     onClose();
   };
 
@@ -1552,6 +1442,7 @@ export function WhatsAppImportModal({
                     liveMsgs.length === 0 ||
                     liveImportable === 0
                   }
+                  shortcutsEnabled={!confirmExitOpen}
                   nextContent={
                     <>
                       Next
@@ -1766,6 +1657,7 @@ export function WhatsAppImportModal({
                   onBack={() => setStep("paste")}
                   onNext={handleRangeNext}
                   nextDisabled={rangeImportableCount === 0}
+                  shortcutsEnabled={!confirmExitOpen}
                   nextContent={
                     <>
                       Next: Map Personas
@@ -1824,12 +1716,11 @@ export function WhatsAppImportModal({
                   )}
 
                 <div className="flex flex-col gap-2">
-                  {mappableSenders.map((sender, idx) => {
+                  {mappableSenders.map((sender) => {
                     const assignedId = mapping[sender];
                     const assignedPersona = personas?.find(
                       (p) => p.id === assignedId,
                     );
-                    const isCreating = creatingPersonaFor === sender;
 
                     return (
                       <div
@@ -1886,20 +1777,17 @@ export function WhatsAppImportModal({
                             value=""
                             onChange={(e) => {
                               const val = e.target.value;
-                              if (val === "__create__") {
-                                void handleCreatePersona(sender, idx);
-                              } else if (val) {
+                              if (val) {
                                 setMapping((prev) => ({
                                   ...prev,
                                   [sender]: val,
                                 }));
                               }
                             }}
-                            disabled={isCreating}
                             className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none disabled:opacity-60"
                           >
                             <option value="" disabled>
-                              {isCreating ? "Creating…" : "Select persona…"}
+                              Select persona…
                             </option>
                             {globalPersonas.length > 0 && (
                               <optgroup label="Global Personas">
@@ -1919,9 +1807,6 @@ export function WhatsAppImportModal({
                                 ))}
                               </optgroup>
                             )}
-                            <option value="__create__">
-                              + Create &quot;{sender}&quot;
-                            </option>
                           </select>
                         )}
                       </div>
@@ -1930,17 +1815,13 @@ export function WhatsAppImportModal({
                 </div>
 
                 {unmappedCount > 0 && (
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => void handleCreateAllMissingPersonas()}
-                      disabled={creatingAllPersonas}
-                      className="inline-flex items-center gap-1.5  border border-border-default px-2.5 py-1 text-[11px] text-text-default hover:bg-surface-subtle disabled:opacity-50"
-                    >
-                      {creatingAllPersonas && (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      )}
-                      Create all missing personas ({unmappedCount})
-                    </button>
+                  <div className="flex items-start gap-1.5  border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                    <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                    <span>
+                      {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will be
+                      created as shadow persona{unmappedCount !== 1 ? "s" : ""}{" "}
+                      when you press Next.
+                    </span>
                   </div>
                 )}
 
@@ -1959,8 +1840,11 @@ export function WhatsAppImportModal({
 
                 <StepFooter
                   onBack={() => setStep("range")}
-                  onNext={handleMapNext}
-                  nextDisabled={!allMapped || (!hasPdfTurns && textTurns.length === 0)}
+                  onNext={() => void handleMapNext()}
+                  nextDisabled={
+                    creatingAllPersonas || (!hasPdfTurns && textTurns.length === 0)
+                  }
+                  shortcutsEnabled={!confirmExitOpen}
                   nextContent={
                     hasPdfTurns ? (
                       <>
@@ -1969,9 +1853,14 @@ export function WhatsAppImportModal({
                       </>
                     ) : (
                       <>
-                        <Check className="h-3.5 w-3.5" />
-                        Import {textTurns.length} turn
-                        {textTurns.length !== 1 ? "s" : ""}
+                        {creatingAllPersonas ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
+                        {creatingAllPersonas
+                          ? "Creating personas..."
+                          : `Import ${textTurns.length} turn${textTurns.length !== 1 ? "s" : ""}`}
                       </>
                     )
                   }
@@ -2052,6 +1941,7 @@ export function WhatsAppImportModal({
                   backDisabled={anyUploading}
                   onNext={() => void handleProcessAndConfirm()}
                   nextDisabled={!canConfirmFiles}
+                  shortcutsEnabled={!confirmExitOpen}
                   nextContent={
                     anyUploading ? (
                       <>
@@ -2117,6 +2007,7 @@ interface StepFooterProps {
   backDisabled?: boolean;
   onNext: () => void;
   nextDisabled?: boolean;
+  shortcutsEnabled?: boolean;
   nextContent: React.ReactNode;
 }
 
@@ -2125,9 +2016,12 @@ function StepFooter({
   backDisabled,
   onNext,
   nextDisabled,
+  shortcutsEnabled = true,
   nextContent,
 }: StepFooterProps) {
   useEffect(() => {
+    if (!shortcutsEnabled) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
         // Prevent intercepting Enter when the user is interacting with form controls or standard buttons
@@ -2148,7 +2042,7 @@ function StepFooter({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onNext, nextDisabled]);
+  }, [onNext, nextDisabled, shortcutsEnabled]);
 
   return (
     <div

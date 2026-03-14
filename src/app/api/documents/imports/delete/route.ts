@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 type DeletePayload = {
-  streamId?: string;
   documentId?: string;
 };
 
@@ -17,23 +16,10 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as DeletePayload | null;
-  if (!body?.streamId || !body?.documentId) {
+  if (!body?.documentId) {
     return NextResponse.json(
-      { error: "streamId and documentId are required" },
+      { error: "documentId is required" },
       { status: 400 },
-    );
-  }
-
-  const { data: streamAccess, error: streamError } = await supabase
-    .from("streams")
-    .select("id")
-    .eq("id", body.streamId)
-    .single();
-
-  if (streamError || !streamAccess) {
-    return NextResponse.json(
-      { error: "You do not have access to this stream" },
-      { status: 403 },
     );
   }
 
@@ -43,12 +29,12 @@ export async function POST(request: Request) {
       "id, stream_id, import_status, storage_bucket, storage_path, deleted_at",
     )
     .eq("id", body.documentId)
-    .eq("stream_id", body.streamId)
+    .eq("created_by", authData.user.id)
     .single();
 
   if (documentError || !document) {
     return NextResponse.json(
-      { error: "Document not found in this stream" },
+      { error: "Document not found" },
       { status: 404 },
     );
   }
@@ -70,7 +56,7 @@ export async function POST(request: Request) {
     .from("documents")
     .update({ deleted_at: nowIso })
     .eq("id", body.documentId)
-    .eq("stream_id", body.streamId)
+    .eq("created_by", authData.user.id)
     .is("deleted_at", null);
 
   if (updateError) {

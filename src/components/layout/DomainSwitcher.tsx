@@ -129,7 +129,7 @@ export function DomainSwitcher({
           hideSidebar();
           router.push("/");
         }}
-        className={`group relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
+        className={`group relative mb-3 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
           pathname === "/"
             ? "bg-action-primary-bg text-white shadow-md scale-105"
             : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
@@ -140,6 +140,8 @@ export function DomainSwitcher({
           Home
         </div>
       </button>
+
+      <div className="mb-3 h-px w-8 bg-border-subtle" />
 
       <div className="mb-3 flex w-full flex-col items-center gap-2 px-2">
         <button
@@ -165,7 +167,7 @@ export function DomainSwitcher({
         </button>
       </div>
 
-      <div className="mb-4 h-px w-8 bg-border-subtle" />
+      <div className="mb-3 h-px w-8 bg-border-subtle" />
 
       {/* Domain List */}
       <div className="flex-1 w-full flex flex-col items-center space-y-3 overflow-y-auto px-2 scrollbar-hide py-1">

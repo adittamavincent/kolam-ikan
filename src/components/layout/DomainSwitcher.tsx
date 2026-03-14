@@ -121,65 +121,63 @@ export function DomainSwitcher({
   return (
     <div
       ref={switcherRef}
-      className="relative flex h-full w-16 flex-col items-center bg-surface-default py-4 border-r border-border-subtle shadow-sm z-50"
+      className="relative flex h-full w-12 flex-col items-center bg-surface-default border-r border-border-subtle shadow-sm z-50"
     >
       {/* Home / Root */}
-      <button
-        onClick={() => {
-          hideSidebar();
-          router.push("/");
-        }}
-        className={`group relative mb-3 flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
-          pathname === "/"
-            ? "bg-action-primary-bg text-white shadow-md scale-105"
-            : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
-        }`}
-      >
-        <Home className="h-5 w-5" />
-        <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
-          Home
-        </div>
-      </button>
+      <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-border-subtle">
+        <button
+          onClick={() => {
+            hideSidebar();
+            router.push("/");
+          }}
+          className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
+            pathname === "/"
+              ? "bg-action-primary-bg text-white shadow-md scale-105"
+              : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
+          }`}
+        >
+          <Home className="h-4 w-4" />
+          <div className="absolute left-14 hidden  bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+            Home
+          </div>
+        </button>
+      </div>
 
-      <div className="mb-3 h-px w-8 bg-border-subtle" />
-
-      <div className="mb-3 flex w-full flex-col items-center gap-2 px-2">
+      <div className="flex w-full flex-col items-center gap-2 border-b border-border-subtle py-2 px-2">
         <button
           onClick={() => onOpenGlobalSearch?.()}
-          className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
+          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
           title="Global Search (⌘⇧K)"
         >
-          <Search className="h-5 w-5" />
-          <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <Search className="h-4 w-4" />
+          <div className="absolute left-14 hidden  bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
             Global Search
           </div>
         </button>
 
         <button
           onClick={() => onOpenPersona?.()}
-          className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
+          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
           title="Manage Personas"
         >
-          <Users className="h-5 w-5" />
-          <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <Users className="h-4 w-4" />
+          <div className="absolute left-14 hidden  bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
             Personas
           </div>
         </button>
       </div>
 
-      <div className="mb-3 h-px w-8 bg-border-subtle" />
-
       {/* Domain List */}
-      <div className="flex-1 w-full flex flex-col items-center space-y-3 overflow-y-auto px-2 scrollbar-hide py-1">
+      <div className="flex-1 w-full flex flex-col items-center space-y-2 overflow-y-auto px-2 scrollbar-hide py-1">
         {!domains && !error && (
-          <div className="flex h-10 w-10 items-center justify-center">
-            <RefreshCw className="h-4 w-4 animate-spin text-text-muted" />
+          <div className="flex h-8 w-8 items-center justify-center">
+            <RefreshCw className="h-3 w-3 animate-spin text-text-muted" />
           </div>
         )}
 
         {error && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-status-error-bg/20 text-status-error-text">
-            <AlertCircle className="h-5 w-5" />
+          <div className="flex h-8 w-8 items-center justify-center  bg-status-error-bg/20 text-status-error-text">
+            <AlertCircle className="h-4 w-4" />
           </div>
         )}
 
@@ -203,20 +201,20 @@ export function DomainSwitcher({
             onMouseLeave={() => setHoveredDomainTooltip(null)}
             title={`${domain.name} (double-click to edit)`}
             aria-label={domain.name}
-            className={`group relative flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200 ${
+            className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
               currentDomainId === domain.id
                 ? "bg-action-primary-bg text-white shadow-md scale-105"
                 : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
             }`}
           >
             {domain.icon ? (
-              <DynamicIcon name={domain.icon} className="h-5 w-5" />
+              <DynamicIcon name={domain.icon} className="h-4 w-4" />
             ) : (
-              <DynamicIcon name={domain.name} className="h-5 w-5" />
+              <DynamicIcon name={domain.name} className="h-4 w-4" />
             )}
             {/* Active Indicator */}
             {currentDomainId === domain.id && (
-              <div className="absolute -left-2 h-6 w-1 rounded-r-xl bg-action-primary-bg" />
+              <div className="absolute -left-2 h-5 w-1  bg-action-primary-bg" />
             )}
           </button>
         ))}
@@ -226,10 +224,10 @@ export function DomainSwitcher({
           onClick={() => setIsCreateModalOpen(true)}
           aria-label="Add Domain"
           title="Add Domain"
-          className="group relative flex h-10 w-10 items-center justify-center rounded-xl bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg hover:scale-105"
+          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg hover:scale-105"
         >
-          <Plus className="h-5 w-5" />
-          <div className="absolute left-14 hidden rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <Plus className="h-4 w-4" />
+          <div className="absolute left-14 hidden  bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
             Add Domain
           </div>
         </button>
@@ -237,7 +235,7 @@ export function DomainSwitcher({
 
       {hoveredDomainTooltip && (
         <div
-          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap rounded-sm bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
+          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap  bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
           style={{ top: hoveredDomainTooltip.top }}
         >
           {hoveredDomainTooltip.name}
@@ -245,11 +243,11 @@ export function DomainSwitcher({
       )}
 
       {/* User Menu / Profile at bottom */}
-      <div className="mt-auto flex flex-col items-center gap-4 pt-4 border-t border-border-subtle w-full">
+      <div className="mt-auto flex h-12 w-full shrink-0 items-center justify-center border-t border-border-subtle bg-surface-default">
         <Menu as="div" className="relative">
           <MenuButton
             id={`${profileMenuIdBase}-button`}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm"
+            className="flex h-8 w-8 items-center justify-center  border border-border-subtle bg-surface-default text-text-default transition hover:bg-surface-subtle focus:outline-none focus:ring-2 focus:ring-action-primary-bg overflow-hidden shadow-sm"
           >
             {avatarUrl ? (
               <Image
@@ -277,7 +275,7 @@ export function DomainSwitcher({
           >
             <MenuItems
               id={`${profileMenuIdBase}-items`}
-              className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 rounded-xl border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+              className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56  border border-border-default bg-surface-default p-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
             >
               <div className="px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
@@ -295,7 +293,7 @@ export function DomainSwitcher({
                 {({ focus }: { focus: boolean }) => (
                   <button
                     onClick={() => setProfileOpen(true)}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs text-text-default`}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2  px-3 py-2 text-xs text-text-default`}
                   >
                     <Settings className="h-4 w-4 text-text-muted" />
                     Profile settings
@@ -308,7 +306,7 @@ export function DomainSwitcher({
                     type="button"
                     onClick={handleSignOut}
                     disabled={loading || signingOut || status !== "signed_in"}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 rounded-sm px-3 py-2 text-xs text-text-default disabled:opacity-50`}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2  px-3 py-2 text-xs text-text-default disabled:opacity-50`}
                   >
                     <LogOut className="h-4 w-4 text-text-muted" />
                     {signingOut ? "Signing out..." : "Sign out"}
@@ -369,7 +367,7 @@ export function DomainSwitcher({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0 scale-95"
               >
-                <DialogPanel className="w-full max-w-md transform overflow-hidden rounded-xl bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
+                <DialogPanel className="w-full max-w-md transform overflow-hidden  bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
                   <DialogTitle
                     as="h3"
                     className="text-lg font-semibold leading-6 text-text-default"
@@ -385,10 +383,10 @@ export function DomainSwitcher({
                           width={64}
                           height={64}
                           unoptimized
-                          className="rounded-xl object-cover border-2 border-border-subtle"
+                          className=" object-cover border-2 border-border-subtle"
                         />
                       ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-action-primary-bg/10 text-xl font-bold text-action-primary-bg border-2 border-action-primary-bg/20">
+                        <div className="flex h-16 w-16 items-center justify-center  bg-action-primary-bg/10 text-xl font-bold text-action-primary-bg border-2 border-action-primary-bg/20">
                           {initials}
                         </div>
                       )}
@@ -400,7 +398,7 @@ export function DomainSwitcher({
                       </div>
                     </div>
 
-                    <div className="rounded-sm bg-surface-subtle p-4 border border-border-subtle">
+                    <div className=" bg-surface-subtle p-4 border border-border-subtle">
                       <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">
                         Account Details
                       </p>
@@ -424,7 +422,7 @@ export function DomainSwitcher({
                   <div className="mt-6 flex justify-end">
                     <button
                       type="button"
-                      className="inline-flex justify-center rounded-sm border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 transition-colors"
+                      className="inline-flex justify-center  border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 transition-colors"
                       onClick={() => setProfileOpen(false)}
                     >
                       Close

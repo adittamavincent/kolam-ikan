@@ -183,7 +183,7 @@ export function TokenCounter({
   }, [tokens, overLimit, onTokenUpdate]);
 
   return (
-    <div className="my-2 flex flex-col gap-3 rounded-xl border border-border-default/50 bg-surface-subtle/30 p-5 shadow-sm">
+    <div className="my-2 flex flex-col gap-3  border border-border-default/50 bg-surface-subtle/30 p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-text-default">
@@ -206,20 +206,20 @@ export function TokenCounter({
       </div>
 
       {overLimit && (
-        <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-3 rounded-sm bg-status-error-bg/10 p-3 pt-2.5 border border-status-error-bg/20">
+        <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-3  bg-status-error-bg/10 p-3 pt-2.5 border border-status-error-bg/20">
           <span className="text-sm font-medium text-status-error-text w-full">
             Token limit exceeded
           </span>
           <div className="flex gap-2">
             <button
               onClick={onReduceSelection}
-              className="rounded-sm bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm ring-1 ring-border-default/50 hover:bg-surface-hover transition-colors whitespace-nowrap"
+              className=" bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm ring-1 ring-border-default/50 hover:bg-surface-hover transition-colors whitespace-nowrap"
             >
               Select Last 5
             </button>
             <button
               onClick={onAutoSummarize}
-              className="rounded-sm bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm ring-1 ring-border-default/50 hover:bg-surface-hover transition-colors whitespace-nowrap"
+              className=" bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm ring-1 ring-border-default/50 hover:bg-surface-hover transition-colors whitespace-nowrap"
             >
               Drop Canvas
             </button>

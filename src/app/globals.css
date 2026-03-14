@@ -352,3 +352,10 @@ body {
 .blocknote-readonly .bn-editor {
   padding-inline: 0 !important;
 }
+
+@layer base {
+  button, 
+  [role="button"] {
+    @apply transition-all duration-200 active:scale-[0.98] active:translate-y-[0.5px];
+  }
+}

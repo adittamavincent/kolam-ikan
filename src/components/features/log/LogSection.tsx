@@ -129,9 +129,9 @@ export function LogSection({
 
   if (isPdfSection) {
     return (
-      <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/40 rounded-sm border border-border-subtle">
+      <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/40  border border-border-subtle">
         <div className="shrink-0 pt-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-surface-subtle text-text-subtle border border-border-subtle">
+          <div className="flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-subtle border border-border-subtle">
             <FileText className="h-4 w-4" />
           </div>
         </div>
@@ -156,7 +156,7 @@ export function LogSection({
             {(section.section_pdf_attachments ?? []).map((attachment) => (
               <div
                 key={attachment.id}
-                className="flex items-start gap-2 rounded-sm border border-border-subtle bg-surface-subtle/40 px-2 py-1.5"
+                className="flex items-start gap-2  border border-border-subtle bg-surface-subtle/40 px-2 py-1.5"
               >
                 <PdfAttachmentThumbnail
                   storagePath={attachment.document?.storage_path}
@@ -195,12 +195,12 @@ export function LogSection({
   }
 
   return (
-    <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 rounded-sm">
+    <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 ">
       {/* Sidebar / Persona Indicator */}
       <div className="shrink-0 pt-1">
         <Menu as="div" className="relative">
           <MenuButton
-            className="flex h-8 w-8 items-center justify-center rounded-sm transition-all hover:scale-105 focus:outline-none"
+            className="flex h-8 w-8 items-center justify-center  transition-all hover:scale-105 focus:outline-none"
             style={{
               backgroundColor: `${currentPersona?.color || "#94a3b8"}15`,
               color: currentPersona?.color || "#94a3b8",
@@ -222,7 +222,7 @@ export function LogSection({
             leaveFrom="transform opacity-100 scale-100"
             leaveTo="transform opacity-0 scale-95"
           >
-            <MenuItems className="absolute left-0 top-full z-50 mt-1 max-h-60 w-56 overflow-auto rounded-xl border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
+            <MenuItems className="absolute left-0 top-full z-50 mt-1 max-h-60 w-56 overflow-auto  border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
               <div className="px-2 py-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
                 Assign Persona
               </div>
@@ -240,11 +240,11 @@ export function LogSection({
                         focus
                           ? "bg-surface-subtle text-text-default"
                           : "text-text-subtle"
-                      } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                      } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
                     >
                       <div className="flex items-center gap-2">
                         <div
-                          className="flex h-5 w-5 items-center justify-center rounded-sm"
+                          className="flex h-5 w-5 items-center justify-center "
                           style={{
                             backgroundColor: `${persona.color}20`,
                             color: persona.color,
@@ -258,7 +258,7 @@ export function LogSection({
                         <span>{persona.name}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="rounded-xl border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                        <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
                           Global
                         </span>
                         {currentPersona?.id === persona.id && (
@@ -283,11 +283,11 @@ export function LogSection({
                         focus
                           ? "bg-surface-subtle text-text-default"
                           : "text-text-subtle"
-                      } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                      } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
                     >
                       <div className="flex items-center gap-2">
                         <div
-                          className="flex h-5 w-5 items-center justify-center rounded-sm ring-1 ring-amber-500/40"
+                          className="flex h-5 w-5 items-center justify-center  ring-1 ring-amber-500/40"
                           style={{
                             backgroundColor: `${persona.color}20`,
                             color: persona.color,
@@ -301,7 +301,7 @@ export function LogSection({
                         <span>{persona.name}</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                        <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
                           Shadow
                         </span>
                         {currentPersona?.id === persona.id && (
@@ -324,7 +324,7 @@ export function LogSection({
             {displayName}
           </span>
           {currentPersona && isShadowPersona(currentPersona) && (
-            <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+            <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
               Shadow Persona
             </span>
           )}

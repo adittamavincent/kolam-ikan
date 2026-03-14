@@ -1004,7 +1004,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   if (isLoading) {
     return (
-      <div className="relative rounded-xl border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
+      <div className="relative  border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
         <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
       </div>
     );
@@ -1012,7 +1012,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   return (
     <>
-      <div className="relative rounded-xl border border-border-default bg-surface-default group">
+      <div className="relative  border border-border-default bg-surface-default group">
       {(status === "saving" || status === "error") && (
         <NavigationGuard onFlush={flushPendingSaves} />
       )}
@@ -1022,7 +1022,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
         {/* Persona picker */}
         <div
-          className={`flex items-center gap-2 flex-wrap px-3 py-1 bg-surface-subtle/50 rounded-t-xl ${sections.length > 0 ? "border-b border-border-default/50" : "rounded-b-xl"}`}
+          className={`flex items-center gap-2 flex-wrap px-3 py-1 bg-surface-subtle/50  ${sections.length > 0 ? "border-b border-border-default/50" : ""}`}
         >
           <span className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
             New Entry as
@@ -1032,7 +1032,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             <button
               key={`quick-persona-${persona.id}`}
               onClick={() => addPersona(persona.id)}
-              className={`flex items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] font-medium text-text-default transition-colors ${
+              className={`flex items-center gap-1.5  border px-2 py-1 text-[11px] font-medium text-text-default transition-colors ${
                 isAiPersona(persona)
                   ? "border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15"
                   : isShadowPersona(persona)
@@ -1042,7 +1042,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               title={`Quick add ${persona.name}`}
             >
               <div
-                className="flex h-4 w-4 items-center justify-center rounded-sm"
+                className="flex h-4 w-4 items-center justify-center "
                 style={{
                   backgroundColor: `${persona.color}20`,
                   color: persona.color,
@@ -1055,7 +1055,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           ))}
 
           <Menu as="div" className="relative z-30">
-            <MenuButton className="flex items-center gap-1.5 rounded-sm py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none">
+            <MenuButton className="flex items-center gap-1.5  py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none">
               <Plus className="h-3 w-3 text-text-subtle" />
               <span className="text-text-default">Add Persona</span>
             </MenuButton>
@@ -1072,7 +1072,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <MenuItems
                 anchor={{ to: "bottom start", gap: 4 }}
                 portal
-                className="z-9999 w-56 max-h-60 overflow-y-auto overflow-hidden rounded-xl border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
+                className="z-9999 w-56 max-h-60 overflow-y-auto overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
               >
                 <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                   Add Author Section
@@ -1093,11 +1093,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           active
                             ? "bg-surface-subtle text-text-default"
                             : "text-text-subtle"
-                        } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                        } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
                       >
                         <div className="flex items-center gap-2">
                           <div
-                            className="flex h-5 w-5 items-center justify-center rounded-sm"
+                            className="flex h-5 w-5 items-center justify-center "
                             style={{
                               backgroundColor: `${persona.color}20`,
                               color: persona.color,
@@ -1110,7 +1110,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           </div>
                           <span>{persona.name}</span>
                         </div>
-                        <span className="rounded-xl border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                        <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
                           Global
                         </span>
                       </button>
@@ -1133,11 +1133,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           active
                             ? "bg-surface-subtle text-text-default"
                             : "text-text-subtle"
-                        } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                        } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
                       >
                         <div className="flex items-center gap-2">
                           <div
-                            className="flex h-5 w-5 items-center justify-center rounded-sm ring-1 ring-amber-500/40"
+                            className="flex h-5 w-5 items-center justify-center  ring-1 ring-amber-500/40"
                             style={{
                               backgroundColor: `${persona.color}20`,
                               color: persona.color,
@@ -1150,7 +1150,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           </div>
                           <span>{persona.name}</span>
                         </div>
-                        <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                        <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
                           Shadow
                         </span>
                       </button>
@@ -1168,7 +1168,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         active
                           ? "bg-surface-subtle text-text-default"
                           : "text-text-subtle"
-                      } group flex w-full items-center rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                      } group flex w-full items-center  px-2 py-1.5 text-xs transition-colors`}
                     >
                       <Settings className="h-3 w-3 mr-2" />
                       Manage Personas
@@ -1182,7 +1182,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           {sections.length > 0 && (
             <button
               onClick={requestClearSections}
-              className="ml-auto rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+              className="ml-auto  p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
               title="Delete all sections"
             >
               <X className="h-4 w-4" />
@@ -1234,7 +1234,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           >
                             <div className="flex items-center gap-2">
                               <button
-                                className="cursor-grab rounded-sm p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
+                                className="cursor-grab  p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
                                 aria-label="Drag to reorder"
                                 {...dragHandleProps}
                               >
@@ -1242,9 +1242,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               </button>
 
                               <Menu as="div" className="relative z-30">
-                                <MenuButton className="flex items-center gap-2 rounded-sm hover:bg-surface-subtle/50 px-1 py-0.5 transition-colors focus:outline-none">
+                                <MenuButton className="flex items-center gap-2  hover:bg-surface-subtle/50 px-1 py-0.5 transition-colors focus:outline-none">
                                   <div
-                                    className="flex h-4 w-4 items-center justify-center rounded-sm"
+                                    className="flex h-4 w-4 items-center justify-center "
                                     style={{
                                       backgroundColor: `${persona.color}20`,
                                       color: persona.color,
@@ -1259,12 +1259,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     {persona.name}
                                   </span>
                                   {isShadowPersona(persona) && (
-                                    <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
+                                    <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
                                       Shadow
                                     </span>
                                   )}
                                   {isAiPersona(persona) && (
-                                    <span className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700 dark:text-sky-400">
+                                    <span className=" border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700 dark:text-sky-400">
                                       AI
                                     </span>
                                   )}
@@ -1283,7 +1283,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   <MenuItems
                                     anchor={{ to: "bottom start", gap: 4 }}
                                     portal
-                                    className="z-9999 w-48 max-h-60 overflow-y-auto overflow-hidden rounded-xl border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
+                                    className="z-9999 w-48 max-h-60 overflow-y-auto overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
                                   >
                                     <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                                       Switch to...
@@ -1304,10 +1304,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               active
                                                 ? "bg-surface-subtle text-text-default"
                                                 : "text-text-subtle"
-                                            } group flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                                            } group flex w-full items-center gap-2  px-2 py-1.5 text-xs transition-colors`}
                                           >
                                             <div
-                                              className="flex h-4 w-4 items-center justify-center rounded-sm"
+                                              className="flex h-4 w-4 items-center justify-center "
                                               style={{
                                                 backgroundColor: `${p.color}20`,
                                                 color: p.color,
@@ -1319,7 +1319,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               />
                                             </div>
                                             <span>{p.name}</span>
-                                            <span className="ml-auto rounded-xl border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[9px] text-text-muted">
+                                            <span className="ml-auto  border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[9px] text-text-muted">
                                               Global
                                             </span>
                                             {p.id === section.personaId && (
@@ -1346,10 +1346,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               active
                                                 ? "bg-surface-subtle text-text-default"
                                                 : "text-text-subtle"
-                                            } group flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                                            } group flex w-full items-center gap-2  px-2 py-1.5 text-xs transition-colors`}
                                           >
                                             <div
-                                              className="flex h-4 w-4 items-center justify-center rounded-sm ring-1 ring-amber-500/40"
+                                              className="flex h-4 w-4 items-center justify-center  ring-1 ring-amber-500/40"
                                               style={{
                                                 backgroundColor: `${p.color}20`,
                                                 color: p.color,
@@ -1361,7 +1361,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               />
                                             </div>
                                             <span>{p.name}</span>
-                                            <span className="ml-auto rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
+                                            <span className="ml-auto  border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
                                               Shadow
                                             </span>
                                             {p.id === section.personaId && (
@@ -1378,7 +1378,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                             <button
                               onClick={() => removeSection(instanceId)}
-                              className="text-text-muted hover:text-text-default p-0.5 rounded-sm hover:bg-surface-subtle transition-colors"
+                              className="text-text-muted hover:text-text-default p-0.5  hover:bg-surface-subtle transition-colors"
                               title="Remove this section"
                             >
                               <X className="h-3 w-3" />
@@ -1468,17 +1468,17 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         }`}>
                           <div className="flex items-center gap-2">
                             <button
-                              className="cursor-grab rounded-sm p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
+                              className="cursor-grab  p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
                               aria-label="Drag to reorder"
                               {...dragHandleProps}
                             >
                               <GripVertical className="h-3 w-3" />
                             </button>
-                            <div className="flex items-center gap-2 rounded-sm px-1 py-0.5">
+                            <div className="flex items-center gap-2  px-1 py-0.5">
                               {pdfPersona ? (
                                 <>
                                   <div
-                                    className="flex h-4 w-4 items-center justify-center rounded-sm"
+                                    className="flex h-4 w-4 items-center justify-center "
                                     style={{
                                       backgroundColor: `${pdfPersona.color}20`,
                                       color: pdfPersona.color,
@@ -1493,12 +1493,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     {pdfPersona.name}
                                   </span>
                                   {isShadowPersona(pdfPersona) && (
-                                    <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
+                                    <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
                                       Shadow
                                     </span>
                                   )}
                                   {isAiPersona(pdfPersona) && (
-                                    <span className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700 dark:text-sky-400">
+                                    <span className=" border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700 dark:text-sky-400">
                                       AI
                                     </span>
                                   )}
@@ -1517,7 +1517,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                           <button
                             onClick={() => removeSection(instanceId)}
-                            className="text-text-muted hover:text-text-default p-0.5 rounded-sm hover:bg-surface-subtle transition-colors"
+                            className="text-text-muted hover:text-text-default p-0.5  hover:bg-surface-subtle transition-colors"
                             title="Remove this attachment section"
                           >
                             <X className="h-3 w-3" />
@@ -1527,7 +1527,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         <div className="p-4 space-y-3">
                           {(!pdfPersona || !isShadowPersona(pdfPersona)) && (
                             <div className="flex flex-wrap items-center gap-2">
-                              <label className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
+                              <label className="inline-flex cursor-pointer items-center gap-2  border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
                                 <Upload className="h-3 w-3" />
                                 Upload PDF
                                 <input
@@ -1545,7 +1545,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
+                                className="inline-flex items-center gap-2  border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
                                 onClick={() => {
                                   setImportModalFiles([]);
                                   setPdfPickerTargetInstanceId(instanceId);
@@ -1565,7 +1565,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           )}
 
                           {effectiveAttachments.length === 0 ? (
-                            <div className="rounded-sm border border-dashed border-border-subtle bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
+                            <div className=" border border-dashed border-border-subtle bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
                               Drop or attach one or more PDFs to start building
                               this section.
                             </div>
@@ -1598,7 +1598,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                       attachment.fileHash ||
                                       attachment.titleSnapshot
                                     }
-                                    className={`relative overflow-hidden rounded-sm border border-border-subtle bg-surface-default px-3 py-2 transition-colors ${"cursor-default"}`}
+                                    className={`relative overflow-hidden  border border-border-subtle bg-surface-default px-3 py-2 transition-colors ${"cursor-default"}`}
                                     title={
                                       isProcessing
                                         ? "Processing Docling..."
@@ -1629,7 +1629,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             progressPercent={progressPercent ?? 0}
                                           />
                                           {isProcessing && (
-                                            <div className="absolute inset-0 flex items-center justify-center rounded-sm bg-black/5 backdrop-blur-[1px]">
+                                            <div className="absolute inset-0 flex items-center justify-center  bg-black/5 backdrop-blur-[1px]">
                                               <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
                                             </div>
                                           )}
@@ -1674,7 +1674,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               "pdf",
                                             );
                                           }}
-                                          className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                          className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                                           aria-label={`Preview ${attachment.titleSnapshot}`}
                                           title="Open PDF preview"
                                         >
@@ -1692,7 +1692,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             );
                                           }}
                                           disabled={!canOpenParsed}
-                                          className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                                          className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
                                           aria-label={`Open parsed Docling for ${attachment.titleSnapshot}`}
                                           title={
                                             canOpenParsed
@@ -1710,7 +1710,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             onClick={(event) => {
                                               event.stopPropagation();
                                             }}
-                                            className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                            className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                                             aria-label="Open PDF in new tab"
                                             title="Open in new tab"
                                           >
@@ -1749,7 +1749,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                           onClickCapture={(event) => {
                                             event.stopPropagation();
                                           }}
-                                          className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                          className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                                           aria-label={`Remove ${attachment.titleSnapshot}`}
                                         >
                                           <X className="h-3.5 w-3.5" />
@@ -1774,16 +1774,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
         {/* Footer — commit action */}
         {sections.length > 0 && (
-          <div className="flex items-center justify-between px-3 py-2 bg-surface-subtle/50 border-t border-border-default/50 rounded-b-xl">
+          <div className="flex items-center justify-between px-3 py-2 bg-surface-subtle/50 border-t border-border-default/50 ">
             <div className="text-[10px] text-text-muted">
-              <kbd className="rounded-sm border border-border-subtle bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
+              <kbd className=" border border-border-subtle bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
                 ⌘+Enter
               </kbd>
               <span className="mx-1">→</span>
               <span className="font-medium">{selectedBranch || "main"}</span>
             </div>
             {commitBlockedByPdfStatus && (
-              <div className="inline-flex items-center gap-2 ml-3 rounded-sm border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+              <div className="inline-flex items-center gap-2 ml-3  border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
                   <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-3 w-3 shrink-0"
@@ -1808,7 +1808,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             <button
               onClick={handleCommit}
               disabled={status === "saving" || commitBlockedByPdfStatus}
-              className={`flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-medium transition-all ${
                 status !== "saving" && !commitBlockedByPdfStatus
                   ? "bg-action-primary-bg text-white hover:bg-action-primary-hover"
                   : "bg-surface-subtle text-text-muted cursor-not-allowed"
@@ -1842,7 +1842,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       >
         <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col rounded-xl border border-border-default bg-surface-default shadow-2xl">
+          <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col  border border-border-default bg-surface-default shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
               <div className="min-w-0 flex-1">
                 <DialogTitle className="truncate text-sm font-semibold text-text-default">
@@ -1856,7 +1856,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                     onClick={() => {
                       setActivePreviewTab("pdf");
                     }}
-                    className={`rounded-sm px-2 py-1 text-[11px] font-medium transition-colors ${
+                    className={` px-2 py-1 text-[11px] font-medium transition-colors ${
                       activePreviewTab === "pdf"
                         ? "bg-action-primary-bg text-white"
                         : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
@@ -1879,7 +1879,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         );
                       }
                     }}
-                    className={`rounded-sm px-2 py-1 text-[11px] font-medium transition-colors ${
+                    className={` px-2 py-1 text-[11px] font-medium transition-colors ${
                       activePreviewTab === "parsed"
                         ? "bg-action-primary-bg text-white"
                         : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
@@ -1893,7 +1893,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 type="button"
                 onClick={closeAttachmentPreview}
                 disabled={parsedPreviewLoading}
-                className="rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
+                className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
                 aria-label="Close parsed content preview"
               >
                 <X className="h-4 w-4" />
@@ -1905,11 +1905,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 (attachmentPreview?.previewUrl ? (
                   <iframe
                     src={attachmentPreview.previewUrl}
-                    className="h-[68vh] w-full rounded-sm border border-border-subtle bg-surface-subtle"
+                    className="h-[68vh] w-full  border border-border-subtle bg-surface-subtle"
                     title={`PDF preview for ${attachmentPreview.title}`}
                   />
                 ) : (
-                  <div className="rounded-sm border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">
+                  <div className=" border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">
                     Preview is not available for this attachment yet.
                   </div>
                 ))}
@@ -1917,7 +1917,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               {activePreviewTab === "parsed" && (
                 <>
                   {attachmentPreview?.importStatus !== "completed" && (
-                    <div className="rounded-sm border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                    <div className=" border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
                       Parsed Docling output is not ready yet. Wait until import
                       status is completed.
                     </div>
@@ -1934,7 +1934,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   {attachmentPreview?.importStatus === "completed" &&
                     !parsedPreviewLoading &&
                     parsedPreviewError && (
-                      <div className="rounded-sm border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
+                      <div className=" border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
                         {parsedPreviewError}
                       </div>
                     )}
@@ -1943,7 +1943,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                     !parsedPreviewLoading &&
                     !parsedPreviewError &&
                     parsedPreview && (
-                      <pre className="whitespace-pre-wrap wrap-break-word rounded-sm border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
+                      <pre className="whitespace-pre-wrap wrap-break-word  border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
                         {parsedPreview.markdown}
                       </pre>
                     )}

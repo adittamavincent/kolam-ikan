@@ -11,7 +11,7 @@ import {
   FolderOpen,
   FileText,
   Layers,
-  ArrowRight,
+  
   Plus,
   Clock,
   Sparkles,
@@ -70,28 +70,30 @@ interface DomainWithCounts extends Domain {
 
 function StatCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-xl border border-border-subtle bg-surface-default p-5">
-      <div className="mb-3 h-10 w-10 rounded-xl bg-surface-elevated" />
-      <div className="mb-2 h-7 w-16 rounded-sm bg-surface-elevated" />
-      <div className="h-4 w-24 rounded-sm bg-surface-elevated" />
+    <div className="border border-border-subtle bg-surface-default p-4 flex flex-col justify-between">
+      <div className="flex items-center justify-between mb-2">
+        <div className="h-3 w-16 bg-surface-elevated" />
+        <div className="h-4 w-4 bg-surface-elevated" />
+      </div>
+      <div className="h-6 w-12 bg-surface-elevated mt-2" />
     </div>
   );
 }
 
 function DomainCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-xl border border-border-subtle bg-surface-default p-5">
-      <div className="mb-4 flex items-center gap-3">
-        <div className="h-11 w-11 rounded-xl bg-surface-elevated" />
-        <div>
-          <div className="mb-2 h-5 w-28 rounded-sm bg-surface-elevated" />
-          <div className="h-3 w-40 rounded-sm bg-surface-elevated" />
+    <div className="border border-border-subtle bg-surface-default p-4">
+      <div className="mb-3 flex items-center gap-3">
+        <div className="h-10 w-10 bg-surface-elevated" />
+        <div className="flex-1">
+          <div className="mb-1.5 h-3 w-24 bg-surface-elevated" />
+          <div className="h-2 w-32 bg-surface-elevated" />
         </div>
       </div>
-      <div className="flex gap-4">
-        <div className="h-4 w-16 rounded-sm bg-surface-elevated" />
-        <div className="h-4 w-16 rounded-sm bg-surface-elevated" />
-        <div className="h-4 w-16 rounded-sm bg-surface-elevated" />
+      <div className="flex gap-4 mt-auto pt-2 border-t border-border-subtle/50 w-full">
+        <div className="h-2.5 w-12 bg-surface-elevated" />
+        <div className="h-2.5 w-12 bg-surface-elevated" />
+        <div className="h-2.5 w-12 bg-surface-elevated" />
       </div>
     </div>
   );
@@ -99,11 +101,28 @@ function DomainCardSkeleton() {
 
 function ActivityItemSkeleton() {
   return (
-    <div className="animate-pulse flex items-start gap-3 rounded-xl border border-border-subtle bg-surface-default p-4">
-      <div className="h-9 w-9 rounded-sm bg-surface-elevated" />
+    <div className="flex items-start gap-3 border border-border-subtle bg-surface-default p-3">
+      <div className="h-6 w-6 shrink-0 bg-surface-elevated" />
       <div className="flex-1">
-        <div className="mb-2 h-4 w-3/4 rounded-sm bg-surface-elevated" />
-        <div className="h-3 w-1/2 rounded-sm bg-surface-elevated" />
+        <div className="mb-1 h-3 w-3/4 bg-surface-elevated" />
+        <div className="h-2 w-1/2 bg-surface-elevated" />
+      </div>
+      <div className="shrink-0 h-2 w-8 bg-surface-elevated mt-0.5" />
+    </div>
+  );
+}
+
+function QuickActionSkeleton() {
+  return (
+    <div className="flex items-center gap-3 border border-border-subtle bg-surface-default p-3">
+      <div className="h-8 w-8 shrink-0 bg-surface-elevated" />
+      <div className="min-w-0 flex-1">
+        <div className="flex h-[18px] items-center">
+          <div className="h-3 w-24 bg-surface-elevated" />
+        </div>
+        <div className="mt-0.5 flex h-[16px] items-center">
+          <div className="h-2 w-32 bg-surface-elevated" />
+        </div>
       </div>
     </div>
   );
@@ -150,12 +169,12 @@ function StatCard({
   const c = colorMap[color] ?? colorMap.blue;
 
   return (
-    <div className="group rounded-xl border border-border-subtle bg-surface-default p-5">
-      <div className={`mb-3 inline-flex rounded-xl ${c.iconBg} p-2.5`}>
-        <Icon className={`h-5 w-5 ${c.text}`} />
+    <div className="group border border-border-subtle bg-surface-default p-4 flex flex-col justify-between">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs uppercase tracking-wider text-text-subtle font-medium">{label}</p>
+        <Icon className={`h-4 w-4 ${c.text}`} />
       </div>
       <p className="text-2xl font-bold text-text-default">{value}</p>
-      <p className="mt-0.5 text-sm text-text-subtle">{label}</p>
     </div>
   );
 }
@@ -170,10 +189,10 @@ function DomainCard({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full flex-col rounded-xl border border-border-subtle bg-surface-default p-5 text-left transition-all hover:border-action-primary-bg/50"
+      className="group flex w-full flex-col border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-action-primary-bg/50 active:scale-[0.98] active:translate-y-px"
     >
-      <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-action-primary-bg/10 text-2xl group-hover:bg-action-primary-bg/20 transition-colors">
+      <div className="mb-3 flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-action-primary-bg/10 text-xl group-hover:bg-action-primary-bg/20 transition-colors">
           <DynamicIcon name={domain.icon ?? domain.name} />
         </span>
         <div className="min-w-0 flex-1">
@@ -186,21 +205,16 @@ function DomainCard({
             </p>
           )}
         </div>
-        <ArrowRight className="h-4 w-4 text-text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-action-primary-bg" />
       </div>
-      <div className="flex gap-4 text-xs text-text-muted">
+      <div className="flex gap-4 text-xs text-text-muted mt-auto pt-2 border-t border-border-subtle/50 w-full">
         <span className="flex items-center gap-1">
-          <FolderOpen className="h-3.5 w-3.5" />
-          {domain.cabinetCount}{" "}
-          {domain.cabinetCount === 1 ? "cabinet" : "cabinets"}
+          <span className="font-medium">{domain.cabinetCount}</span> cab
         </span>
         <span className="flex items-center gap-1">
-          <Layers className="h-3.5 w-3.5" />
-          {domain.streamCount} {domain.streamCount === 1 ? "stream" : "streams"}
+          <span className="font-medium">{domain.streamCount}</span> str
         </span>
         <span className="flex items-center gap-1">
-          <FileText className="h-3.5 w-3.5" />
-          {domain.entryCount} {domain.entryCount === 1 ? "entry" : "entries"}
+          <span className="font-medium">{domain.entryCount}</span> ent
         </span>
       </div>
     </button>
@@ -223,9 +237,9 @@ function RecentActivityItem({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-start gap-3 rounded-xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-border-default relative"
+      className="group flex w-full items-start gap-3 border border-border-subtle bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-surface-subtle text-lg transition-colors group-hover:bg-action-primary-bg/10">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle text-sm transition-colors group-hover:bg-action-primary-bg/10">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -236,7 +250,7 @@ function RecentActivityItem({
         </div>
         <p className="truncate text-xs text-text-subtle">{subtitle}</p>
       </div>
-      <span className="shrink-0 text-xs text-text-muted">{time}</span>
+      <span className="shrink-0 text-[10px] text-text-muted mt-0.5">{time}</span>
     </button>
   );
 }
@@ -255,14 +269,14 @@ function QuickAction({
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-4 rounded-xl border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-action-primary-bg/50"
+      className="group flex items-center gap-3 border border-border-subtle bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.98] active:translate-y-px"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-action-primary-bg/10 transition-colors group-hover:bg-action-primary-bg/20">
-        <Icon className="h-5 w-5 text-action-primary-bg" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-action-primary-bg/10 transition-colors group-hover:bg-action-primary-bg/20">
+        <Icon className="h-4 w-4 text-action-primary-bg" />
       </div>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-text-default">{label}</p>
-        <p className="text-xs text-text-subtle">{description}</p>
+        <p className="text-sm font-semibold text-text-default leading-tight">{label}</p>
+        <p className="text-[11px] text-text-subtle mt-0.5">{description}</p>
       </div>
     </button>
   );
@@ -276,12 +290,12 @@ function ErrorBanner({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-status-error-border bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
+    <div className="flex items-center gap-3  border border-status-error-border bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
       <AlertCircle className="h-5 w-5 shrink-0" />
       <span className="flex-1">{message}</span>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1 rounded-sm bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
+        className="inline-flex items-center gap-1  bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
       >
         <RefreshCw className="h-3.5 w-3.5" />
         Retry
@@ -465,23 +479,18 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-1 overflow-y-auto bg-surface-subtle">
-      <div className="mx-auto w-full max-w-5xl px-6 py-8 md:px-10 md:py-10">
+      <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-8">
         {/* ---- Welcome Section ---- */}
-        <div className="mb-8">
-          <div className="flex items-center gap-2 text-action-primary-bg mb-1">
-            <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-semibold uppercase tracking-wider">
-              Dashboard
-            </span>
+        <div className="mb-6 flex justify-between items-end">
+          <div>
+            <h1 className="text-xl font-bold text-text-default md:text-2xl">
+              {greeting},{" "}
+              <span className="text-action-primary-bg">{displayName}</span>
+            </h1>
+            <p className="mt-1 text-xs text-text-subtle">
+              Pick up where you left off.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-text-default md:text-3xl">
-            {greeting},{" "}
-            <span className="text-action-primary-bg">{displayName}</span>
-          </h1>
-          <p className="mt-1 text-sm text-text-subtle">
-            Here&apos;s an overview of your workspace. Pick up where you left
-            off.
-          </p>
         </div>
 
         {/* ---- Error Banners ---- */}
@@ -536,12 +545,18 @@ export default function HomePage() {
         </section>
 
         {/* ---- Quick Actions ---- */}
-        {!isLoading && totalDomains > 0 && (
-          <section className="mb-8">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text-default">
-              <TrendingUp className="h-4 w-4 text-text-muted" />
-              Quick Actions
-            </h2>
+        <section className="mb-8">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text-default">
+            <TrendingUp className="h-4 w-4 text-text-muted" />
+            Quick Actions
+          </h2>
+          {isLoading ? (
+            <div className="grid gap-3 md:grid-cols-3">
+              <QuickActionSkeleton />
+              <QuickActionSkeleton />
+              <QuickActionSkeleton />
+            </div>
+          ) : totalDomains > 0 ? (
             <div className="grid gap-3 md:grid-cols-3">
               <QuickAction
                 icon={Globe}
@@ -575,8 +590,8 @@ export default function HomePage() {
                 }}
               />
             </div>
-          </section>
-        )}
+          ) : null}
+        </section>
 
         <div className="grid gap-8 lg:grid-cols-5">
           {/* ---- Domains Overview (left 3 cols) ---- */}
@@ -592,7 +607,7 @@ export default function HomePage() {
                 <DomainCardSkeleton />
               </div>
             ) : totalDomains === 0 ? (
-              <div className="rounded-xl border-2 border-dashed border-border-default bg-surface-default p-10 text-center">
+              <div className=" border-2 border-dashed border-border-default bg-surface-default p-10 text-center">
                 <Globe className="mx-auto h-10 w-10 text-text-muted" />
                 <h3 className="mt-3 text-sm font-semibold text-text-default">
                   No domains yet
@@ -641,7 +656,7 @@ export default function HomePage() {
                 <ActivityItemSkeleton />
               </div>
             ) : recentStreams?.length === 0 && recentEntries?.length === 0 ? (
-              <div className="rounded-xl border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
+              <div className=" border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
                 <Clock className="mx-auto h-8 w-8 text-text-muted" />
                 <h3 className="mt-3 text-sm font-semibold text-text-default">
                   No activity yet
@@ -710,7 +725,7 @@ export default function HomePage() {
         </div>
 
         {/* ---- Footer tip ---- */}
-        <div className="mt-10 rounded-xl bg-action-primary-bg/10 px-5 py-4 text-center">
+        <div className="mt-10  bg-action-primary-bg/10 px-5 py-4 text-center">
           <p className="text-xs text-text-default">
             <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
             Use the sidebar to quickly switch between domains, or click any card

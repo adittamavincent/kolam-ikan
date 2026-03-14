@@ -656,7 +656,7 @@ export function PdfAttachmentThumbnail({
   }, [resolvedUrl, storagePath, thumbnailPath, isFromCache, url]);
 
   return (
-    <div className="relative h-16 w-12 overflow-hidden rounded-sm border border-border-subtle bg-surface-subtle">
+    <div className="relative h-16 w-12 overflow-hidden  border border-border-subtle bg-surface-subtle">
       <canvas
         ref={canvasRef}
         className="h-16 w-12 object-cover"
@@ -670,7 +670,7 @@ export function PdfAttachmentThumbnail({
         >
           {importStatus === "failed" || importStatus === "error" ? (
             <div className="flex flex-col items-center gap-1">
-              <div className="rounded-full bg-rose-600/90 p-1 text-white">
+              <div className=" bg-rose-600/90 p-1 text-white">
                 <X className="h-4 w-4" />
               </div>
               <div className="text-[10px] font-semibold text-rose-600">Failed</div>
@@ -692,7 +692,7 @@ export function PdfAttachmentThumbnail({
 
       {/* Small success badge when available */}
       {hasRendered && (importStatus === "completed" || importStatus === "done") && (
-        <div className="absolute right-0 top-0 m-1 rounded-full bg-green-500/90 p-0.5 text-white">
+        <div className="absolute right-0 top-0 m-1  bg-green-500/90 p-0.5 text-white">
           <Check className="h-3 w-3" />
         </div>
       )}

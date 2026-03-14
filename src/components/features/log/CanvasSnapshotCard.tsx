@@ -36,7 +36,7 @@ export function CanvasSnapshotCard({
   };
 
   return (
-    <div className="relative group rounded-sm border border-dashed border-action-primary-bg/40 bg-action-primary-bg/3 overflow-hidden transition-all hover:border-action-primary-bg/60">
+    <div className="relative group  border border-dashed border-action-primary-bg/40 bg-action-primary-bg/3 overflow-hidden transition-all hover:border-action-primary-bg/60">
       {/* Header */}
       <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/5 border-b border-dashed border-action-primary-bg/20">
         <div className="flex w-full items-center justify-between gap-2">
@@ -46,12 +46,12 @@ export function CanvasSnapshotCard({
               Canvas Snapshot
             </span>
             {isAIGenerated ? (
-              <span className="inline-flex items-center gap-0.5 rounded-xl border border-action-primary-bg/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-semibold text-action-primary-bg">
+              <span className="inline-flex items-center gap-0.5  border border-action-primary-bg/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-semibold text-action-primary-bg">
                 <Sparkles className="h-2.5 w-2.5" />
                 AI
               </span>
             ) : (
-              <span className="inline-flex items-center gap-0.5 rounded-xl border border-border-default/60 bg-surface-subtle px-1.5 py-0.5 text-[9px] font-semibold text-text-muted">
+              <span className="inline-flex items-center gap-0.5  border border-border-default/60 bg-surface-subtle px-1.5 py-0.5 text-[9px] font-semibold text-text-muted">
                 <User className="h-2.5 w-2.5" />
                 Manual
               </span>
@@ -87,13 +87,13 @@ export function CanvasSnapshotCard({
                 <button
                   onClick={handleRestore}
                   disabled={isRestoring}
-                  className="rounded-sm bg-action-primary-bg px-2 py-0.5 text-[10px] font-semibold text-action-primary-text hover:opacity-90 disabled:opacity-50"
+                  className=" bg-action-primary-bg px-2 py-0.5 text-[10px] font-semibold text-action-primary-text hover:opacity-90 disabled:opacity-50"
                 >
                   {isRestoring ? "..." : "Restore"}
                 </button>
                 <button
                   onClick={() => setShowConfirm(false)}
-                  className="rounded-sm border border-border-default px-2 py-0.5 text-[10px] font-semibold text-text-subtle hover:bg-surface-subtle"
+                  className=" border border-border-default px-2 py-0.5 text-[10px] font-semibold text-text-subtle hover:bg-surface-subtle"
                 >
                   Cancel
                 </button>
@@ -101,7 +101,7 @@ export function CanvasSnapshotCard({
             ) : (
               <button
                 onClick={() => setShowConfirm(true)}
-                className="rounded-sm p-1 text-text-muted opacity-0 group-hover:opacity-100 hover:bg-surface-subtle hover:text-text-default transition-all"
+                className=" p-1 text-text-muted opacity-0 group-hover:opacity-100 hover:bg-surface-subtle hover:text-text-default transition-all"
                 title="Restore this version"
               >
                 <RotateCcw className="h-3 w-3" />

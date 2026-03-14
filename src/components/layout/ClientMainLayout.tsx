@@ -233,6 +233,26 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       handler: () => setSearchOpen(true),
       description: "Open Search",
     },
+    {
+      key: "b",
+      metaKey: true,
+      handler: () => {
+        if (!isHomeRoute) {
+          setSidebarVisible(!sidebarVisible);
+        }
+      },
+      description: "Toggle Sidebar",
+    },
+    {
+      key: "b",
+      ctrlKey: true,
+      handler: () => {
+        if (!isHomeRoute) {
+          setSidebarVisible(!sidebarVisible);
+        }
+      },
+      description: "Toggle Sidebar",
+    },
   ]);
 
   // ----- Auth redirect -----
@@ -409,7 +429,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="fixed left-4 top-4 z-50 rounded-sm bg-surface-default p-2 md:hidden text-text-default"
+        className="fixed left-4 top-4 z-50  bg-surface-default p-2 md:hidden text-text-default"
       >
         {mobileMenuOpen ? (
           <X className="h-6 w-6" />
@@ -486,10 +506,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-xl border border-border-subtle bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all hover:scale-105">
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5  border border-border-subtle bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all hover:scale-105">
             <button
               onClick={() => setMode("log-only")}
-              className={`rounded-xl p-2 transition-all ${
+              className={` p-2 transition-all ${
                 isLogMaximized
                   ? "bg-action-primary-bg text-white shadow-md"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
@@ -501,7 +521,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
             <button
               onClick={() => setMode("balanced")}
-              className={`rounded-xl p-2 transition-all ${
+              className={` p-2 transition-all ${
                 isBalanced
                   ? "bg-action-primary-bg text-white shadow-md"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
@@ -513,7 +533,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
             <button
               onClick={() => setMode("canvas-only")}
-              className={`rounded-xl p-2 transition-all ${
+              className={` p-2 transition-all ${
                 isCanvasMaximized
                   ? "bg-action-primary-bg text-white shadow-md"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
@@ -553,7 +573,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-2xl rounded-xl border border-border-default bg-surface-default p-5 shadow-2xl">
+              <DialogPanel className="w-full max-w-2xl  border border-border-default bg-surface-default p-5 shadow-2xl">
                 <DialogTitle className="text-sm font-semibold text-text-default">
                   Search
                 </DialogTitle>
@@ -562,18 +582,18 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="Search logs and canvases... (@persona, emoji for domain)"
-                    className="w-full rounded-sm border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                    className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
                     autoFocus
                   />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-text-muted">
                   {parsedSearch.personaFilter && (
-                    <span className="rounded-xl border border-border-default px-2 py-0.5">
+                    <span className=" border border-border-default px-2 py-0.5">
                       Persona: @{parsedSearch.personaFilter}
                     </span>
                   )}
                   {parsedSearch.domainEmoji && (
-                    <span className="rounded-xl border border-border-default px-2 py-0.5">
+                    <span className=" border border-border-default px-2 py-0.5">
                       Domain: {parsedSearch.domainEmoji}
                     </span>
                   )}
@@ -605,7 +625,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                         setSearchOpen(false);
                         router.push(`/${result.domainId}/${result.streamId}`);
                       }}
-                      className="w-full rounded-sm border border-border-default bg-surface-subtle p-3 text-left text-xs text-text-default transition hover:bg-surface-hover"
+                      className="w-full  border border-border-default bg-surface-subtle p-3 text-left text-xs text-text-default transition hover:bg-surface-hover"
                     >
                       <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
                         <span className="flex items-center gap-2">

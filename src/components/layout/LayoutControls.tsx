@@ -12,10 +12,10 @@ export function LayoutControls() {
   const isCanvasMaximized = logWidth === 0 && canvasWidth === 100;
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-sm border border-border-default bg-surface-default p-2">
+    <div className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 gap-2  border border-border-default bg-surface-default p-2">
       <button
         onClick={() => setMode("log-only")}
-        className={`rounded-sm p-2 transition-colors ${
+        className={` p-2 transition-colors ${
           isLogMaximized
             ? "bg-action-primary-bg/10 text-action-primary-bg"
             : "text-text-muted hover:bg-surface-hover"
@@ -27,7 +27,7 @@ export function LayoutControls() {
 
       <button
         onClick={() => setMode("balanced")}
-        className={`rounded-sm p-2 transition-colors ${
+        className={` p-2 transition-colors ${
           isBalanced
             ? "bg-action-primary-bg/10 text-action-primary-bg"
             : "text-text-muted hover:bg-surface-hover"
@@ -39,7 +39,7 @@ export function LayoutControls() {
 
       <button
         onClick={() => setMode("canvas-only")}
-        className={`rounded-sm p-2 transition-colors ${
+        className={` p-2 transition-colors ${
           isCanvasMaximized
             ? "bg-action-primary-bg/10 text-action-primary-bg"
             : "text-text-muted hover:bg-surface-hover"

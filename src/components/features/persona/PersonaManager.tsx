@@ -15,6 +15,10 @@ import { Persona } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
 
+function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+  return persona.is_shadow === true;
+}
+
 const getErrorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -59,7 +63,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const supabase = createClient();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { personas, isLoading } = usePersonas({ includeDeleted: true });
+  const { personas, isLoading } = usePersonas({ includeDeleted: true, includeShadow: true });
   const { createPersona, updatePersona, deletePersona, hardDeletePersona } =
     usePersonaMutations();
 
@@ -122,7 +126,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
       !persona.deleted_at &&
       !persona.is_system &&
       persona.user_id === user?.id &&
-      persona.type === "HUMAN",
+      (persona.type === "HUMAN" || isShadowPersona(persona)),
   );
 
   const allVisibleSelected =
@@ -171,9 +175,11 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
       }
     }
 
-    // Ensure queries are invalidated after bulk delete
-    queryClient.invalidateQueries({ queryKey: ["personas", user?.id, false] });
-    queryClient.invalidateQueries({ queryKey: ["personas", user?.id, true] });
+    // Ensure all persona query variants are invalidated after bulk delete.
+    queryClient.invalidateQueries({
+      predicate: (query) =>
+        Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+    });
 
     setIsBulkDeleting(false);
     if (failedNames.length > 0) {
@@ -643,7 +649,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                 !persona.deleted_at &&
                                 !persona.is_system &&
                                 persona.user_id === user?.id &&
-                                persona.type === "HUMAN" && (
+                                (persona.type === "HUMAN" || isShadowPersona(persona)) && (
                                   <input
                                     type="checkbox"
                                     checked={selectedPersonaIds.includes(
@@ -656,7 +662,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   />
                                 )}
                               <div
-                                className="h-8 w-8 rounded-sm flex items-center justify-center"
+                                className={`h-8 w-8 rounded-sm flex items-center justify-center ${isShadowPersona(persona) ? 'ring-1 ring-amber-500/40' : ''}`}
                                 style={{
                                   backgroundColor: `${persona.color}20`,
                                   color: persona.color,
@@ -675,6 +681,11 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                       System
                                     </span>
                                   )}
+                                  {isShadowPersona(persona) && (
+                                    <span className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-sm border border-amber-500/30">
+                                      Shadow
+                                    </span>
+                                  )}
                                   {persona.deleted_at && (
                                     <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 rounded-sm border border-status-error-text/20 uppercase tracking-wider">
                                       Deleted
@@ -689,7 +700,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
 
                             {!persona.is_system &&
                               persona.user_id === user?.id &&
-                              persona.type === "HUMAN" && (
+                              (persona.type === "HUMAN" || isShadowPersona(persona)) && (
                                 <div className="flex items-center gap-1">
                                   {persona.deleted_at ? (
                                     <>

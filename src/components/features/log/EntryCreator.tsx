@@ -29,6 +29,7 @@ import {
   ExternalLink,
   Download,
   Eye,
+  Settings,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import {
@@ -48,6 +49,7 @@ import { DocumentImportModal } from "@/components/features/documents/DocumentImp
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
 import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
+import { PersonaManager } from "@/components/features/persona/PersonaManager";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { NavigationGuard } from "@/components/features/log/NavigationGuard";
 import {
@@ -65,6 +67,14 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+  return persona.is_shadow === true;
+}
+
+function isAiPersona(persona: { type?: string | null }): boolean {
+  return persona.type === "AI";
+}
 
 function SortableSection({
   id,
@@ -104,7 +114,10 @@ interface EntryCreatorProps {
 export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const { personas } = usePersonas();
+  const { personas } = usePersonas({
+    streamId,
+    includeShadow: true,
+  });
   const personaUsageStorageKey = `entry-creator:persona-usage:${streamId}`;
 
   const getInitialPersonaUsage = () => {
@@ -144,6 +157,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         kind: "PDF";
         displayMode: "inline" | "download" | "external";
         attachments: PdfAttachmentState[];
+        personaId?: string | null;
+        personaName?: string | null;
         note: string;
         isUploading: boolean;
       };
@@ -176,6 +191,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
     null,
   );
+  const [personaManagerOpen, setPersonaManagerOpen] = useState(false);
+
   const selectedBranch = currentBranch ?? "main";
 
   const attachedDocumentIds = useMemo(() => {
@@ -271,13 +288,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     isLoading,
     setActiveInstances,
     flushPendingSaves,
-    recoveryAvailable,
-    discardRecovery,
     clearDraft,
   } = useDraftSystem({
     streamId,
   });
-  const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(true);
   const [discardedRecovery, setDiscardedRecovery] = useState(false);
 
   useEffect(() => {
@@ -319,6 +333,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       .slice(0, 3);
   })();
 
+  const globalPersonas = (personas ?? []).filter((p) => !isShadowPersona(p));
+  const shadowPersonas = (personas ?? []).filter((p) => isShadowPersona(p));
+
  
 
   const trackPersonaUsage = (personaId: string) => {
@@ -339,6 +356,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             ...(draft.sectionType === "PDF"
               ? {
                   kind: "PDF" as const,
+                  personaId: draft.personaId ?? null,
+                  personaName: draft.personaName,
                   displayMode: draft.pdfDisplayMode ?? "inline",
                   attachments: (draft.pdfAttachments ?? []).map(
                     (attachment) => ({
@@ -385,8 +404,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     ) => {
       if (!draft || draft.kind !== "PDF") return;
 
-      savePdfDraft(instanceId, {
-        displayMode: draft.displayMode,
+                  savePdfDraft(instanceId, {
+                    displayMode: draft.displayMode,
+                    personaId: draft.personaId,
+                    personaName: draft.personaName ?? undefined,
         attachments: draft.attachments.map((attachment) => ({
           documentId: attachment.documentId,
           storagePath: attachment.storagePath,
@@ -402,8 +423,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     [savePdfDraft],
   );
 
-  // Watch imported documents and automatically update pending attachments
-  // or add a PDF section when a document finishes importing.
+  // Watch imported documents and automatically update pending attachments.
   useEffect(() => {
     if (!importedDocuments || importedDocuments.length === 0) return;
 
@@ -490,18 +510,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     persistPdfSection,
   ]);
 
-  const handleKeepRecovery = () => {
-    setDiscardedRecovery(false);
-    setShowRecoveryPrompt(false);
-  };
 
-  const handleDiscardRecovery = () => {
-    setDiscardedRecovery(true);
-    discardRecovery();
-    setSections([]);
-    editorRefs.current = {};
-    setShowRecoveryPrompt(false);
-  };
 
   // Sync active instances with draft system whenever sections change
   useEffect(() => {
@@ -545,7 +554,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             personaId: turn.personaId,
           });
         } else {
-          // PDF turn — create one PDF section that may contain multiple attachments
+          // PDF turn — create one attachment section bound to sender persona
           const attachments = turn.attachments;
 
           if (!attachments || attachments.length === 0) {
@@ -554,6 +563,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
           savePdfDraft(instanceId, {
             displayMode: "inline",
+            personaId: turn.personaId,
+            personaName: turn.personaName ?? undefined,
             attachments: attachments.map((attachment) => ({
               documentId: attachment.documentId,
               storagePath: attachment.storagePath,
@@ -569,6 +580,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           newSections.push({
             instanceId,
             kind: "PDF" as const,
+            personaId: turn.personaId,
+            personaName: turn.personaName,
             displayMode: "inline",
             attachments: attachments.map((attachment) => ({
               documentId: attachment.documentId,
@@ -772,25 +785,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
     // Keep typing context active on the currently selected persona section.
     focusEditorForInstance(instanceId);
-  };
-
-  const addPdfSection = () => {
-    const instanceId = crypto.randomUUID();
-    const nextSection: SectionState = {
-      instanceId,
-      kind: "PDF",
-      displayMode: "inline",
-      attachments: [],
-      note: "",
-      isUploading: false,
-    };
-
-    setSections((prev) => [...prev, nextSection]);
-    savePdfDraft(instanceId, {
-      displayMode: nextSection.displayMode,
-      attachments: [],
-      content: [],
-    });
   };
 
   const updatePdfSection = (
@@ -1005,33 +999,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   }
 
   return (
-    <div className="relative rounded-xl border border-border-default bg-surface-default group">
+    <>
+      <div className="relative rounded-xl border border-border-default bg-surface-default group">
       {(status === "saving" || status === "error") && (
         <NavigationGuard onFlush={flushPendingSaves} />
       )}
 
       <div className="flex flex-col">
-        {recoveryAvailable && showRecoveryPrompt && (
-          <div className="rounded-t-xl border-b border-border-subtle/50 bg-surface-subtle px-4 py-2 text-[11px] text-text-default">
-            <div className="flex items-center justify-between gap-2">
-              <span>Recovered unsaved work from a previous session.</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleKeepRecovery}
-                  className="rounded-sm bg-action-primary-bg px-2 py-1 text-[10px] text-action-primary-text hover:bg-action-primary-hover"
-                >
-                  Keep
-                </button>
-                <button
-                  onClick={handleDiscardRecovery}
-                  className="rounded-sm bg-surface-default px-2 py-1 text-[10px] text-text-default hover:bg-surface-hover"
-                >
-                  Discard
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Persona picker */}
         <div
@@ -1045,7 +1020,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             <button
               key={`quick-persona-${persona.id}`}
               onClick={() => addPersona(persona.id)}
-              className="flex items-center gap-1.5 rounded-sm border border-border-subtle/70 bg-surface-subtle/40 px-2 py-1 text-[11px] font-medium text-text-default transition-colors hover:bg-surface-subtle"
+              className={`flex items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] font-medium text-text-default transition-colors ${
+                isAiPersona(persona)
+                  ? "border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15"
+                  : isShadowPersona(persona)
+                    ? "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15"
+                    : "border-border-subtle/70 bg-surface-subtle/40 hover:bg-surface-subtle"
+              }`}
               title={`Quick add ${persona.name}`}
             >
               <div
@@ -1084,7 +1065,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                   Add Author Section
                 </div>
-                {personas?.map((persona) => (
+                {globalPersonas.length > 0 && (
+                  <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
+                    Global Personas
+                  </div>
+                )}
+                {globalPersonas.map((persona) => (
                   <MenuItem key={persona.id}>
                     {({ active }) => (
                       <button
@@ -1112,22 +1098,89 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           </div>
                           <span>{persona.name}</span>
                         </div>
+                        <span className="rounded-xl border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                          Global
+                        </span>
                       </button>
                     )}
                   </MenuItem>
                 ))}
+                {shadowPersonas.length > 0 && (
+                  <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                    Shadow Personas
+                  </div>
+                )}
+                {shadowPersonas.map((persona) => (
+                  <MenuItem key={persona.id}>
+                    {({ active }) => (
+                      <button
+                        onClick={() => {
+                          addPersona(persona.id);
+                        }}
+                        className={`${
+                          active
+                            ? "bg-surface-subtle text-text-default"
+                            : "text-text-subtle"
+                        } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="flex h-5 w-5 items-center justify-center rounded-sm ring-1 ring-amber-500/40"
+                            style={{
+                              backgroundColor: `${persona.color}20`,
+                              color: persona.color,
+                            }}
+                          >
+                            <DynamicIcon
+                              name={persona.icon}
+                              className="h-3 w-3"
+                            />
+                          </div>
+                          <span>{persona.name}</span>
+                        </div>
+                        <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                          Shadow
+                        </span>
+                      </button>
+                    )}
+                  </MenuItem>
+                ))}
+                <MenuItem>
+                  <div className="border-t border-border-subtle my-1" />
+                </MenuItem>
+                <MenuItem>
+                  {({ active }) => (
+                    <button
+                      onClick={() => setPersonaManagerOpen(true)}
+                      className={`${
+                        active
+                          ? "bg-surface-subtle text-text-default"
+                          : "text-text-subtle"
+                      } group flex w-full items-center rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                    >
+                      <Settings className="h-3 w-3 mr-2" />
+                      Manage Personas
+                    </button>
+                  )}
+                </MenuItem>
               </MenuItems>
             </Transition>
           </Menu>
 
-          <button
-            onClick={addPdfSection}
-            className="flex items-center gap-1.5 rounded-sm py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none"
-            title="Add PDF attachment section"
-          >
-            <FileText className="h-3 w-3 text-text-subtle" />
-            <span className="text-text-default">Add PDF Section</span>
-          </button>
+          {sections.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm("Are you sure you want to delete all sections?")) {
+                  sections.forEach((section) => removeSection(section.instanceId));
+                }
+              }}
+              className="ml-auto rounded-sm p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+              title="Delete all sections"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+
         </div>
 
         {/* Editor sections */}
@@ -1153,8 +1206,24 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   return (
                     <SortableSection key={instanceId} id={instanceId}>
                       {(dragHandleProps) => (
-                        <div className="flex flex-col">
-                          <div className="flex items-center justify-between px-4 py-1 bg-surface-subtle/50 border-y border-border-subtle/70">
+                        <div
+                          className={`flex flex-col ${
+                            isAiPersona(persona)
+                              ? "bg-sky-500/5"
+                              : isShadowPersona(persona)
+                                ? "bg-amber-500/5"
+                                : ""
+                          }`}
+                        >
+                          <div
+                            className={`flex items-center justify-between px-4 py-1 border-y ${
+                              isAiPersona(persona)
+                                ? "bg-sky-500/10 border-sky-500/20"
+                                : isShadowPersona(persona)
+                                  ? "bg-amber-500/10 border-amber-500/20"
+                                  : "bg-surface-subtle/50 border-border-subtle/70"
+                            }`}
+                          >
                             <div className="flex items-center gap-2">
                               <button
                                 className="cursor-grab rounded-sm p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
@@ -1181,6 +1250,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   <span className="text-[10px] font-medium text-text-subtle">
                                     {persona.name}
                                   </span>
+                                  {isShadowPersona(persona) && (
+                                    <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
+                                      Shadow
+                                    </span>
+                                  )}
+                                  {isAiPersona(persona) && (
+                                    <span className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700 dark:text-sky-400">
+                                      AI
+                                    </span>
+                                  )}
                                   <ChevronDown className="h-3 w-3 text-text-muted opacity-50" />
                                 </MenuButton>
 
@@ -1201,7 +1280,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                                       Switch to...
                                     </div>
-                                    {personas?.map((p) => (
+                                    {globalPersonas.length > 0 && (
+                                      <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
+                                        Global Personas
+                                      </div>
+                                    )}
+                                    {globalPersonas.map((p) => (
                                       <MenuItem key={p.id}>
                                         {({ active }) => (
                                           <button
@@ -1227,8 +1311,53 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                               />
                                             </div>
                                             <span>{p.name}</span>
+                                            <span className="ml-auto rounded-xl border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[9px] text-text-muted">
+                                              Global
+                                            </span>
                                             {p.id === section.personaId && (
-                                              <Check className="h-3 w-3 ml-auto" />
+                                              <Check className="h-3 w-3" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </MenuItem>
+                                    ))}
+
+                                    {shadowPersonas.length > 0 && (
+                                      <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                                        Shadow Personas
+                                      </div>
+                                    )}
+                                    {shadowPersonas.map((p) => (
+                                      <MenuItem key={p.id}>
+                                        {({ active }) => (
+                                          <button
+                                            onClick={() => {
+                                              changePersona(instanceId, p.id);
+                                            }}
+                                            className={`${
+                                              active
+                                                ? "bg-surface-subtle text-text-default"
+                                                : "text-text-subtle"
+                                            } group flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                                          >
+                                            <div
+                                              className="flex h-4 w-4 items-center justify-center rounded-sm ring-1 ring-amber-500/40"
+                                              style={{
+                                                backgroundColor: `${p.color}20`,
+                                                color: p.color,
+                                              }}
+                                            >
+                                              <DynamicIcon
+                                                name={p.icon}
+                                                className="h-2.5 w-2.5"
+                                              />
+                                            </div>
+                                            <span>{p.name}</span>
+                                            <span className="ml-auto rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
+                                              Shadow
+                                            </span>
+                                            {p.id === section.personaId && (
+                                              <Check className="h-3 w-3" />
                                             )}
                                           </button>
                                         )}
@@ -1248,7 +1377,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </button>
                           </div>
 
-                          <div className="px-4">
+                          <div
+                            className={`px-4 ${
+                              isAiPersona(persona)
+                                ? "bg-sky-500/5"
+                                : isShadowPersona(persona)
+                                  ? "bg-amber-500/5"
+                                  : ""
+                            }`}
+                          >
                             <BlockNoteEditor
                               initialContent={getDraftContent(instanceId)}
                               onChange={(content) => {
@@ -1304,9 +1441,23 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                 return (
                   <SortableSection key={instanceId} id={instanceId}>
-                    {(dragHandleProps) => (
-                      <div className="flex flex-col bg-surface-subtle/25">
-                        <div className="flex items-center justify-between px-4 py-1.5 bg-surface-subtle/50 border-y border-border-subtle/70">
+                    {(dragHandleProps) => {
+                      const pdfPersona = pdfSection.personaId ? personas?.find(p => p.id === pdfSection.personaId) : null;
+                      return (
+                      <div className={`flex flex-col ${
+                        pdfPersona && isAiPersona(pdfPersona)
+                          ? "bg-sky-500/5"
+                          : pdfPersona && isShadowPersona(pdfPersona)
+                            ? "bg-amber-500/5"
+                            : "bg-surface-subtle/25"
+                      }`}>
+                        <div className={`flex items-center justify-between px-4 py-1.5 border-y ${
+                          pdfPersona && isAiPersona(pdfPersona)
+                            ? "bg-sky-500/10 border-sky-500/20"
+                            : pdfPersona && isShadowPersona(pdfPersona)
+                              ? "bg-amber-500/10 border-amber-500/20"
+                              : "bg-surface-subtle/50 border-border-subtle/70"
+                        }`}>
                           <div className="flex items-center gap-2">
                             <button
                               className="cursor-grab rounded-sm p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
@@ -1315,58 +1466,95 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             >
                               <GripVertical className="h-3 w-3" />
                             </button>
-                            <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-subtle">
-                              <FileText className="h-3 w-3" />
-                              PDF Section
+                            <div className="flex items-center gap-2 rounded-sm px-1 py-0.5">
+                              {pdfPersona ? (
+                                <>
+                                  <div
+                                    className="flex h-4 w-4 items-center justify-center rounded-sm"
+                                    style={{
+                                      backgroundColor: `${pdfPersona.color}20`,
+                                      color: pdfPersona.color,
+                                    }}
+                                  >
+                                    <DynamicIcon
+                                      name={pdfPersona.icon}
+                                      className="h-2.5 w-2.5"
+                                    />
+                                  </div>
+                                  <span className="text-[10px] font-medium text-text-subtle">
+                                    {pdfPersona.name}
+                                  </span>
+                                  {isShadowPersona(pdfPersona) && (
+                                    <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
+                                      Shadow
+                                    </span>
+                                  )}
+                                  {isAiPersona(pdfPersona) && (
+                                    <span className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700 dark:text-sky-400">
+                                      AI
+                                    </span>
+                                  )}
+                                  <FileText className="h-3 w-3 text-text-muted ml-1" />
+                                </>
+                              ) : (
+                                <>
+                                  <FileText className="h-3 w-3 text-text-muted" />
+                                  <span className="text-[10px] font-medium text-text-subtle uppercase tracking-wider">
+                                    {pdfSection.personaName ?? "Attachment"}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
 
                           <button
                             onClick={() => removeSection(instanceId)}
                             className="text-text-muted hover:text-text-default p-0.5 rounded-sm hover:bg-surface-subtle transition-colors"
-                            title="Remove this PDF section"
+                            title="Remove this attachment section"
                           >
                             <X className="h-3 w-3" />
                           </button>
                         </div>
 
                         <div className="p-4 space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <label className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
-                              <Upload className="h-3 w-3" />
-                              Upload PDF
-                              <input
-                                type="file"
-                                accept="application/pdf"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (!file) return;
-                                  setImportModalFiles([{ file }]);
+                          {(!pdfPersona || !isShadowPersona(pdfPersona)) && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <label className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
+                                <Upload className="h-3 w-3" />
+                                Upload PDF
+                                <input
+                                  type="file"
+                                  accept="application/pdf"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setImportModalFiles([{ file }]);
+                                    setPdfPickerTargetInstanceId(instanceId);
+                                  }}
+                                />
+                              </label>
+
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
+                                onClick={() => {
+                                  setImportModalFiles([]);
                                   setPdfPickerTargetInstanceId(instanceId);
                                 }}
-                              />
-                            </label>
+                              >
+                                <FileText className="h-3 w-3" />
+                                Select from Library
+                              </button>
 
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-2 rounded-sm border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
-                              onClick={() => {
-                                setImportModalFiles([]);
-                                setPdfPickerTargetInstanceId(instanceId);
-                              }}
-                            >
-                              <FileText className="h-3 w-3" />
-                              Select from Library
-                            </button>
-
-                            {section.isUploading && (
-                              <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                Uploading PDFs...
-                              </span>
-                            )}
-                          </div>
+                              {section.isUploading && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  Uploading PDFs...
+                                </span>
+                              )}
+                            </div>
+                          )}
 
                           {effectiveAttachments.length === 0 ? (
                             <div className="rounded-sm border border-dashed border-border-subtle bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
@@ -1567,7 +1755,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           )}
                         </div>
                       </div>
-                    )}
+                    );
+                    }}
                   </SortableSection>
                 );
               })}
@@ -1757,5 +1946,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         </div>
       </Dialog>
     </div>
+
+    <PersonaManager
+      isOpen={personaManagerOpen}
+      onClose={() => setPersonaManagerOpen(false)}
+    />
+    </>
   );
 }

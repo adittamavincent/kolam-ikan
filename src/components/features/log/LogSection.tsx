@@ -16,8 +16,13 @@ import { PartialBlock } from "@blocknote/core";
 import { useMemo } from "react";
 import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
 
+function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+  return persona.is_shadow === true;
+}
+
 interface LogSectionProps {
   section: SectionWithPersona;
+  streamId: string;
   highlightTerm?: string;
   editable?: boolean;
   onContentChange?: (content: PartialBlock[]) => void;
@@ -25,11 +30,12 @@ interface LogSectionProps {
 
 export function LogSection({
   section,
+  streamId,
   highlightTerm,
   editable = false,
   onContentChange,
 }: LogSectionProps) {
-  const { personas } = usePersonas();
+  const { personas } = usePersonas({ streamId, includeShadow: true });
   const { updateSectionPersona } = usePersonaMutations();
   const isPdfSection = section.section_type === "PDF";
 
@@ -110,6 +116,16 @@ export function LogSection({
     const blocks = (section.content_json as unknown as PartialBlock[]) ?? [];
     return Array.isArray(blocks) ? blocks : [];
   }, [section.content_json]);
+
+  const globalPersonas = useMemo(
+    () => (personas ?? []).filter((persona) => !isShadowPersona(persona)),
+    [personas],
+  );
+
+  const shadowPersonas = useMemo(
+    () => (personas ?? []).filter((persona) => isShadowPersona(persona)),
+    [personas],
+  );
 
   if (isPdfSection) {
     return (
@@ -210,7 +226,12 @@ export function LogSection({
               <div className="px-2 py-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
                 Assign Persona
               </div>
-              {personas?.map((persona) => (
+              {globalPersonas.length > 0 && (
+                <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
+                  Global Personas
+                </div>
+              )}
+              {globalPersonas.map((persona) => (
                 <MenuItem key={persona.id}>
                   {({ focus }) => (
                     <button
@@ -236,9 +257,57 @@ export function LogSection({
                         </div>
                         <span>{persona.name}</span>
                       </div>
-                      {currentPersona?.id === persona.id && (
-                        <Check className="h-3 w-3 text-action-primary-bg" />
-                      )}
+                      <div className="flex items-center gap-1">
+                        <span className="rounded-xl border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                          Global
+                        </span>
+                        {currentPersona?.id === persona.id && (
+                          <Check className="h-3 w-3 text-action-primary-bg" />
+                        )}
+                      </div>
+                    </button>
+                  )}
+                </MenuItem>
+              ))}
+              {shadowPersonas.length > 0 && (
+                <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                  Shadow Personas
+                </div>
+              )}
+              {shadowPersonas.map((persona) => (
+                <MenuItem key={persona.id}>
+                  {({ focus }) => (
+                    <button
+                      onClick={() => handlePersonaSelect(persona.id)}
+                      className={`${
+                        focus
+                          ? "bg-surface-subtle text-text-default"
+                          : "text-text-subtle"
+                      } group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-xs transition-colors`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="flex h-5 w-5 items-center justify-center rounded-sm ring-1 ring-amber-500/40"
+                          style={{
+                            backgroundColor: `${persona.color}20`,
+                            color: persona.color,
+                          }}
+                        >
+                          <DynamicIcon
+                            name={persona.icon}
+                            className="h-3 w-3"
+                          />
+                        </div>
+                        <span>{persona.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                          Shadow
+                        </span>
+                        {currentPersona?.id === persona.id && (
+                          <Check className="h-3 w-3 text-action-primary-bg" />
+                        )}
+                      </div>
                     </button>
                   )}
                 </MenuItem>
@@ -254,6 +323,11 @@ export function LogSection({
           <span className="text-xs font-semibold text-text-default">
             {displayName}
           </span>
+          {currentPersona && isShadowPersona(currentPersona) && (
+            <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+              Shadow Persona
+            </span>
+          )}
           <span className="text-[10px] text-text-muted">
             •{" "}
             {section.updated_at

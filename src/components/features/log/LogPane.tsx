@@ -1280,6 +1280,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   <LogSection
                                     key={section.id}
                                     section={section}
+                                    streamId={streamId}
                                     editable={isAmending}
                                     onContentChange={(content) => {
                                       if (!isAmending) return;

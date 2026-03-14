@@ -5,12 +5,14 @@ import { useAuth } from "@/lib/hooks/useAuth";
 
 export function usePersonas({
   includeDeleted = false,
-}: { includeDeleted?: boolean } = {}) {
+  streamId,
+  includeShadow = false,
+}: { includeDeleted?: boolean; streamId?: string; includeShadow?: boolean } = {}) {
   const supabase = createClient();
   const { user } = useAuth();
 
   const query = useQuery({
-    queryKey: ["personas", user?.id, includeDeleted],
+    queryKey: ["personas", user?.id, includeDeleted, includeShadow, streamId],
     queryFn: async ({ signal }) => {
       let query = supabase
         .from("personas")
@@ -26,7 +28,32 @@ export function usePersonas({
         .abortSignal(signal);
 
       if (error) throw error;
-      return data as Persona[];
+
+      // Keep backward compatibility for databases that have not applied
+      // shadow persona columns yet while still honoring new scoping rules.
+      const rows = (data ?? []) as Persona[];
+
+      return rows.filter((persona) => {
+        const isShadow =
+          "is_shadow" in persona &&
+          typeof persona.is_shadow === "boolean" &&
+          persona.is_shadow;
+
+        if (!isShadow) return true;
+        if (!includeShadow) return false;
+
+        if (streamId) {
+          const shadowStreamId =
+            "shadow_stream_id" in persona &&
+            typeof persona.shadow_stream_id === "string"
+              ? persona.shadow_stream_id
+              : null;
+
+          return shadowStreamId === streamId;
+        } else {
+          return true; // Include all shadow personas when includeShadow is true but no streamId specified
+        }
+      });
     },
     enabled: !!user?.id,
   });

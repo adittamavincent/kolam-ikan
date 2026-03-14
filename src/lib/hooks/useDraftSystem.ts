@@ -320,6 +320,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         attachments: PdfDraftAttachment[];
         displayMode: "inline" | "download" | "external";
         content?: PartialBlock[];
+        personaId?: string | null;
+        personaName?: string;
       },
       forceDelete = false,
     ) => {
@@ -342,7 +344,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
       draftStateRef.current.sections[instanceId] = {
         sectionType: "PDF",
-        personaId: null,
+        personaId: payload.personaId ?? null,
+        personaName: payload.personaName,
         content: payload.content ?? [],
         pdfDisplayMode: payload.displayMode,
         pdfAttachments: payload.attachments,
@@ -454,10 +457,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           .from("sections")
           .insert({
             entry_id: newEntryId,
-            persona_id:
-              draft.sectionType === "PERSONA" ? draft.personaId : null,
-            persona_name_snapshot:
-              draft.sectionType === "PERSONA" ? draft.personaName : null,
+            persona_id: draft.personaId,
+            persona_name_snapshot: draft.personaName ?? null,
             content_json: draft.content as Json,
             sort_order: index,
             section_type: draft.sectionType,

@@ -132,6 +132,44 @@ interface ParsedZipData {
 
 type Step = "paste" | "range" | "map" | "files";
 
+function getSupabaseErrorMessage(error: unknown): string {
+  if (!error || typeof error !== "object") return "Failed to create persona";
+
+  const typed = error as { message?: unknown; code?: unknown };
+  const message =
+    typeof typed.message === "string" && typed.message.length > 0
+      ? typed.message
+      : "Failed to create persona";
+
+  // 42703: undefined_column (migration not applied yet)
+  if (typed.code === "42703") {
+    return "Shadow persona columns are missing in database. Apply latest migration and try again.";
+  }
+
+  return message;
+}
+
+function isMissingShadowColumnError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+
+  const typed = error as { code?: unknown; message?: unknown };
+  if (typed.code === "42703") return true;
+
+  const message =
+    typeof typed.message === "string" ? typed.message.toLowerCase() : "";
+
+  return (
+    message.includes("is_shadow") ||
+    message.includes("shadow_stream_id") ||
+    message.includes("shadow_document_id") ||
+    message.includes("schema cache")
+  );
+}
+
+function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+  return persona.is_shadow === true;
+}
+
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 // iOS: [3/10/26, 7:42:30 PM] Name: text
@@ -502,7 +540,7 @@ export function WhatsAppImportModal({
   onClose,
   streamId,
 }: WhatsAppImportModalProps) {
-  const { personas } = usePersonas();
+  const { personas } = usePersonas({ streamId, includeShadow: true });
   const queryClient = useQueryClient();
   const supabase = createClient();
 
@@ -521,6 +559,8 @@ export function WhatsAppImportModal({
   const [zipSourceName, setZipSourceName] = useState<string | null>(null);
   const [zipPdfIndex, setZipPdfIndex] = useState<Record<string, File[]>>({});
   const [zipLoadError, setZipLoadError] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [mapNotice, setMapNotice] = useState<string | null>(null);
   const [zipLoading, setZipLoading] = useState(false);
   const [zipAutoUploadRan, setZipAutoUploadRan] = useState(false);
   const zipInputRef = useRef<HTMLInputElement>(null);
@@ -630,6 +670,54 @@ export function WhatsAppImportModal({
   const rangeImportableCount = selectedTurns.filter(
     (t) => t.type !== "media",
   ).length;
+  const globalPersonas = (personas ?? []).filter((p) => !isShadowPersona(p));
+  const shadowPersonas = (personas ?? []).filter((p) => isShadowPersona(p));
+
+  type PersonaCreateRow = {
+    name: string;
+    color: string;
+    icon: string;
+    type: "HUMAN";
+    user_id: string;
+    is_system: false;
+  };
+
+  const insertPersonasWithShadowFallback = async (rows: PersonaCreateRow[]) => {
+    const shadowRows = rows.map((row) => ({
+      ...row,
+      is_shadow: true,
+      shadow_stream_id: streamId,
+      shadow_document_id: null,
+    }));
+
+    const shadowResult = await supabase
+      .from("personas")
+      .insert(shadowRows)
+      .select();
+
+    if (!shadowResult.error && shadowResult.data) {
+      return {
+        data: shadowResult.data,
+        error: null as unknown,
+        fallbackUsed: false,
+      };
+    }
+
+    if (!isMissingShadowColumnError(shadowResult.error)) {
+      return {
+        data: null,
+        error: shadowResult.error,
+        fallbackUsed: false,
+      };
+    }
+
+    const legacyResult = await supabase.from("personas").insert(rows).select();
+    return {
+      data: legacyResult.data ?? null,
+      error: legacyResult.error,
+      fallbackUsed: true,
+    };
+  };
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
 
@@ -646,6 +734,8 @@ export function WhatsAppImportModal({
     setZipSourceName(null);
     setZipPdfIndex({});
     setZipLoadError(null);
+    setMapError(null);
+    setMapNotice(null);
     setZipAutoUploadRan(false);
     setStep("range");
   };
@@ -670,6 +760,8 @@ export function WhatsAppImportModal({
       setUploads({});
       setZipSourceName(file.name);
       setZipPdfIndex(zipData.pdfByKey);
+      setMapError(null);
+      setMapNotice(null);
       setZipAutoUploadRan(false);
       setStep("range");
     } catch (error) {
@@ -687,6 +779,8 @@ export function WhatsAppImportModal({
     setMappableSenders(senders);
     setMapping(buildAutoMap(senders, personas));
     setUploads({});
+    setMapError(null);
+    setMapNotice(null);
     setZipAutoUploadRan(false);
     setStep("map");
   };
@@ -719,30 +813,48 @@ export function WhatsAppImportModal({
 
   const handleCreatePersona = async (sender: string, colorIdx: number) => {
     setCreatingPersonaFor(sender);
+    setMapError(null);
+    setMapNotice(null);
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
       const color = PERSONA_COLORS[colorIdx % PERSONA_COLORS.length];
-      const { data, error } = await supabase
-        .from("personas")
-        .insert({
+
+      const { data, error, fallbackUsed } = await insertPersonasWithShadowFallback([
+        {
           name: sender,
           color,
           icon: "user",
           type: "HUMAN",
           user_id: user.id,
           is_system: false,
-        })
-        .select()
-        .single();
-      if (error || !data) return;
+        },
+      ]);
+
+      if (error || !data) {
+        setMapError(getSupabaseErrorMessage(error));
+        return;
+      }
+
+      if (fallbackUsed) {
+        setMapNotice(
+          "Shadow columns are not available yet. Persona was created in legacy global mode for now.",
+        );
+      }
+
+      const first = data[0];
+      if (!first) {
+        setMapError("Failed to create persona");
+        return;
+      }
+
       await queryClient.invalidateQueries({
         predicate: (query) =>
           Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
       });
-      setMapping((prev) => ({ ...prev, [sender]: data.id }));
+      setMapping((prev) => ({ ...prev, [sender]: first.id }));
     } finally {
       setCreatingPersonaFor(null);
     }
@@ -753,13 +865,15 @@ export function WhatsAppImportModal({
     if (missing.length === 0) return;
 
     setCreatingAllPersonas(true);
+    setMapError(null);
+    setMapNotice(null);
     try {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      const rows = missing.map((sender, idx) => ({
+      const rows: PersonaCreateRow[] = missing.map((sender, idx) => ({
         name: sender,
         color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
         icon: "user",
@@ -768,11 +882,19 @@ export function WhatsAppImportModal({
         is_system: false,
       }));
 
-      const { data, error } = await supabase
-        .from("personas")
-        .insert(rows)
-        .select();
-      if (error || !data) return;
+      const { data, error, fallbackUsed } =
+        await insertPersonasWithShadowFallback(rows);
+
+      if (error || !data) {
+        setMapError(getSupabaseErrorMessage(error));
+        return;
+      }
+
+      if (fallbackUsed) {
+        setMapNotice(
+          "Shadow columns are not available yet. Missing personas were created in legacy global mode.",
+        );
+      }
 
       await queryClient.invalidateQueries({
         predicate: (query) =>
@@ -1055,6 +1177,8 @@ export function WhatsAppImportModal({
     setZipSourceName(null);
     setZipPdfIndex({});
     setZipLoadError(null);
+    setMapError(null);
+    setMapNotice(null);
     setZipLoading(false);
     setZipAutoUploadRan(false);
     onClose();
@@ -1456,6 +1580,14 @@ export function WhatsAppImportModal({
                       {mediaTurns.length > 0 &&
                         ` · ${mediaTurns.length} media skipped`}
                     </p>
+                    <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
+                      <span className="rounded-xl border border-border-subtle bg-surface-subtle px-1.5 py-0.5">
+                        Global: {globalPersonas.length}
+                      </span>
+                      <span className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-amber-700 dark:text-amber-400">
+                        Shadow: {shadowPersonas.length}
+                      </span>
+                    </div>
                   </div>
                   {unmappedCount > 0 && (
                     <span className="flex shrink-0 items-center gap-1 rounded-xl bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400">
@@ -1464,6 +1596,20 @@ export function WhatsAppImportModal({
                     </span>
                   )}
                 </div>
+
+                  {mapError && (
+                    <div className="flex items-start gap-1.5 rounded-sm border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
+                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                      <span>{mapError}</span>
+                    </div>
+                  )}
+
+                  {mapNotice && (
+                    <div className="flex items-start gap-1.5 rounded-sm border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                      <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                      <span>{mapNotice}</span>
+                    </div>
+                  )}
 
                 <div className="flex flex-col gap-2">
                   {mappableSenders.map((sender, idx) => {
@@ -1499,6 +1645,17 @@ export function WhatsAppImportModal({
                             <span className="text-xs text-text-default">
                               {assignedPersona.name}
                             </span>
+                            <span
+                              className={`rounded-xl px-1.5 py-0.5 text-[10px] font-medium ${
+                                isShadowPersona(assignedPersona)
+                                  ? "border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                  : "border border-border-subtle bg-surface-subtle text-text-muted"
+                              }`}
+                            >
+                              {isShadowPersona(assignedPersona)
+                                ? "Shadow"
+                                : "Global"}
+                            </span>
                             <button
                               onClick={() =>
                                 setMapping((prev) => {
@@ -1532,11 +1689,24 @@ export function WhatsAppImportModal({
                             <option value="" disabled>
                               {isCreating ? "Creating…" : "Select persona…"}
                             </option>
-                            {personas?.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
-                              </option>
-                            ))}
+                            {globalPersonas.length > 0 && (
+                              <optgroup label="Global Personas">
+                                {globalPersonas.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} (Global)
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {shadowPersonas.length > 0 && (
+                              <optgroup label="Shadow Personas (This Stream)">
+                                {shadowPersonas.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} (Shadow)
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
                             <option value="__create__">
                               + Create &quot;{sender}&quot;
                             </option>

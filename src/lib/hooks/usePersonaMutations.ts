@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { Persona } from "@/lib/types";
+import { Persona, PersonaInsert } from "@/lib/types";
 
 export function usePersonaMutations() {
   const supabase = createClient();
@@ -13,17 +13,7 @@ export function usePersonaMutations() {
   };
 
   const createPersona = useMutation({
-    mutationFn: async (
-      newPersona: Omit<
-        Persona,
-        | "id"
-        | "created_at"
-        | "updated_at"
-        | "deleted_at"
-        | "is_system"
-        | "user_id"
-      >,
-    ) => {
+    mutationFn: async (newPersona: PersonaInsert) => {
       // Need to get current user to assign user_id
       const {
         data: { user },
@@ -34,7 +24,7 @@ export function usePersonaMutations() {
         ...newPersona,
         user_id: user.id,
         is_system: false,
-        type: "HUMAN", // Default to HUMAN for user-created personas
+        type: newPersona.type ?? "HUMAN", // Default to HUMAN for user-created personas
       });
 
       if (error) throw error;

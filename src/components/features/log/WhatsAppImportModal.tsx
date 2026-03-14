@@ -23,6 +23,7 @@ import {
   Undo2,
   Info,
   Upload,
+  UserPlus,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -912,7 +913,6 @@ export function WhatsAppImportModal({
       personas?.some(
         (p) =>
           p.is_shadow &&
-          p.shadow_stream_id === streamId &&
           p.name.toLowerCase() === s.toLowerCase(),
       ),
     );
@@ -927,6 +927,54 @@ export function WhatsAppImportModal({
     setStep("map");
   };
 
+  const handleCreatePersonas = async (sendersToCreate: string[]): Promise<Record<string, string> | null> => {
+    setMapError(null);
+    setMapNotice(null);
+    setCreatingAllPersonas(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      const rows: PersonaCreateRow[] = sendersToCreate.map((sender, idx) => ({
+        name: sender,
+        color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
+        icon: "user",
+        type: "HUMAN",
+        user_id: user.id,
+        is_system: false,
+      }));
+
+      const { data, error, fallbackUsed } = await insertPersonasWithShadowFallback(rows);
+
+      if (error || !data) {
+        setMapError(getSupabaseErrorMessage(error));
+        return null;
+      }
+
+      if (fallbackUsed) {
+        setMapNotice("Shadow columns are not available yet. Missing personas were created in legacy global mode.");
+      }
+
+      await queryClient.invalidateQueries({
+        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+      });
+
+      const createdMap: Record<string, string> = {};
+      for (const created of data) {
+        createdMap[created.name] = created.id;
+      }
+
+      setCreatedShadowCount((prev) => prev + data.length);
+      setMapping((prev) => ({ ...prev, ...createdMap }));
+      return createdMap;
+    } catch (err) {
+      setMapError(err instanceof Error ? err.message : "An error occurred");
+      return null;
+    } finally {
+      setCreatingAllPersonas(false);
+    }
+  };
+
   const handleMapNext = async () => {
     setMapError(null);
     setMapNotice(null);
@@ -935,52 +983,9 @@ export function WhatsAppImportModal({
     const missing = mappableSenders.filter((sender) => !nextMapping[sender]);
 
     if (missing.length > 0) {
-      setCreatingAllPersonas(true);
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const rows: PersonaCreateRow[] = missing.map((sender, idx) => ({
-          name: sender,
-          color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
-          icon: "user",
-          type: "HUMAN",
-          user_id: user.id,
-          is_system: false,
-        }));
-
-        const { data, error, fallbackUsed } =
-          await insertPersonasWithShadowFallback(rows);
-
-        if (error || !data) {
-          setMapError(getSupabaseErrorMessage(error));
-          return;
-        }
-
-        if (fallbackUsed) {
-          setMapNotice(
-            "Shadow columns are not available yet. Missing personas were created in legacy global mode.",
-          );
-        }
-
-        await queryClient.invalidateQueries({
-          predicate: (query) =>
-            Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
-        });
-
-        const createdMap: Record<string, string> = {};
-        for (const created of data) {
-          createdMap[created.name] = created.id;
-        }
-
-        setCreatedShadowCount((prev) => prev + data.length);
-        nextMapping = { ...nextMapping, ...createdMap };
-        setMapping(nextMapping);
-      } finally {
-        setCreatingAllPersonas(false);
-      }
+      const createdMap = await handleCreatePersonas(missing);
+      if (!createdMap) return;
+      nextMapping = { ...nextMapping, ...createdMap };
     }
 
     const fullyMapped = mappableSenders.every((sender) => !!nextMapping[sender]);
@@ -1815,13 +1820,32 @@ export function WhatsAppImportModal({
                 </div>
 
                 {unmappedCount > 0 && (
-                  <div className="flex items-start gap-1.5  border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
-                    <Info className="mt-0.5 h-3 w-3 shrink-0" />
-                    <span>
-                      {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will be
-                      created as shadow persona{unmappedCount !== 1 ? "s" : ""}{" "}
-                      when you press Next.
-                    </span>
+                  <div className="flex flex-col gap-2 border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                    <div className="flex items-start gap-1.5">
+                      <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                      <span>
+                        {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will be
+                        created as shadow persona{unmappedCount !== 1 ? "s" : ""}{" "}
+                        when you press Next.
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleCreatePersonas(mappableSenders.filter((sender) => !mapping[sender]))}
+                      disabled={creatingAllPersonas}
+                      className="self-end rounded-sm bg-blue-500/10 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-500/20 disabled:opacity-50 transition-colors border border-blue-500/20"
+                    >
+                      {creatingAllPersonas ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="h-3.5 w-3.5" />
+                          Batch create {unmappedCount} missing persona{unmappedCount !== 1 ? "s" : ""}
+                        </>
+                      )}
+                    </button>
                   </div>
                 )}
 

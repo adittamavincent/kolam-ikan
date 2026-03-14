@@ -42,17 +42,7 @@ export function usePersonas({
         if (!isShadow) return true;
         if (!includeShadow) return false;
 
-        if (streamId) {
-          const shadowStreamId =
-            "shadow_stream_id" in persona &&
-            typeof persona.shadow_stream_id === "string"
-              ? persona.shadow_stream_id
-              : null;
-
-          return shadowStreamId === streamId;
-        } else {
-          return true; // Include all shadow personas when includeShadow is true but no streamId specified
-        }
+        return true;
       });
     },
     enabled: !!user?.id,

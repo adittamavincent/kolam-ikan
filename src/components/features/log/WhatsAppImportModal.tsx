@@ -161,6 +161,16 @@ function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
 }
 
+function getStreamShadowPersonas<
+  T extends { is_shadow?: boolean | null; shadow_stream_id?: string | null },
+>(personas: T[] | undefined, streamId?: string): T[] {
+  return (personas ?? []).filter(
+    (persona) =>
+      isShadowPersona(persona) &&
+      (streamId ? persona.shadow_stream_id === streamId : false),
+  );
+}
+
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 // iOS: [3/10/26, 7:42:30 PM] Name: text
@@ -503,7 +513,7 @@ function buildAutoMap(
 ): Record<string, string> {
   const autoMap: Record<string, string> = {};
   for (const sender of senders) {
-    // Prefer an existing shadow persona for this stream
+    // Only use existing shadow personas for this stream
     const shadowMatch = personas?.find(
       (p) =>
         p.is_shadow &&
@@ -514,12 +524,6 @@ function buildAutoMap(
       autoMap[sender] = shadowMatch.id;
       continue;
     }
-
-    // Fallback to any persona with matching name (global)
-    const match = personas?.find(
-      (p) => p.name.toLowerCase() === sender.toLowerCase(),
-    );
-    if (match) autoMap[sender] = match.id;
   }
   return autoMap;
 }
@@ -572,8 +576,8 @@ export function WhatsAppImportModal({
   const [zipAutoUploadRan, setZipAutoUploadRan] = useState(false);
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
-  const [createdShadowCount, setCreatedShadowCount] = useState(0);
   const [existingShadowReuseCount, setExistingShadowReuseCount] = useState(0);
+  const [pendingPersonaCreations, setPendingPersonaCreations] = useState<string[]>([]);
 
   // Preview tooltip state (custom tooltip with configurable timing)
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -641,8 +645,6 @@ export function WhatsAppImportModal({
   const pdfTurns = selectedTurns.filter((t) => t.type === "pdf");
   const mediaTurns = selectedTurns.filter((t) => t.type === "media");
   const hasPdfTurns = pdfTurns.length > 0;
-  const allMapped = mappableSenders.every((s) => !!mapping[s]);
-  const unmappedCount = mappableSenders.filter((s) => !mapping[s]).length;
   const anyUploading = Object.values(uploads).some(
     (u) => u.status === "uploading",
   );
@@ -663,9 +665,6 @@ export function WhatsAppImportModal({
     if (upload.status === "skipped" || upload.status === "done") return true;
     return !!upload.file;
   });
-  const canConfirmFiles =
-    allMapped && !anyUploading && allPdfsPrepared && plannedImportableCount > 0;
-
   // Live preview (step 1 only)
   const liveMsgs = rawText.trim() ? parseRawMessages(rawText) : [];
   const liveTurns = buildTurns(liveMsgs);
@@ -680,8 +679,20 @@ export function WhatsAppImportModal({
   const rangeImportableCount = selectedTurns.filter(
     (t) => t.type !== "media",
   ).length;
-  const globalPersonas = (personas ?? []).filter((p) => !isShadowPersona(p));
-  const shadowPersonas = (personas ?? []).filter((p) => isShadowPersona(p));
+  const shadowPersonas = getStreamShadowPersonas(personas, streamId);
+  const shadowPersonaIds = new Set(shadowPersonas.map((p) => p.id));
+  const validMapping = Object.fromEntries(
+    Object.entries(mapping).filter(([, id]) => shadowPersonaIds.has(id)),
+  );
+  const allMapped = mappableSenders.every((s) => !!validMapping[s]);
+  const unmappedCount = mappableSenders.filter((s) => !validMapping[s]).length;
+  const canConfirmFiles =
+    allMapped && !anyUploading && allPdfsPrepared && plannedImportableCount > 0;
+
+  const getValidMapping = (snapshot: Record<string, string>) =>
+    Object.fromEntries(
+      Object.entries(snapshot).filter(([, id]) => shadowPersonaIds.has(id)),
+    );
 
   type PersonaCreateRow = {
     name: string;
@@ -692,7 +703,10 @@ export function WhatsAppImportModal({
     is_system: false;
   };
 
-  const insertMissingPersonas = async (rows: PersonaCreateRow[]) => {
+  const insertMissingPersonas = async (
+    rows: PersonaCreateRow[],
+    shadowStreamId: string,
+  ) => {
     if (rows.length === 0) {
       return {
         data: [] as Array<{ id: string; name: string }>,
@@ -716,6 +730,8 @@ export function WhatsAppImportModal({
       .select("id, name")
       .eq("user_id", userId)
       .is("deleted_at", null)
+      .eq("is_shadow", true)
+      .eq("shadow_stream_id", shadowStreamId)
       .in("name", requestedNames);
 
     if (existingResult.error) {
@@ -744,6 +760,7 @@ export function WhatsAppImportModal({
     const shadowRows = rowsToInsert.map((row) => ({
       ...row,
       is_shadow: true,
+      shadow_stream_id: shadowStreamId,
     }));
 
     const insertResult = await supabase
@@ -758,6 +775,8 @@ export function WhatsAppImportModal({
           .select("id, name")
           .eq("user_id", userId)
           .is("deleted_at", null)
+          .eq("is_shadow", true)
+          .eq("shadow_stream_id", shadowStreamId)
           .in("name", requestedNames);
 
         if (!retryExistingResult.error && retryExistingResult.data) {
@@ -797,8 +816,8 @@ export function WhatsAppImportModal({
     setMapError(null);
     setMapNotice(null);
     setZipAutoUploadRan(false);
-    setCreatedShadowCount(0);
     setExistingShadowReuseCount(0);
+    setPendingPersonaCreations([]);
     setStep("range");
   };
 
@@ -825,8 +844,8 @@ export function WhatsAppImportModal({
       setMapError(null);
       setMapNotice(null);
       setZipAutoUploadRan(false);
-      setCreatedShadowCount(0);
       setExistingShadowReuseCount(0);
+      setPendingPersonaCreations([]);
       setStep("range");
     } catch (error) {
       setZipLoadError(
@@ -843,10 +862,8 @@ export function WhatsAppImportModal({
     setMappableSenders(senders);
 
     const existingShadowsBySender = senders.filter((s) =>
-      personas?.some(
-        (p) =>
-          p.is_shadow &&
-          p.name.toLowerCase() === s.toLowerCase(),
+      shadowPersonas.some(
+        (p) => p.name.toLowerCase() === s.toLowerCase(),
       ),
     );
     setExistingShadowReuseCount(existingShadowsBySender.length);
@@ -858,6 +875,13 @@ export function WhatsAppImportModal({
     setMapNotice(null);
     setZipAutoUploadRan(false);
     setStep("map");
+
+    // Clear tooltip when leaving range step
+    setTooltipVisible(false);
+    setTooltipContent(null);
+    setTooltipPos(null);
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   };
 
   const handleCreatePersonas = async (sendersToCreate: string[]): Promise<Record<string, string> | null> => {
@@ -877,7 +901,7 @@ export function WhatsAppImportModal({
         is_system: false,
       }));
 
-      const { data, error } = await insertMissingPersonas(rows);
+      const { data, error } = await insertMissingPersonas(rows, streamId);
 
       if (error || !data) {
         setMapError(getSupabaseErrorMessage(error));
@@ -893,8 +917,11 @@ export function WhatsAppImportModal({
         createdMap[created.name] = created.id;
       }
 
-      setCreatedShadowCount((prev) => prev + data.length);
       setMapping((prev) => ({ ...prev, ...createdMap }));
+
+      // Remove created senders from pending
+      setPendingPersonaCreations((prev) => prev.filter((s) => !createdMap[s]));
+
       return createdMap;
     } catch (err) {
       setMapError(err instanceof Error ? err.message : "An error occurred");
@@ -908,20 +935,17 @@ export function WhatsAppImportModal({
     setMapError(null);
     setMapNotice(null);
 
-    let nextMapping: Record<string, string> = { ...mapping };
+    const nextMapping: Record<string, string> = getValidMapping(mapping);
+    if (Object.keys(nextMapping).length !== Object.keys(mapping).length) {
+      setMapping(nextMapping);
+    }
     const missing = mappableSenders.filter((sender) => !nextMapping[sender]);
 
-    if (missing.length > 0) {
-      const createdMap = await handleCreatePersonas(missing);
-      if (!createdMap) return;
-      nextMapping = { ...nextMapping, ...createdMap };
-    }
-
-    const fullyMapped = mappableSenders.every((sender) => !!nextMapping[sender]);
-    if (!fullyMapped) return;
+    // Set pending creations instead of creating now
+    setPendingPersonaCreations(missing);
 
     if (!hasPdfTurns) {
-      handleConfirm(uploads, nextMapping);
+      await handleConfirm(uploads, nextMapping);
       return;
     }
 
@@ -934,6 +958,13 @@ export function WhatsAppImportModal({
       return next;
     });
     setStep("files");
+
+    // Clear tooltip when leaving map step (though tooltip is only in range, be safe)
+    setTooltipVisible(false);
+    setTooltipContent(null);
+    setTooltipPos(null);
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
 
     if (!zipAutoUploadRan && Object.keys(zipPdfIndex).length > 0) {
       setZipAutoUploadRan(true);
@@ -961,6 +992,15 @@ export function WhatsAppImportModal({
         },
       );
 
+    // Create any pending personas before importing
+    let effectiveMapping = getValidMapping(mapping);
+    if (pendingPersonaCreations.length > 0) {
+      const createdMap = await handleCreatePersonas(pendingPersonaCreations);
+      if (!createdMap) return; // Creation failed, don't proceed
+      effectiveMapping = { ...effectiveMapping, ...createdMap };
+      setPendingPersonaCreations([]);
+    }
+
     // Transfer all text turns and any already-completed PDFs to EntryCreator
     // Transfer all pending PDF files to the Docling document import handler
     const payloadTurns: WhatsAppInjectPayload["turns"] = [];
@@ -968,7 +1008,7 @@ export function WhatsAppImportModal({
 
     for (const turn of selectedTurns) {
       if (turn.type === "media") continue;
-      const personaId = mapping[turn.sender];
+      const personaId = effectiveMapping[turn.sender];
       if (!personaId) continue;
       const persona = personas?.find((p) => p.id === personaId);
       const personaName = persona?.name ?? turn.sender;
@@ -1131,15 +1171,25 @@ export function WhatsAppImportModal({
     handleClose();
   };
 
-  const handleConfirm = (
+  const handleConfirm = async (
     uploadsSnapshot: Record<string, PdfUploadState> = uploads,
     mappingSnapshot: Record<string, string> = mapping,
   ) => {
+    let effectiveMapping = getValidMapping(mappingSnapshot);
+
+    // Create any pending personas before importing
+    if (pendingPersonaCreations.length > 0) {
+      const createdMap = await handleCreatePersonas(pendingPersonaCreations);
+      if (!createdMap) return; // Creation failed, don't proceed
+      effectiveMapping = { ...effectiveMapping, ...createdMap };
+      setPendingPersonaCreations([]);
+    }
+
     const payloadTurns: WhatsAppInjectPayload["turns"] = [];
 
     for (const turn of selectedTurns) {
       if (turn.type === "media") continue;
-      const personaId = mappingSnapshot[turn.sender];
+      const personaId = effectiveMapping[turn.sender];
       if (!personaId) continue;
       const persona = personas?.find((p) => p.id === personaId);
       const personaName = persona?.name ?? turn.sender;
@@ -1215,8 +1265,16 @@ export function WhatsAppImportModal({
     setMapNotice(null);
     setZipLoading(false);
     setZipAutoUploadRan(false);
-    setCreatedShadowCount(0);
     setExistingShadowReuseCount(0);
+    setPendingPersonaCreations([]);
+
+    // Clear tooltip
+    setTooltipVisible(false);
+    setTooltipContent(null);
+    setTooltipPos(null);
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+
     onClose();
   };
 
@@ -1644,7 +1702,7 @@ export function WhatsAppImportModal({
                         Using existing (shadow): {existingShadowReuseCount}
                       </span>
                       <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5">
-                        Created this session (shadow): {createdShadowCount}
+                        Will create on import (shadow): {pendingPersonaCreations.length}
                       </span>
                     </div>
                   </div>
@@ -1672,7 +1730,7 @@ export function WhatsAppImportModal({
 
                 <div className="flex flex-col gap-2">
                   {mappableSenders.map((sender) => {
-                    const assignedId = mapping[sender];
+                    const assignedId = validMapping[sender];
                     const assignedPersona = personas?.find(
                       (p) => p.id === assignedId,
                     );
@@ -1744,15 +1802,6 @@ export function WhatsAppImportModal({
                             <option value="" disabled>
                               Select persona…
                             </option>
-                            {globalPersonas.length > 0 && (
-                              <optgroup label="Global Personas">
-                                {globalPersonas.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name} (Global)
-                                  </option>
-                                ))}
-                              </optgroup>
-                            )}
                             {shadowPersonas.length > 0 && (
                               <optgroup label="Shadow Personas (This Stream)">
                                 {shadowPersonas.map((p) => (
@@ -1776,7 +1825,7 @@ export function WhatsAppImportModal({
                       <span>
                         {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will be
                         created as shadow persona{unmappedCount !== 1 ? "s" : ""}{" "}
-                        when you press Next.
+                        when you import.
                       </span>
                     </div>
                     <button

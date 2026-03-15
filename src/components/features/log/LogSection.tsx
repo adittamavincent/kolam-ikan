@@ -1,19 +1,11 @@
-import {
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-  Transition,
-} from "@headlessui/react";
-import { Fragment } from "react";
 import { SectionWithPersona } from "@/lib/types";
 import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
-import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
-import { Check } from "lucide-react";
 import { PartialBlock } from "@blocknote/core";
 import { useMemo } from "react";
+import { SectionPreset } from "@/components/shared/SectionPreset";
+import { PersonaSelector } from "@/components/shared/PersonaSelector";
 import { PdfAttachmentItem } from "./PdfAttachmentItem";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
@@ -49,9 +41,8 @@ export function LogSection({
   const { personas } = usePersonas({ streamId, includeShadow: true });
   const { updateSectionPersona } = usePersonaMutations();
 
-  const currentPersona = section.persona;
-  const displayName =
-    section.persona_name_snapshot || currentPersona?.name || "Unknown";
+  const currentPersona =
+    personas?.find((p) => p.id === section.persona?.id) || section.persona;
 
   // Handle persona change
   const handlePersonaSelect = (personaId: string) => {
@@ -144,150 +135,32 @@ export function LogSection({
     section.section_type === "PDF" && !hasAttachments;
 
   return (
-    <div className="group relative flex gap-2 p-1.5 transition-all hover:bg-surface-hover/30 ">
-      {/* Sidebar / Persona Indicator */}
-      <div className="shrink-0 pt-1">
-        <Menu as="div" className="relative">
-          <MenuButton
-            className="flex h-8 w-8 items-center justify-center  transition-all hover:scale-105 focus:outline-none"
-            style={{
-              backgroundColor: `${currentPersona?.color || "#94a3b8"}15`,
-              color: currentPersona?.color || "#94a3b8",
-            }}
-            title={`Author: ${currentPersona?.name || "Unknown"}`}
-          >
-            <DynamicIcon
-              name={currentPersona?.icon || "user"}
-              className="h-4 w-4"
-            />
-          </MenuButton>
-
-          <Transition
-            as={Fragment}
-            enter="transition ease-out duration-100"
-            enterFrom="transform opacity-0 scale-95"
-            enterTo="transform opacity-100 scale-100"
-            leave="transition ease-in duration-75"
-            leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0 scale-95"
-          >
-            <MenuItems className="absolute left-0 top-full z-50 mt-1 max-h-60 w-56 overflow-auto  border border-border-default bg-surface-default p-1 ring-1 ring-black/5 focus:outline-none">
-              <div className="px-2 py-1.5 text-xs font-semibold text-text-muted uppercase tracking-wider">
-                Assign Persona
-              </div>
-              {globalPersonas.length > 0 && (
-                <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
-                  Global Personas
-                </div>
-              )}
-              {globalPersonas.map((persona) => (
-                <MenuItem key={persona.id}>
-                  {({ focus }) => (
-                    <button
-                      onClick={() => handlePersonaSelect(persona.id)}
-                      className={`${
-                        focus
-                          ? "bg-surface-subtle text-text-default"
-                          : "text-text-subtle"
-                      } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="flex h-5 w-5 items-center justify-center "
-                          style={{
-                            backgroundColor: `${persona.color}20`,
-                            color: persona.color,
-                          }}
-                        >
-                          <DynamicIcon
-                            name={persona.icon}
-                            className="h-3 w-3"
-                          />
-                        </div>
-                        <span>{persona.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
-                          Global
-                        </span>
-                        {currentPersona?.id === persona.id && (
-                          <Check className="h-3 w-3 text-action-primary-bg" />
-                        )}
-                      </div>
-                    </button>
-                  )}
-                </MenuItem>
-              ))}
-              {shadowPersonas.length > 0 && (
-                <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                  Shadow Personas
-                </div>
-              )}
-              {shadowPersonas.map((persona) => (
-                <MenuItem key={persona.id}>
-                  {({ focus }) => (
-                    <button
-                      onClick={() => handlePersonaSelect(persona.id)}
-                      className={`${
-                        focus
-                          ? "bg-surface-subtle text-text-default"
-                          : "text-text-subtle"
-                      } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="flex h-5 w-5 items-center justify-center  ring-1 ring-amber-500/40"
-                          style={{
-                            backgroundColor: `${persona.color}20`,
-                            color: persona.color,
-                          }}
-                        >
-                          <DynamicIcon
-                            name={persona.icon}
-                            className="h-3 w-3"
-                          />
-                        </div>
-                        <span>{persona.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
-                          Shadow
-                        </span>
-                        {currentPersona?.id === persona.id && (
-                          <Check className="h-3 w-3 text-action-primary-bg" />
-                        )}
-                      </div>
-                    </button>
-                  )}
-                </MenuItem>
-              ))}
-            </MenuItems>
-          </Transition>
-        </Menu>
-      </div>
-
-      {/* Content Area */}
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-text-default">
-            {displayName}
-          </span>
-          {currentPersona && isShadowPersona(currentPersona) && (
-            <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-              Shadow Persona
-            </span>
-          )}
-          <span className="text-[10px] text-text-muted">
-            •{" "}
-            {section.updated_at
-              ? new Date(section.updated_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : ""}
-          </span>
-        </div>
-
+    <SectionPreset
+      persona={currentPersona || null}
+      isPdf={section.section_type === "PDF"}
+      className="flex flex-col group relative transition-all"
+      centerHeader={
+        <PersonaSelector
+          currentPersona={currentPersona || null}
+          isPdf={section.section_type === "PDF"}
+          globalPersonas={globalPersonas}
+          shadowPersonas={shadowPersonas}
+          onSelect={handlePersonaSelect}
+        />
+      }
+      rightHeader={
+        <span className="text-[10px] text-text-muted">
+          {section.updated_at
+            ? new Date(section.updated_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : ""}
+        </span>
+      }
+      contentClassName="px-4"
+    >
+      <div className="min-w-0 flex-1 py-1">
         {shouldShowEditor && (
           <div
             className={`${editable ? "blocknote-editable" : "blocknote-readonly"} prose prose-sm dark:prose-invert max-w-none`}
@@ -357,6 +230,6 @@ export function LogSection({
           </div>
         )}
       </div>
-    </div>
+    </SectionPreset>
   );
 }

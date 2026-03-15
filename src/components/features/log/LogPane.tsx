@@ -1399,7 +1399,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                               </div>
                             )}
 
-                            <div className="px-2.5 py-1.5 flex flex-col gap-1">
+                            <div className="flex flex-col divide-y divide-border-subtle/30">
                               {entry.sections?.map(
                                 (
                                   section: EntryWithSections["sections"][number],

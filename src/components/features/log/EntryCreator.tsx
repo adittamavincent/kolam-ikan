@@ -11,6 +11,7 @@ import React, {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
+
 import {
   BlockNoteEditor as BlockNoteEditorType,
   PartialBlock,
@@ -19,11 +20,9 @@ import type { WhatsAppInjectPayload } from "./WhatsAppImportModal";
 import {
   Loader2,
   Send,
-  Check,
-  Plus,
+    Plus,
   X,
-  ChevronDown,
-  FileText,
+    FileText,
   Upload,
   GripVertical,
   Settings,
@@ -39,6 +38,10 @@ import {
   Transition,
 } from "@headlessui/react";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import { SectionPreset } from "@/components/shared/SectionPreset";
+import { PersonaSelector } from "@/components/shared/PersonaSelector";
+import { getPersonaHoverClass } from "@/components/shared/getPersonaHoverClass";
+
 import { PdfAttachmentItem } from "./PdfAttachmentItem";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -1396,192 +1399,34 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                   if (!isPdf && !persona) return null;
 
-                  const bgClass =
-                    persona && isAiPersona(persona)
-                      ? "bg-sky-500/5"
-                      : persona && isShadowPersona(persona)
-                        ? "bg-amber-500/5"
-                        : isPdf
-                          ? "bg-surface-subtle/25"
-                          : "";
-
-                  const headerBgClass =
-                    persona && isAiPersona(persona)
-                      ? "bg-sky-500/10 border-sky-500/20"
-                      : persona && isShadowPersona(persona)
-                        ? "bg-amber-500/10 border-amber-500/20"
-                        : "bg-surface-subtle/50 border-border-subtle/70";
-
                   return (
                     <SortableSection key={instanceId} id={instanceId}>
                       {(dragHandleProps) => (
-                        <div className={`flex flex-col ${bgClass}`}>
-                          <div
-                            className={`flex items-center justify-between px-4 ${isPdf ? "py-1.5" : "py-1"} border-y ${headerBgClass}`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <button
-                                className="cursor-grab p-0.5 text-text-muted hover:bg-surface-subtle active:cursor-grabbing"
-                                aria-label="Drag to reorder"
-                                {...dragHandleProps}
-                              >
-                                <GripVertical className="h-3 w-3" />
-                              </button>
-
-                              {/* Persona Menu Header */}
-                              <Menu as="div" className="relative z-30">
-                                <MenuButton className="flex items-center gap-2 hover:bg-surface-subtle/50 px-1 py-0.5 transition-colors focus:outline-none">
-                                  {persona ? (
-                                    <>
-                                      <div
-                                        className="flex h-4 w-4 items-center justify-center"
-                                        style={{
-                                          backgroundColor: `${persona.color}20`,
-                                          color: persona.color,
-                                        }}
-                                      >
-                                        <DynamicIcon
-                                          name={persona.icon}
-                                          className="h-2.5 w-2.5"
-                                        />
-                                      </div>
-                                      <span className="text-[10px] font-medium text-text-subtle">
-                                        {persona.name}
-                                      </span>
-                                      {isShadowPersona(persona) && (
-                                        <span className="border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
-                                          Shadow
-                                        </span>
-                                      )}
-                                      {isAiPersona(persona) && (
-                                        <span className="border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] text-sky-700 dark:text-sky-400">
-                                          AI
-                                        </span>
-                                      )}
-                                      <ChevronDown className="h-3 w-3 text-text-muted opacity-50" />
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FileText className="h-3 w-3 text-text-muted" />
-                                      <span className="text-[10px] font-medium text-text-subtle uppercase tracking-wider">
-                                        {isPdf
-                                          ? (pdfSection?.personaName ??
-                                            "Attachment")
-                                          : "Unknown"}
-                                      </span>
-                                    </>
-                                  )}
-                                </MenuButton>
-
-                                {/* Dropdown transition/items */}
-                                {persona && (
-                                  <Transition
-                                    as={Fragment}
-                                    enter="transition ease-out duration-100"
-                                    enterFrom="transform opacity-0 scale-95"
-                                    enterTo="transform opacity-100 scale-100"
-                                    leave="transition ease-in duration-75"
-                                    leaveFrom="transform opacity-100 scale-100"
-                                    leaveTo="transform opacity-0 scale-95"
-                                  >
-                                    <MenuItems
-                                      anchor={{ to: "bottom start", gap: 4 }}
-                                      portal
-                                      className="z-9999 w-48 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
-                                    >
-                                      <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
-                                        Switch to...
-                                      </div>
-                                      {globalPersonas.length > 0 && (
-                                        <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
-                                          Global Personas
-                                        </div>
-                                      )}
-                                      {globalPersonas.map((p) => (
-                                        <MenuItem key={p.id}>
-                                          {({ active }) => (
-                                            <button
-                                              onClick={() =>
-                                                changePersona(instanceId, p.id)
-                                              }
-                                              className={`${
-                                                active
-                                                  ? "bg-surface-subtle text-text-default"
-                                                  : "text-text-subtle"
-                                              } group flex w-full items-center gap-2 px-2 py-1.5 text-xs transition-colors`}
-                                            >
-                                              <div
-                                                className="flex h-4 w-4 items-center justify-center"
-                                                style={{
-                                                  backgroundColor: `${p.color}20`,
-                                                  color: p.color,
-                                                }}
-                                              >
-                                                <DynamicIcon
-                                                  name={p.icon}
-                                                  className="h-2.5 w-2.5"
-                                                />
-                                              </div>
-                                              <span>{p.name}</span>
-                                              <span className="ml-auto border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[9px] text-text-muted">
-                                                Global
-                                              </span>
-                                              {p.id === section.personaId && (
-                                                <Check className="h-3 w-3" />
-                                              )}
-                                            </button>
-                                          )}
-                                        </MenuItem>
-                                      ))}
-
-                                      {shadowPersonas.length > 0 && (
-                                        <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                                          Shadow Personas
-                                        </div>
-                                      )}
-                                      {shadowPersonas.map((p) => (
-                                        <MenuItem key={p.id}>
-                                          {({ active }) => (
-                                            <button
-                                              onClick={() =>
-                                                changePersona(instanceId, p.id)
-                                              }
-                                              className={`${
-                                                active
-                                                  ? "bg-surface-subtle text-text-default"
-                                                  : "text-text-subtle"
-                                              } group flex w-full items-center gap-2 px-2 py-1.5 text-xs transition-colors`}
-                                            >
-                                              <div
-                                                className="flex h-4 w-4 items-center justify-center ring-1 ring-amber-500/40"
-                                                style={{
-                                                  backgroundColor: `${p.color}20`,
-                                                  color: p.color,
-                                                }}
-                                              >
-                                                <DynamicIcon
-                                                  name={p.icon}
-                                                  className="h-2.5 w-2.5"
-                                                />
-                                              </div>
-                                              <span>{p.name}</span>
-                                              <span className="ml-auto border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-700 dark:text-amber-400">
-                                                Shadow
-                                              </span>
-                                              {p.id === section.personaId && (
-                                                <Check className="h-3 w-3" />
-                                              )}
-                                            </button>
-                                          )}
-                                        </MenuItem>
-                                      ))}
-                                    </MenuItems>
-                                  </Transition>
-                                )}
-                              </Menu>
-                            </div>
-
-                            <div className="flex items-center gap-1">
+                        <SectionPreset
+                          persona={persona || null}
+                          isPdf={isPdf}
+                          className="flex flex-col"
+                          leftHeader={
+                            <button
+                              className={`cursor-grab p-0.5 rounded text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isPdf)} active:cursor-grabbing`}
+                              aria-label="Drag to reorder"
+                              {...dragHandleProps}
+                            >
+                              <GripVertical className="h-3 w-3" />
+                            </button>
+                          }
+                          centerHeader={
+                            <PersonaSelector
+                              currentPersona={persona || null}
+                              isPdf={isPdf}
+                              pdfPersonaName={pdfSection?.personaName ?? undefined}
+                              globalPersonas={globalPersonas}
+                              shadowPersonas={shadowPersonas}
+                              onSelect={(pId) => changePersona(instanceId, pId)}
+                            />
+                          }
+                          rightHeader={
+                            <>
                               {persona && !isShadowPersona(persona) && (
                                 <button
                                   onClick={() => toggleSectionKind(instanceId)}
@@ -1607,13 +1452,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               >
                                 <X className="h-3 w-3" />
                               </button>
-                            </div>
-                          </div>
-
+                            </>
+                          }
+                        >
                           {/* BODY CONTENT */}
                           {isPersona ? (
                             /* BLOCKNOTE EDITOR */
-                            <div className={`px-4 ${bgClass}`}>
+                            <div className="px-4">
                               <BlockNoteEditor
                                 initialContent={getDraftContent(instanceId)}
                                 onChange={(content) => {
@@ -1795,7 +1640,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               )}
                             </div>
                           )}
-                        </div>
+                        </SectionPreset>
                       )}
                     </SortableSection>
                   );

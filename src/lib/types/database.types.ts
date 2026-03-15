@@ -580,6 +580,8 @@ export type Database = {
           is_shadow: boolean
           is_system: boolean | null
           name: string
+          shadow_document_id: string | null
+          shadow_stream_id: string | null
           type: string
           updated_at: string | null
           user_id: string | null
@@ -593,6 +595,8 @@ export type Database = {
           is_shadow?: boolean
           is_system?: boolean | null
           name: string
+          shadow_document_id?: string | null
+          shadow_stream_id?: string | null
           type: string
           updated_at?: string | null
           user_id?: string | null
@@ -606,11 +610,28 @@ export type Database = {
           is_shadow?: boolean
           is_system?: boolean | null
           name?: string
+          shadow_document_id?: string | null
+          shadow_stream_id?: string | null
           type?: string
           updated_at?: string | null
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personas_shadow_document_id_fkey"
+            columns: ["shadow_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personas_shadow_stream_id_fkey"
+            columns: ["shadow_stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       section_pdf_attachments: {
         Row: {

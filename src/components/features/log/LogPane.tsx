@@ -962,12 +962,16 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   }, [currentBranchHeadEntry]);
 
   const branchTimelineItems = useMemo(() => {
-    if (currentBranchCutoffMs === null) return timelineItems;
+    // If viewing the main branch, don't apply the branch head cutoff —
+    // show all recent entries (including AI responses) by default.
+    if (currentBranch === "main" || currentBranchCutoffMs === null)
+      return timelineItems;
+
     return timelineItems.filter((item) => {
       const itemTs = new Date(item.created_at).getTime();
       return Number.isFinite(itemTs) && itemTs <= currentBranchCutoffMs;
     });
-  }, [timelineItems, currentBranchCutoffMs]);
+  }, [timelineItems, currentBranchCutoffMs, currentBranch]);
 
   const branchEntries = useMemo(
     () =>
@@ -1404,7 +1408,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                 {amendError}
                               </div>
                             )}
-
+                            {/* Commit content sections */}
                             <div className="flex flex-col divide-y divide-border-subtle/30">
                               {entry.sections?.map(
                                 (

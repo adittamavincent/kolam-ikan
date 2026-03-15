@@ -614,15 +614,64 @@ export const ResponseParser = forwardRef<
       setIsApplying(true);
       try {
         if (canProcessLog && thoughtLog) {
-          const aiPersonaName = "AI";
           const blocks = toParagraphBlocks(thoughtLog);
-          await supabase.rpc("create_entry_with_section", {
+
+          // Ensure we have a dedicated AI persona (system-level). Try to find
+          // an existing system AI persona, otherwise create one.
+          let aiPersonaId: string | undefined = undefined;
+          try {
+            const { data: existing } = await supabase
+              .from("personas")
+              .select("id")
+              .eq("is_system", true)
+              .eq("type", "AI")
+              .limit(1)
+              .maybeSingle();
+
+            if (existing && typeof (existing as { id?: unknown }).id === "string") {
+              aiPersonaId = (existing as { id?: string }).id;
+            } else {
+              const defaultIcon = "Robot";
+              const defaultColor = "#7c3aed";
+              const { data: created, error: createErr } = await supabase
+                .from("personas")
+                .insert({
+                  type: "AI",
+                  name: "AI",
+                  icon: defaultIcon,
+                  color: defaultColor,
+                  is_system: true,
+                })
+                .select()
+                .maybeSingle();
+
+              if (createErr) {
+                console.warn("Failed to create AI persona, falling back to snapshot name:", createErr);
+              } else if (created && typeof (created as { id?: unknown }).id === "string") {
+                aiPersonaId = (created as { id?: string }).id;
+              }
+            }
+          } catch (err) {
+            console.warn("Error ensuring AI persona:", err);
+          }
+
+          type CreateEntryRpc = {
+            p_content_json: Json;
+            p_stream_id: string;
+            p_persona_id?: string;
+            p_persona_name_snapshot?: string;
+            p_is_draft?: boolean;
+          };
+
+          const rpcPayload: CreateEntryRpc = {
             p_stream_id: streamId,
             p_content_json: blocks as unknown as Json,
-            p_persona_id: undefined,
-            p_persona_name_snapshot: aiPersonaName,
+            p_persona_name_snapshot: "AI",
             p_is_draft: false,
-          });
+          };
+          if (aiPersonaId) rpcPayload.p_persona_id = aiPersonaId;
+
+          await supabase.rpc("create_entry_with_section", rpcPayload);
           await supabase.from("audit_logs").insert({
             action: "bridge_log_create",
             target_table: "entries",

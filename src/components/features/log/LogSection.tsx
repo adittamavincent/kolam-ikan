@@ -5,7 +5,7 @@ import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
 import { PartialBlock } from "@blocknote/core";
 import { useMemo } from "react";
 import { SectionPreset } from "@/components/shared/SectionPreset";
-import { PersonaSelector } from "@/components/shared/PersonaSelector";
+import PersonaItem from "../../shared/PersonaItem";
 import { PdfAttachmentItem } from "./PdfAttachmentItem";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
@@ -41,8 +41,31 @@ export function LogSection({
   const { personas } = usePersonas({ streamId, includeShadow: true });
   const { updateSectionPersona } = usePersonaMutations();
 
+  // Prefer the resolved persona from global list; if missing, fall back to
+  // the persona object returned on the section or the persona name snapshot
+  // so that system / AI-created entries still display a sensible label.
+  const resolvedPersona = personas?.find((p) => p.id === section.persona?.id) || section.persona;
+
   const currentPersona =
-    personas?.find((p) => p.id === section.persona?.id) || section.persona;
+    resolvedPersona ||
+    (section.persona_name_snapshot
+      ? {
+          id: `snapshot-${section.id}`,
+          user_id: null,
+          type: "AI",
+          name: section.persona_name_snapshot,
+          icon: "FileText",
+          color: "#9CA3AF",
+          is_system: false,
+          // Provide fields expected by consumers of the Persona type
+          deleted_at: null,
+          is_shadow: false,
+          shadow_document_id: null,
+          shadow_stream_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      : null);
 
   // Handle persona change
   const handlePersonaSelect = (personaId: string) => {
@@ -140,12 +163,17 @@ export function LogSection({
       isPdf={section.section_type === "PDF"}
       className="flex flex-col group relative transition-all"
       centerHeader={
-        <PersonaSelector
-          currentPersona={currentPersona || null}
-          isPdf={section.section_type === "PDF"}
-          globalPersonas={globalPersonas}
-          shadowPersonas={shadowPersonas}
-          onSelect={handlePersonaSelect}
+        <PersonaItem
+          persona={currentPersona ?? null}
+          menuProps={{
+            currentPersona: currentPersona || null,
+            isPdf: section.section_type === "PDF",
+            pdfPersonaName: section.persona_name_snapshot ?? undefined,
+            globalPersonas: globalPersonas,
+            shadowPersonas: shadowPersonas,
+            onSelect: handlePersonaSelect,
+            readOnly: !editable,
+          }}
         />
       }
       rightHeader={

@@ -37,9 +37,9 @@ import {
   MenuItems,
   Transition,
 } from "@headlessui/react";
-import { DynamicIcon } from "@/components/shared/DynamicIcon";
+// DynamicIcon removed from this file (unused import)
+import PersonaItem from "../../shared/PersonaItem";
 import { SectionPreset } from "@/components/shared/SectionPreset";
-import { PersonaSelector } from "@/components/shared/PersonaSelector";
 import { getPersonaHoverClass } from "@/components/shared/getPersonaHoverClass";
 
 import { PdfAttachmentItem } from "./PdfAttachmentItem";
@@ -1189,29 +1189,20 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             }`}
           >
             {quickPersonas.map((persona) => (
-              <button
+              <PersonaItem
                 key={`quick-persona-${persona.id}`}
-                onClick={() => addPersona(persona.id)}
-                className={`flex items-center gap-1.5  border px-2 py-1 text-[11px] font-medium text-text-default transition-colors ${
+                persona={persona}
+                compact
+                title={`Quick add ${persona.name}`}
+                className={`${
                   isAiPersona(persona)
                     ? "border-border-default/30 bg-sky-500/10 hover:bg-sky-500/15"
                     : isShadowPersona(persona)
-                      ? "border-border-default/30 bg-amber-500/10 hover:bg-amber-500/15"
-                      : "border-border-default/70 bg-surface-subtle/40 hover:bg-surface-subtle"
-                }`}
-                title={`Quick add ${persona.name}`}
-              >
-                <div
-                  className="flex h-4 w-4 items-center justify-center "
-                  style={{
-                    backgroundColor: `${persona.color}20`,
-                    color: persona.color,
-                  }}
-                >
-                  <DynamicIcon name={persona.icon} className="h-2.5 w-2.5" />
-                </div>
-                <span>{persona.name}</span>
-              </button>
+                    ? "border-border-default/30 bg-amber-500/10 hover:bg-amber-500/15"
+                    : "border-border-default/70 bg-surface-subtle/40 hover:bg-surface-subtle"
+                } text-text-default`}
+                onClick={() => addPersona(persona.id)}
+              />
             ))}
 
             <Menu as="div" className="relative z-30">
@@ -1245,35 +1236,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   {globalPersonas.map((persona) => (
                     <MenuItem key={persona.id}>
                       {({ active }) => (
-                        <button
-                          onClick={() => {
-                            addPersona(persona.id);
-                          }}
-                          className={`${
-                            active
-                              ? "bg-surface-subtle text-text-default"
-                              : "text-text-subtle"
-                          } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="flex h-5 w-5 items-center justify-center "
-                              style={{
-                                backgroundColor: `${persona.color}20`,
-                                color: persona.color,
-                              }}
-                            >
-                              <DynamicIcon
-                                name={persona.icon}
-                                className="h-3 w-3"
-                              />
-                            </div>
-                            <span>{persona.name}</span>
-                          </div>
-                          <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
-                            Global
-                          </span>
-                        </button>
+                        <PersonaItem
+                          persona={persona}
+                          role="global"
+                          focus={active}
+                          onClick={() => addPersona(persona.id)}
+                        />
                       )}
                     </MenuItem>
                   ))}
@@ -1285,35 +1253,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   {shadowPersonas.map((persona) => (
                     <MenuItem key={persona.id}>
                       {({ active }) => (
-                        <button
-                          onClick={() => {
-                            addPersona(persona.id);
-                          }}
-                          className={`${
-                            active
-                              ? "bg-surface-subtle text-text-default"
-                              : "text-text-subtle"
-                          } group flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-colors`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="flex h-5 w-5 items-center justify-center   "
-                              style={{
-                                backgroundColor: `${persona.color}20`,
-                                color: persona.color,
-                              }}
-                            >
-                              <DynamicIcon
-                                name={persona.icon}
-                                className="h-3 w-3"
-                              />
-                            </div>
-                            <span>{persona.name}</span>
-                          </div>
-                          <span className=" border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
-                            Shadow
-                          </span>
-                        </button>
+                        <PersonaItem
+                          persona={persona}
+                          role="shadow"
+                          focus={active}
+                          onClick={() => addPersona(persona.id)}
+                        />
                       )}
                     </MenuItem>
                   ))}
@@ -1412,7 +1357,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           className="flex flex-col"
                           leftHeader={
                             <button
-                              className={`cursor-grab p-0.5 rounded text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isPdf)} active:cursor-grabbing`}
+                              className={`cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isPdf)} active:cursor-grabbing`}
                               aria-label="Drag to reorder"
                               {...dragHandleProps}
                             >
@@ -1420,13 +1365,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </button>
                           }
                           centerHeader={
-                            <PersonaSelector
-                              currentPersona={persona || null}
-                              isPdf={isPdf}
-                              pdfPersonaName={pdfSection?.personaName ?? undefined}
-                              globalPersonas={globalPersonas}
-                              shadowPersonas={shadowPersonas}
-                              onSelect={(pId) => changePersona(instanceId, pId)}
+                            <PersonaItem
+                              persona={persona ?? null}
+                              menuProps={{
+                                currentPersona: persona || null,
+                                isPdf: isPdf,
+                                pdfPersonaName: pdfSection?.personaName ?? undefined,
+                                globalPersonas: globalPersonas,
+                                shadowPersonas: shadowPersonas,
+                                onSelect: (pId: string) => changePersona(instanceId, pId),
+                              }}
                             />
                           }
                           rightHeader={
@@ -1558,7 +1506,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                 )}
                               </div>
                               {effectiveAttachments.length === 0 ? (
-                                <div className="border border-dashed border-border-default border-border-default bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
+                                <div className="border border-dashed border-border-default bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
                                   Drop or attach one or more PDFs to start
                                   building this section.
                                 </div>

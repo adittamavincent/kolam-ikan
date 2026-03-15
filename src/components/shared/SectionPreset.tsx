@@ -1,6 +1,71 @@
 import React from "react";
 import { Persona } from "@/lib/types";
-import { PersonaSectionBackground, PersonaSectionHeader } from "./PersonaDisplay";
+
+function isShadowPersona(persona: { is_shadow?: boolean | null } | null | undefined): boolean {
+  return persona?.is_shadow === true;
+}
+
+function isAiPersona(persona: { type?: string | null } | null | undefined): boolean {
+  return persona?.type === "AI";
+}
+
+interface PersonaSectionBackgroundProps {
+  persona: Persona | null;
+  isPdf?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}
+
+function PersonaSectionBackground({
+  persona,
+  isPdf = false,
+  children,
+  className = "",
+}: PersonaSectionBackgroundProps) {
+  const bgClass =
+    persona && isAiPersona(persona)
+      ? "bg-sky-500/5"
+      : persona && isShadowPersona(persona)
+      ? "bg-amber-500/5"
+      : isPdf
+      ? "bg-surface-subtle/25"
+      : "";
+
+  return (
+    <div className={`flex flex-col ${bgClass} ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+interface PersonaSectionHeaderProps {
+  persona: Persona | null;
+  isPdf?: boolean;
+  children: React.ReactNode;
+  className?: string;
+}
+
+function PersonaSectionHeader({
+  persona,
+  isPdf = false,
+  children,
+  className = "",
+}: PersonaSectionHeaderProps) {
+  const headerBgClass =
+    persona && isAiPersona(persona)
+      ? "bg-sky-500/10 border-border-default/20"
+      : persona && isShadowPersona(persona)
+      ? "bg-amber-500/10 border-border-default/20"
+      : "bg-surface-subtle/50 border-border-default/70";
+
+  return (
+    <div
+      className={`flex items-center justify-between px-4 ${isPdf ? "py-1.5" : "py-1"} border-y ${headerBgClass} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface SectionPresetProps {
   persona: Persona | null;

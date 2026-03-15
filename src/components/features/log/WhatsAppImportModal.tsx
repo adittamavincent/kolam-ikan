@@ -1831,7 +1831,7 @@ export function WhatsAppImportModal({
                     <button
                       onClick={() => handleCreatePersonas(mappableSenders.filter((sender) => !mapping[sender]))}
                       disabled={creatingAllPersonas}
-                      className="self-end rounded-sm bg-blue-500/10 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-500/20 disabled:opacity-50 transition-colors border border-blue-500/20"
+                      className="self-end bg-blue-500/10 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-500/20 disabled:opacity-50 transition-colors border border-blue-500/20"
                     >
                       {creatingAllPersonas ? (
                         <>

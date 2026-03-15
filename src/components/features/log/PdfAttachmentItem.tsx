@@ -63,7 +63,7 @@ export function PdfAttachmentActions({
             onPreviewPdf?.();
           }}
           disabled={!onPreviewPdf}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default rounded-sm"
+          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
           aria-label={`Preview ${title}`}
           title={onPreviewPdf ? "Open PDF preview" : "PDF preview unavailable"}
         >
@@ -79,7 +79,7 @@ export function PdfAttachmentActions({
             if (canOpenParsed && onPreviewParsed) onPreviewParsed();
           }}
           disabled={!canOpenParsed || !onPreviewParsed}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40 rounded-sm"
+          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={`Open parsed Docling for ${title}`}
           title={
             !onPreviewParsed
@@ -99,7 +99,7 @@ export function PdfAttachmentActions({
           target="_blank"
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default rounded-sm"
+          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
           aria-label="Open PDF in new tab"
           title="Open in new tab"
         >
@@ -121,7 +121,7 @@ export function PdfAttachmentActions({
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default rounded-sm"
+          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
           aria-label={`Remove ${title}`}
         >
           <X className="h-3.5 w-3.5" />

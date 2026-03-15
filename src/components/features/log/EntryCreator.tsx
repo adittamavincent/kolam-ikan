@@ -38,11 +38,11 @@ import {
   Transition,
 } from "@headlessui/react";
 // DynamicIcon removed from this file (unused import)
-import PersonaItem from "../../shared/PersonaItem";
+import { PersonaItem } from "../../shared/PersonaItem";
 import { SectionPreset } from "@/components/shared/SectionPreset";
 import { getPersonaHoverClass } from "@/components/shared/getPersonaHoverClass";
 
-import { PdfAttachmentItem } from "./PdfAttachmentItem";
+import { FileAttachmentItem } from "./FileAttachmentItem";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDocuments } from "@/lib/hooks/useDocuments";
@@ -52,7 +52,7 @@ import { calculateFileHash } from "@/lib/utils/hash";
 import { PersonaManager } from "@/components/features/persona/PersonaManager";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { NavigationGuard } from "@/components/features/log/NavigationGuard";
-import { PdfAttachmentPreviewDialog } from "./PdfAttachmentPreviewDialog";
+import { FileAttachmentPreviewDialog } from "./FileAttachmentPreviewDialog";
 import {
   DndContext,
   closestCenter,
@@ -452,7 +452,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   personaId: draft.personaId ?? null,
                   personaName: draft.personaName,
                   displayMode: draft.pdfDisplayMode ?? "inline",
-                  attachments: (draft.pdfAttachments ?? []).map(
+                  attachments: (draft.fileAttachments ?? []).map(
                     (attachment) => ({
                       documentId: attachment.documentId ?? "",
                       titleSnapshot: attachment.titleSnapshot,
@@ -1308,7 +1308,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <div className="flex flex-col divide-y divide-border-subtle/30">
                 {sections.map((section) => {
                   const { instanceId } = section;
-                  const isPdf = section.kind === "PDF";
+                  const isAttachment = section.kind === "PDF";
                   const isPersona = section.kind === "PERSONA";
                   const persona = section.personaId
                     ? personas?.find((p) => p.id === section.personaId)
@@ -1321,7 +1321,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                     | Extract<SectionState, { kind: "PDF" }>
                     | undefined;
 
-                  if (isPdf) {
+                  if (isAttachment) {
                     pdfSection = section;
                     pdfDraft = getPdfDraft(instanceId);
                     attachmentsSource =
@@ -1346,18 +1346,18 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           }));
                   }
 
-                  if (!isPdf && !persona) return null;
+                  if (!isAttachment && !persona) return null;
 
                   return (
                     <SortableSection key={instanceId} id={instanceId}>
                       {(dragHandleProps) => (
                         <SectionPreset
                           persona={persona || null}
-                          isPdf={isPdf}
+                          isAttachment={isAttachment}
                           className="flex flex-col"
                           leftHeader={
                             <button
-                              className={`cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isPdf)} active:cursor-grabbing`}
+                              className={`cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
                               aria-label="Drag to reorder"
                               {...dragHandleProps}
                             >
@@ -1369,8 +1369,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               persona={persona ?? null}
                               menuProps={{
                                 currentPersona: persona || null,
-                                isPdf: isPdf,
-                                pdfPersonaName: pdfSection?.personaName ?? undefined,
+                                isAttachment: isAttachment,
+                                filePersonaName: pdfSection?.personaName ?? undefined,
                                 globalPersonas: globalPersonas,
                                 shadowPersonas: shadowPersonas,
                                 onSelect: (pId: string) => changePersona(instanceId, pId),
@@ -1384,12 +1384,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   onClick={() => toggleSectionKind(instanceId)}
                                   className="text-text-muted hover:text-text-default p-0.5 hover:bg-surface-subtle transition-colors mr-1"
                                   title={
-                                    isPdf
+                                    isAttachment
                                       ? "Switch to Text Editor"
                                       : "Switch to Attachments"
                                   }
                                 >
-                                  {isPdf ? (
+                                  {isAttachment ? (
                                     <Type className="h-3.5 w-3.5" />
                                   ) : (
                                     <Paperclip className="h-3.5 w-3.5" />
@@ -1440,10 +1440,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               <div className="flex flex-wrap items-center gap-2">
                                 <label className="inline-flex cursor-pointer items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
                                   <Upload className="h-3 w-3" />
-                                  Upload PDF
+                                  Upload File
                                   <input
                                     type="file"
-                                    accept="application/pdf"
+                                    accept="*/*"
                                     className="hidden"
                                     onChange={async (e) => {
                                       const file = e.target.files?.[0];
@@ -1535,7 +1535,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                         latestJob?.progress_message;
 
                                       return (
-                                        <PdfAttachmentItem
+                                        <FileAttachmentItem
                                           key={
                                             attachment.documentId ||
                                             attachment.fileHash ||
@@ -1667,7 +1667,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           initialQueuedFiles={importModalFiles}
         />
 
-        <PdfAttachmentPreviewDialog
+        <FileAttachmentPreviewDialog
           open={!!attachmentPreview}
           onClose={closeAttachmentPreview}
           attachmentPreview={attachmentPreview}

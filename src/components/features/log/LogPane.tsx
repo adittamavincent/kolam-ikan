@@ -14,9 +14,9 @@ import { EntryCreator } from "./EntryCreator";
 import { LogSection } from "./LogSection";
 import {
   PdfAttachmentPreviewData,
-  PdfAttachmentPreviewDialog,
+  FileAttachmentPreviewDialog,
   ParsedPreviewData,
-} from "./PdfAttachmentPreviewDialog";
+} from "./FileAttachmentPreviewDialog";
 import { CanvasSnapshotCard } from "./CanvasSnapshotCard";
 import { CanvasDraftCard } from "./CanvasDraftCard";
 import { useStream } from "@/lib/hooks/useStream";
@@ -1483,7 +1483,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       </div>
 
       {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
-      <PdfAttachmentPreviewDialog
+      <FileAttachmentPreviewDialog
         open={!!attachmentPreview}
         onClose={closeLogAttachmentPreview}
         attachmentPreview={attachmentPreview}

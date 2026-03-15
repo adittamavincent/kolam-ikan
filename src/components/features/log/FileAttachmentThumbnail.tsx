@@ -24,7 +24,7 @@ if (!promiseConstructor.withResolvers) {
   };
 }
 
-interface PdfAttachmentThumbnailProps {
+interface FileAttachmentThumbnailProps {
   url?: string | null;
   storagePath?: string | null;
   thumbnailPath?: string | null;
@@ -33,14 +33,14 @@ interface PdfAttachmentThumbnailProps {
   progressPercent?: number | null;
 }
 
-export function PdfAttachmentThumbnail({
+export function FileAttachmentThumbnail({
   url,
   storagePath,
   thumbnailPath,
   title,
   importStatus = null,
   progressPercent = null,
-}: PdfAttachmentThumbnailProps) {
+}: FileAttachmentThumbnailProps) {
   type PDFPageLike = {
     getViewport: (opts: { scale: number }) => { width: number; height: number };
     render: (opts: {
@@ -131,7 +131,7 @@ export function PdfAttachmentThumbnail({
         if (thumbnailPath && !skipThumbnail) {
           if (process.env.NODE_ENV !== "production")
             console.debug(
-              "PdfAttachmentThumbnail: checking for server-generated thumbnail",
+              "FileAttachmentThumbnail: checking for server-generated thumbnail",
               thumbnailPath,
             );
           const { data: thumbData } = supabase.storage
@@ -147,7 +147,7 @@ export function PdfAttachmentThumbnail({
               if (headResp.ok) {
                 if (process.env.NODE_ENV !== "production")
                   console.debug(
-                    "PdfAttachmentThumbnail: found server-generated thumbnail",
+                    "FileAttachmentThumbnail: found server-generated thumbnail",
                     thumbData.publicUrl,
                   );
                 fetchedStoragePathRef.current = thumbnailPath;
@@ -159,7 +159,7 @@ export function PdfAttachmentThumbnail({
               // If HEAD fails (CORS/unsupported), fall back to attempting GET in next phase.
               if (process.env.NODE_ENV !== "production")
                 console.debug(
-                  "PdfAttachmentThumbnail: HEAD check failed for thumbnail",
+                  "FileAttachmentThumbnail: HEAD check failed for thumbnail",
                   thumbData.publicUrl,
                   e,
                 );
@@ -171,7 +171,7 @@ export function PdfAttachmentThumbnail({
         if (storagePath && !skipThumbnail) {
           if (process.env.NODE_ENV !== "production")
             console.debug(
-              "PdfAttachmentThumbnail: checking for legacy cached thumbnail",
+              "FileAttachmentThumbnail: checking for legacy cached thumbnail",
               storagePath,
             );
           const thumbPath = `${storagePath}.png`;
@@ -185,7 +185,7 @@ export function PdfAttachmentThumbnail({
               if (headResp.ok) {
                 if (process.env.NODE_ENV !== "production")
                   console.debug(
-                    "PdfAttachmentThumbnail: found legacy cached thumbnail",
+                    "FileAttachmentThumbnail: found legacy cached thumbnail",
                     thumbData.publicUrl,
                   );
                 fetchedStoragePathRef.current = storagePath;
@@ -196,7 +196,7 @@ export function PdfAttachmentThumbnail({
             } catch (e) {
               if (process.env.NODE_ENV !== "production")
                 console.debug(
-                  "PdfAttachmentThumbnail: HEAD check failed for legacy thumbnail",
+                  "FileAttachmentThumbnail: HEAD check failed for legacy thumbnail",
                   thumbData.publicUrl,
                   e,
                 );
@@ -204,7 +204,7 @@ export function PdfAttachmentThumbnail({
           }
         } else {
           console.debug(
-            "PdfAttachmentThumbnail: skipping cached thumbnail fetch (previously failed)",
+            "FileAttachmentThumbnail: skipping cached thumbnail fetch (previously failed)",
             { storagePath, thumbnailPath },
           );
         }
@@ -212,7 +212,7 @@ export function PdfAttachmentThumbnail({
         // Step 3: Fallback to the original PDF if no thumbnail exists or we skipped it
         if (storagePath) {
           console.debug(
-            "PdfAttachmentThumbnail: falling back to original PDF",
+            "FileAttachmentThumbnail: falling back to original PDF",
             storagePath,
           );
           const bucket = "document-files";
@@ -231,7 +231,7 @@ export function PdfAttachmentThumbnail({
 
           if (!canceled && data?.signedUrl) {
             console.debug(
-              "PdfAttachmentThumbnail: obtained fresh signedUrl for PDF",
+              "FileAttachmentThumbnail: obtained fresh signedUrl for PDF",
               data.signedUrl,
             );
             fetchedStoragePathRef.current = storagePath;
@@ -279,7 +279,7 @@ export function PdfAttachmentThumbnail({
 
     async function renderFirstPage() {
       if (process.env.NODE_ENV !== "production")
-        console.debug("PdfAttachmentThumbnail: renderFirstPage start", {
+        console.debug("FileAttachmentThumbnail: renderFirstPage start", {
           resolvedUrl,
           storagePath,
         });
@@ -308,7 +308,7 @@ export function PdfAttachmentThumbnail({
           resolvedUrl.startsWith("data:image/");
         if (isImage || isFromCache) {
           if (process.env.NODE_ENV !== "production")
-            console.debug("PdfAttachmentThumbnail: drawing image/thumbnail", {
+            console.debug("FileAttachmentThumbnail: drawing image/thumbnail", {
               resolvedUrl,
               isFromCache,
             });
@@ -317,7 +317,7 @@ export function PdfAttachmentThumbnail({
           const imgLoad = new Promise<void>((resolve, reject) => {
             img.onload = () => resolve();
             img.onerror = (e) => {
-              console.warn("PdfAttachmentThumbnail: image failed to load", {
+              console.warn("FileAttachmentThumbnail: image failed to load", {
                 resolvedUrl,
                 error: e,
               });
@@ -332,7 +332,7 @@ export function PdfAttachmentThumbnail({
             // If the thumbnail failed to load, fall back to PDF rendering if we have a storagePath
             if (isFromCache && storagePath && !canceled) {
               console.warn(
-                "PdfAttachmentThumbnail: cached thumbnail failed to load, falling back to PDF rendering",
+                "FileAttachmentThumbnail: cached thumbnail failed to load, falling back to PDF rendering",
               );
               setIsFromCache(false);
               setSkipThumbnail(true);
@@ -374,7 +374,7 @@ export function PdfAttachmentThumbnail({
           pdfjsModule = await import("pdfjs-dist");
         } catch (importErr) {
           console.warn(
-            "PdfAttachmentThumbnail: failed to import pdfjs-dist",
+            "FileAttachmentThumbnail: failed to import pdfjs-dist",
             importErr,
           );
           throw importErr;
@@ -396,7 +396,7 @@ export function PdfAttachmentThumbnail({
         pdfjs.GlobalWorkerOptions.workerSrc = localWorkerUrl;
 
         if (process.env.NODE_ENV !== "production")
-          console.debug("PdfAttachmentThumbnail: loading PDF", {
+          console.debug("FileAttachmentThumbnail: loading PDF", {
             resolvedUrl,
             version,
             workerSrc: pdfjs.GlobalWorkerOptions.workerSrc,
@@ -418,7 +418,7 @@ export function PdfAttachmentThumbnail({
         const arrayBuffer = await resp.arrayBuffer();
         if (process.env.NODE_ENV !== "production")
           console.debug(
-            "PdfAttachmentThumbnail: PDF bytes fetched",
+            "FileAttachmentThumbnail: PDF bytes fetched",
             arrayBuffer.byteLength,
           );
 
@@ -433,7 +433,7 @@ export function PdfAttachmentThumbnail({
           pdf = await loadingTask.promise;
         } catch (loadErr) {
           console.warn(
-            "PdfAttachmentThumbnail: getDocument failed with worker. Retrying without worker...",
+            "FileAttachmentThumbnail: getDocument failed with worker. Retrying without worker...",
             loadErr,
           );
 
@@ -453,7 +453,7 @@ export function PdfAttachmentThumbnail({
             pdf = await noWorkerTask.promise;
           } catch (noWorkerErr) {
             console.warn(
-              "PdfAttachmentThumbnail: no-worker retry failed. Retrying with unpkg worker...",
+              "FileAttachmentThumbnail: no-worker retry failed. Retrying with unpkg worker...",
               noWorkerErr,
             );
             // Final retry with unpkg worker if local worker and no-worker mode fail.
@@ -470,11 +470,11 @@ export function PdfAttachmentThumbnail({
 
         const pdfDoc = pdf as unknown as PDFDocumentLike;
         if (process.env.NODE_ENV !== "production")
-          console.debug("PdfAttachmentThumbnail: PDF document loaded");
+          console.debug("FileAttachmentThumbnail: PDF document loaded");
 
         const page = await pdfDoc.getPage(1);
         if (process.env.NODE_ENV !== "production")
-          console.debug("PdfAttachmentThumbnail: first page retrieved");
+          console.debug("FileAttachmentThumbnail: first page retrieved");
 
         if (canceled || !canvasRef.current) {
           if (typeof pdfDoc.destroy === "function") await pdfDoc.destroy();
@@ -520,7 +520,7 @@ export function PdfAttachmentThumbnail({
         context.translate(offsetX, offsetY);
 
         if (process.env.NODE_ENV !== "production")
-          console.debug("PdfAttachmentThumbnail: rendering page to canvas...", {
+          console.debug("FileAttachmentThumbnail: rendering page to canvas...", {
             scale,
             viewportWidth: viewport.width,
             viewportHeight: viewport.height,
@@ -532,7 +532,7 @@ export function PdfAttachmentThumbnail({
 
         context.restore();
         if (process.env.NODE_ENV !== "production")
-          console.debug("PdfAttachmentThumbnail: render complete");
+          console.debug("FileAttachmentThumbnail: render complete");
 
         if (typeof pdfDoc.destroy === "function") await pdfDoc.destroy();
         if (!canceled) {
@@ -543,7 +543,7 @@ export function PdfAttachmentThumbnail({
           if (storagePath && !isFromCache) {
             if (process.env.NODE_ENV !== "production")
               console.debug(
-                "PdfAttachmentThumbnail: auto-uploading rendered thumbnail to cache",
+                "FileAttachmentThumbnail: auto-uploading rendered thumbnail to cache",
                 storagePath,
               );
             canvas.toBlob(async (blob) => {
@@ -564,18 +564,18 @@ export function PdfAttachmentThumbnail({
                 if (uploadResp.ok) {
                   if (process.env.NODE_ENV !== "production")
                     console.debug(
-                      "PdfAttachmentThumbnail: Successfully cached thumbnail for",
+                      "FileAttachmentThumbnail: Successfully cached thumbnail for",
                       storagePath,
                     );
                 } else {
                   console.warn(
-                    "PdfAttachmentThumbnail: Failed to cache thumbnail",
+                    "FileAttachmentThumbnail: Failed to cache thumbnail",
                     await uploadResp.text(),
                   );
                 }
               } catch (uploadErr) {
                 console.warn(
-                  "PdfAttachmentThumbnail: Error uploading thumbnail to cache",
+                  "FileAttachmentThumbnail: Error uploading thumbnail to cache",
                   uploadErr,
                 );
               }
@@ -604,7 +604,7 @@ export function PdfAttachmentThumbnail({
           // Keep this non-fatal and avoid surfacing noisy console errors.
           if (process.env.NODE_ENV !== "production") {
             console.warn(
-              "PdfAttachmentThumbnail: preview fallback",
+              "FileAttachmentThumbnail: preview fallback",
               errorDetails,
             );
           }
@@ -626,7 +626,7 @@ export function PdfAttachmentThumbnail({
           if (storagePath && resolvedUrl === url) {
             if (process.env.NODE_ENV !== "production")
               console.debug(
-                "PdfAttachmentThumbnail: prop URL failed, triggering fresh signed URL fetch from storagePath",
+                "FileAttachmentThumbnail: prop URL failed, triggering fresh signed URL fetch from storagePath",
               );
             fetchedStoragePathRef.current = null; // Ensure we allow a re-fetch
             setResolvedUrl(null);

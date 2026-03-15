@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  CreateSectionPdfAttachmentSchema,
-  PdfUploadFormSchema,
-  ReorderSectionPdfAttachmentsSchema,
-} from "@/lib/validation/pdf";
+  CreateSectionFileAttachmentSchema,
+  FileUploadFormSchema,
+  ReorderSectionFileAttachmentsSchema,
+} from "@/lib/validation/attachment";
 
 describe("pdf validation", () => {
   it("accepts valid upload form payload", () => {
-    const parsed = PdfUploadFormSchema.safeParse({
+    const parsed = FileUploadFormSchema.safeParse({
       streamId: "660e8400-e29b-41d4-a716-446655440000",
       title: "Meeting transcript",
     });
@@ -16,7 +16,7 @@ describe("pdf validation", () => {
   });
 
   it("rejects invalid stream id in upload form", () => {
-    const parsed = PdfUploadFormSchema.safeParse({
+    const parsed = FileUploadFormSchema.safeParse({
       streamId: "invalid",
     });
 
@@ -24,7 +24,7 @@ describe("pdf validation", () => {
   });
 
   it("accepts attachment creation payload with persona reference", () => {
-    const parsed = CreateSectionPdfAttachmentSchema.safeParse({
+    const parsed = CreateSectionFileAttachmentSchema.safeParse({
       sectionId: "660e8400-e29b-41d4-a716-446655440000",
       documentId: "660e8400-e29b-41d4-a716-446655440001",
       annotationText: "Persona comments on methodology in this file",
@@ -36,7 +36,7 @@ describe("pdf validation", () => {
   });
 
   it("rejects empty reorder payload", () => {
-    const parsed = ReorderSectionPdfAttachmentsSchema.safeParse({
+    const parsed = ReorderSectionFileAttachmentsSchema.safeParse({
       sectionId: "660e8400-e29b-41d4-a716-446655440000",
       orderedAttachmentIds: [],
     });

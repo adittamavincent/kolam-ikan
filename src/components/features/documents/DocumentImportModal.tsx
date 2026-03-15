@@ -13,7 +13,7 @@ import {
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
 import { calculateFileHash } from "@/lib/utils/hash";
-import { PdfAttachmentThumbnail } from "@/components/features/log/PdfAttachmentThumbnail";
+import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 // ─── Temp file store access ──────────────────────────────────────────────────
@@ -635,7 +635,7 @@ export function DocumentImportModal({
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_280px]">
-                  <label className="flex flex-col gap-2  border border-dashed border-border-default border-border-default/30 bg-surface-default p-4 text-sm text-text-default transition-colors  hover:bg-surface-subtle/35">
+                  <label className="flex flex-col gap-2 border border-dashed border-border-default/30 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
                     <div className="flex items-center justify-between gap-8">
                       <span className="font-medium">PDF file</span>
                       <span className="text-xs text-text-muted">
@@ -645,7 +645,7 @@ export function DocumentImportModal({
                     <input
                       key={fileInputKey}
                       type="file"
-                      accept="application/pdf,.pdf"
+                      accept="*/*"
                       onChange={async (event) => {
                         const file = event.target.files?.[0] ?? null;
                         
@@ -684,7 +684,7 @@ export function DocumentImportModal({
                     </div>
                     <div className="mt-3 flex items-start gap-3">
                       <div className="relative shrink-0">
-                        <PdfAttachmentThumbnail
+                        <FileAttachmentThumbnail
                           url={selectedFilePreviewUrl}
                           storagePath={null}
                           thumbnailPath={null}
@@ -867,7 +867,7 @@ export function DocumentImportModal({
                   )}
 
                   {!isLoading && documents.length === 0 && (
-                    <div className=" border border-dashed border-border-default border-border-default/80 bg-surface-default px-4 py-6 text-sm text-text-muted">
+                    <div className="border border-dashed border-border-default/80 bg-surface-default px-4 py-6 text-sm text-text-muted">
                       <div className="flex items-center gap-2 text-text-default">
                         <CheckCircle2 className="h-4 w-4 text-action-primary-bg" />
                         Nothing queued yet
@@ -933,7 +933,7 @@ export function DocumentImportModal({
                         <div className="flex items-center justify-between gap-3">
                           {/* Thumbnail */}
                             <div className="relative shrink-0">
-                            <PdfAttachmentThumbnail
+                            <FileAttachmentThumbnail
                               url={localThumbnails[document.id] || null}
                               storagePath={document.storage_path}
                               thumbnailPath={document.thumbnail_path}

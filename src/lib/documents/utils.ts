@@ -23,15 +23,3 @@ export function getDocumentThumbnailUrl(document: Document): string | null {
   return data.publicUrl;
 }
 
-export function getDocumentSignedFileUrl(
-  document: Document,
-): Promise<string | null> {
-  if (!document.storage_path) return Promise.resolve(null);
-
-  const supabase = createClient();
-  return supabase.storage
-    .from(document.storage_bucket)
-    .createSignedUrl(document.storage_path, 3600) // 1 hour
-    .then(({ data }) => data?.signedUrl ?? null)
-    .catch(() => null);
-}

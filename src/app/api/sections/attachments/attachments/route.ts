@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
-  CreateSectionPdfAttachmentSchema,
-  DeleteSectionPdfAttachmentSchema,
-  ReorderSectionPdfAttachmentsSchema,
-  UpdateSectionPdfAttachmentSchema,
-} from "@/lib/validation/pdf";
+  CreateSectionFileAttachmentSchema,
+  DeleteSectionFileAttachmentSchema,
+  ReorderSectionFileAttachmentsSchema,
+  UpdateSectionFileAttachmentSchema,
+} from "@/lib/validation/attachment";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   }
 
   const payload = await request.json().catch(() => null);
-  const parsed = CreateSectionPdfAttachmentSchema.safeParse(payload);
+  const parsed = CreateSectionFileAttachmentSchema.safeParse(payload);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },
@@ -55,7 +55,7 @@ export async function PATCH(request: Request) {
   }
 
   const payload = await request.json().catch(() => null);
-  const reorderParse = ReorderSectionPdfAttachmentsSchema.safeParse(payload);
+  const reorderParse = ReorderSectionFileAttachmentsSchema.safeParse(payload);
 
   if (reorderParse.success) {
     const updates = reorderParse.data.orderedAttachmentIds.map(
@@ -79,7 +79,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const updateParse = UpdateSectionPdfAttachmentSchema.safeParse(payload);
+  const updateParse = UpdateSectionFileAttachmentSchema.safeParse(payload);
   if (!updateParse.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: updateParse.error.flatten() },
@@ -112,7 +112,7 @@ export async function DELETE(request: Request) {
   }
 
   const payload = await request.json().catch(() => null);
-  const parsed = DeleteSectionPdfAttachmentSchema.safeParse(payload);
+  const parsed = DeleteSectionFileAttachmentSchema.safeParse(payload);
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Invalid payload", details: parsed.error.flatten() },

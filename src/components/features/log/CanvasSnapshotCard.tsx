@@ -36,9 +36,9 @@ export function CanvasSnapshotCard({
   };
 
   return (
-    <div className="relative group  border border-dashed border-border-default border-border-default/40 bg-action-primary-bg/3 overflow-hidden transition-all ">
+    <div className="relative group  border border-dashed border-border-default/40 bg-action-primary-bg/3 overflow-hidden transition-all ">
       {/* Header */}
-      <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/5 border-b border-dashed border-border-default border-border-default/20">
+      <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/5 border-b border-dashed border-border-default/20">
         <div className="flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <Camera className="h-3 w-3 text-action-primary-bg" />

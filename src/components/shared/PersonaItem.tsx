@@ -9,8 +9,8 @@ import { getPersonaHoverClass } from "./getPersonaHoverClass";
 
 interface PersonaButtonDisplayProps {
   persona: Persona | null;
-  isPdf?: boolean;
-  pdfPersonaName?: string;
+  isAttachment?: boolean;
+  filePersonaName?: string;
   compact?: boolean;
   nameClass?: string;
   showChevron?: boolean;
@@ -18,8 +18,8 @@ interface PersonaButtonDisplayProps {
 
 function PersonaButtonDisplay({
   persona,
-  isPdf = false,
-  pdfPersonaName,
+  isAttachment = false,
+  filePersonaName,
   compact = false,
   nameClass = "",
   showChevron = true,
@@ -29,7 +29,7 @@ function PersonaButtonDisplay({
       <>
         <FileText className="h-3 w-3 text-text-muted" />
         <span className="text-[10px] font-medium text-text-subtle uppercase tracking-wider">
-          {isPdf ? (pdfPersonaName ?? "Attachment") : "Unknown"}
+          {isAttachment ? (filePersonaName ?? "Attachment") : "Unknown"}
         </span>
         {showChevron && <ChevronDown className="h-3 w-3 text-text-muted opacity-50" />}
       </>
@@ -63,8 +63,8 @@ interface PersonaItemProps {
   // when provided, render as a selector control using these menu props
   menuProps?: {
     currentPersona: Persona | null;
-    isPdf: boolean;
-    pdfPersonaName?: string;
+    isAttachment: boolean;
+    filePersonaName?: string;
     globalPersonas: Persona[];
     shadowPersonas: Persona[];
     onSelect: (personaId: string) => void;
@@ -88,7 +88,7 @@ export function PersonaItem({
 
   // If menuProps provided, render as a selector control (Menu + MenuButton + MenuItems)
   if (menuProps) {
-    const { currentPersona, isPdf, pdfPersonaName, globalPersonas, shadowPersonas, onSelect, readOnly = false } = menuProps;
+    const { currentPersona, isAttachment, filePersonaName, globalPersonas, shadowPersonas, onSelect, readOnly = false } = menuProps;
     // If readOnly is true, render a simple, non-interactive persona display
     // instead of the interactive Menu. This ensures committed entries cannot
     // change persona unless the UI is in amend/edit mode.
@@ -97,8 +97,8 @@ export function PersonaItem({
         <div className={containerClass} title={title}>
           <PersonaButtonDisplay
             persona={currentPersona}
-            isPdf={isPdf}
-            pdfPersonaName={pdfPersonaName}
+            isAttachment={isAttachment}
+            filePersonaName={filePersonaName}
             compact={compact}
             nameClass={nameClass || "text-[10px] font-medium text-text-subtle  tracking-wider"}
             showChevron={false}
@@ -107,15 +107,15 @@ export function PersonaItem({
       );
     }
 
-    const hoverClass = getPersonaHoverClass(currentPersona, isPdf);
+    const hoverClass = getPersonaHoverClass(currentPersona, isAttachment);
 
     return (
       <Menu as="div" className="relative z-30">
         <MenuButton className={`flex items-center gap-2 px-1 py-0.5 ${hoverClass} transition-colors focus:`}>
           <PersonaButtonDisplay
             persona={currentPersona}
-            isPdf={isPdf}
-            pdfPersonaName={pdfPersonaName}
+            isAttachment={isAttachment}
+            filePersonaName={filePersonaName}
             compact={false}
             nameClass="text-[10px] font-medium text-text-subtle  tracking-wider"
             showChevron={!readOnly}
@@ -188,4 +188,3 @@ export function PersonaItem({
   );
 }
 
-export default PersonaItem;

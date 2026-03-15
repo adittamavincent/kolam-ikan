@@ -17,11 +17,11 @@ interface SectionDraft {
   personaName?: string;
   content: PartialBlock[];
   pdfDisplayMode?: "inline" | "download" | "external";
-  pdfAttachments?: PdfDraftAttachment[];
+  fileAttachments?: FileDraftAttachment[];
   updatedAt: number;
 }
 
-export interface PdfDraftAttachment {
+export interface FileDraftAttachment {
   documentId?: string;
   storagePath?: string;
   titleSnapshot: string;
@@ -43,7 +43,7 @@ export interface DraftContent {
   content: PartialBlock[];
   personaName?: string;
   pdfDisplayMode?: "inline" | "download" | "external";
-  pdfAttachments?: PdfDraftAttachment[];
+  fileAttachments?: FileDraftAttachment[];
 }
 
 const STORAGE_PREFIX = "kolam_draft_v2_";
@@ -257,7 +257,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
             personaName: s.personaName,
             content: s.content || [],
             pdfDisplayMode: s.pdfDisplayMode,
-            pdfAttachments: s.pdfAttachments ?? [],
+            fileAttachments: s.fileAttachments ?? [],
           };
         });
         setInitialDrafts(loaded);
@@ -317,7 +317,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     (
       instanceId: string,
       payload: {
-        attachments: PdfDraftAttachment[];
+        attachments: FileDraftAttachment[];
         displayMode: "inline" | "download" | "external";
         content?: PartialBlock[];
         personaId?: string | null;
@@ -348,7 +348,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         personaName: payload.personaName,
         content: payload.content ?? [],
         pdfDisplayMode: payload.displayMode,
-        pdfAttachments: payload.attachments,
+        fileAttachments: payload.attachments,
         updatedAt: Date.now(),
       };
 
@@ -398,7 +398,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       return {
         displayMode:
           current?.pdfDisplayMode ?? fallback?.pdfDisplayMode ?? "inline",
-        attachments: current?.pdfAttachments ?? fallback?.pdfAttachments ?? [],
+        attachments: current?.fileAttachments ?? fallback?.fileAttachments ?? [],
       };
     },
     [initialDrafts],
@@ -419,7 +419,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     // Safety check - ignore commit if content has zero meaning and no PDF attachments.
     const meaningfulSections = orderedSections.filter(({ draft }) => {
       if (draft.sectionType === "PDF") {
-        return (draft.pdfAttachments?.length ?? 0) > 0;
+        return (draft.fileAttachments?.length ?? 0) > 0;
       }
       return hasMeaningfulDraftContent(draft.content) && !!draft.personaId;
     });
@@ -506,8 +506,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           );
         }
 
-        if (draft.sectionType === "PDF" && draft.pdfAttachments?.length) {
-          draft.pdfAttachments.forEach((attachment, attachmentIndex) => {
+        if (draft.sectionType === "PDF" && draft.fileAttachments?.length) {
+          draft.fileAttachments.forEach((attachment, attachmentIndex) => {
             if (!attachment.documentId) return;
 
             pdfAttachmentInserts.push({

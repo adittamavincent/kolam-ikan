@@ -21,9 +21,7 @@ import {
 } from "lucide-react";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
+// --- Types ---
 
 interface RecentStream {
   id: string;
@@ -64,9 +62,7 @@ interface DomainWithCounts extends Domain {
   entryCount: number;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Skeleton helpers                                                   */
-/* ------------------------------------------------------------------ */
+// --- Skeleton helpers ---
 
 function StatCardSkeleton() {
   return (
@@ -128,9 +124,7 @@ function QuickActionSkeleton() {
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Sub-components                                                     */
-/* ------------------------------------------------------------------ */
+// --- Sub-components ---
 
 function StatCard({
   icon: Icon,
@@ -304,9 +298,7 @@ function ErrorBanner({
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Main page                                                          */
-/* ------------------------------------------------------------------ */
+// --- Main page ---
 
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();

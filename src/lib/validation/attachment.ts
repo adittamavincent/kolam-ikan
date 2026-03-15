@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-export const PdfUploadFormSchema = z.object({
+export const FileUploadFormSchema = z.object({
   streamId: z.string().uuid(),
   title: z.string().trim().min(1).max(200).optional(),
 });
 
-export const CreateSectionPdfAttachmentSchema = z.object({
+export const CreateSectionFileAttachmentSchema = z.object({
   sectionId: z.string().uuid(),
   documentId: z.string().uuid(),
   sortOrder: z.number().int().min(0).optional(),
@@ -15,7 +15,7 @@ export const CreateSectionPdfAttachmentSchema = z.object({
   referencedPage: z.number().int().positive().optional().nullable(),
 });
 
-export const UpdateSectionPdfAttachmentSchema = z.object({
+export const UpdateSectionFileAttachmentSchema = z.object({
   attachmentId: z.string().uuid(),
   updates: z.object({
     sort_order: z.number().int().min(0).optional(),
@@ -26,11 +26,11 @@ export const UpdateSectionPdfAttachmentSchema = z.object({
   }),
 });
 
-export const ReorderSectionPdfAttachmentsSchema = z.object({
+export const ReorderSectionFileAttachmentsSchema = z.object({
   sectionId: z.string().uuid(),
   orderedAttachmentIds: z.array(z.string().uuid()).min(1),
 });
 
-export const DeleteSectionPdfAttachmentSchema = z.object({
+export const DeleteSectionFileAttachmentSchema = z.object({
   attachmentId: z.string().uuid(),
 });

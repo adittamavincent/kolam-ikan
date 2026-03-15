@@ -30,7 +30,7 @@ import {
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
-import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
+import { FileAttachmentThumbnail } from "./FileAttachmentThumbnail";
 import { createClient } from "@/lib/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -2148,7 +2148,7 @@ function PdfUploadRow({
     >
       <div className="flex items-start gap-2">
         {upload.file ? (
-          <PdfAttachmentThumbnail
+          <FileAttachmentThumbnail
             url={previewUrl}
             storagePath={upload.storagePath}
             thumbnailPath={upload.thumbnailPath}

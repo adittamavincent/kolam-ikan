@@ -22,7 +22,7 @@ export interface ParsedPreviewData {
   markdown: string;
 }
 
-interface PdfAttachmentPreviewDialogProps {
+interface FileAttachmentPreviewDialogProps {
   open: boolean;
   onClose: () => void;
   attachmentPreview: PdfAttachmentPreviewData | null;
@@ -38,7 +38,7 @@ function isParsedReadyStatus(status?: string | null): boolean {
   return status === "completed" || status === "done";
 }
 
-export function PdfAttachmentPreviewDialog({
+export function FileAttachmentPreviewDialog({
   open,
   onClose,
   attachmentPreview,
@@ -48,7 +48,7 @@ export function PdfAttachmentPreviewDialog({
   parsedPreviewLoading,
   parsedPreviewError,
   onRequestParsedPreview,
-}: PdfAttachmentPreviewDialogProps) {
+}: FileAttachmentPreviewDialogProps) {
   return (
     <Transition appear show={open} as={Fragment}>
       <Dialog as="div" onClose={onClose} className="relative z-50">

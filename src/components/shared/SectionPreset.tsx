@@ -11,14 +11,14 @@ function isAiPersona(persona: { type?: string | null } | null | undefined): bool
 
 interface PersonaSectionBackgroundProps {
   persona: Persona | null;
-  isPdf?: boolean;
+  isAttachment?: boolean;
   children: React.ReactNode;
   className?: string;
 }
 
 function PersonaSectionBackground({
   persona,
-  isPdf = false,
+  isAttachment = false,
   children,
   className = "",
 }: PersonaSectionBackgroundProps) {
@@ -27,7 +27,7 @@ function PersonaSectionBackground({
       ? "bg-sky-500/5"
       : persona && isShadowPersona(persona)
       ? "bg-amber-500/5"
-      : isPdf
+      : isAttachment
       ? "bg-surface-subtle/25"
       : "";
 
@@ -40,14 +40,14 @@ function PersonaSectionBackground({
 
 interface PersonaSectionHeaderProps {
   persona: Persona | null;
-  isPdf?: boolean;
+  isAttachment?: boolean;
   children: React.ReactNode;
   className?: string;
 }
 
 function PersonaSectionHeader({
   persona,
-  isPdf = false,
+  isAttachment = false,
   children,
   className = "",
 }: PersonaSectionHeaderProps) {
@@ -60,7 +60,7 @@ function PersonaSectionHeader({
 
   return (
     <div
-      className={`flex items-center justify-between px-4 ${isPdf ? "py-1.5" : "py-1"} border-y ${headerBgClass} ${className}`}
+      className={`flex items-center justify-between px-4 ${isAttachment ? "py-1.5" : "py-1"} border-y ${headerBgClass} ${className}`}
     >
       {children}
     </div>
@@ -69,7 +69,7 @@ function PersonaSectionHeader({
 
 interface SectionPresetProps {
   persona: Persona | null;
-  isPdf?: boolean;
+  isAttachment?: boolean;
   leftHeader?: React.ReactNode;
   centerHeader: React.ReactNode;
   rightHeader?: React.ReactNode;
@@ -80,7 +80,7 @@ interface SectionPresetProps {
 
 export function SectionPreset({
   persona,
-  isPdf = false,
+  isAttachment = false,
   leftHeader,
   centerHeader,
   rightHeader,
@@ -89,8 +89,8 @@ export function SectionPreset({
   className = "flex flex-col",
 }: SectionPresetProps) {
   return (
-    <PersonaSectionBackground persona={persona} isPdf={isPdf} className={`flex flex-col ${className}`}>
-      <PersonaSectionHeader persona={persona} isPdf={isPdf}>
+    <PersonaSectionBackground persona={persona} isAttachment={isAttachment} className={`flex flex-col ${className}`}>
+      <PersonaSectionHeader persona={persona} isAttachment={isAttachment}>
         <div className="flex items-center gap-2">
           {leftHeader}
           {centerHeader}

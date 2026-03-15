@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PdfUploadFormSchema } from "@/lib/validation/pdf";
+import { FileUploadFormSchema } from "@/lib/validation/attachment";
 import { extractPdfMetadata } from "@/lib/pdf/metadata";
 
 export const runtime = "nodejs";
 
-const MAX_PDF_BYTES = 50 * 1024 * 1024;
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 function sanitizeFilename(filename: string) {
   return filename.replace(/[^a-zA-Z0-9._-]+/g, "-");
@@ -26,8 +26,8 @@ async function ensureDocumentBucket() {
     bucketId,
     {
       public: false,
-      fileSizeLimit: MAX_PDF_BYTES,
-      allowedMimeTypes: ["application/pdf"],
+      fileSizeLimit: MAX_FILE_BYTES,
+      // allow all needed types for docling and images
     },
   );
 
@@ -64,28 +64,26 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    file.type !== "application/pdf" &&
-    !file.name.toLowerCase().endsWith(".pdf")
-  ) {
-    return NextResponse.json(
-      { error: "Only PDF files are supported" },
+// allow all file types now
+    if (!file.name) {
+      return NextResponse.json(
+        { error: "Invalid file name" },
       { status: 400 },
     );
   }
 
   if (file.size <= 0) {
-    return NextResponse.json({ error: "PDF file is empty" }, { status: 400 });
+    return NextResponse.json({ error: "File is empty" }, { status: 400 });
   }
 
-  if (file.size > MAX_PDF_BYTES) {
+  if (file.size > MAX_FILE_BYTES) {
     return NextResponse.json(
-      { error: "PDF exceeds 50MB limit" },
+      { error: "File exceeds 50MB limit" },
       { status: 400 },
     );
   }
 
-  const parsed = PdfUploadFormSchema.safeParse({
+  const parsed = FileUploadFormSchema.safeParse({
     streamId: streamIdRaw,
     title: typeof titleRaw === "string" ? titleRaw : undefined,
   });
@@ -120,21 +118,22 @@ export async function POST(request: Request) {
     );
   }
 
-  let pdfMetadata;
-  try {
-    pdfMetadata = await extractPdfMetadata(new Uint8Array(buffer));
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to parse PDF metadata" },
-      { status: 400 },
-    );
-  }
+const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    
+    let pdfMetadata = null;
+    try {
+      if (isPdf) {
+        pdfMetadata = await extractPdfMetadata(new Uint8Array(buffer));
+      }
+    } catch {
+      console.warn("Failed to parse PDF metadata, proceeding anyway");
+    }
 
-  const safeFileName = sanitizeFilename(file.name || "attachment.pdf");
-  const documentId = crypto.randomUUID();
-  const storagePath = `${parsed.data.streamId}/${documentId}/${safeFileName}`;
-  const fallbackTitle = safeFileName.replace(/\.pdf$/i, "");
-  const title = parsed.data.title?.trim() || pdfMetadata.title || fallbackTitle;
+    const safeFileName = sanitizeFilename(file.name || "attachment");
+    const documentId = crypto.randomUUID();
+    const storagePath = `${parsed.data.streamId}/${documentId}/${safeFileName}`;
+    const fallbackTitle = safeFileName.replace(/\.[^/.]+$/, "");
+    const title = parsed.data.title?.trim() || pdfMetadata?.title || fallbackTitle;
 
   try {
     await ensureDocumentBucket();
@@ -149,7 +148,7 @@ export async function POST(request: Request) {
   const { error: uploadError } = await admin.storage
     .from("document-files")
     .upload(storagePath, buffer, {
-      contentType: "application/pdf",
+      contentType: file.type || "application/octet-stream",
       upsert: false,
     });
 
@@ -157,12 +156,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  const sourceMetadata = {
+  const sourceMetadata = isPdf && pdfMetadata ? {
     uploadOrigin: "entry-creator",
     extractedTitle: pdfMetadata.title,
     extractedAuthor: pdfMetadata.author,
     extractedCreationDate: pdfMetadata.creationDate,
     pageCount: pdfMetadata.pageCount,
+  } : {
+    uploadOrigin: "entry-creator",
   };
 
   const { data: inserted, error: insertError } = await admin
@@ -173,7 +174,7 @@ export async function POST(request: Request) {
       created_by: authData.user.id,
       title,
       original_filename: file.name,
-      content_type: "application/pdf",
+      content_type: file.type || "application/octet-stream",
       file_size_bytes: file.size,
       storage_bucket: "document-files",
       storage_path: storagePath,
@@ -181,7 +182,7 @@ export async function POST(request: Request) {
       source_metadata: sourceMetadata,
       extraction_metadata: {
         ...sourceMetadata,
-        extractionKind: "metadata-only",
+        extractionKind: "none",
       },
       extracted_markdown: null,
     })

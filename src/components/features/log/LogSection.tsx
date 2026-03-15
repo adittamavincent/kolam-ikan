@@ -5,8 +5,8 @@ import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
 import { PartialBlock } from "@blocknote/core";
 import { useMemo } from "react";
 import { SectionPreset } from "@/components/shared/SectionPreset";
-import PersonaItem from "../../shared/PersonaItem";
-import { PdfAttachmentItem } from "./PdfAttachmentItem";
+import { PersonaItem } from "../../shared/PersonaItem";
+import { FileAttachmentItem } from "./FileAttachmentItem";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -160,15 +160,15 @@ export function LogSection({
   return (
     <SectionPreset
       persona={currentPersona || null}
-      isPdf={section.section_type === "PDF"}
+      isAttachment={section.section_type === "PDF"}
       className="flex flex-col group relative transition-all"
       centerHeader={
         <PersonaItem
           persona={currentPersona ?? null}
           menuProps={{
             currentPersona: currentPersona || null,
-            isPdf: section.section_type === "PDF",
-            pdfPersonaName: section.persona_name_snapshot ?? undefined,
+            isAttachment: section.section_type === "PDF",
+            filePersonaName: section.persona_name_snapshot ?? undefined,
             globalPersonas: globalPersonas,
             shadowPersonas: shadowPersonas,
             onSelect: handlePersonaSelect,
@@ -219,7 +219,7 @@ export function LogSection({
                 !!(attachment.document_id ?? attachment.document?.id);
 
               return (
-                <PdfAttachmentItem
+                <FileAttachmentItem
                   key={attachment.id}
                   keyId={attachment.id}
                   variant="log"

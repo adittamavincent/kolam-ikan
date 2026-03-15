@@ -49,9 +49,9 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   if (!isDirty) return null;
 
   return (
-    <div className=" border border-dashed border-border-default border-border-default/50 bg-amber-500/4 overflow-hidden transition-all">
+    <div className=" border border-dashed border-border-default/50 bg-amber-500/4 overflow-hidden transition-all">
       {/* Header */}
-      <div className="flex items-center px-2.5 py-1.5 bg-amber-500/6 border-b border-dashed border-border-default border-border-default/20">
+      <div className="flex items-center px-2.5 py-1.5 bg-amber-500/6 border-b border-dashed border-border-default/20">
         <div className="flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <CircleDot className="h-3 w-3 text-amber-500 animate-pulse" />

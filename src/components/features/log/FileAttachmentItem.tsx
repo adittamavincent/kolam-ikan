@@ -1,7 +1,7 @@
 import { Eye, FileText, Download, ExternalLink, X, Loader2 } from "lucide-react";
-import { PdfAttachmentThumbnail } from "./PdfAttachmentThumbnail";
+import { FileAttachmentThumbnail } from "./FileAttachmentThumbnail";
 
-export interface PdfAttachmentViewProps {
+export interface FileAttachmentViewProps {
   // Common
   keyId: string;
   title: string;
@@ -28,7 +28,7 @@ export interface PdfAttachmentViewProps {
   onRemove?: () => void;
 }
 
-export function PdfAttachmentActions({
+function PdfAttachmentActions({
   title,
   onPreviewPdf,
   onPreviewParsed,
@@ -131,7 +131,7 @@ export function PdfAttachmentActions({
   );
 }
 
-export function PdfAttachmentItem(props: PdfAttachmentViewProps) {
+export function FileAttachmentItem(props: FileAttachmentViewProps) {
   const {
     title,
     subtitle,
@@ -155,7 +155,7 @@ export function PdfAttachmentItem(props: PdfAttachmentViewProps) {
     return (
       <div className="group/log-pdf flex items-start justify-between gap-3 border border-border-default bg-surface-subtle/40 px-2 py-1.5 transition-colors hover:bg-surface-subtle/60">
         <div className="flex items-start gap-2 min-w-0 flex-1">
-          <PdfAttachmentThumbnail
+          <FileAttachmentThumbnail
             url={previewUrl}
             storagePath={storagePath}
             thumbnailPath={thumbnailPath}
@@ -208,7 +208,7 @@ export function PdfAttachmentItem(props: PdfAttachmentViewProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <div className="relative">
-            <PdfAttachmentThumbnail
+            <FileAttachmentThumbnail
               url={previewUrl}
               storagePath={storagePath}
               thumbnailPath={thumbnailPath}

@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   BlockNoteBlock,
   EntryWithSections,
-  SectionWithPersona,
 } from "@/lib/types";
 
 // --- Test Personas ---
@@ -30,12 +29,45 @@ function canvasToMarkdown(blocks: BlockNoteBlock[]): string {
 }
 
 function entryToMarkdown(entry: EntryWithSections): string {
-  return `Entry #${entry.id} - ${entry.created_at ? new Date(entry.created_at).toLocaleString() : ""}
-${entry.sections
-  .map((s: SectionWithPersona) =>
-    canvasToMarkdown(s.content_json as unknown as BlockNoteBlock[]),
-  )
-  .join("\n")}`;
+  const dateStr = entry.created_at
+    ? new Date(entry.created_at).toLocaleString()
+    : "";
+
+  let result = `<entry id="${entry.id}" date="${dateStr}">\n`;
+  result += `<sections>\n`;
+
+  entry.sections.forEach((section) => {
+    const personaName =
+      section.persona_name_snapshot || section.persona?.name || "User";
+    const isShadow = section.persona?.is_shadow ? "true" : "false";
+    const sectionType = section.section_type || "text";
+
+    let content = canvasToMarkdown(
+      (section.content_json as unknown as BlockNoteBlock[]) || []
+    );
+
+    if (
+      section.section_pdf_attachments &&
+      section.section_pdf_attachments.length > 0
+    ) {
+      const links = section.section_pdf_attachments
+        .map(
+          (att) => `[File: ${att.document?.original_filename}](#${att.document?.id})`
+        )
+        .join("\n");
+      if (content.trim()) {
+        content += "\n\n" + links;
+      } else {
+        content = links;
+      }
+    }
+
+    result += `<section persona="${personaName}" shadow="${isShadow}" type="${sectionType}">\n${content}\n</section>\n`;
+  });
+
+  result += `</sections>\n</entry>`;
+
+  return result;
 }
 
 // Helper to create test blocks
@@ -130,7 +162,7 @@ describe("canvasToMarkdown", () => {
 
 describe("entryToMarkdown", () => {
   // Pak Hadi's memoir entry
-  it("formats entry with id and date", () => {
+  it("formats entry with id and date as XML", () => {
     const entry: EntryWithSections = {
       id: "entry-hadi-1",
       stream_id: "s1",
@@ -155,16 +187,19 @@ describe("entryToMarkdown", () => {
           sort_order: 0,
           created_at: "2026-01-10T08:00:00Z",
           updated_at: "2026-01-10T08:00:00Z",
+          section_type: "text",
         },
       ],
     };
 
     const result = entryToMarkdown(entry);
-    expect(result).toContain("Entry #entry-hadi-1");
+    expect(result).toContain('<entry id="entry-hadi-1"');
+    expect(result).toContain('persona="Pak Hadi" shadow="false" type="text"');
     expect(result).toContain("Pantai di Bali sangat indah.");
+    expect(result).not.toContain("<files>");
   });
 
-  it("handles entry with multiple sections", () => {
+  it("handles entry with multiple sections and shadow personas", () => {
     const entry: EntryWithSections = {
       id: "entry-multi",
       stream_id: "s1",
@@ -182,36 +217,61 @@ describe("entryToMarkdown", () => {
             {
               id: "b1",
               type: "paragraph",
-              content: [{ type: "text", text: "Question from teacher." }],
+              content: [{ type: "text", text: "Question from teacher via WhatsApp." }],
             },
           ] as unknown as import("@/lib/types/database.types").Json,
           search_text: "Question",
           sort_order: 0,
           created_at: "2026-01-15T10:00:00Z",
           updated_at: "2026-01-15T10:00:00Z",
+          section_type: "whatsapp",
+          persona: {
+            id: "p1",
+            name: "Ibu Sari",
+            is_shadow: true,
+          } as import("@/lib/types/database.types").Tables<"personas">
         },
         {
           id: "sec-2",
           entry_id: "entry-multi",
           persona_id: "p2",
           persona_name_snapshot: "Dewi",
-          content_json: [
-            {
-              id: "b2",
-              type: "paragraph",
-              content: [{ type: "text", text: "AI answer here." }],
-            },
-          ] as unknown as import("@/lib/types/database.types").Json,
+          content_json: [] as unknown as import("@/lib/types/database.types").Json,
           search_text: "AI answer",
           sort_order: 1,
           created_at: "2026-01-15T10:00:00Z",
           updated_at: "2026-01-15T10:00:00Z",
+          section_type: "PDF",
+          section_pdf_attachments: [
+            {
+              id: "att-1",
+              section_id: "sec-2",
+              document_id: "doc-1",
+              created_at: "2026-01-15T10:00:00Z",
+              document: {
+                id: "doc-1",
+                original_filename: "lesson_plan.pdf",
+                extracted_markdown: "# Lesson Plan Content",
+              } as import("@/lib/types").DocumentWithLatestJob
+            }
+          ] as import("@/lib/types").SectionPdfAttachmentWithDocument[]
         },
       ],
     };
 
     const result = entryToMarkdown(entry);
-    expect(result).toContain("Question from teacher.");
-    expect(result).toContain("AI answer here.");
+    
+    // Ensure files are NOT rendered here because we made it a lampiran
+    expect(result).not.toContain("<files>");
+    expect(result).not.toContain('<file id="doc-1" name="lesson_plan.pdf">');
+    expect(result).not.toContain("# Lesson Plan Content");
+    
+    // Check whatsapp section and shadow persona
+    expect(result).toContain('persona="Ibu Sari" shadow="true" type="whatsapp"');
+    expect(result).toContain("Question from teacher via WhatsApp.");
+    
+    // Check PDF section links
+    expect(result).toContain('persona="Dewi" shadow="false" type="PDF"');
+    expect(result).toContain("[File: lesson_plan.pdf](#doc-1)");
   });
 });

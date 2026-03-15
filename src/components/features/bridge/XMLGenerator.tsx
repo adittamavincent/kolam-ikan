@@ -7,7 +7,6 @@ import { createClient } from "@/lib/supabase/client";
 import {
   BlockNoteBlock,
   EntryWithSections,
-  SectionWithPersona,
 } from "@/lib/types";
 
 interface XMLGeneratorProps {
@@ -54,7 +53,9 @@ export function XMLGenerator({
     queryFn: async () => {
       const { data } = await supabase
         .from("entries")
-        .select("*, sections(*)")
+        .select(
+          "*, sections(*, persona:personas(*), section_pdf_attachments(*, document:documents(*)))",
+        )
         .in("id", selectedEntries)
         .order("created_at", { ascending: true });
       return data as unknown as EntryWithSections[];
@@ -104,7 +105,9 @@ export function XMLGenerator({
         return [];
       const { data } = await supabase
         .from("entries")
-        .select("*, sections(*)")
+        .select(
+          "*, sections(*, persona:personas(*), section_pdf_attachments(*, document:documents(*)))",
+        )
         .in("stream_id", additionalGlobalStreamIds)
         .eq("is_draft", false)
         .order("created_at", { ascending: true });
@@ -157,6 +160,43 @@ export function XMLGenerator({
       canvasIsEmpty,
     );
 
+    // Extract files from entries to be shown at the top
+    const allFiles: { id: string; name: string; content: string }[] = [];
+    const collectFiles = (ents: EntryWithSections[] | undefined) => {
+      if (!ents) return;
+      ents.forEach((entry) => {
+        entry.sections.forEach((section) => {
+          if (section.section_pdf_attachments) {
+            section.section_pdf_attachments.forEach((att) => {
+              if (att.document && !allFiles.some((f) => f.id === att.document!.id)) {
+                allFiles.push({
+                  id: att.document.id,
+                  name: att.document.original_filename,
+                  content:
+                    att.document.extracted_markdown || "[No content extracted]",
+                });
+              }
+            });
+          }
+        });
+      });
+    };
+
+    collectFiles(entries as unknown as EntryWithSections[]);
+    if (includeGlobalStream) {
+      collectFiles(globalEntries as unknown as EntryWithSections[]);
+    }
+
+    const filesStr =
+      allFiles.length > 0
+        ? `<attached_files>\n${allFiles
+            .map(
+              (f) =>
+                `<file id="${f.id}" name="${f.name}">\n${f.content}\n</file>`,
+            )
+            .join("\n\n")}\n</attached_files>\n\n`
+        : "";
+
     return `<system_directive>
 Target: ${interactionMode}
 Stream: ${stream?.name || ""} ${isGlobal ? "(Global)" : ""}
@@ -165,7 +205,7 @@ Domain: ${domainName}
 ${responseFormatDirective}
 </system_directive>
 
-${
+${filesStr}${
   includeCanvas
     ? `<canvas_state>
 ${canvasToMarkdown((canvas?.content_json as unknown as BlockNoteBlock[]) || [])}
@@ -303,12 +343,45 @@ function extractText(block: BlockNoteBlock): string {
 }
 
 function entryToMarkdown(entry: EntryWithSections): string {
-  return `Entry #${entry.id} - ${entry.created_at ? new Date(entry.created_at).toLocaleString() : ""}
-${entry.sections
-  .map((s: SectionWithPersona) =>
-    canvasToMarkdown(s.content_json as unknown as BlockNoteBlock[]),
-  )
-  .join("\n")}`;
+  const dateStr = entry.created_at
+    ? new Date(entry.created_at).toLocaleString()
+    : "";
+
+  let result = `<entry id="${entry.id}" date="${dateStr}">\n`;
+  result += `<sections>\n`;
+
+  entry.sections.forEach((section) => {
+    const personaName =
+      section.persona_name_snapshot || section.persona?.name || "User";
+    const isShadow = section.persona?.is_shadow ? "true" : "false";
+    const sectionType = section.section_type || "text";
+
+    let content = canvasToMarkdown(
+      (section.content_json as unknown as BlockNoteBlock[]) || []
+    );
+
+    if (
+      section.section_pdf_attachments &&
+      section.section_pdf_attachments.length > 0
+    ) {
+      const links = section.section_pdf_attachments
+        .map(
+          (att) => `[File: ${att.document?.original_filename}](#${att.document?.id})`
+        )
+        .join("\n");
+      if (content.trim()) {
+        content += "\n\n" + links;
+      } else {
+        content = links;
+      }
+    }
+
+    result += `<section persona="${personaName}" shadow="${isShadow}" type="${sectionType}">\n${content}\n</section>\n`;
+  });
+
+  result += `</sections>\n</entry>`;
+
+  return result;
 }
 
 function buildResponseDirective(

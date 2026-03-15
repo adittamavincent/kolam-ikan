@@ -318,7 +318,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
         const toTrigrams = (value: string) => {
           const normalized = value.toLowerCase();
-          const padded = `  ${normalized} `;
+          const padded=` ${normalized} `;
           const trigrams = new Set<string>();
           for (let i = 0; i < padded.length - 2; i += 1) {
             trigrams.add(padded.slice(i, i + 3));
@@ -429,7 +429,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="fixed left-4 top-4 z-50  bg-surface-default p-2 md:hidden text-text-default"
+        className="fixed left-4 top-4 z-50 bg-surface-default p-2 md:hidden text-text-default"
       >
         {mobileMenuOpen ? (
           <X className="h-6 w-6" />
@@ -506,7 +506,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5  border border-border-default bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all">
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 border border-border-default bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all">
             <button
               onClick={() => setMode("log-only")}
               className={` p-2 transition-all ${
@@ -573,7 +573,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-2xl  border border-border-default bg-surface-default p-5 shadow-2xl">
+              <DialogPanel className="w-full max-w-2xl border border-border-default bg-surface-default p-5 shadow-2xl">
                 <DialogTitle className="text-sm font-semibold text-text-default">
                   Search
                 </DialogTitle>
@@ -582,7 +582,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="Search logs and canvases... (@persona, emoji for domain)"
-                    className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-border-default focus: focus: focus:"
+                    className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-border-default focus: focus: focus:"
                     autoFocus
                   />
                 </div>
@@ -625,7 +625,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                         setSearchOpen(false);
                         router.push(`/${result.domainId}/${result.streamId}`);
                       }}
-                      className="w-full  border border-border-default bg-surface-subtle p-3 text-left text-xs text-text-default transition hover:bg-surface-hover"
+                      className="w-full border border-border-default bg-surface-subtle p-3 text-left text-xs text-text-default transition hover:bg-surface-hover"
                     >
                       <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
                         <span className="flex items-center gap-2">

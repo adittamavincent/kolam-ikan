@@ -218,7 +218,7 @@ export function InteractionSwitcher({
   return (
     <div className="flex flex-wrap items-center gap-4">
       {/* Interaction Mode Toggle */}
-      <div className="flex w-full max-w-sm  bg-surface-subtle/50 p-1 shadow-inner border border-border-default/30 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm bg-surface-subtle/50 p-1 shadow-inner border border-border-default/30 backdrop-blur-sm">
         {(["ASK", "GO", "BOTH"] as const).map((mode) => (
           <button
             key={mode}
@@ -256,7 +256,7 @@ export function InteractionSwitcher({
 
         {overLimit && (
           <div className="flex items-center gap-1.5 ml-1 animate-pulse">
-            <div className="h-2 w-2  bg-status-error-text" />
+            <div className="h-2 w-2 bg-status-error-text" />
             <span className="text-[10px] font-bold text-status-error-text uppercase">
               Limit
             </span>
@@ -266,11 +266,11 @@ export function InteractionSwitcher({
 
       {/* Action Shortcuts */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1  bg-surface-subtle/30 p-1 border border-border-default/30">
+        <div className="flex items-center gap-1 bg-surface-subtle/30 p-1 border border-border-default/30">
           <button
             onClick={onCopy}
             title="Copy Generated XML"
-            className="flex items-center gap-1.5  px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group"
           >
             <Copy className="h-3.5 w-3.5 text-text-muted group-hover:text-action-primary-bg transition-colors" />
             <span>Copy XML</span>
@@ -281,19 +281,19 @@ export function InteractionSwitcher({
           <button
             onClick={onPaste}
             title="Paste & Fill Response"
-            className="flex items-center gap-1.5  px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group"
           >
             <ClipboardPaste className="h-3.5 w-3.5 text-text-muted group-hover:text-action-primary-bg transition-colors" />
             <span>Paste</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-1  bg-surface-subtle/30 p-1 border border-border-default/30">
+        <div className="flex items-center gap-1 bg-surface-subtle/30 p-1 border border-border-default/30">
           <button
             onClick={onParse}
             disabled={!status.canParse}
             title="Parse Response"
-            className="flex items-center gap-1.5  px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Play
               className={`h-3.5 w-3.5 ${status.canParse ? "text-text-muted group-hover:text-action-primary-bg" : "text-text-muted"} transition-colors`}
@@ -320,18 +320,18 @@ export function InteractionSwitcher({
           <button
             onClick={onReset}
             title="Clear & Reset"
-            className="flex items-center justify-center  p-1.5 text-text-muted hover:bg-status-error-bg/20 hover:text-status-error-text transition-all"
+            className="flex items-center justify-center p-1.5 text-text-muted hover:bg-status-error-bg/20 hover:text-status-error-text transition-all"
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {overLimit && (
-          <div className="flex items-center gap-1  bg-status-error-bg/10 p-1 border border-border-default/30">
+          <div className="flex items-center gap-1 bg-status-error-bg/10 p-1 border border-border-default/30">
             <button
               onClick={onReduceSelection}
               title="Select Last 5 Entries"
-              className="flex items-center gap-1.5  px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg/20 transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg/20 transition-all"
             >
               <RotateCcw className="h-3 w-3" />
               <span>Reduce</span>
@@ -339,7 +339,7 @@ export function InteractionSwitcher({
             <button
               onClick={onAutoSummarize}
               title="Exclude Canvas"
-              className="flex items-center gap-1.5  px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg/20 transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg/20 transition-all"
             >
               <Zap className="h-3 w-3" />
               <span>Drop Canvas</span>

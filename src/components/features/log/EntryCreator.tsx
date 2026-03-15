@@ -1166,7 +1166,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   if (isLoading) {
     return (
-      <div className="relative  border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
+      <div className="relative border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
         <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
       </div>
     );
@@ -1174,7 +1174,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   return (
     <>
-      <div className="relative  border border-border-default/50 bg-surface-default group ">
+      <div className="relative border border-border-default/50 bg-surface-default group ">
         {(status === "saving" || status === "error") && (
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
@@ -1206,7 +1206,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             ))}
 
             <Menu as="div" className="relative z-30">
-              <MenuButton className="flex items-center gap-1.5  py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent  focus:">
+              <MenuButton className="flex items-center gap-1.5 py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent focus:">
                 <Plus className="h-3 w-3 text-text-subtle" />
                 <span className="text-text-default">Add Persona</span>
               </MenuButton>
@@ -1223,7 +1223,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <MenuItems
                   anchor={{ to: "bottom start", gap: 4 }}
                   portal
-                  className="z-9999 w-56 max-h-60 overflow-y-auto overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl   focus:"
+                  className="z-9999 w-56 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
                 >
                   <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                     Add Author Section
@@ -1287,7 +1287,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             {sections.length > 0 && (
               <button
                 onClick={requestClearSections}
-                className="ml-auto  p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                className="ml-auto p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                 title="Delete all sections"
               >
                 <X className="h-4 w-4" />
@@ -1612,7 +1612,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <span className="font-medium">{selectedBranch || "main"}</span>
               </div>
               {commitBlockedByPdfStatus && (
-                <div className="inline-flex items-center gap-2 ml-3  border border-border-default/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+                <div className="inline-flex items-center gap-2 ml-3 border border-border-default/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-3 w-3 shrink-0"

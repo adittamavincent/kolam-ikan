@@ -656,7 +656,7 @@ export function FileAttachmentThumbnail({
   }, [resolvedUrl, storagePath, thumbnailPath, isFromCache, url]);
 
   return (
-    <div className="relative h-16 w-12 overflow-hidden  border border-border-default bg-surface-subtle">
+    <div className="relative h-16 w-12 overflow-hidden border border-border-default bg-surface-subtle">
       <canvas
         ref={canvasRef}
         className="h-16 w-12 object-cover"
@@ -692,7 +692,7 @@ export function FileAttachmentThumbnail({
 
       {/* Small success badge when available */}
       {hasRendered && (importStatus === "completed" || importStatus === "done") && (
-        <div className="absolute right-0 top-0 m-1  bg-green-500/90 p-0.5 text-white">
+        <div className="absolute right-0 top-0 m-1 bg-green-500/90 p-0.5 text-white">
           <Check className="h-3 w-3" />
         </div>
       )}

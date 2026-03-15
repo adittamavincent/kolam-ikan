@@ -130,7 +130,7 @@ export function MainHeader() {
             </span>
 
             {stream.stream_kind === "GLOBAL" && (
-              <span className="ml-1 inline-flex items-center gap-1  border border-border-default/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
+              <span className="ml-1 inline-flex items-center gap-1 border border-border-default/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
                 <Globe className="h-3 w-3" />
                 Global
               </span>
@@ -163,7 +163,7 @@ export function MainHeader() {
                       emit("kolam_header_log_search_term", { term });
                     }}
                     placeholder="Search commits..."
-                    className="w-full  border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
+                    className="w-full border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
                   />
                 </div>
               )}
@@ -225,7 +225,7 @@ export function MainHeader() {
               </button>
 
               <Menu as="div" className="relative hidden md:block">
-                <MenuButton className="inline-flex items-center gap-1.5  bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus: focus-visible: focus-visible:">
+                <MenuButton className="inline-flex items-center gap-1.5 bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus: focus-visible: focus-visible:">
                   <GitBranch className="h-3 w-3" />
                   {logState.currentBranch}
                   <ChevronDown className="h-3 w-3" />
@@ -242,7 +242,7 @@ export function MainHeader() {
                   <MenuItems
                     anchor={{ to: "bottom end", gap: 6 }}
                     portal
-                    className="z-9999 w-44 overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl   focus:"
+                    className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
                   >
                     <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
                       Checkout Branch
@@ -282,7 +282,7 @@ export function MainHeader() {
                         }
                         emit("kolam_header_log_create_branch", { branchName });
                       }}
-                      className="flex w-full items-center gap-2  px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                      className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
                     >
                       <Plus className="h-3 w-3" />
                       New branch
@@ -291,7 +291,7 @@ export function MainHeader() {
                 </Transition>
               </Menu>
 
-              <span className="hidden items-center gap-1  bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted md:inline-flex">
+              <span className="hidden items-center gap-1 bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted md:inline-flex">
                 <GitCommitHorizontal className="h-3 w-3" />
                 {logState.commitCount}
               </span>
@@ -309,7 +309,7 @@ export function MainHeader() {
                   emit("kolam_header_canvas_snapshot_name", { name });
                 }}
                 placeholder="Snapshot name..."
-                className="w-36  border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-border-default focus: focus: focus:"
+                className="w-36 border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-border-default focus: focus: focus:"
               />
               <button
                 onClick={() =>
@@ -318,7 +318,7 @@ export function MainHeader() {
                   })
                 }
                 disabled={canvasState.isSavingSnapshot}
-                className="inline-flex items-center gap-1  bg-action-primary-bg px-2 py-1 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-60"
+                className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-60"
                 title="Save Snapshot"
               >
                 <Save className="h-3.5 w-3.5" />

@@ -441,7 +441,7 @@ function LoginForm() {
       <div className="w-full max-w-md space-y-8">
         {/* Branding */}
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center  bg-action-primary-bg">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center bg-action-primary-bg">
             <span className="text-3xl font-bold text-white">K</span>
           </div>
           <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-text-default">
@@ -457,7 +457,7 @@ function LoginForm() {
         {/* Main Auth Card */}
         <div className=" bg-surface-default p-8 border border-border-default">
           {/* Mode Toggle */}
-          <div className="mb-6 flex  bg-surface-subtle p-1">
+          <div className="mb-6 flex bg-surface-subtle p-1">
             <button
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
@@ -487,14 +487,14 @@ function LoginForm() {
             onSubmit={mode === "signin" ? handleLogin : handleSignup}
           >
             {error && (
-              <div className="flex items-start gap-3  bg-status-error-bg p-4 text-sm text-status-error-text border border-border-default animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3 bg-status-error-bg p-4 text-sm text-status-error-text border border-border-default animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-5 w-5 shrink-0 text-status-error-text" />
                 <p>{error}</p>
               </div>
             )}
 
             {successMessage && (
-              <div className="flex items-start gap-3  bg-status-success-bg p-4 text-sm text-status-success-text border border-border-default animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3 bg-status-success-bg p-4 text-sm text-status-success-text border border-border-default animate-in fade-in slide-in-from-top-1">
                 <CheckCircle className="h-5 w-5 shrink-0 text-status-success-text" />
                 <p>{successMessage}</p>
               </div>
@@ -722,7 +722,7 @@ function LoginForm() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMeState(e.target.checked)}
-                  className="h-4 w-4  border-border-default text-action-primary-bg focus:"
+                  className="h-4 w-4 border-border-default text-action-primary-bg focus:"
                 />
                 <label
                   htmlFor="remember-me"
@@ -737,7 +737,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative flex w-full justify-center  bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="group relative flex w-full justify-center bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -792,7 +792,7 @@ function LoginForm() {
                   key={acc.email}
                   onClick={() => quickLogin(acc)}
                   disabled={loading}
-                  className="flex items-center justify-between  border border-border-default bg-surface-default p-3 text-left transition-all  group"
+                  className="flex items-center justify-between border border-border-default bg-surface-default p-3 text-left transition-all group"
                 >
                   <div>
                     <div className="text-xs font-bold text-text-default">

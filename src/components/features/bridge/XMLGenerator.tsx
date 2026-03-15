@@ -290,12 +290,12 @@ ${userInput}
         </p>
       </div>
 
-      <div className="relative group  border border-border-default/50 bg-[#0d1117] shadow-inner overflow-hidden">
+      <div className="relative group border border-border-default/50 bg-[#0d1117] shadow-inner overflow-hidden">
         <textarea
           readOnly
           rows={6}
           value={currentXML}
-          className="w-full bg-transparent p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9]  resize-y min-h-35"
+          className="w-full bg-transparent p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] resize-y min-h-35"
         />
         <div className="absolute top-2 right-2">
           <button

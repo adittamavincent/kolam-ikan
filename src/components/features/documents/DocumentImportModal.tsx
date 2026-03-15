@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { Dialog,  DialogPanel, Transition, TransitionChild } from "@headlessui/react";
+import { Dialog, DialogPanel, Transition, TransitionChild } from "@headlessui/react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -616,14 +616,14 @@ export function DocumentImportModal({
             >
           <DialogPanel
             ref={dialogPanelRef}
-            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3  border border-border-default/70 bg-surface-default/95 p-3 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.32)] backdrop-blur-xl transition-all"
+            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3 border border-border-default/70 bg-surface-default/95 p-3 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.32)] backdrop-blur-xl transition-all"
           >
             <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1.6fr)_360px] xl:items-start">
               <form
                 onSubmit={handleSubmit}
-                className="flex min-h-0 flex-col gap-3  border border-border-default/60 bg-surface-subtle/45 p-3"
+                className="flex min-h-0 flex-col gap-3 border border-border-default/60 bg-surface-subtle/45 p-3"
               >
-                <div className="flex items-center justify-between  border border-border-default/60 bg-surface-default px-4 py-3">
+                <div className="flex items-center justify-between border border-border-default/60 bg-surface-default px-4 py-3">
                   <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
                     <UploadCloud className="h-4 w-4 text-action-primary-bg" />
                     Import PDF
@@ -674,7 +674,7 @@ export function DocumentImportModal({
                         // Reset input so same file can be selected again
                         event.target.value = "";
                       }}
-                      className="block w-full  border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file: file:border-none file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
+                      className="block w-full border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file: file:border-none file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
                     />
                   </label>
 
@@ -704,7 +704,7 @@ export function DocumentImportModal({
                 </div>
 
                 <div className="flex gap-3">
-                  <label className="flex-1 flex flex-col gap-2 justify-between  border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
+                  <label className="flex-1 flex flex-col gap-2 justify-between border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">Document title</span>
                       <span className="text-xs text-text-muted">
@@ -723,11 +723,11 @@ export function DocumentImportModal({
                           ? selectedFile.name.replace(/\.pdf$/i, "")
                           : "Derived from filename"
                       }
-                      className="w-full  border border-border-default bg-surface-subtle px-3 py-2.5 text-sm text-text-default  transition-colors focus:border-border-default focus: focus:"
+                      className="w-full border border-border-default bg-surface-subtle px-3 py-2.5 text-sm text-text-default transition-colors focus:border-border-default focus: focus:"
                     />
                   </label>
 
-                  <label className="flex-1 flex-col gap-2 justify-between  border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
+                  <label className="flex-1 flex-col gap-2 justify-between border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
                     <div className="flex items-start justify-between">
                       <span className="font-medium shrink-0">Parsing mode</span>
                       <span className="text-xs leading-5 text-text-muted text-balance flex-1 text-right min-w-0">
@@ -749,7 +749,7 @@ export function DocumentImportModal({
                         onChange={(event) =>
                           setFlavor(event.target.value as "lattice" | "stream")
                         }
-                        className="w-full appearance-none  border border-border-default bg-surface-subtle px-3 py-2.5 pr-8 text-sm text-text-default  transition-colors focus:border-border-default focus: focus:"
+                        className="w-full appearance-none border border-border-default bg-surface-subtle px-3 py-2.5 pr-8 text-sm text-text-default transition-colors focus:border-border-default focus: focus:"
                       >
                         <option value="lattice">lattice</option>
                         <option value="stream">stream</option>
@@ -760,14 +760,14 @@ export function DocumentImportModal({
                 </div>
 
                 <div className="flex gap-2.5">
-                  <label className="w-1/2 flex items-start gap-3  border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
+                  <label className="w-1/2 flex items-start gap-3 border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
                     <input
                       type="checkbox"
                       checked={enableTableStructure}
                       onChange={(event) =>
                         setEnableTableStructure(event.target.checked)
                       }
-                      className="mt-1 h-4 w-4  border-border-default"
+                      className="mt-1 h-4 w-4 border-border-default"
                     />
                     <div>
                       <div className="font-medium text-text-default">
@@ -779,14 +779,14 @@ export function DocumentImportModal({
                     </div>
                   </label>
 
-                  <label className="w-1/2 flex items-start gap-3  border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
+                  <label className="w-1/2 flex items-start gap-3 border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
                     <input
                       type="checkbox"
                       checked={debugDoclingTables}
                       onChange={(event) =>
                         setDebugDoclingTables(event.target.checked)
                       }
-                      className="mt-1 h-4 w-4  border-border-default"
+                      className="mt-1 h-4 w-4 border-border-default"
                     />
                     <div>
                       <div className="font-medium text-text-default">
@@ -800,7 +800,7 @@ export function DocumentImportModal({
                 </div>
 
                 {submitError && (
-                  <div className="flex items-start gap-3  border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-600">
+                  <div className="flex items-start gap-3 border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-600">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     {submitError}
                   </div>
@@ -813,7 +813,7 @@ export function DocumentImportModal({
                   </div>
                 )}
 
-                <div className="flex flex-col gap-2  border border-border-default/60 bg-surface-default p-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 border border-border-default/60 bg-surface-default p-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-text-default">
                       Ready to queue
@@ -825,7 +825,7 @@ export function DocumentImportModal({
                   <button
                     type="submit"
                     disabled={createImport.isPending}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap  bg-action-primary-bg px-5 py-3 text-sm font-semibold text-action-primary-text transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap bg-action-primary-bg px-5 py-3 text-sm font-semibold text-action-primary-text transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {createImport.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -837,9 +837,9 @@ export function DocumentImportModal({
                 </div>
               </form>
 
-              <div className="flex min-h-0 w-full flex-col items-stretch gap-2  border border-border-default/60 bg-surface-subtle/45 p-3">
+              <div className="flex min-h-0 w-full flex-col items-stretch gap-2 border border-border-default/60 bg-surface-subtle/45 p-3">
                 {cancelableDocuments.length > 0 && (
-                  <div className="flex w-full items-center justify-between gap-3  border border-border-default/60 bg-surface-default px-3 py-2 text-xs text-text-muted">
+                  <div className="flex w-full items-center justify-between gap-3 border border-border-default/60 bg-surface-default px-3 py-2 text-xs text-text-muted">
                     <div>
                       <div className="font-semibold text-text-default">
                         {cancelableDocuments.length} active import
@@ -849,7 +849,7 @@ export function DocumentImportModal({
                     <button
                       onClick={handleCancelAllPending}
                       disabled={cancelAllPendingImports.isPending}
-                      className="shrink-0  border border-border-default bg-surface-subtle px-2 py-1 font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                      className="shrink-0 border border-border-default bg-surface-subtle px-2 py-1 font-semibold text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {cancelAllPendingImports.isPending
                         ? "Canceling..."
@@ -860,7 +860,7 @@ export function DocumentImportModal({
 
                 <div className="min-h-0 w-full flex-1 space-y-2.5 overflow-y-auto">
                   {isLoading && (
-                    <div className="flex items-center gap-2  border border-border-default/60 bg-surface-default px-4 py-4 text-sm text-text-muted">
+                    <div className="flex items-center gap-2 border border-border-default/60 bg-surface-default px-4 py-4 text-sm text-text-muted">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading documents...
                     </div>
@@ -892,7 +892,7 @@ export function DocumentImportModal({
                     return (
                       <div
                         key={document.id}
-                        className="relative  border border-border-default/60 bg-surface-default p-4"
+                        className="relative border border-border-default/60 bg-surface-default p-4"
                       >
                         {/* X Icon Action Button */}
                         {(isPending || status !== "processing") && (
@@ -913,7 +913,7 @@ export function DocumentImportModal({
                                     cancelAllPendingImports.isPending ||
                                     deleteDocument.isPending
                             }
-                            className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center  bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus: disabled:opacity-60"
+                            className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus: disabled:opacity-60"
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -975,9 +975,9 @@ export function DocumentImportModal({
                             {status === "processing" && (
                               <div className="flex items-center gap-2 w-full">
                                 {/* Progress Indicator */}
-                                <div className="h-1.5 flex-1 overflow-hidden  bg-surface-subtle">
+                                <div className="h-1.5 flex-1 overflow-hidden bg-surface-subtle">
                                   <div
-                                    className="h-full  bg-action-primary-bg transition-[width] duration-500"
+                                    className="h-full bg-action-primary-bg transition-[width] duration-500"
                                     style={{ width: `${progressPercent}%` }}
                                   />
                                 </div>
@@ -998,7 +998,7 @@ export function DocumentImportModal({
                                   onSelectDocument(document);
                                   handleClose();
                                 }}
-                                className="shrink-0  border border-border-default bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
+                                className="shrink-0 border border-border-default bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
                               >
                                 Attach
                               </button>

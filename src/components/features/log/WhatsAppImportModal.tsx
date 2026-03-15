@@ -1318,7 +1318,7 @@ export function WhatsAppImportModal({
               leaveFrom="opacity-100 scale-100 translate-y-0"
               leaveTo="opacity-0 scale-95 translate-y-4"
             >
-              <DialogPanel className="flex w-full max-w-xl flex-col  border border-border-default/70 bg-surface-default shadow-2xl transition-all">
+              <DialogPanel className="flex w-full max-w-xl flex-col border border-border-default/70 bg-surface-default shadow-2xl transition-all">
             {/* ─── Header ────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
               <div className="flex items-center gap-2">
@@ -1366,11 +1366,11 @@ export function WhatsAppImportModal({
                   }}
                 />
 
-                <div className="flex flex-wrap items-center gap-2  border border-border-default bg-surface-subtle/40 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2 border border-border-default bg-surface-subtle/40 px-3 py-2">
                   <button
                     onClick={() => zipInputRef.current?.click()}
                     disabled={zipLoading}
-                    className="inline-flex items-center gap-1.5  border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle disabled:opacity-50"
                   >
                     {zipLoading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1397,7 +1397,7 @@ export function WhatsAppImportModal({
                 <textarea
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
-                  className="h-56 w-full resize-none  border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-border-default focus: focus: focus:"
+                  className="h-56 w-full resize-none border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-border-default focus: focus: focus:"
                   placeholder={`[3/10/26, 7:42:30 PM] Alice: Hey!\n[3/10/26, 7:44:00 PM] Bob: Here is the doc\n[3/10/26, 7:44:01 PM] Bob: <attached: proposal.pdf>\n[3/10/26, 7:44:05 PM] Bob: /Users/you/.../proposal.pdf`}
                   spellCheck={false}
                 />
@@ -1591,7 +1591,7 @@ export function WhatsAppImportModal({
                 </div>
 
                 {/* Preview list with clickable controls to set start/end */}
-                <div className="max-h-48 overflow-y-auto  border border-border-default bg-surface-subtle/30 p-2 text-[11px]">
+                <div className="max-h-48 overflow-y-auto border border-border-default bg-surface-subtle/30 p-2 text-[11px]">
                   {parsedTurns.length === 0 ? (
                     <div className="text-text-muted">No turns to preview.</div>
                   ) : (
@@ -1707,7 +1707,7 @@ export function WhatsAppImportModal({
                     </div>
                   </div>
                   {unmappedCount > 0 && (
-                    <span className="flex shrink-0 items-center gap-1  bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    <span className="flex shrink-0 items-center gap-1 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400">
                       <AlertTriangle className="h-3 w-3" />
                       {unmappedCount} unmapped
                     </span>
@@ -1715,14 +1715,14 @@ export function WhatsAppImportModal({
                 </div>
 
                   {mapError && (
-                    <div className="flex items-start gap-1.5  border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
+                    <div className="flex items-start gap-1.5 border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
                       <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>{mapError}</span>
                     </div>
                   )}
 
                   {mapNotice && (
-                    <div className="flex items-start gap-1.5  border border-border-default/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                    <div className="flex items-start gap-1.5 border border-border-default/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
                       <Info className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>{mapNotice}</span>
                     </div>
@@ -1738,7 +1738,7 @@ export function WhatsAppImportModal({
                     return (
                       <div
                         key={sender}
-                        className="flex items-center gap-3  border border-border-default bg-surface-subtle/40 px-3 py-2"
+                        className="flex items-center gap-3 border border-border-default bg-surface-subtle/40 px-3 py-2"
                       >
                         <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-default">
                           {sender}
@@ -1849,7 +1849,7 @@ export function WhatsAppImportModal({
                 )}
 
                 {hasPdfTurns && allMapped && (
-                  <div className="flex items-start gap-1.5  border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                  <div className="flex items-start gap-1.5 border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
                     <Info className="mt-0.5 h-3 w-3 shrink-0" />
                     <span>
                       {pdfTurns.length} PDF file
@@ -1997,7 +1997,7 @@ export function WhatsAppImportModal({
                   top: tooltipPos.top,
                   width: tooltipPos.width,
                 }}
-                className="fixed z-50  border border-border-default bg-surface-default p-2 text-xs text-text-default shadow-lg"
+                className="fixed z-50 border border-border-default bg-surface-default p-2 text-xs text-text-default shadow-lg"
               >
                 <div className="whitespace-pre-wrap wrap-break-word text-[12px]">
                   {tooltipContent}
@@ -2188,18 +2188,18 @@ function PdfUploadRow({
           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-action-primary-bg" />
         )}
         {isDone && (
-          <span className="flex shrink-0 items-center gap-1  bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+          <span className="flex shrink-0 items-center gap-1 bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
             <Check className="h-3 w-3" />
             Uploaded
           </span>
         )}
         {isSkipped && (
-          <span className="shrink-0  bg-surface-subtle px-2 py-0.5 text-[10px] text-text-muted">
+          <span className="shrink-0 bg-surface-subtle px-2 py-0.5 text-[10px] text-text-muted">
             Skipped
           </span>
         )}
         {isQueued && (
-          <span className="shrink-0  bg-blue-500/15 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+          <span className="shrink-0 bg-blue-500/15 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
             Queued
           </span>
         )}
@@ -2234,7 +2234,7 @@ function PdfUploadRow({
           {isSkipped ? (
             <button
               onClick={onUnskip}
-              className="inline-flex items-center gap-1  border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+              className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
             >
               <Undo2 className="h-3 w-3" />
               Undo skip
@@ -2256,7 +2256,7 @@ function PdfUploadRow({
               {isError && (
                 <button
                   onClick={onRetry}
-                  className="inline-flex items-center gap-1  border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                  className="inline-flex items-center gap-1 border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-600 hover:bg-red-500/20 dark:text-red-400"
                 >
                   <RefreshCw className="h-3 w-3" />
                   Retry
@@ -2265,7 +2265,7 @@ function PdfUploadRow({
 
               <button
                 onClick={() => inputRef.current?.click()}
-                className="inline-flex items-center gap-1  bg-action-primary-bg px-2 py-1 text-[11px] font-medium text-action-primary-text hover:opacity-90"
+                className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[11px] font-medium text-action-primary-text hover:opacity-90"
               >
                 <Upload className="h-3 w-3" />
                 {isError ? "Choose another" : "Select file"}
@@ -2273,7 +2273,7 @@ function PdfUploadRow({
 
               <button
                 onClick={onSkip}
-                className="inline-flex items-center gap-1  border border-border-default px-2 py-1 text-[11px] text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[11px] text-text-muted hover:bg-surface-subtle hover:text-text-default"
               >
                 <SkipForward className="h-3 w-3" />
                 Skip

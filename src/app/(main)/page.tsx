@@ -183,7 +183,7 @@ function DomainCard({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all  active:scale-[0.98] active:translate-y-px"
+      className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-action-primary-bg/10 text-xl group-hover:bg-action-primary-bg/20 transition-colors">
@@ -284,12 +284,12 @@ function ErrorBanner({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3  border border-border-default bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
+    <div className="flex items-center gap-3 border border-border-default bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
       <AlertCircle className="h-5 w-5 shrink-0" />
       <span className="flex-1">{message}</span>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1  bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
+        className="inline-flex items-center gap-1 bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
       >
         <RefreshCw className="h-3.5 w-3.5" />
         Retry
@@ -717,7 +717,7 @@ export default function HomePage() {
         </div>
 
         {/* ---- Footer tip ---- */}
-        <div className="mt-10  bg-action-primary-bg/10 px-5 py-4 text-center">
+        <div className="mt-10 bg-action-primary-bg/10 px-5 py-4 text-center">
           <p className="text-xs text-text-default">
             <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
             Use the sidebar to quickly switch between domains, or click any card

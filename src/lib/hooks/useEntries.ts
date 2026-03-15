@@ -25,28 +25,28 @@ interface AmendEntryInput {
   }>;
 }
 
-const ENTRIES_SELECT_FULL = `
-  id, stream_id, is_draft, created_at, updated_at, deleted_at,
-  sections!inner (
-    id, entry_id, persona_id, persona_name_snapshot, content_json,
-    section_type, pdf_display_mode, sort_order, updated_at,
-    persona:personas (id, name, icon, color),
-    section_pdf_attachments (
-      id, section_id, document_id, sort_order, title_snapshot,
-      annotation_text, referenced_persona_id, referenced_page,
-      created_at, updated_at,
-      document:documents (id, title, storage_path, thumbnail_path, import_status)
-    )
-  )
+const ENTRIES_SELECT_FULL=`
+ id, stream_id, is_draft, created_at, updated_at, deleted_at,
+ sections!inner (
+ id, entry_id, persona_id, persona_name_snapshot, content_json,
+ section_type, pdf_display_mode, sort_order, updated_at,
+ persona:personas (id, name, icon, color),
+ section_pdf_attachments (
+ id, section_id, document_id, sort_order, title_snapshot,
+ annotation_text, referenced_persona_id, referenced_page,
+ created_at, updated_at,
+ document:documents (id, title, storage_path, thumbnail_path, import_status)
+ )
+ )
 `;
 
-const ENTRIES_SELECT_LEGACY = `
-  id, stream_id, is_draft, created_at, updated_at, deleted_at,
-  sections!inner (
-    id, entry_id, persona_id, persona_name_snapshot, content_json,
-    sort_order, updated_at,
-    persona:personas (id, name, icon, color)
-  )
+const ENTRIES_SELECT_LEGACY=`
+ id, stream_id, is_draft, created_at, updated_at, deleted_at,
+ sections!inner (
+ id, entry_id, persona_id, persona_name_snapshot, content_json,
+ sort_order, updated_at,
+ persona:personas (id, name, icon, color)
+ )
 `;
 
 function isMissingColumnError(

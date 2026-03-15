@@ -73,7 +73,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
               value={snapshotName}
               onChange={(e) => setSnapshotName(e.target.value)}
               placeholder="Snapshot name (optional)..."
-              className="flex-1  border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-border-default focus: focus: focus:"
+              className="flex-1 border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-border-default focus: focus: focus:"
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitMutation.mutate();
                 if (e.key === "Escape") setIsExpanded(false);
@@ -83,7 +83,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             <button
               onClick={() => commitMutation.mutate()}
               disabled={commitMutation.isPending}
-              className="inline-flex items-center gap-1  bg-action-primary-bg px-2.5 py-1 text-xs font-semibold text-action-primary-text hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1 bg-action-primary-bg px-2.5 py-1 text-xs font-semibold text-action-primary-text hover:opacity-90 disabled:opacity-50"
             >
               {commitMutation.isPending ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -102,7 +102,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
         ) : (
           <button
             onClick={() => setIsExpanded(true)}
-            className="inline-flex items-center gap-1.5  border border-border-default/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+            className="inline-flex items-center gap-1.5 border border-border-default/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
           >
             <GitCommitHorizontal className="h-3 w-3" />
             Commit Snapshot

@@ -1,89 +1,89 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const DOCUMENT_SCHEMA_BOOTSTRAP_SQL = `
+const DOCUMENT_SCHEMA_BOOTSTRAP_SQL=`
 create or replace function public.user_can_access_stream(p_stream_id uuid)
 returns boolean
 language sql
 stable
 as $$
-  select exists (
-    select 1
-    from public.streams s
-    join public.domains d on d.id = s.domain_id
-    where s.id = p_stream_id
-      and s.deleted_at is null
-      and d.deleted_at is null
-      and d.user_id = auth.uid()
-  );
+ select exists (
+ select 1
+ from public.streams s
+ join public.domains d on d.id = s.domain_id
+ where s.id = p_stream_id
+ and s.deleted_at is null
+ and d.deleted_at is null
+ and d.user_id = auth.uid()
+ );
 $$;
 
 create table if not exists public.documents (
-  id uuid primary key default gen_random_uuid(),
-  stream_id uuid not null references public.streams(id) on delete cascade,
-  created_by uuid null default auth.uid(),
-  title text not null,
-  original_filename text not null,
-  content_type text not null,
-  file_size_bytes bigint null,
-  storage_bucket text not null default 'document-files',
-  storage_path text not null,
-  import_status text not null default 'queued' check (import_status in ('queued', 'processing', 'completed', 'failed', 'canceled')),
-  source_metadata jsonb not null default '{}'::jsonb,
-  extracted_markdown text null,
-  extraction_metadata jsonb not null default '{}'::jsonb,
-  deleted_at timestamptz null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+ id uuid primary key default gen_random_uuid(),
+ stream_id uuid not null references public.streams(id) on delete cascade,
+ created_by uuid null default auth.uid(),
+ title text not null,
+ original_filename text not null,
+ content_type text not null,
+ file_size_bytes bigint null,
+ storage_bucket text not null default 'document-files',
+ storage_path text not null,
+ import_status text not null default 'queued' check (import_status in ('queued', 'processing', 'completed', 'failed', 'canceled')),
+ source_metadata jsonb not null default '{}'::jsonb,
+ extracted_markdown text null,
+ extraction_metadata jsonb not null default '{}'::jsonb,
+ deleted_at timestamptz null,
+ created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now()
 );
 
 create table if not exists public.document_import_jobs (
-  id uuid primary key default gen_random_uuid(),
-  document_id uuid not null references public.documents(id) on delete cascade,
-  stream_id uuid not null references public.streams(id) on delete cascade,
-  created_by uuid null default auth.uid(),
-  provider text not null default 'docling',
-  status text not null default 'queued' check (status in ('queued', 'processing', 'completed', 'failed', 'canceled')),
-  progress_percent integer null check (progress_percent is null or (progress_percent >= 0 and progress_percent <= 100)),
-  progress_message text null,
-  eta_seconds integer null check (eta_seconds is null or eta_seconds >= 0),
-  parser_config jsonb not null default '{}'::jsonb,
-  warning_messages jsonb not null default '[]'::jsonb,
-  error_message text null,
-  started_at timestamptz null,
-  completed_at timestamptz null,
-  retry_count integer not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+ id uuid primary key default gen_random_uuid(),
+ document_id uuid not null references public.documents(id) on delete cascade,
+ stream_id uuid not null references public.streams(id) on delete cascade,
+ created_by uuid null default auth.uid(),
+ provider text not null default 'docling',
+ status text not null default 'queued' check (status in ('queued', 'processing', 'completed', 'failed', 'canceled')),
+ progress_percent integer null check (progress_percent is null or (progress_percent >= 0 and progress_percent <= 100)),
+ progress_message text null,
+ eta_seconds integer null check (eta_seconds is null or eta_seconds >= 0),
+ parser_config jsonb not null default '{}'::jsonb,
+ warning_messages jsonb not null default '[]'::jsonb,
+ error_message text null,
+ started_at timestamptz null,
+ completed_at timestamptz null,
+ retry_count integer not null default 0,
+ created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now()
 );
 
 alter table public.document_import_jobs
-  add column if not exists progress_percent integer null;
+ add column if not exists progress_percent integer null;
 alter table public.document_import_jobs
-  add column if not exists progress_message text null;
+ add column if not exists progress_message text null;
 alter table public.document_import_jobs
-  add column if not exists eta_seconds integer null;
+ add column if not exists eta_seconds integer null;
 
 create table if not exists public.document_chunks (
-  id uuid primary key default gen_random_uuid(),
-  document_id uuid not null references public.documents(id) on delete cascade,
-  stream_id uuid not null references public.streams(id) on delete cascade,
-  chunk_index integer not null,
-  token_count integer null,
-  page_start integer null,
-  page_end integer null,
-  heading_path jsonb not null default '[]'::jsonb,
-  chunk_markdown text not null,
-  chunk_metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  unique (document_id, chunk_index)
+ id uuid primary key default gen_random_uuid(),
+ document_id uuid not null references public.documents(id) on delete cascade,
+ stream_id uuid not null references public.streams(id) on delete cascade,
+ chunk_index integer not null,
+ token_count integer null,
+ page_start integer null,
+ page_end integer null,
+ heading_path jsonb not null default '[]'::jsonb,
+ chunk_markdown text not null,
+ chunk_metadata jsonb not null default '{}'::jsonb,
+ created_at timestamptz not null default now(),
+ unique (document_id, chunk_index)
 );
 
 create table if not exists public.document_entry_links (
-  document_id uuid not null references public.documents(id) on delete cascade,
-  entry_id uuid not null references public.entries(id) on delete cascade,
-  relationship_type text not null default 'source' check (relationship_type in ('source', 'derived_from', 'reference')),
-  created_at timestamptz not null default now(),
-  primary key (document_id, entry_id)
+ document_id uuid not null references public.documents(id) on delete cascade,
+ entry_id uuid not null references public.entries(id) on delete cascade,
+ relationship_type text not null default 'source' check (relationship_type in ('source', 'derived_from', 'reference')),
+ created_at timestamptz not null default now(),
+ primary key (document_id, entry_id)
 );
 
 create index if not exists idx_documents_stream_id_created_at on public.documents(stream_id, created_at desc);
@@ -190,12 +190,12 @@ create policy "Users can view document links in their streams"
 on public.document_entry_links
 for select
 using (
-  exists (
-    select 1
-    from public.documents d
-    where d.id = document_entry_links.document_id
-      and public.user_can_access_stream(d.stream_id)
-  )
+ exists (
+ select 1
+ from public.documents d
+ where d.id = document_entry_links.document_id
+ and public.user_can_access_stream(d.stream_id)
+ )
 );
 
 drop policy if exists "Users can insert document links in their streams" on public.document_entry_links;
@@ -203,14 +203,14 @@ create policy "Users can insert document links in their streams"
 on public.document_entry_links
 for insert
 with check (
-  exists (
-    select 1
-    from public.documents d
-    join public.entries e on e.id = document_entry_links.entry_id
-    where d.id = document_entry_links.document_id
-      and e.stream_id = d.stream_id
-      and public.user_can_access_stream(d.stream_id)
-  )
+ exists (
+ select 1
+ from public.documents d
+ join public.entries e on e.id = document_entry_links.entry_id
+ where d.id = document_entry_links.document_id
+ and e.stream_id = d.stream_id
+ and public.user_can_access_stream(d.stream_id)
+ )
 );
 
 drop policy if exists "Users can delete document links in their streams" on public.document_entry_links;
@@ -218,12 +218,12 @@ create policy "Users can delete document links in their streams"
 on public.document_entry_links
 for delete
 using (
-  exists (
-    select 1
-    from public.documents d
-    where d.id = document_entry_links.document_id
-      and public.user_can_access_stream(d.stream_id)
-  )
+ exists (
+ select 1
+ from public.documents d
+ where d.id = document_entry_links.document_id
+ and public.user_can_access_stream(d.stream_id)
+ )
 );
 
 grant all on function public.user_can_access_stream(uuid) to anon;

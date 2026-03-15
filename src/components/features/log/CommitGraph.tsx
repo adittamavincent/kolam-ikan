@@ -395,12 +395,12 @@ export function CommitGraph({
         {branches.map((b) => (
           <button
             key={b.streamId}
-            className="flex h-6 items-center gap-1.5  px-1.5 py-0.5 transition-colors hover:bg-surface-hover"
+            className="flex h-6 items-center gap-1.5 px-1.5 py-0.5 transition-colors hover:bg-surface-hover"
             onClick={() => router.push(`/${domainId}/${b.streamId}`)}
             title={`Switch to ${b.name}`}
           >
             <span
-              className="block h-2 w-2  shrink-0"
+              className="block h-2 w-2 shrink-0"
               style={{
                 backgroundColor: b.color,
                 boxShadow: `0 0 4px ${b.color}`,
@@ -414,7 +414,7 @@ export function CommitGraph({
             </span>
             {b.streamId === currentStreamId && (
               <span
-                className="inline-flex h-4 min-w-8 items-center justify-center  px-1 text-[8px] font-bold leading-none"
+                className="inline-flex h-4 min-w-8 items-center justify-center px-1 text-[8px] font-bold leading-none"
                 style={{ backgroundColor: `${b.color}44`, color: b.color }}
               >
                 HEAD
@@ -702,7 +702,7 @@ export function CommitGraph({
       {/* ── Tooltip ─────────────────────────────────────────────────────── */}
       {tooltip && typeof window !== "undefined" && (
         <div
-          className="fixed z-50 pointer-events-none  border border-border-default bg-surface-elevated px-3 py-2 shadow-xl text-xs"
+          className="fixed z-50 pointer-events-none border border-border-default bg-surface-elevated px-3 py-2 shadow-xl text-xs"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           <div

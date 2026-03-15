@@ -117,7 +117,7 @@ export function PersonaItem({
             isAttachment={isAttachment}
             filePersonaName={filePersonaName}
             compact={false}
-            nameClass="text-[10px] font-medium text-text-subtle  tracking-wider"
+            nameClass="text-[10px] font-medium text-text-subtle tracking-wider"
             showChevron={!readOnly}
           />
         </MenuButton>

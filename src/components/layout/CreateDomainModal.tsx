@@ -122,7 +122,7 @@ export function CreateDomainModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden  bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
                 <div className="flex items-center justify-between mb-4">
                   <Dialog.Title
                     as="h3"
@@ -193,7 +193,7 @@ export function CreateDomainModal({
                           key={suggestion}
                           type="button"
                           onClick={() => setName(suggestion)}
-                          className="px-3 py-1 text-xs font-medium text-text-subtle bg-surface-subtle  hover:bg-border-default transition-colors"
+                          className="px-3 py-1 text-xs font-medium text-text-subtle bg-surface-subtle hover:bg-border-default transition-colors"
                         >
                           {suggestion}
                         </button>
@@ -211,7 +211,7 @@ export function CreateDomainModal({
                   <div className="mt-6 flex justify-end gap-3">
                     <button
                       type="button"
-                      className="inline-flex justify-center  border border-transparent px-4 py-2 text-sm font-medium text-text-subtle hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible: transition-colors"
+                      className="inline-flex justify-center border border-transparent px-4 py-2 text-sm font-medium text-text-subtle hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible: transition-colors"
                       onClick={onClose}
                       disabled={isSubmitting}
                     >
@@ -220,7 +220,7 @@ export function CreateDomainModal({
                     <button
                       type="submit"
                       disabled={!name.trim() || isSubmitting}
-                      className="inline-flex justify-center items-center gap-2  border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      className="inline-flex justify-center items-center gap-2 border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       {isSubmitting ? (
                         <>

@@ -222,7 +222,7 @@ const CreationInput = ({
             if (name.trim()) onConfirm(name.trim());
             else onCancel();
           }}
-          className="min-w-0 flex-1 bg-surface-default px-1 py-0.5    "
+          className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 "
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -443,7 +443,7 @@ const StreamNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, stream.id, "stream")}
             onBlur={() => handleRename(stream.id, editingName, "stream")}
-            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5    "
+            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 "
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit stream name"
@@ -452,12 +452,12 @@ const StreamNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{displayName}</span>
             {kindBadge && (
-              <span className="shrink-0  border border-border-default/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+              <span className="shrink-0 border border-border-default/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                 {kindBadge}
               </span>
             )}
             {disambiguationLabel && (
-              <span className="shrink-0  border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
+              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
                 {disambiguationLabel}
               </span>
             )}
@@ -597,7 +597,7 @@ const CabinetNode = ({
                 e.stopPropagation();
                 toggleCabinet(cabinet.id);
               }}
-              className="text-text-muted hover:text-text-subtle p-0.5  focus: focus: focus:"
+              className="text-text-muted hover:text-text-subtle p-0.5 focus: focus: focus:"
               aria-label={isExpanded ? "Collapse cabinet" : "Expand cabinet"}
             >
               {isExpanded ? (
@@ -622,7 +622,7 @@ const CabinetNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, cabinet.id, "cabinet")}
             onBlur={() => handleRename(cabinet.id, editingName, "cabinet")}
-            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5    "
+            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 "
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit cabinet name"
@@ -631,7 +631,7 @@ const CabinetNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{cabinet.name}</span>
             {disambiguationLabel && (
-              <span className="shrink-0  border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
+              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
                 {disambiguationLabel}
               </span>
             )}
@@ -2178,7 +2178,7 @@ export function Navigator({}: NavigatorProps) {
             onClick={() => setContextMenu(null)}
           >
             <div
-              className="absolute w-48  border border-border-default bg-surface-elevated p-1 shadow-2xl   z-100"
+              className="absolute w-48 border border-border-default bg-surface-elevated p-1 shadow-2xl z-100"
               style={{
                 top: Math.min(
                   contextMenu.y,
@@ -2200,7 +2200,7 @@ export function Navigator({}: NavigatorProps) {
             >
               <button
                 onClick={() => handleContextAction("rename")}
-                className="flex w-full items-center justify-between  px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center justify-between px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
               >
                 <span className="flex items-center gap-2">
                   <Pencil className="h-4 w-4 text-text-muted" />
@@ -2210,7 +2210,7 @@ export function Navigator({}: NavigatorProps) {
               </button>
               <button
                 onClick={() => handleContextAction("duplicate")}
-                className="flex w-full items-center gap-2  px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
               >
                 <Copy className="h-4 w-4 text-text-muted" />
                 Duplicate
@@ -2218,14 +2218,14 @@ export function Navigator({}: NavigatorProps) {
               <button
                 onClick={() => handleContextAction("move")}
                 disabled={contextMenuIsSystemGlobal}
-                className="flex w-full items-center gap-2  px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
               >
                 <Move className="h-4 w-4 text-text-muted" />
                 Move
               </button>
               <button
                 onClick={() => handleContextAction("properties")}
-                className="flex w-full items-center gap-2  px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
               >
                 <Info className="h-4 w-4 text-text-muted" />
                 Properties
@@ -2237,7 +2237,7 @@ export function Navigator({}: NavigatorProps) {
                   contextMenuIsSystemGlobal ||
                   contextMenuDeleteBlockedByMinimumGlobal
                 }
-                className="flex w-full items-center justify-between  px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-rose-500/10"
+                className="flex w-full items-center justify-between px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-rose-500/10"
               >
                 <span className="flex items-center gap-2">
                   <Trash2 className="h-4 w-4" />
@@ -2293,7 +2293,7 @@ export function Navigator({}: NavigatorProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm  border border-border-default bg-surface-default p-5">
+              <DialogPanel className="w-full max-w-sm border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-sm font-semibold text-text-default">
                     Move {moveTarget?.type === "cabinet" ? "Cabinet" : "Stream"}
@@ -2405,7 +2405,7 @@ export function Navigator({}: NavigatorProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm  border border-border-default bg-surface-default p-5">
+              <DialogPanel className="w-full max-w-sm border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
                   <DialogTitle className="text-sm font-semibold text-text-default">
                     Properties

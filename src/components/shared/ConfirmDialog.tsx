@@ -63,8 +63,8 @@ export function ConfirmDialog({
     );
 
   const confirmClasses = destructive
-    ? "inline-flex items-center justify-center gap-2  bg-status-error-bg px-4 py-2 text-sm font-semibold text-status-error-text hover:bg-status-error-bg/90 disabled:cursor-not-allowed disabled:opacity-60"
-    : "inline-flex items-center justify-center gap-2  bg-action-primary-bg px-4 py-2 text-sm font-semibold text-action-primary-text hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60";
+    ? "inline-flex items-center justify-center gap-2 bg-status-error-bg px-4 py-2 text-sm font-semibold text-status-error-text hover:bg-status-error-bg/90 disabled:cursor-not-allowed disabled:opacity-60"
+    : "inline-flex items-center justify-center gap-2 bg-action-primary-bg px-4 py-2 text-sm font-semibold text-action-primary-text hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <Transition appear show={open} as={Fragment}>
@@ -96,7 +96,7 @@ export function ConfirmDialog({
             leaveFrom="opacity-100 translate-y-0 scale-100"
             leaveTo="opacity-0 translate-y-2 scale-95"
           >
-            <Dialog.Panel className="w-full max-w-lg  border border-border-default bg-surface-default p-6 text-left shadow-2xl">
+            <Dialog.Panel className="w-full max-w-lg border border-border-default bg-surface-default p-6 text-left shadow-2xl">
               <div className="flex items-start gap-3">
                 <div className=" border border-border-default bg-surface-subtle/80 p-2">
                   {contentIcon}
@@ -117,7 +117,7 @@ export function ConfirmDialog({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className=" border border-border-default px-4 py-2 text-sm font-semibold text-text-muted  hover:text-text-default"
+                  className=" border border-border-default px-4 py-2 text-sm font-semibold text-text-muted hover:text-text-default"
                 >
                   {cancelLabel}
                 </button>

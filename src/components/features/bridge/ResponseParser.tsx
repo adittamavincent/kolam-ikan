@@ -794,7 +794,7 @@ export const ResponseParser = forwardRef<
           <textarea
             value={pastedXML}
             onChange={(e) => onPastedXMLChange(e.target.value)}
-            className="w-full  border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-border-default focus: focus: "
+            className="w-full border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-border-default focus: focus: "
             rows={6}
             placeholder={`Paste the LLM response here. Expected format:\n<response>\n  ${canProcessLog ? "<thought_log>...</thought_log>" : ""}${canProcessLog && canProcessCanvas ? "\n  " : ""}${canProcessCanvas ? "<canvas_update>markdown or JSON</canvas_update>" : ""}\n</response>`}
           />
@@ -819,7 +819,7 @@ export const ResponseParser = forwardRef<
         )}
 
         {canvasParseError && canProcessCanvas && (
-          <div className="flex items-center justify-between  border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
+          <div className="flex items-center justify-between border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
             <span>{canvasParseError}</span>
             <button
               onClick={handlePlainTextImport}
@@ -838,7 +838,7 @@ export const ResponseParser = forwardRef<
                 <span className="font-medium text-text-muted">
                   Thought Log → New Entry:
                 </span>
-                <div className="mt-1 max-h-32 overflow-y-auto  bg-surface-default p-2 text-text-default whitespace-pre-wrap">
+                <div className="mt-1 max-h-32 overflow-y-auto bg-surface-default p-2 text-text-default whitespace-pre-wrap">
                   {thoughtLog}
                 </div>
               </div>
@@ -888,7 +888,7 @@ export const ResponseParser = forwardRef<
               </div>
             </div>
 
-            <div className="divide-y divide-border-subtle/30 overflow-hidden  border border-border-default/50 bg-surface-default shadow-sm">
+            <div className="divide-y divide-border-subtle/30 overflow-hidden border border-border-default/50 bg-surface-default shadow-sm">
               {changes.map((change) => (
                 <div
                   key={change.id}

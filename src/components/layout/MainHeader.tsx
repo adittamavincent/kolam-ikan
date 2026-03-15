@@ -112,7 +112,7 @@ export function MainHeader() {
         {streamId && !sidebarVisible && (
           <button
             onClick={showSidebar}
-            className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+            className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
             title="Show sidebar"
           >
             <PanelLeft className="h-4 w-4" />
@@ -145,7 +145,7 @@ export function MainHeader() {
             <>
               <button
                 onClick={() => setIsSearchOpen((prev) => !prev)}
-                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible: focus-visible: focus-visible: ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={` p-1.5 transition-all duration-200 focus-visible: focus-visible: focus-visible: ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
                 title={isSearchOpen ? "Hide search" : "Show search"}
               >
                 <Search className="h-4 w-4" />
@@ -170,7 +170,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_whatsapp_import")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title="Import WhatsApp Chat"
               >
                 <MessageSquare className="h-4 w-4" />
@@ -178,7 +178,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_documents_import")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title="Import PDF"
               >
                 <FileUp className="h-4 w-4" />
@@ -186,7 +186,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_export")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title="Export to Markdown"
               >
                 <Download className="h-4 w-4" />
@@ -194,7 +194,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_stash")}
-                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible: focus-visible: focus-visible: ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={` p-1.5 transition-all duration-200 focus-visible: focus-visible: focus-visible: ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
                 title={
                   logState.showStash
                     ? "Hide stashed entries"
@@ -206,7 +206,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_sort")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
               >
                 <ArrowUpDown
@@ -216,7 +216,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_graph")}
-                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible: focus-visible: focus-visible: ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={` p-1.5 transition-all duration-200 focus-visible: focus-visible: focus-visible: ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
                 title={
                   logState.graphView ? "Back to commit list" : "Show commit graph"
                 }
@@ -254,7 +254,7 @@ export function MainHeader() {
                             onClick={() =>
                               emit("kolam_header_log_set_branch", { branchName })
                             }
-                            className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105`}
+                            className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-all duration-200`}
                           >
                             <span className="flex items-center gap-1.5">
                               <GitBranch className="h-3 w-3" />

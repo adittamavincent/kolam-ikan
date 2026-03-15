@@ -506,7 +506,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5  border border-border-default bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all hover:scale-105">
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5  border border-border-default bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all">
             <button
               onClick={() => setMode("log-only")}
               className={` p-2 transition-all ${

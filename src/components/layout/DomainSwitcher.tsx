@@ -132,8 +132,8 @@ export function DomainSwitcher({
           }}
           className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
             pathname === "/"
-              ? "bg-action-primary-bg text-white shadow-md scale-105"
-              : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
+              ? "bg-action-primary-bg text-white shadow-md"
+              : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
           }`}
         >
           <Home className="h-4 w-4" />
@@ -146,7 +146,7 @@ export function DomainSwitcher({
       <div className="flex w-full flex-col items-center gap-2 border-b border-border-default py-2 px-2">
         <button
           onClick={() => onOpenGlobalSearch?.()}
-          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
+          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default"
           title="Global Search (⌘⇧K)"
         >
           <Search className="h-4 w-4" />
@@ -157,7 +157,7 @@ export function DomainSwitcher({
 
         <button
           onClick={() => onOpenPersona?.()}
-          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default hover:scale-105"
+          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default"
           title="Manage Personas"
         >
           <Users className="h-4 w-4" />
@@ -203,8 +203,8 @@ export function DomainSwitcher({
             aria-label={domain.name}
             className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
               currentDomainId === domain.id
-                ? "bg-action-primary-bg text-white shadow-md scale-105"
-                : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default hover:scale-105"
+                ? "bg-action-primary-bg text-white shadow-md"
+                : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
             }`}
           >
             {domain.icon ? (
@@ -224,7 +224,7 @@ export function DomainSwitcher({
           onClick={() => setIsCreateModalOpen(true)}
           aria-label="Add Domain"
           title="Add Domain"
-          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg hover:scale-105"
+          className="group relative flex h-8 w-8 items-center justify-center  bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg"
         >
           <Plus className="h-4 w-4" />
           <div className="absolute left-14 hidden  bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">

@@ -1,8 +1,11 @@
+import { Fragment } from "react";
 import {
   Dialog,
-  DialogBackdrop,
+  
   DialogPanel,
   DialogTitle,
+  Transition,
+  TransitionChild,
 } from "@headlessui/react";
 import { Loader2, X } from "lucide-react";
 
@@ -47,10 +50,31 @@ export function PdfAttachmentPreviewDialog({
   onRequestParsedPreview,
 }: PdfAttachmentPreviewDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} className="relative z-50">
-      <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-border-default bg-surface-default shadow-2xl">
+    <Transition appear show={open} as={Fragment}>
+      <Dialog as="div" onClose={onClose} className="relative z-50">
+        <TransitionChild
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+        </TransitionChild>
+        
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0 scale-95 translate-y-4"
+            enterTo="opacity-100 scale-100 translate-y-0"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100 scale-100 translate-y-0"
+            leaveTo="opacity-0 scale-95 translate-y-4"
+          >
+            <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-border-default bg-surface-default shadow-2xl transition-all">
           <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
             <div className="min-w-0 flex-1">
               <DialogTitle className="truncate text-sm font-semibold text-text-default">
@@ -154,8 +178,10 @@ export function PdfAttachmentPreviewDialog({
               </>
             )}
           </div>
-        </DialogPanel>
-      </div>
-    </Dialog>
+          </DialogPanel>
+          </TransitionChild>
+        </div>
+      </Dialog>
+    </Transition>
   );
 }

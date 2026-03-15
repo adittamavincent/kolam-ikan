@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { Dialog, DialogBackdrop, DialogPanel } from "@headlessui/react";
+import { Fragment, useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { Dialog,  DialogPanel, Transition, TransitionChild } from "@headlessui/react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -574,12 +574,23 @@ export function DocumentImportModal({
 
   return (
     <>
+    <Transition appear show={isOpen} as={Fragment}>
       <Dialog
-        open={isOpen}
+        as="div"
         onClose={handleClose}
-        className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
+        className="relative z-50"
       >
-      <DialogBackdrop className="fixed inset-0 bg-black/25 backdrop-blur-xs transition-opacity" />
+        <TransitionChild
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/25 backdrop-blur-xs transition-opacity" />
+        </TransitionChild>
 
       <div
         className="fixed inset-0 overflow-y-auto p-3 lg:p-4"
@@ -594,9 +605,18 @@ export function DocumentImportModal({
         }}
       >
         <div className="flex min-h-full items-start justify-center">
+            <TransitionChild
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95 translate-y-4"
+              enterTo="opacity-100 scale-100 translate-y-0"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100 translate-y-0"
+              leaveTo="opacity-0 scale-95 translate-y-4"
+            >
           <DialogPanel
             ref={dialogPanelRef}
-            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3  border border-border-default/70 bg-surface-default/95 p-3 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.32)] backdrop-blur-xl transition duration-300 ease-out data-closed:translate-y-4 data-closed:scale-95 data-closed:opacity-0"
+            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3  border border-border-default/70 bg-surface-default/95 p-3 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.32)] backdrop-blur-xl transition-all"
           >
             <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1.6fr)_360px] xl:items-start">
               <form
@@ -1018,9 +1038,11 @@ export function DocumentImportModal({
               </div>
             </div>
           </DialogPanel>
+            </TransitionChild>
         </div>
       </div>
       </Dialog>
+    </Transition>
       <ConfirmDialog
         open={Boolean(documentToDelete)}
         title="Delete parsed file permanently?"

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Fragment } from "react";
 import {
   Dialog,
   DialogPanel,
   DialogTitle,
-  DialogBackdrop,
+  
+  Transition,
+  TransitionChild,
 } from "@headlessui/react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -138,17 +140,37 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
   return (
     <>
+    <Transition appear show={isOpen} as={Fragment}>
       <Dialog
-        open={isOpen}
+        as="div"
         onClose={onClose}
-        className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
+        className="relative z-50"
       >
         {/* Backdrop */}
-        <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+        <TransitionChild
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+        </TransitionChild>
 
       {/* Modal */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto  bg-surface-default/95 backdrop-blur-xl p-8 border border-border-default/50 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] transition duration-300 ease-out data-closed:scale-95 data-closed:opacity-0 data-closed:translate-y-4 flex flex-col gap-6">
+        <TransitionChild
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0 scale-95 translate-y-4"
+          enterTo="opacity-100 scale-100 translate-y-0"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100 scale-100 translate-y-0"
+          leaveTo="opacity-0 scale-95 translate-y-4"
+        >
+        <DialogPanel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto  bg-surface-default/95 backdrop-blur-xl p-8 border border-border-default/50 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] transition-all flex flex-col gap-6">
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="text-2xl font-bold bg-linear-to-r from-text-default to-text-muted bg-clip-text text-transparent">
@@ -270,8 +292,10 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
             </button>
           </div>
         </DialogPanel>
+          </TransitionChild>
       </div>
     </Dialog>
+    </Transition>
       <ConfirmDialog
         open={isResetDialogOpen}
         title={resetDialogTitle}

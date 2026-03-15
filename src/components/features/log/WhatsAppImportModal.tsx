@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { Fragment, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   Dialog,
-  DialogBackdrop,
+  
   DialogPanel,
   DialogTitle,
+  Transition,
+  TransitionChild,
 } from "@headlessui/react";
 import {
   X,
@@ -1225,19 +1227,40 @@ export function WhatsAppImportModal({
     step === "paste" ? 1 : step === "range" ? 2 : step === "map" ? 3 : 4;
 
   return (
-    <Dialog
-      open={isOpen}
-      onClose={() => {
-        // If user progressed past the paste step show confirmation
-        if (step !== "paste") setConfirmExitOpen(true);
-        else handleClose();
-      }}
-      className="relative z-50 transition duration-300 ease-out data-closed:opacity-0"
-    >
-      <DialogBackdrop className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" />
-      <div className="fixed inset-0 overflow-y-auto p-2 lg:p-3">
-        <div className="flex min-h-full items-center justify-center">
-          <DialogPanel className="flex w-full max-w-xl flex-col  border border-border-default/70 bg-surface-default shadow-2xl transition duration-300 data-closed:scale-95 data-closed:translate-y-4 data-closed:opacity-0">
+    <Transition appear show={isOpen} as={Fragment}>
+      <Dialog
+        as="div"
+        onClose={() => {
+          // If user progressed past the paste step show confirmation
+          if (step !== "paste") setConfirmExitOpen(true);
+          else handleClose();
+        }}
+        className="relative z-50"
+      >
+        <TransitionChild
+          as={Fragment}
+          enter="ease-out duration-300"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in duration-200"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" />
+        </TransitionChild>
+
+        <div className="fixed inset-0 overflow-y-auto p-2 lg:p-3">
+          <div className="flex min-h-full items-center justify-center">
+            <TransitionChild
+              as={Fragment}
+              enter="ease-out duration-300"
+              enterFrom="opacity-0 scale-95 translate-y-4"
+              enterTo="opacity-100 scale-100 translate-y-0"
+              leave="ease-in duration-200"
+              leaveFrom="opacity-100 scale-100 translate-y-0"
+              leaveTo="opacity-0 scale-95 translate-y-4"
+            >
+              <DialogPanel className="flex w-full max-w-xl flex-col  border border-border-default/70 bg-surface-default shadow-2xl transition-all">
             {/* ─── Header ────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
               <div className="flex items-center gap-2">
@@ -1911,6 +1934,7 @@ export function WhatsAppImportModal({
               </div>
             )}
           </DialogPanel>
+            </TransitionChild>
         </div>
         {/* Portal tooltip: render global tooltip so it doesn't affect modal layout */}
         {typeof document !== "undefined" &&
@@ -1947,7 +1971,8 @@ export function WhatsAppImportModal({
           handleClose();
         }}
       />
-    </Dialog>
+      </Dialog>
+    </Transition>
   );
 }
 

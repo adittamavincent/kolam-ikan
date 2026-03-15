@@ -70,7 +70,7 @@ interface DomainWithCounts extends Domain {
 
 function StatCardSkeleton() {
   return (
-    <div className="border border-border-subtle bg-surface-default p-4 flex flex-col justify-between">
+    <div className="border border-border-default bg-surface-default p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
         <div className="h-3 w-16 bg-surface-elevated" />
         <div className="h-4 w-4 bg-surface-elevated" />
@@ -82,7 +82,7 @@ function StatCardSkeleton() {
 
 function DomainCardSkeleton() {
   return (
-    <div className="border border-border-subtle bg-surface-default p-4">
+    <div className="border border-border-default bg-surface-default p-4">
       <div className="mb-3 flex items-center gap-3">
         <div className="h-10 w-10 bg-surface-elevated" />
         <div className="flex-1">
@@ -90,7 +90,7 @@ function DomainCardSkeleton() {
           <div className="h-2 w-32 bg-surface-elevated" />
         </div>
       </div>
-      <div className="flex gap-4 mt-auto pt-2 border-t border-border-subtle/50 w-full">
+      <div className="flex gap-4 mt-auto pt-2 border-t border-border-default/50 w-full">
         <div className="h-2.5 w-12 bg-surface-elevated" />
         <div className="h-2.5 w-12 bg-surface-elevated" />
         <div className="h-2.5 w-12 bg-surface-elevated" />
@@ -101,7 +101,7 @@ function DomainCardSkeleton() {
 
 function ActivityItemSkeleton() {
   return (
-    <div className="flex items-start gap-3 border border-border-subtle bg-surface-default p-3">
+    <div className="flex items-start gap-3 border border-border-default bg-surface-default p-3">
       <div className="h-6 w-6 shrink-0 bg-surface-elevated" />
       <div className="flex-1">
         <div className="mb-1 h-3 w-3/4 bg-surface-elevated" />
@@ -114,7 +114,7 @@ function ActivityItemSkeleton() {
 
 function QuickActionSkeleton() {
   return (
-    <div className="flex items-center gap-3 border border-border-subtle bg-surface-default p-3">
+    <div className="flex items-center gap-3 border border-border-default bg-surface-default p-3">
       <div className="h-8 w-8 shrink-0 bg-surface-elevated" />
       <div className="min-w-0 flex-1">
         <div className="flex h-4.5 items-center">
@@ -169,7 +169,7 @@ function StatCard({
   const c = colorMap[color] ?? colorMap.blue;
 
   return (
-    <div className="group border border-border-subtle bg-surface-default p-4 flex flex-col justify-between">
+    <div className="group border border-border-default bg-surface-default p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs uppercase tracking-wider text-text-subtle font-medium">{label}</p>
         <Icon className={`h-4 w-4 ${c.text}`} />
@@ -189,7 +189,7 @@ function DomainCard({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full flex-col border border-border-subtle bg-surface-default p-4 text-left transition-all hover:border-action-primary-bg/50 active:scale-[0.98] active:translate-y-px"
+      className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all  active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-action-primary-bg/10 text-xl group-hover:bg-action-primary-bg/20 transition-colors">
@@ -206,7 +206,7 @@ function DomainCard({
           )}
         </div>
       </div>
-      <div className="flex gap-4 text-xs text-text-muted mt-auto pt-2 border-t border-border-subtle/50 w-full">
+      <div className="flex gap-4 text-xs text-text-muted mt-auto pt-2 border-t border-border-default/50 w-full">
         <span className="flex items-center gap-1">
           <span className="font-medium">{domain.cabinetCount}</span> cab
         </span>
@@ -237,7 +237,7 @@ function RecentActivityItem({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-start gap-3 border border-border-subtle bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
+      className="group flex w-full items-start gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
     >
       <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle text-sm transition-colors group-hover:bg-action-primary-bg/10">
         {icon}
@@ -269,7 +269,7 @@ function QuickAction({
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-3 border border-border-subtle bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.98] active:translate-y-px"
+      className="group flex items-center gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.98] active:translate-y-px"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-action-primary-bg/10 transition-colors group-hover:bg-action-primary-bg/20">
         <Icon className="h-4 w-4 text-action-primary-bg" />
@@ -290,7 +290,7 @@ function ErrorBanner({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3  border border-status-error-border bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
+    <div className="flex items-center gap-3  border border-border-default bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
       <AlertCircle className="h-5 w-5 shrink-0" />
       <span className="flex-1">{message}</span>
       <button

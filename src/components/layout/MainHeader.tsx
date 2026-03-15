@@ -107,12 +107,12 @@ export function MainHeader() {
   };
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-subtle bg-surface-default px-3">
+    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-default px-3">
       <div className="flex min-w-0 items-center gap-3">
         {streamId && !sidebarVisible && (
           <button
             onClick={showSidebar}
-            className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+            className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
             title="Show sidebar"
           >
             <PanelLeft className="h-4 w-4" />
@@ -130,7 +130,7 @@ export function MainHeader() {
             </span>
 
             {stream.stream_kind === "GLOBAL" && (
-              <span className="ml-1 inline-flex items-center gap-1  border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
+              <span className="ml-1 inline-flex items-center gap-1  border border-border-default/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
                 <Globe className="h-3 w-3" />
                 Global
               </span>
@@ -145,7 +145,7 @@ export function MainHeader() {
             <>
               <button
                 onClick={() => setIsSearchOpen((prev) => !prev)}
-                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible: focus-visible: focus-visible: ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
                 title={isSearchOpen ? "Hide search" : "Show search"}
               >
                 <Search className="h-4 w-4" />
@@ -163,14 +163,14 @@ export function MainHeader() {
                       emit("kolam_header_log_search_term", { term });
                     }}
                     placeholder="Search commits..."
-                    className="w-full  border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                    className="w-full  border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
                   />
                 </div>
               )}
 
               <button
                 onClick={() => emit("kolam_header_whatsapp_import")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title="Import WhatsApp Chat"
               >
                 <MessageSquare className="h-4 w-4" />
@@ -178,7 +178,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_documents_import")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title="Import PDF"
               >
                 <FileUp className="h-4 w-4" />
@@ -186,7 +186,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_export")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title="Export to Markdown"
               >
                 <Download className="h-4 w-4" />
@@ -194,7 +194,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_stash")}
-                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible: focus-visible: focus-visible: ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
                 title={
                   logState.showStash
                     ? "Hide stashed entries"
@@ -206,7 +206,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_sort")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg"
+                className=" p-1.5 text-text-muted transition-all duration-200 hover:scale-105 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
                 title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
               >
                 <ArrowUpDown
@@ -216,7 +216,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_graph")}
-                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={` p-1.5 transition-all duration-200 hover:scale-105 focus-visible: focus-visible: focus-visible: ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
                 title={
                   logState.graphView ? "Back to commit list" : "Show commit graph"
                 }
@@ -225,7 +225,7 @@ export function MainHeader() {
               </button>
 
               <Menu as="div" className="relative hidden md:block">
-                <MenuButton className="inline-flex items-center gap-1.5  bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg">
+                <MenuButton className="inline-flex items-center gap-1.5  bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus: focus-visible: focus-visible:">
                   <GitBranch className="h-3 w-3" />
                   {logState.currentBranch}
                   <ChevronDown className="h-3 w-3" />
@@ -242,7 +242,7 @@ export function MainHeader() {
                   <MenuItems
                     anchor={{ to: "bottom end", gap: 6 }}
                     portal
-                    className="z-9999 w-44 overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
+                    className="z-9999 w-44 overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl   focus:"
                   >
                     <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
                       Checkout Branch
@@ -299,7 +299,7 @@ export function MainHeader() {
           )}
 
           {canvasState?.hasCanvas && (
-            <div className="ml-1 flex items-center gap-1.5 border-l border-border-subtle pl-2">
+            <div className="ml-1 flex items-center gap-1.5 border-l border-border-default pl-2">
               <input
                 type="text"
                 value={snapshotName}
@@ -309,7 +309,7 @@ export function MainHeader() {
                   emit("kolam_header_canvas_snapshot_name", { name });
                 }}
                 placeholder="Snapshot name..."
-                className="w-36  border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                className="w-36  border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-border-default focus: focus: focus:"
               />
               <button
                 onClick={() =>

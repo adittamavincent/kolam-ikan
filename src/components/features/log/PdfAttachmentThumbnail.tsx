@@ -656,7 +656,7 @@ export function PdfAttachmentThumbnail({
   }, [resolvedUrl, storagePath, thumbnailPath, isFromCache, url]);
 
   return (
-    <div className="relative h-16 w-12 overflow-hidden  border border-border-subtle bg-surface-subtle">
+    <div className="relative h-16 w-12 overflow-hidden  border border-border-default bg-surface-subtle">
       <canvas
         ref={canvasRef}
         className="h-16 w-12 object-cover"

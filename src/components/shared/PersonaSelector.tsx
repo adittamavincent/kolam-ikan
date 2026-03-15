@@ -56,7 +56,7 @@ export function PersonaSelector({
 
   return (
     <Menu as="div" className="relative z-30">
-      <MenuButton className={`flex items-center gap-2 px-1 py-0.5 rounded ${hoverClass} transition-colors focus:outline-none`}>
+      <MenuButton className={`flex items-center gap-2 px-1 py-0.5 rounded ${hoverClass} transition-colors focus:`}>
         {buttonContent}
       </MenuButton>
 
@@ -72,7 +72,7 @@ export function PersonaSelector({
         >
           <MenuItems
             anchor={{ to: "bottom start", gap: 4 }}
-            className="z-9999 w-48 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
+            className="z-9999 w-48 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl"
           >
             <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
               Switch to...
@@ -98,7 +98,7 @@ export function PersonaSelector({
                       <DynamicIcon name={p.icon} className="h-2.5 w-2.5" />
                     </div>
                     <span>{p.name}</span>
-                    <span className="ml-auto border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[9px] rounded text-text-muted">
+                    <span className="ml-auto border border-border-default bg-surface-subtle px-1.5 py-0.5 text-[9px] rounded text-text-muted">
                       Global
                     </span>
                     {p.id === currentPersona?.id && <Check className="h-3 w-3" />}
@@ -122,13 +122,13 @@ export function PersonaSelector({
                     } group flex w-full items-center gap-2 px-2 py-1.5 text-xs transition-colors`}
                   >
                     <div
-                      className="flex h-4 w-4 items-center justify-center ring-1 ring-amber-500/40 rounded"
+                      className="flex h-4 w-4 items-center justify-center   rounded"
                       style={{ backgroundColor: `${p.color}20`, color: p.color }}
                     >
                       <DynamicIcon name={p.icon} className="h-2.5 w-2.5" />
                     </div>
                     <span>{p.name}</span>
-                    <span className="ml-auto border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] rounded text-amber-700 dark:text-amber-400">
+                    <span className="ml-auto border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] rounded text-amber-700 dark:text-amber-400">
                       Shadow
                     </span>
                     {p.id === currentPersona?.id && <Check className="h-3 w-3" />}

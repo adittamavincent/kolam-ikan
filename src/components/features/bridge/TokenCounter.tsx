@@ -213,13 +213,13 @@ export function TokenCounter({
           <div className="flex gap-2">
             <button
               onClick={onReduceSelection}
-              className=" bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm ring-1 ring-border-default/50 hover:bg-surface-hover transition-colors whitespace-nowrap"
+              className=" bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm   hover:bg-surface-hover transition-colors whitespace-nowrap"
             >
               Select Last 5
             </button>
             <button
               onClick={onAutoSummarize}
-              className=" bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm ring-1 ring-border-default/50 hover:bg-surface-hover transition-colors whitespace-nowrap"
+              className=" bg-surface-default px-3 py-1.5 text-xs font-semibold text-text-default shadow-sm   hover:bg-surface-hover transition-colors whitespace-nowrap"
             >
               Drop Canvas
             </button>

@@ -745,14 +745,14 @@ export const ResponseParser = forwardRef<
           <textarea
             value={pastedXML}
             onChange={(e) => onPastedXMLChange(e.target.value)}
-            className="w-full  border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg outline-none"
+            className="w-full  border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-border-default focus: focus: "
             rows={6}
             placeholder={`Paste the LLM response here. Expected format:\n<response>\n  ${canProcessLog ? "<thought_log>...</thought_log>" : ""}${canProcessLog && canProcessCanvas ? "\n  " : ""}${canProcessCanvas ? "<canvas_update>markdown or JSON</canvas_update>" : ""}\n</response>`}
           />
         </div>
 
         {parseError && (
-          <div className=" bg-status-error-bg p-3 text-sm text-status-error-text border border-status-error-border">
+          <div className=" bg-status-error-bg p-3 text-sm text-status-error-text border border-border-default">
             Error: {parseError}
           </div>
         )}
@@ -764,7 +764,7 @@ export const ResponseParser = forwardRef<
         )}
 
         {conflictWarning && (
-          <div className=" border border-status-error-border bg-status-error-bg/20 p-3 text-xs text-status-error-text">
+          <div className=" border border-border-default bg-status-error-bg/20 p-3 text-xs text-status-error-text">
             {conflictWarning}
           </div>
         )}
@@ -846,7 +846,7 @@ export const ResponseParser = forwardRef<
                   className="flex flex-col md:flex-row items-stretch group hover:bg-surface-subtle/30 transition-colors"
                 >
                   {/* Meta info & Labels */}
-                  <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center px-4 py-2 bg-surface-subtle/50 md:w-32 border-b md:border-b-0 md:border-r border-border-subtle/30">
+                  <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center px-4 py-2 bg-surface-subtle/50 md:w-32 border-b md:border-b-0 md:border-r border-border-default/30">
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider ${change.type === "add" ? "text-status-success-text" : "text-action-primary-bg"}`}
                     >
@@ -882,7 +882,7 @@ export const ResponseParser = forwardRef<
                   </div>
 
                   {/* Actions */}
-                  <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle/20 border-t md:border-t-0 md:border-l border-border-subtle/30 min-w-30">
+                  <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle/20 border-t md:border-t-0 md:border-l border-border-default/30 min-w-30">
                     <button
                       onClick={() => updateDecision(change.id, "accept")}
                       title="Accept"
@@ -926,7 +926,7 @@ export const ResponseParser = forwardRef<
         )}
 
         {applyError && (
-          <div className=" bg-status-error-bg p-3 text-sm text-status-error-text border border-status-error-border">
+          <div className=" bg-status-error-bg p-3 text-sm text-status-error-text border border-border-default">
             Error: {applyError}
           </div>
         )}

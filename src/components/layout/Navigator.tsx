@@ -222,7 +222,7 @@ const CreationInput = ({
             if (name.trim()) onConfirm(name.trim());
             else onCancel();
           }}
-          className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg "
+          className="min-w-0 flex-1 bg-surface-default px-1 py-0.5    "
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -393,11 +393,11 @@ const StreamNode = ({
         className={`flex min-w-0 flex-1 items-center gap-2 pr-2 py-0.5 text-sm cursor-pointer
             ${
               isStreamActive
-                ? "text-action-primary-bg font-semibold ring-1 ring-action-primary-bg/20"
+                ? "text-action-primary-bg font-semibold  "
                 : "text-text-subtle hover:text-text-default"
-            } ${!isStreamActive && isNewlyCreated ? "ring-1 ring-action-primary-bg/30" : ""}
+            } ${!isStreamActive && isNewlyCreated ? " " : ""}
             ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
-            ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
+            ${isDragOver ? "  " : ""}`}
         style={{
           paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)`,
         }}
@@ -443,7 +443,7 @@ const StreamNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, stream.id, "stream")}
             onBlur={() => handleRename(stream.id, editingName, "stream")}
-            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg "
+            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5    "
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit stream name"
@@ -452,12 +452,12 @@ const StreamNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{displayName}</span>
             {kindBadge && (
-              <span className="shrink-0  border border-action-primary-bg/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+              <span className="shrink-0  border border-border-default/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                 {kindBadge}
               </span>
             )}
             {disambiguationLabel && (
-              <span className="shrink-0  border border-border-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+              <span className="shrink-0  border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
                 {disambiguationLabel}
               </span>
             )}
@@ -549,10 +549,10 @@ const CabinetNode = ({
         className={`flex items-center gap-2 pr-2 py-0.5 text-sm group cursor-pointer
             ${
               isActive
-                ? "text-action-primary-bg ring-1 ring-action-primary-bg/20 font-medium"
+                ? "text-action-primary-bg   font-medium"
                 : "text-text-subtle"
             } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
-            ${isDragOver ? "ring-2 ring-action-primary-bg ring-inset" : ""}`}
+            ${isDragOver ? "  " : ""}`}
         style={{
           paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)`,
         }}
@@ -597,7 +597,7 @@ const CabinetNode = ({
                 e.stopPropagation();
                 toggleCabinet(cabinet.id);
               }}
-              className="text-text-muted hover:text-text-subtle p-0.5  focus:outline-none focus:ring-2 focus:ring-action-primary-bg"
+              className="text-text-muted hover:text-text-subtle p-0.5  focus: focus: focus:"
               aria-label={isExpanded ? "Collapse cabinet" : "Expand cabinet"}
             >
               {isExpanded ? (
@@ -622,7 +622,7 @@ const CabinetNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, cabinet.id, "cabinet")}
             onBlur={() => handleRename(cabinet.id, editingName, "cabinet")}
-            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 outline-none ring-2 ring-action-primary-bg "
+            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5    "
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit cabinet name"
@@ -631,7 +631,7 @@ const CabinetNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{cabinet.name}</span>
             {disambiguationLabel && (
-              <span className="shrink-0  border border-border-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+              <span className="shrink-0  border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
                 {disambiguationLabel}
               </span>
             )}
@@ -642,7 +642,7 @@ const CabinetNode = ({
       {isExpanded && (
         <div className="relative" role="group">
           <div
-            className="pointer-events-none absolute inset-y-0 w-0 border-border-subtle"
+            className="pointer-events-none absolute inset-y-0 w-0 border-border-default"
             style={{
               left: `${getBorderCenterRem(depth) + 0.5}rem`,
               borderLeftWidth: "0.0625rem",
@@ -1974,7 +1974,7 @@ export function Navigator({}: NavigatorProps) {
 
   if (!domainId) {
     return (
-      <div className="flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle p-4">
+      <div className="flex h-full w-full flex-col border-r border-border-default bg-surface-subtle p-4">
         <p className="text-sm text-text-subtle">Select a domain to begin</p>
       </div>
     );
@@ -1983,10 +1983,10 @@ export function Navigator({}: NavigatorProps) {
   return (
     <>
       <div
-        className={`flex h-full w-full flex-col border-r border-border-subtle bg-surface-subtle transition-opacity duration-200 ${isPending ? "opacity-70 pointer-events-none" : ""}`}
+        className={`flex h-full w-full flex-col border-r border-border-default bg-surface-subtle transition-opacity duration-200 ${isPending ? "opacity-70 pointer-events-none" : ""}`}
       >
         {/* Header */}
-        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-subtle bg-surface-default px-3">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-default bg-surface-default px-3">
           <h2
             className="truncate text-sm font-semibold text-text-default"
             title={currentDomainName}
@@ -2075,7 +2075,7 @@ export function Navigator({}: NavigatorProps) {
 
           {rootGlobalStreams.length > 0 && hasNonGlobalTreeItems && (
             <div
-              className="border-t border-border-subtle"
+              className="border-t border-border-default"
               role="separator"
               aria-label="Global stream separator"
             />
@@ -2178,7 +2178,7 @@ export function Navigator({}: NavigatorProps) {
             onClick={() => setContextMenu(null)}
           >
             <div
-              className="absolute w-48  border border-border-strong bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 z-100"
+              className="absolute w-48  border border-border-default bg-surface-elevated p-1 shadow-2xl   z-100"
               style={{
                 top: Math.min(
                   contextMenu.y,
@@ -2319,7 +2319,7 @@ export function Navigator({}: NavigatorProps) {
                       onChange={(event) =>
                         setMoveDestination(event.target.value || null)
                       }
-                      className=" border border-border-default bg-surface-default px-2 py-1.5 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                      className=" border border-border-default bg-surface-default px-2 py-1.5 text-xs text-text-default focus:border-border-default focus: focus: focus:"
                     >
                       <option
                         value=""

@@ -455,7 +455,7 @@ function LoginForm() {
         </div>
 
         {/* Main Auth Card */}
-        <div className=" bg-surface-default p-8 border border-border-subtle">
+        <div className=" bg-surface-default p-8 border border-border-default">
           {/* Mode Toggle */}
           <div className="mb-6 flex  bg-surface-subtle p-1">
             <button
@@ -487,14 +487,14 @@ function LoginForm() {
             onSubmit={mode === "signin" ? handleLogin : handleSignup}
           >
             {error && (
-              <div className="flex items-start gap-3  bg-status-error-bg p-4 text-sm text-status-error-text border border-status-error-border animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3  bg-status-error-bg p-4 text-sm text-status-error-text border border-border-default animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-5 w-5 shrink-0 text-status-error-text" />
                 <p>{error}</p>
               </div>
             )}
 
             {successMessage && (
-              <div className="flex items-start gap-3  bg-status-success-bg p-4 text-sm text-status-success-text border border-status-success-border animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3  bg-status-success-bg p-4 text-sm text-status-success-text border border-border-default animate-in fade-in slide-in-from-top-1">
                 <CheckCircle className="h-5 w-5 shrink-0 text-status-success-text" />
                 <p>{successMessage}</p>
               </div>
@@ -527,9 +527,9 @@ function LoginForm() {
                       }
                       className={`block w-full  border ${
                         fieldErrors.fullName && touchedFields.has("fullName")
-                          ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
-                          : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                      } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                          ? "border-border-default focus:border-status-error-text focus:"
+                          : "border-border-default focus:border-border-default focus:"
+                      } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
                       placeholder="John Doe"
                     />
                   </div>
@@ -564,9 +564,9 @@ function LoginForm() {
                     onBlur={(e) => handleFieldBlur("email", e.target.value)}
                     className={`block w-full  border ${
                       fieldErrors.email && touchedFields.has("email")
-                        ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
-                        : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                    } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                        ? "border-border-default focus:border-status-error-text focus:"
+                        : "border-border-default focus:border-border-default focus:"
+                    } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
                     placeholder="name@example.com"
                   />
                 </div>
@@ -618,15 +618,15 @@ function LoginForm() {
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
                     className={`block w-full  border ${
                       fieldErrors.password && touchedFields.has("password")
-                        ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
-                        : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                    } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                        ? "border-border-default focus:border-status-error-text focus:"
+                        : "border-border-default focus:border-border-default focus:"
+                    } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus:outline-none focus:text-text-subtle"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus: focus:text-text-subtle"
                     aria-label={
                       showPassword ? "Hide password" : "Show password"
                     }
@@ -680,9 +680,9 @@ function LoginForm() {
                       className={`block w-full  border ${
                         fieldErrors.confirmPassword &&
                         touchedFields.has("confirmPassword")
-                          ? "border-status-error-border focus:border-status-error-text focus:ring-status-error-text/10"
-                          : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/10"
-                      } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus:outline-none focus:ring-4 transition-all sm:text-sm`}
+                          ? "border-border-default focus:border-status-error-text focus:"
+                          : "border-border-default focus:border-border-default focus:"
+                      } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
                       placeholder="••••••••"
                     />
                     <button
@@ -690,7 +690,7 @@ function LoginForm() {
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus:outline-none focus:text-text-subtle"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus: focus:text-text-subtle"
                       aria-label={
                         showConfirmPassword
                           ? "Hide confirm password"
@@ -722,7 +722,7 @@ function LoginForm() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMeState(e.target.checked)}
-                  className="h-4 w-4  border-border-default text-action-primary-bg focus:ring-action-primary-bg"
+                  className="h-4 w-4  border-border-default text-action-primary-bg focus:"
                 />
                 <label
                   htmlFor="remember-me"
@@ -737,7 +737,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative flex w-full justify-center  bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus:outline-none focus:ring-4 focus:ring-action-primary-bg/20 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="group relative flex w-full justify-center  bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -792,7 +792,7 @@ function LoginForm() {
                   key={acc.email}
                   onClick={() => quickLogin(acc)}
                   disabled={loading}
-                  className="flex items-center justify-between  border border-border-subtle bg-surface-default p-3 text-left transition-all hover:border-action-primary-bg group"
+                  className="flex items-center justify-between  border border-border-default bg-surface-default p-3 text-left transition-all  group"
                 >
                   <div>
                     <div className="text-xs font-bold text-text-default">

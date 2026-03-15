@@ -295,7 +295,7 @@ ${userInput}
           readOnly
           rows={6}
           value={currentXML}
-          className="w-full bg-transparent p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] outline-none resize-y min-h-35"
+          className="w-full bg-transparent p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9]  resize-y min-h-35"
         />
         <div className="absolute top-2 right-2">
           <button

@@ -36,9 +36,9 @@ export function CanvasSnapshotCard({
   };
 
   return (
-    <div className="relative group  border border-dashed border-action-primary-bg/40 bg-action-primary-bg/3 overflow-hidden transition-all hover:border-action-primary-bg/60">
+    <div className="relative group  border border-dashed border-border-default border-border-default/40 bg-action-primary-bg/3 overflow-hidden transition-all ">
       {/* Header */}
-      <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/5 border-b border-dashed border-action-primary-bg/20">
+      <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/5 border-b border-dashed border-border-default border-border-default/20">
         <div className="flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <Camera className="h-3 w-3 text-action-primary-bg" />
@@ -46,7 +46,7 @@ export function CanvasSnapshotCard({
               Canvas Snapshot
             </span>
             {isAIGenerated ? (
-              <span className="inline-flex items-center gap-0.5  border border-action-primary-bg/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-semibold text-action-primary-bg">
+              <span className="inline-flex items-center gap-0.5  border border-border-default/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-semibold text-action-primary-bg">
                 <Sparkles className="h-2.5 w-2.5" />
                 AI
               </span>

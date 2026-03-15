@@ -153,7 +153,7 @@ export function PdfAttachmentItem(props: PdfAttachmentViewProps) {
 
   if (variant === "log") {
     return (
-      <div className="group/log-pdf flex items-start justify-between gap-3 border border-border-subtle bg-surface-subtle/40 px-2 py-1.5 transition-colors hover:bg-surface-subtle/60">
+      <div className="group/log-pdf flex items-start justify-between gap-3 border border-border-default bg-surface-subtle/40 px-2 py-1.5 transition-colors hover:bg-surface-subtle/60">
         <div className="flex items-start gap-2 min-w-0 flex-1">
           <PdfAttachmentThumbnail
             url={previewUrl}
@@ -194,7 +194,7 @@ export function PdfAttachmentItem(props: PdfAttachmentViewProps) {
   // Creator variant
   return (
     <div
-      className="relative overflow-hidden border border-border-subtle bg-surface-default px-3 py-2 transition-colors cursor-default"
+      className="relative overflow-hidden border border-border-default bg-surface-default px-3 py-2 transition-colors cursor-default"
       title={isProcessing ? "Processing Docling..." : "Attachment actions"}
     >
       {/* Progress bar background */}

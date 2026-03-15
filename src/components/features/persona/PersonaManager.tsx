@@ -362,7 +362,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                       </p>
                     </div>
 
-                    <div className=" border border-border-subtle bg-surface-subtle p-3">
+                    <div className=" border border-border-default bg-surface-subtle p-3">
                       <p className="text-xs text-text-subtle">
                         {deleteUsageCount === 0 ? (
                           <span>
@@ -392,7 +392,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         <select
                           value={transferPersonaId}
                           onChange={(e) => setTransferPersonaId(e.target.value)}
-                          className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                          className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
                         >
                           <option value="">Select persona</option>
                           {transferCandidates.map((persona) => (
@@ -493,7 +493,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                        className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
                         placeholder="e.g., Creative Mode"
                         autoFocus
                       />
@@ -526,7 +526,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                             key={ic}
                             type="button"
                             onClick={() => setIcon(ic)}
-                            className={`flex items-center justify-center p-2  border transition-colors ${icon === ic ? "bg-action-primary-bg/10 border-action-primary-bg text-action-primary-bg" : "border-border-subtle hover:bg-surface-subtle text-text-subtle"}`}
+                            className={`flex items-center justify-center p-2  border transition-colors ${icon === ic ? "bg-action-primary-bg/10 border-border-default text-action-primary-bg" : "border-border-default hover:bg-surface-subtle text-text-subtle"}`}
                           >
                             <DynamicIcon name={ic} className="h-5 w-5" />
                           </button>
@@ -610,7 +610,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     </div>
 
                     {isBulkMode && (
-                      <div className="mb-3 flex items-center justify-between gap-2  border border-border-subtle bg-surface-subtle/40 px-2.5 py-2 text-[11px]">
+                      <div className="mb-3 flex items-center justify-between gap-2  border border-border-default bg-surface-subtle/40 px-2.5 py-2 text-[11px]">
                         <div className="text-text-muted">
                           {selectedPersonaIds.length} selected
                         </div>
@@ -669,7 +669,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   togglePersonaSelection(persona.id);
                                 }
                               }}
-                              className={`flex items-center justify-between p-2  border border-border-subtle bg-surface-default hover:border-border-default transition-colors ${persona.deleted_at ? "opacity-60" : ""} ${isSelectable ? "cursor-pointer" : ""}`}
+                              className={`flex items-center justify-between p-2  border border-border-default bg-surface-default  transition-colors ${persona.deleted_at ? "opacity-60" : ""} ${isSelectable ? "cursor-pointer" : ""}`}
                             >
                               <div className="flex items-center gap-2">
                                 {isSelectable && (
@@ -683,7 +683,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   />
                                 )}
                               <div
-                                className={`h-8 w-8  flex items-center justify-center ${isShadowPersona(persona) ? 'ring-1 ring-amber-500/40' : ''}`}
+                                className={`h-8 w-8  flex items-center justify-center ${isShadowPersona(persona) ? ' ' : ''}`}
                                 style={{
                                   backgroundColor: `${persona.color}20`,
                                   color: persona.color,
@@ -698,12 +698,12 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                 <h4 className="text-sm font-medium text-text-default flex items-center gap-1.5">
                                   {persona.name}
                                   {persona.is_system && (
-                                    <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5  border border-border-subtle uppercase tracking-wider">
+                                    <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5  border border-border-default uppercase tracking-wider">
                                       System
                                     </span>
                                   )}
                                   {isShadowPersona(persona) && (
-                                    <span className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1.5 py-0.5  border border-amber-500/30">
+                                    <span className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1.5 py-0.5  border border-border-default/30">
                                       Shadow
                                     </span>
                                   )}

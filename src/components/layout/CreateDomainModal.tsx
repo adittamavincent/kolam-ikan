@@ -122,7 +122,7 @@ export function CreateDomainModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md transform overflow-hidden  bg-surface-default p-6 text-left align-middle transition-all border border-border-subtle">
+              <Dialog.Panel className="w-full max-w-md transform overflow-hidden  bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
                 <div className="flex items-center justify-between mb-4">
                   <Dialog.Title
                     as="h3"
@@ -148,10 +148,10 @@ export function CreateDomainModal({
                     <div className="relative">
                       <input
                         type="text"
-                        className={`block w-full  border px-4 py-3 text-text-default placeholder-text-muted focus:outline-none focus:ring-2 transition-all ${
+                        className={`block w-full  border px-4 py-3 text-text-default placeholder-text-muted focus: focus: transition-all ${
                           error
-                            ? "border-status-error-text focus:border-status-error-text focus:ring-status-error-bg"
-                            : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/20"
+                            ? "border-status-error-text focus:border-status-error-text focus:"
+                            : "border-border-default focus:border-border-default focus:"
                         }`}
                         placeholder="e.g., My Knowledge Base"
                         value={name}
@@ -175,8 +175,8 @@ export function CreateDomainModal({
                             onClick={() => setIcon(option)}
                             className={`flex items-center justify-center  border p-2 transition-colors ${
                               icon === option
-                                ? "border-action-primary-bg bg-action-primary-bg/10 text-action-primary-bg"
-                                : "border-border-subtle text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                ? "border-border-default bg-action-primary-bg/10 text-action-primary-bg"
+                                : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
                             }`}
                             aria-label={`Select ${option} icon`}
                           >
@@ -211,7 +211,7 @@ export function CreateDomainModal({
                   <div className="mt-6 flex justify-end gap-3">
                     <button
                       type="button"
-                      className="inline-flex justify-center  border border-transparent px-4 py-2 text-sm font-medium text-text-subtle hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-text-muted focus-visible:ring-offset-2 transition-colors"
+                      className="inline-flex justify-center  border border-transparent px-4 py-2 text-sm font-medium text-text-subtle hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible: transition-colors"
                       onClick={onClose}
                       disabled={isSubmitting}
                     >
@@ -220,7 +220,7 @@ export function CreateDomainModal({
                     <button
                       type="submit"
                       disabled={!name.trim() || isSubmitting}
-                      className="inline-flex justify-center items-center gap-2  border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      className="inline-flex justify-center items-center gap-2  border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                     >
                       {isSubmitting ? (
                         <>

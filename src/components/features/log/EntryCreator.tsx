@@ -1174,15 +1174,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   return (
     <>
-      <div className="relative  border border-border-default bg-surface-default group">
+      <div className="relative  border border-border-default/50 bg-surface-default group ">
         {(status === "saving" || status === "error") && (
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
-
+        {/* Status Indicator */}
         <div className="flex flex-col">
           {/* Persona picker */}
           <div
-            className={`flex items-center gap-2 flex-wrap p-1 bg-surface-subtle/50  ${sections.length > 0 ? "border-b border-border-default/50" : ""}`}
+            className={`flex items-center gap-2 flex-wrap p-1 bg-action-primary-bg/10 ${
+              sections.length > 0
+                ? "border-t border-l border-r border-border-default/30"
+                : "border border-border-default/30"
+            }`}
           >
             {quickPersonas.map((persona) => (
               <button
@@ -1190,10 +1194,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 onClick={() => addPersona(persona.id)}
                 className={`flex items-center gap-1.5  border px-2 py-1 text-[11px] font-medium text-text-default transition-colors ${
                   isAiPersona(persona)
-                    ? "border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/15"
+                    ? "border-border-default/30 bg-sky-500/10 hover:bg-sky-500/15"
                     : isShadowPersona(persona)
-                      ? "border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15"
-                      : "border-border-subtle/70 bg-surface-subtle/40 hover:bg-surface-subtle"
+                      ? "border-border-default/30 bg-amber-500/10 hover:bg-amber-500/15"
+                      : "border-border-default/70 bg-surface-subtle/40 hover:bg-surface-subtle"
                 }`}
                 title={`Quick add ${persona.name}`}
               >
@@ -1211,7 +1215,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             ))}
 
             <Menu as="div" className="relative z-30">
-              <MenuButton className="flex items-center gap-1.5  py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent hover:border-border-subtle focus:outline-none">
+              <MenuButton className="flex items-center gap-1.5  py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent  focus:">
                 <Plus className="h-3 w-3 text-text-subtle" />
                 <span className="text-text-default">Add Persona</span>
               </MenuButton>
@@ -1228,7 +1232,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <MenuItems
                   anchor={{ to: "bottom start", gap: 4 }}
                   portal
-                  className="z-9999 w-56 max-h-60 overflow-y-auto overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl ring-1 ring-black/10 focus:outline-none"
+                  className="z-9999 w-56 max-h-60 overflow-y-auto overflow-hidden  border border-border-default bg-surface-elevated p-1 shadow-2xl   focus:"
                 >
                   <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                     Add Author Section
@@ -1266,7 +1270,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </div>
                             <span>{persona.name}</span>
                           </div>
-                          <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                          <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
                             Global
                           </span>
                         </button>
@@ -1293,7 +1297,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         >
                           <div className="flex items-center gap-2">
                             <div
-                              className="flex h-5 w-5 items-center justify-center  ring-1 ring-amber-500/40"
+                              className="flex h-5 w-5 items-center justify-center   "
                               style={{
                                 backgroundColor: `${persona.color}20`,
                                 color: persona.color,
@@ -1306,7 +1310,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </div>
                             <span>{persona.name}</span>
                           </div>
-                          <span className=" border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                          <span className=" border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
                             Shadow
                           </span>
                         </button>
@@ -1314,7 +1318,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                     </MenuItem>
                   ))}
                   <MenuItem>
-                    <div className="border-t border-border-subtle my-1" />
+                    <div className="border-t border-border-default my-1" />
                   </MenuItem>
                   <MenuItem>
                     {({ active }) => (
@@ -1486,7 +1490,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             /* PDF ATTACHMENTS BLOCK */
                             <div className="p-4 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
-                                <label className="inline-flex cursor-pointer items-center gap-2 border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
+                                <label className="inline-flex cursor-pointer items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
                                   <Upload className="h-3 w-3" />
                                   Upload PDF
                                   <input
@@ -1536,7 +1540,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-2 border border-border-subtle bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
+                                  className="inline-flex items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
                                   onClick={() => {
                                     setImportModalFiles([]);
                                     setPdfPickerTargetInstanceId(instanceId);
@@ -1554,7 +1558,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                 )}
                               </div>
                               {effectiveAttachments.length === 0 ? (
-                                <div className="border border-dashed border-border-subtle bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
+                                <div className="border border-dashed border-border-default border-border-default bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
                                   Drop or attach one or more PDFs to start
                                   building this section.
                                 </div>
@@ -1651,16 +1655,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
           {/* Footer — commit action */}
           {sections.length > 0 && (
-            <div className="flex items-center justify-between px-3 py-2 bg-surface-subtle/50 border-t border-border-default/50 ">
+            <div className="flex items-center justify-between px-3 py-2 bg-action-primary-bg/10">
               <div className="text-[10px] text-text-muted">
-                <kbd className=" border border-border-subtle bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
+                <kbd className=" border border-border-default bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
                   ⌘+Enter
                 </kbd>
                 <span className="mx-1">→</span>
                 <span className="font-medium">{selectedBranch || "main"}</span>
               </div>
               {commitBlockedByPdfStatus && (
-                <div className="inline-flex items-center gap-2 ml-3  border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+                <div className="inline-flex items-center gap-2 ml-3  border border-border-default/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-3 w-3 shrink-0"

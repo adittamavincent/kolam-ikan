@@ -1320,7 +1320,7 @@ export function WhatsAppImportModal({
             >
               <DialogPanel className="flex w-full max-w-xl flex-col  border border-border-default/70 bg-surface-default shadow-2xl transition-all">
             {/* ─── Header ────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+            <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-text-muted" />
                 <DialogTitle className="text-sm font-semibold text-text-default">
@@ -1366,7 +1366,7 @@ export function WhatsAppImportModal({
                   }}
                 />
 
-                <div className="flex flex-wrap items-center gap-2  border border-border-subtle bg-surface-subtle/40 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2  border border-border-default bg-surface-subtle/40 px-3 py-2">
                   <button
                     onClick={() => zipInputRef.current?.click()}
                     disabled={zipLoading}
@@ -1397,7 +1397,7 @@ export function WhatsAppImportModal({
                 <textarea
                   value={rawText}
                   onChange={(e) => setRawText(e.target.value)}
-                  className="h-56 w-full resize-none  border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                  className="h-56 w-full resize-none  border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-border-default focus: focus: focus:"
                   placeholder={`[3/10/26, 7:42:30 PM] Alice: Hey!\n[3/10/26, 7:44:00 PM] Bob: Here is the doc\n[3/10/26, 7:44:01 PM] Bob: <attached: proposal.pdf>\n[3/10/26, 7:44:05 PM] Bob: /Users/you/.../proposal.pdf`}
                   spellCheck={false}
                 />
@@ -1475,7 +1475,7 @@ export function WhatsAppImportModal({
                   </p>
                 </div>
 
-                <div className=" border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
+                <div className=" border border-border-default bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
                   <div>
                     Total turns:{" "}
                     <span className="font-semibold text-text-default">
@@ -1526,7 +1526,7 @@ export function WhatsAppImportModal({
                           setRangeStart(next);
                           if (next > rangeEnd) setRangeEnd(next);
                         }}
-                        className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
+                        className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus:"
                       />
                       <button
                         onClick={() =>
@@ -1573,7 +1573,7 @@ export function WhatsAppImportModal({
                           setRangeEnd(next);
                           if (next < rangeStart) setRangeStart(next);
                         }}
-                        className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none"
+                        className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus:"
                       />
                       <button
                         onClick={() =>
@@ -1591,7 +1591,7 @@ export function WhatsAppImportModal({
                 </div>
 
                 {/* Preview list with clickable controls to set start/end */}
-                <div className="max-h-48 overflow-y-auto  border border-border-subtle bg-surface-subtle/30 p-2 text-[11px]">
+                <div className="max-h-48 overflow-y-auto  border border-border-default bg-surface-subtle/30 p-2 text-[11px]">
                   {parsedTurns.length === 0 ? (
                     <div className="text-text-muted">No turns to preview.</div>
                   ) : (
@@ -1621,7 +1621,7 @@ export function WhatsAppImportModal({
                       return (
                         <div
                           key={t.id}
-                          className={`relative flex items-center justify-between gap-3 px-2 py-1  ${isSelected ? "bg-action-primary-bg/10 border border-action-primary-bg/20" : "hover:bg-surface-subtle"}`}
+                          className={`relative flex items-center justify-between gap-3 px-2 py-1  ${isSelected ? "bg-action-primary-bg/10 border border-border-default/20" : "hover:bg-surface-subtle"}`}
                         >
                           <div
                             className="min-w-0 flex-1 text-[11px]"
@@ -1698,10 +1698,10 @@ export function WhatsAppImportModal({
                         ` · ${mediaTurns.length} media skipped`}
                     </p>
                     <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
-                      <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5">
+                      <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
                         Using existing (shadow): {existingShadowReuseCount}
                       </span>
-                      <span className=" border border-border-subtle bg-surface-subtle px-1.5 py-0.5">
+                      <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
                         Will create on import (shadow): {pendingPersonaCreations.length}
                       </span>
                     </div>
@@ -1722,7 +1722,7 @@ export function WhatsAppImportModal({
                   )}
 
                   {mapNotice && (
-                    <div className="flex items-start gap-1.5  border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                    <div className="flex items-start gap-1.5  border border-border-default/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
                       <Info className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>{mapNotice}</span>
                     </div>
@@ -1738,7 +1738,7 @@ export function WhatsAppImportModal({
                     return (
                       <div
                         key={sender}
-                        className="flex items-center gap-3  border border-border-subtle bg-surface-subtle/40 px-3 py-2"
+                        className="flex items-center gap-3  border border-border-default bg-surface-subtle/40 px-3 py-2"
                       >
                         <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-default">
                           {sender}
@@ -1764,8 +1764,8 @@ export function WhatsAppImportModal({
                             <span
                               className={` px-1.5 py-0.5 text-[10px] font-medium ${
                                 isShadowPersona(assignedPersona)
-                                  ? "border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                                  : "border border-border-subtle bg-surface-subtle text-text-muted"
+                                  ? "border border-border-default/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                  : "border border-border-default bg-surface-subtle text-text-muted"
                               }`}
                             >
                               {isShadowPersona(assignedPersona)
@@ -1797,7 +1797,7 @@ export function WhatsAppImportModal({
                                 }));
                               }
                             }}
-                            className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none disabled:opacity-60"
+                            className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus: disabled:opacity-60"
                           >
                             <option value="" disabled>
                               Select persona…
@@ -1942,7 +1942,7 @@ export function WhatsAppImportModal({
                 </div>
 
                 {/* Summary */}
-                <div className=" border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
+                <div className=" border border-border-default bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
                   <span className="font-semibold text-text-default">
                     {plannedImportableCount}
                   </span>{" "}
@@ -2140,10 +2140,10 @@ function PdfUploadRow({
     <div
       className={`flex flex-col gap-2  border px-3 py-2.5 transition-opacity ${
         isSkipped
-          ? "border-border-subtle/40 opacity-50"
+          ? "border-border-default/40 opacity-50"
           : isDone
             ? "border-green-500/20 bg-green-500/5"
-            : "border-border-subtle bg-surface-subtle/30"
+            : "border-border-default bg-surface-subtle/30"
       }`}
     >
       <div className="flex items-start gap-2">

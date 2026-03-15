@@ -114,7 +114,7 @@ export function EditDomainModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden  border border-border-subtle bg-surface-default p-6 text-left align-middle transition-all">
+              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden  border border-border-default bg-surface-default p-6 text-left align-middle transition-all">
                 <div className="mb-4 flex items-center justify-between">
                   <Dialog.Title
                     as="h3"
@@ -140,10 +140,10 @@ export function EditDomainModal({
 
                     <input
                       type="text"
-                      className={`block w-full  border px-4 py-3 text-text-default placeholder-text-muted transition-all focus:outline-none focus:ring-2 ${
+                      className={`block w-full  border px-4 py-3 text-text-default placeholder-text-muted transition-all focus: focus: ${
                         error
-                          ? "border-status-error-text focus:border-status-error-text focus:ring-status-error-bg"
-                          : "border-border-default focus:border-action-primary-bg focus:ring-action-primary-bg/20"
+                          ? "border-status-error-text focus:border-status-error-text focus:"
+                          : "border-border-default focus:border-border-default focus:"
                       }`}
                       placeholder="e.g., My Knowledge Base"
                       value={name}
@@ -166,8 +166,8 @@ export function EditDomainModal({
                             onClick={() => setIcon(option)}
                             className={`flex items-center justify-center  border p-2 transition-colors ${
                               icon === option
-                                ? "border-action-primary-bg bg-action-primary-bg/10 text-action-primary-bg"
-                                : "border-border-subtle text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                                ? "border-border-default bg-action-primary-bg/10 text-action-primary-bg"
+                                : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
                             }`}
                             aria-label={`Select ${option} icon`}
                           >
@@ -190,7 +190,7 @@ export function EditDomainModal({
                       type="button"
                       onClick={handleDelete}
                       disabled={isMutating}
-                      className="inline-flex items-center justify-center gap-2  border border-status-error-text/40 px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-status-error-text focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:mr-auto"
+                      className="inline-flex items-center justify-center gap-2  border border-status-error-text/40 px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg/30 focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50 sm:mr-auto"
                     >
                       {deleteDomain.isPending ? (
                         <>
@@ -206,7 +206,7 @@ export function EditDomainModal({
                     </button>
                     <button
                       type="button"
-                      className="inline-flex justify-center  border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-text-muted focus-visible:ring-offset-2"
+                      className="inline-flex justify-center  border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible:"
                       onClick={onClose}
                       disabled={isMutating}
                     >
@@ -215,7 +215,7 @@ export function EditDomainModal({
                     <button
                       type="submit"
                       disabled={!name.trim() || isMutating}
-                      className="inline-flex items-center justify-center gap-2  border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-action-primary-bg focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2  border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {updateDomain.isPending ? (
                         <>

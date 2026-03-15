@@ -391,7 +391,7 @@ export function CommitGraph({
       className="relative w-full h-full overflow-auto bg-surface-default"
     >
       {/* ── Branch pills header ─────────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 flex items-center flex-wrap gap-x-1.5 gap-y-1 px-3 py-2 border-b border-border-subtle bg-surface-default/90 backdrop-blur-sm">
+      <div className="sticky top-0 z-10 flex items-center flex-wrap gap-x-1.5 gap-y-1 px-3 py-2 border-b border-border-default bg-surface-default/90 backdrop-blur-sm">
         {branches.map((b) => (
           <button
             key={b.streamId}
@@ -702,7 +702,7 @@ export function CommitGraph({
       {/* ── Tooltip ─────────────────────────────────────────────────────── */}
       {tooltip && typeof window !== "undefined" && (
         <div
-          className="fixed z-50 pointer-events-none  border border-border-strong bg-surface-elevated px-3 py-2 shadow-xl text-xs"
+          className="fixed z-50 pointer-events-none  border border-border-default bg-surface-elevated px-3 py-2 shadow-xl text-xs"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           <div

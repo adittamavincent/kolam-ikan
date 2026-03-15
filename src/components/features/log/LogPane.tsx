@@ -169,7 +169,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
           <div className="flex items-center gap-2">
             <GitCompare className="h-4 w-4 text-text-muted" />
             <span className="text-sm font-semibold text-text-default">
@@ -199,7 +199,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
         {/* Diff body */}
         <div className="overflow-y-auto flex-1 font-mono text-[11px] ">
           {!prevEntry && (
-            <div className="px-4 py-3 text-text-muted text-xs italic border-b border-border-subtle">
+            <div className="px-4 py-3 text-text-muted text-xs italic border-b border-border-default">
               No previous entry — showing full content as additions
             </div>
           )}
@@ -277,7 +277,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
             }
             if (e.key === "Escape") onClose();
           }}
-          className="w-full  border border-border-default bg-surface-subtle px-3 py-1.5 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg mb-3"
+          className="w-full  border border-border-default bg-surface-subtle px-3 py-1.5 text-xs text-text-default focus:border-border-default focus: focus: focus: mb-3"
         />
         <div className="flex justify-end gap-2">
           <button
@@ -1195,7 +1195,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   return (
     <>
       <div
-        className={`border-r border-border-subtle bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
+        className={`border-r border-border-default bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
         style={containerStyle}
       >
       <div className="flex h-full flex-col" style={contentStyle}>
@@ -1290,10 +1290,16 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           className={isStashed ? "opacity-50" : undefined}
                         >
                           <div
-                            className={`relative group  border bg-surface-default transition-all ${isAmending ? "border-action-primary-bg/50 ring-1 ring-action-primary-bg/40" : "border-border-subtle hover:border-border-default/50"}`}
+                            className={`relative group  border bg-surface-default transition-all ${isAmending ? "border-border-default/50  " : "border-border-default/50 "}`}
                           >
                             {/* Commit header — mimics git log --oneline */}
-                            <div className="flex items-center px-2.5 py-0.5 bg-surface-subtle/40 border-b border-border-subtle/40">
+                            <div
+                              className={`flex items-center px-2.5 py-0.5 bg-action-primary-bg/10 ${
+                                (entry.sections?.length ?? 0) > 0
+                                  ? "border-t border-l border-r border-border-default/30"
+                                  : "border border-border-default/30"
+                              }`}
+                            >
                               <div className="flex w-full items-center justify-between gap-2">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   <GitCommitHorizontal className="h-3 w-3 text-text-muted shrink-0" />
@@ -1336,18 +1342,18 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   </span>
                                   {/* Tag badge */}
                                   {tag && (
-                                    <span className="shrink-0 flex items-center gap-0.5  border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                                    <span className="shrink-0 flex items-center gap-0.5  border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
                                       <Tag className="h-2.5 w-2.5" />
                                       {tag}
                                     </span>
                                   )}
                                   {isLatestEntry && (
-                                    <span className="shrink-0 inline-flex items-center  border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                                    <span className="shrink-0 inline-flex items-center  border border-border-default/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                                       HEAD
                                     </span>
                                   )}
                                   {isStashed && (
-                                    <span className="shrink-0 flex items-center gap-0.5  border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
+                                    <span className="shrink-0 flex items-center gap-0.5  border border-border-default/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
                                       <Archive className="h-2.5 w-2.5" />
                                       stashed
                                     </span>
@@ -1492,7 +1498,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         createPortal(
           <div
             ref={contextMenuRef}
-            className="fixed z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto  border border-border-strong bg-surface-elevated p-1.5 shadow-2xl ring-1 ring-black/10"
+            className="fixed z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto  border border-border-default bg-surface-elevated p-1.5 shadow-2xl  "
             style={{
               top: contextMenuPosition.top,
               left: contextMenuPosition.left,

@@ -187,7 +187,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                   {streamMeta.name}
                 </span>
                 {currentStreamIsGlobal && (
-                  <div className="flex items-center gap-1  border border-action-primary-bg/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                  <div className="flex items-center gap-1  border border-border-default/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                     <Globe className="h-3 w-3" />
                     Global
                   </div>
@@ -253,7 +253,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               placeholder="What would you like to accomplish?"
-              className="w-full resize-y min-h-25  border border-border-default bg-surface-subtle/50 px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted/50 focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg focus:bg-surface-default outline-none transition-all"
+              className="w-full resize-y min-h-25  border border-border-default bg-surface-subtle/50 px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted/50 focus:border-border-default focus: focus: focus:bg-surface-default  transition-all"
               rows={3}
             />
           </div>
@@ -286,7 +286,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
           <div className="mt-8 flex justify-end">
             <button
               onClick={onClose}
-              className=" bg-surface-subtle px-6 py-2.5 text-sm font-medium text-text-default hover:bg-surface-hover hover:text-text-strong transition-all focus:outline-none focus:ring-2 focus:ring-border-default md:min-w-30"
+              className=" bg-surface-subtle px-6 py-2.5 text-sm font-medium text-text-default hover:bg-surface-hover hover:text-text-strong transition-all focus: focus: focus: md:min-w-30"
             >
               Done
             </button>

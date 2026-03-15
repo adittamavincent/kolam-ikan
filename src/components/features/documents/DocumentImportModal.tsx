@@ -635,7 +635,7 @@ export function DocumentImportModal({
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_280px]">
-                  <label className="flex flex-col gap-2  border border-dashed border-action-primary-bg/30 bg-surface-default p-4 text-sm text-text-default transition-colors hover:border-action-primary-bg/50 hover:bg-surface-subtle/35">
+                  <label className="flex flex-col gap-2  border border-dashed border-border-default border-border-default/30 bg-surface-default p-4 text-sm text-text-default transition-colors  hover:bg-surface-subtle/35">
                     <div className="flex items-center justify-between gap-8">
                       <span className="font-medium">PDF file</span>
                       <span className="text-xs text-text-muted">
@@ -674,7 +674,7 @@ export function DocumentImportModal({
                         // Reset input so same file can be selected again
                         event.target.value = "";
                       }}
-                      className="block w-full  border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file: file:border-0 file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
+                      className="block w-full  border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file: file:border-none file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
                     />
                   </label>
 
@@ -723,7 +723,7 @@ export function DocumentImportModal({
                           ? selectedFile.name.replace(/\.pdf$/i, "")
                           : "Derived from filename"
                       }
-                      className="w-full  border border-border-default bg-surface-subtle px-3 py-2.5 text-sm text-text-default outline-none transition-colors focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg"
+                      className="w-full  border border-border-default bg-surface-subtle px-3 py-2.5 text-sm text-text-default  transition-colors focus:border-border-default focus: focus:"
                     />
                   </label>
 
@@ -749,7 +749,7 @@ export function DocumentImportModal({
                         onChange={(event) =>
                           setFlavor(event.target.value as "lattice" | "stream")
                         }
-                        className="w-full appearance-none  border border-border-default bg-surface-subtle px-3 py-2.5 pr-8 text-sm text-text-default outline-none transition-colors focus:border-action-primary-bg focus:ring-1 focus:ring-action-primary-bg"
+                        className="w-full appearance-none  border border-border-default bg-surface-subtle px-3 py-2.5 pr-8 text-sm text-text-default  transition-colors focus:border-border-default focus: focus:"
                       >
                         <option value="lattice">lattice</option>
                         <option value="stream">stream</option>
@@ -807,7 +807,7 @@ export function DocumentImportModal({
                 )}
 
                 {submitWarning && (
-                  <div className="flex items-start gap-3 border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
+                  <div className="flex items-start gap-3 border border-border-default/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     {submitWarning}
                   </div>
@@ -867,7 +867,7 @@ export function DocumentImportModal({
                   )}
 
                   {!isLoading && documents.length === 0 && (
-                    <div className=" border border-dashed border-border-default/80 bg-surface-default px-4 py-6 text-sm text-text-muted">
+                    <div className=" border border-dashed border-border-default border-border-default/80 bg-surface-default px-4 py-6 text-sm text-text-muted">
                       <div className="flex items-center gap-2 text-text-default">
                         <CheckCircle2 className="h-4 w-4 text-action-primary-bg" />
                         Nothing queued yet
@@ -913,7 +913,7 @@ export function DocumentImportModal({
                                     cancelAllPendingImports.isPending ||
                                     deleteDocument.isPending
                             }
-                            className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center  bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus:outline-none disabled:opacity-60"
+                            className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center  bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus: disabled:opacity-60"
                           >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -998,7 +998,7 @@ export function DocumentImportModal({
                                   onSelectDocument(document);
                                   handleClose();
                                 }}
-                                className="shrink-0  border border-action-primary-bg bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
+                                className="shrink-0  border border-border-default bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
                               >
                                 Attach
                               </button>

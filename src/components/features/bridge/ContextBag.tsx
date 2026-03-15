@@ -144,7 +144,7 @@ export function ContextBag({
               Include Domain Global Stream
             </span>
             {globalStreamLoading && (
-              <span className="ml-1 inline-block h-3 w-3 animate-spin  border-2 border-text-muted border-t-transparent" />
+              <span className="ml-1 inline-block h-3 w-3 animate-spin  border-2 border-border-default border-t-transparent" />
             )}
           </label>
           {!globalStreamLoading &&
@@ -168,25 +168,25 @@ export function ContextBag({
           <button
             onClick={selectAll}
             disabled={disableSelectAll || isLoadingEntries}
-            className=" border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated  disabled:opacity-50 transition-all shadow-sm"
           >
             Select All
           </button>
           <button
             onClick={selectLastFive}
             disabled={isLoadingEntries}
-            className=" border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default disabled:opacity-50 transition-all shadow-sm"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated  disabled:opacity-50 transition-all shadow-sm"
           >
             Last 5
           </button>
           <button
             onClick={clearAll}
-            className=" border border-border-subtle bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated hover:border-border-default transition-all shadow-sm"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated  transition-all shadow-sm"
           >
             Clear
           </button>
         </div>
-        <div className="max-h-56 space-y-3 overflow-y-auto  border border-border-subtle/50 bg-surface-default/50 p-3 text-xs shadow-inner">
+        <div className="max-h-56 space-y-3 overflow-y-auto  border border-border-default/50 bg-surface-default/50 p-3 text-xs shadow-inner">
           {isLoadingEntries ? (
             <div className="text-text-muted animate-pulse">
               Loading entries...

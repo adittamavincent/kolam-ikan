@@ -90,12 +90,12 @@ export function PersonaBadge({
         {persona.name}
       </span>
       {showShadowBadge && isShadowPersona(persona) && (
-        <span className={`border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 ${badgeSizeClass} text-amber-700 dark:text-amber-400`}>
+        <span className={`border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 ${badgeSizeClass} text-amber-700 dark:text-amber-400`}>
           Shadow
         </span>
       )}
       {showAiBadge && isAiPersona(persona) && (
-        <span className={`border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 ${badgeSizeClass} text-sky-700 dark:text-sky-400`}>
+        <span className={`border border-border-default/30 bg-sky-500/10 px-1.5 py-0.5 ${badgeSizeClass} text-sky-700 dark:text-sky-400`}>
           AI
         </span>
       )}
@@ -147,10 +147,10 @@ export function PersonaSectionHeader({
 }: PersonaSectionHeaderProps) {
   const headerBgClass =
     persona && isAiPersona(persona)
-      ? "bg-sky-500/10 border-sky-500/20"
+      ? "bg-sky-500/10 border-border-default/20"
       : persona && isShadowPersona(persona)
-        ? "bg-amber-500/10 border-amber-500/20"
-        : "bg-surface-subtle/50 border-border-subtle/70";
+        ? "bg-amber-500/10 border-border-default/20"
+        : "bg-surface-subtle/50 border-border-default/70";
 
   return (
     <div

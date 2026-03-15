@@ -75,7 +75,7 @@ export function PdfAttachmentPreviewDialog({
             leaveTo="opacity-0 scale-95 translate-y-4"
           >
             <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-border-default bg-surface-default shadow-2xl transition-all">
-          <div className="flex items-start justify-between gap-3 border-b border-border-subtle px-4 py-3">
+          <div className="flex items-start justify-between gap-3 border-b border-border-default px-4 py-3">
             <div className="min-w-0 flex-1">
               <DialogTitle className="truncate text-sm font-semibold text-text-default">
                 {attachmentPreview?.title ?? parsedPreview?.title ?? "PDF Preview"}
@@ -134,11 +134,11 @@ export function PdfAttachmentPreviewDialog({
               (attachmentPreview?.previewUrl ? (
                 <iframe
                   src={attachmentPreview.previewUrl}
-                  className="h-[68vh] w-full border border-border-subtle bg-surface-subtle"
+                  className="h-[68vh] w-full border border-border-default bg-surface-subtle"
                   title={`PDF preview for ${attachmentPreview.title}`}
                 />
               ) : (
-                <div className="border border-border-subtle bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">
+                <div className="border border-border-default bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">
                   Preview is not available for this attachment yet.
                 </div>
               ))}
@@ -146,7 +146,7 @@ export function PdfAttachmentPreviewDialog({
             {activePreviewTab === "parsed" && (
               <>
                 {!isParsedReadyStatus(attachmentPreview?.importStatus) && (
-                  <div className="border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                  <div className="border border-border-default/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
                     Parsed Docling output is not ready yet. Wait until import status is completed.
                   </div>
                 )}
@@ -171,7 +171,7 @@ export function PdfAttachmentPreviewDialog({
                   !parsedPreviewLoading &&
                   !parsedPreviewError &&
                   parsedPreview && (
-                    <pre className="whitespace-pre-wrap wrap-break-word border border-border-subtle bg-surface-subtle/40 p-3 text-xs text-text-default">
+                    <pre className="whitespace-pre-wrap wrap-break-word border border-border-default bg-surface-subtle/40 p-3 text-xs text-text-default">
                       {parsedPreview.markdown}
                     </pre>
                   )}

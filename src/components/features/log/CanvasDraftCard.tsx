@@ -49,9 +49,9 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   if (!isDirty) return null;
 
   return (
-    <div className=" border border-dashed border-amber-500/50 bg-amber-500/4 overflow-hidden transition-all">
+    <div className=" border border-dashed border-border-default border-border-default/50 bg-amber-500/4 overflow-hidden transition-all">
       {/* Header */}
-      <div className="flex items-center px-2.5 py-1.5 bg-amber-500/6 border-b border-dashed border-amber-500/20">
+      <div className="flex items-center px-2.5 py-1.5 bg-amber-500/6 border-b border-dashed border-border-default border-border-default/20">
         <div className="flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <CircleDot className="h-3 w-3 text-amber-500 animate-pulse" />
@@ -73,7 +73,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
               value={snapshotName}
               onChange={(e) => setSnapshotName(e.target.value)}
               placeholder="Snapshot name (optional)..."
-              className="flex-1  border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+              className="flex-1  border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-border-default focus: focus: focus:"
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitMutation.mutate();
                 if (e.key === "Escape") setIsExpanded(false);
@@ -102,7 +102,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
         ) : (
           <button
             onClick={() => setIsExpanded(true)}
-            className="inline-flex items-center gap-1.5  border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+            className="inline-flex items-center gap-1.5  border border-border-default/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
           >
             <GitCommitHorizontal className="h-3 w-3" />
             Commit Snapshot

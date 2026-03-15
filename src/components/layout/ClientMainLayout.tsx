@@ -498,7 +498,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== MAIN CONTENT ====== */}
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {error && (
-          <div className="border-b border-status-error-border bg-status-error-bg px-4 py-2 text-xs text-status-error-text">
+          <div className="border-b border-border-default bg-status-error-bg px-4 py-2 text-xs text-status-error-text">
             {error}
           </div>
         )}
@@ -506,7 +506,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5  border border-border-subtle bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all hover:scale-105">
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5  border border-border-default bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all hover:scale-105">
             <button
               onClick={() => setMode("log-only")}
               className={` p-2 transition-all ${
@@ -582,7 +582,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="Search logs and canvases... (@persona, emoji for domain)"
-                    className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-action-primary-bg focus:outline-none focus:ring-1 focus:ring-action-primary-bg"
+                    className="w-full  border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-border-default focus: focus: focus:"
                     autoFocus
                   />
                 </div>

@@ -2,6 +2,7 @@
 
 import { Fragment, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useBlobUrl } from "@/lib/hooks/useBlobUrl";
 import {
   Dialog,
   
@@ -2115,19 +2116,7 @@ function PdfUploadRow({
   onUnskip: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (!upload.file) {
-      setTimeout(() => setPreviewUrl(undefined), 0);
-      return;
-    }
-    const url = URL.createObjectURL(upload.file);
-    setTimeout(() => setPreviewUrl(url), 0);
-    return () => {
-      URL.revokeObjectURL(url);
-    };
-  }, [upload.file]);
+  const previewUrl = useBlobUrl(upload.file);
 
   const filename = turn.filename ?? "document.pdf";
   const isSkipped = upload.status === "skipped";

@@ -15,6 +15,7 @@ import { DocumentWithLatestJob } from "@/lib/types";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useBlobUrl } from "@/lib/hooks/useBlobUrl";
 
 // ─── Temp file store access ──────────────────────────────────────────────────
 declare global {
@@ -218,19 +219,7 @@ export function DocumentImportModal({
     [createImport],
   );
 
-  const selectedFilePreviewUrl = useMemo(() => {
-    if (!selectedFile) return null;
-    return URL.createObjectURL(selectedFile);
-  }, [selectedFile]);
-
-  // Cleanup blob URL when component unmounts or selectedFile changes
-  useEffect(() => {
-    return () => {
-      if (selectedFilePreviewUrl) {
-        URL.revokeObjectURL(selectedFilePreviewUrl);
-      }
-    };
-  }, [selectedFilePreviewUrl]);
+  const selectedFilePreviewUrl = useBlobUrl(selectedFile);
 
   // Cleanup local thumbnails when modal closes
   useEffect(() => {

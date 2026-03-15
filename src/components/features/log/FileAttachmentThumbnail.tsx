@@ -72,6 +72,7 @@ export function FileAttachmentThumbnail({
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(url || null);
   const [isFromCache, setIsFromCache] = useState(false);
   const [skipThumbnail, setSkipThumbnail] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
 
   useEffect(() => {
     // When the prop 'url' changes, we want to reset to it.
@@ -81,6 +82,7 @@ export function FileAttachmentThumbnail({
     setResolvedUrl(url || null);
     setIsFromCache(false);
     setSkipThumbnail(false);
+    setPreviewFailed(false);
   }, [url]);
 
   useEffect(() => {
@@ -95,6 +97,7 @@ export function FileAttachmentThumbnail({
     // Reset the internal cache tracking so we re-run the fetch logic.
     fetchedStoragePathRef.current = null;
     setSkipThumbnail(false);
+    setPreviewFailed(false);
   }, [storagePath, thumbnailPath]);
 
   useEffect(() => {
@@ -302,6 +305,7 @@ export function FileAttachmentThumbnail({
       }
 
       try {
+        setPreviewFailed(false);
         // If the resolved URL points to an image (preview cover OR cached thumbnail), draw it to the canvas
         const isImage =
           /\.(png|jpe?g|webp|gif|bmp|avif)(\?.*)?$/i.test(resolvedUrl) ||
@@ -368,21 +372,42 @@ export function FileAttachmentThumbnail({
           return;
         }
 
-        // Import pdfjs-dist dynamically
+        // Import pdfjs-dist dynamically. Prefer legacy build for broader
+        // runtime compatibility in Next.js/browser contexts.
         let pdfjsModule;
         try {
-          pdfjsModule = await import("pdfjs-dist");
+          pdfjsModule = await import("pdfjs-dist/legacy/build/pdf.mjs");
         } catch (importErr) {
-          console.warn(
-            "FileAttachmentThumbnail: failed to import pdfjs-dist",
-            importErr,
-          );
-          throw importErr;
+          if (process.env.NODE_ENV !== "production") {
+            console.warn(
+              "FileAttachmentThumbnail: failed to import pdfjs legacy build, retrying primary build",
+              importErr,
+            );
+          }
+          pdfjsModule = await import("pdfjs-dist");
         }
 
-        const pdfjs = (pdfjsModule.default ||
-          pdfjsModule) as unknown as PdfJsModule;
-        const version = pdfjs.version || "5.5.207";
+        const pdfjsCandidate = (pdfjsModule.default || pdfjsModule) as Record<string, unknown>;
+        const getDocument =
+          (pdfjsCandidate.getDocument as PdfJsModule["getDocument"] | undefined) ??
+          ((pdfjsModule as Record<string, unknown>).getDocument as PdfJsModule["getDocument"] | undefined);
+        const globalWorkerOptions =
+          (pdfjsCandidate.GlobalWorkerOptions as PdfJsModule["GlobalWorkerOptions"] | undefined) ??
+          ((pdfjsModule as Record<string, unknown>).GlobalWorkerOptions as PdfJsModule["GlobalWorkerOptions"] | undefined);
+        const version =
+          (pdfjsCandidate.version as string | undefined) ??
+          ((pdfjsModule as Record<string, unknown>).version as string | undefined) ??
+          "5.5.207";
+
+        if (!getDocument || !globalWorkerOptions) {
+          throw new Error("pdfjs module missing required APIs");
+        }
+
+        const pdfjs = {
+          getDocument,
+          GlobalWorkerOptions: globalWorkerOptions,
+          version,
+        } satisfies PdfJsModule;
 
         // Prioritize local worker as it's most reliable for the current environment.
         // Use an absolute URL to avoid basePath/CSP issues in some deployments.
@@ -620,6 +645,7 @@ export function FileAttachmentThumbnail({
           }
 
           setHasRendered(false);
+          setPreviewFailed(true);
 
           // If we have a storagePath and the current resolvedUrl (which might be the prop URL) failed,
           // clear it to trigger a fresh signed URL fetch on the next attempt.
@@ -630,6 +656,7 @@ export function FileAttachmentThumbnail({
               );
             fetchedStoragePathRef.current = null; // Ensure we allow a re-fetch
             setResolvedUrl(null);
+            setPreviewFailed(false);
           }
 
           // Ensure canvas is cleared on error
@@ -663,7 +690,7 @@ export function FileAttachmentThumbnail({
         aria-label={`Thumbnail preview for ${title}`}
       />
       {/* Informative overlays based on import status / render result */}
-      {!hasRendered && !(importStatus === "queued" && !!url) && (
+      {!hasRendered && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center bg-surface-subtle"
           aria-label={`PDF thumbnail unavailable for ${title}`}
@@ -683,6 +710,11 @@ export function FileAttachmentThumbnail({
               ) : (
                 <div className="text-[10px] text-text-muted">Processing</div>
               )}
+            </div>
+          ) : importStatus === "queued" && !previewFailed ? (
+            <div className="flex flex-col items-center gap-1">
+              <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
+              <div className="text-[10px] text-text-muted">Queued</div>
             </div>
           ) : (
             <FileText className="h-4 w-4 text-text-muted" />

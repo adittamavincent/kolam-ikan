@@ -15,6 +15,7 @@ type ConfirmDialogProps = {
   icon?: ReactNode;
   onCancel: () => void;
   onConfirm: () => void;
+  hideCancel?: boolean;
 };
 
 export function ConfirmDialog({
@@ -28,6 +29,7 @@ export function ConfirmDialog({
   icon,
   onCancel,
   onConfirm,
+  hideCancel = false,
 }: ConfirmDialogProps) {
   const confirmButtonRef = useRef<HTMLButtonElement | null>(null);
 
@@ -41,7 +43,7 @@ export function ConfirmDialog({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCancel();
+        if (!hideCancel) onCancel();
         return;
       }
       if (event.key === "Enter" && !loading) {
@@ -55,7 +57,7 @@ export function ConfirmDialog({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onCancel, onConfirm, loading]);
+  }, [open, onCancel, onConfirm, loading, hideCancel]);
 
   const contentIcon =
     icon ?? (
@@ -71,7 +73,7 @@ export function ConfirmDialog({
       <Dialog
         as="div"
         className="relative z-50"
-        onClose={onCancel}
+        onClose={hideCancel ? () => {} : onCancel}
         aria-live="polite"
       >
         <Transition.Child
@@ -114,13 +116,15 @@ export function ConfirmDialog({
               </div>
 
               <div className="mt-6 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className=" border border-border-default px-4 py-2 text-sm font-semibold text-text-muted hover:text-text-default"
-                >
-                  {cancelLabel}
-                </button>
+                {!hideCancel && (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className=" border border-border-default px-4 py-2 text-sm font-semibold text-text-muted hover:text-text-default"
+                  >
+                    {cancelLabel}
+                  </button>
+                )}
                 <button
                   type="button"
                   ref={confirmButtonRef}

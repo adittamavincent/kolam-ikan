@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, useEffect } from "react";
+import { Fragment, useRef, useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useBlobUrl } from "@/lib/hooks/useBlobUrl";
 import {
@@ -579,6 +579,16 @@ export function WhatsAppImportModal({
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
   const [existingShadowReuseCount, setExistingShadowReuseCount] = useState(0);
   const [pendingPersonaCreations, setPendingPersonaCreations] = useState<string[]>([]);
+  const [draftPersonas, setDraftPersonas] = useState<Record<string, {
+    id: string;
+    name: string;
+    color: string;
+    icon: string;
+    is_shadow: true;
+    isDraft: true;
+  }>>({});
+  // Abort flag to avoid creating personas if the modal is closed/discarded
+  const creatingAbortRef = useRef(false);
 
   // Preview tooltip state (custom tooltip with configurable timing)
   const [tooltipVisible, setTooltipVisible] = useState(false);
@@ -680,10 +690,23 @@ export function WhatsAppImportModal({
   const rangeImportableCount = selectedTurns.filter(
     (t) => t.type !== "media",
   ).length;
-  const shadowPersonas = getStreamShadowPersonas(personas, streamId);
-  const shadowPersonaIds = new Set(shadowPersonas.map((p) => p.id));
+  const shadowPersonas = useMemo(
+    () => getStreamShadowPersonas(personas, streamId),
+    [personas, streamId],
+  );
+
+  const shadowPersonaIds = useMemo(
+    () => new Set(shadowPersonas.map((p) => p.id)),
+    [shadowPersonas],
+  );
+  const draftPersonaIds = useMemo(
+    () => new Set(Object.keys(draftPersonas)),
+    [draftPersonas],
+  );
   const validMapping = Object.fromEntries(
-    Object.entries(mapping).filter(([, id]) => shadowPersonaIds.has(id)),
+    Object.entries(mapping).filter(([, id]) =>
+      shadowPersonaIds.has(id) || draftPersonaIds.has(id),
+    ),
   );
   const allMapped = mappableSenders.every((s) => !!validMapping[s]);
   const unmappedCount = mappableSenders.filter((s) => !validMapping[s]).length;
@@ -692,8 +715,22 @@ export function WhatsAppImportModal({
 
   const getValidMapping = (snapshot: Record<string, string>) =>
     Object.fromEntries(
-      Object.entries(snapshot).filter(([, id]) => shadowPersonaIds.has(id)),
+      Object.entries(snapshot).filter(([, id]) =>
+        shadowPersonaIds.has(id) || draftPersonaIds.has(id),
+      ),
     );
+
+  // Keep pendingPersonaCreations in sync if the user maps senders manually
+  useEffect(() => {
+    if (pendingPersonaCreations.length === 0) return;
+    setPendingPersonaCreations((prev) =>
+      prev.filter((sender) => {
+        const mappedId = mapping[sender];
+        // keep sender pending if it is not mapped to a valid shadow persona id
+        return !mappedId || !shadowPersonaIds.has(mappedId);
+      }),
+    );
+  }, [mapping, shadowPersonaIds, pendingPersonaCreations.length]);
 
   type PersonaCreateRow = {
     name: string;
@@ -889,8 +926,16 @@ export function WhatsAppImportModal({
     setMapError(null);
     setMapNotice(null);
     setCreatingAllPersonas(true);
+    // Prevent creating personas if modal was closed/discarded
+    if (!isOpen) {
+      setCreatingAllPersonas(false);
+      return null;
+    }
+    // Reset abort flag for this run
+    creatingAbortRef.current = false;
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      if (creatingAbortRef.current || !isOpen) return null;
       if (!user) return null;
 
       const rows: PersonaCreateRow[] = sendersToCreate.map((sender, idx) => ({
@@ -904,6 +949,12 @@ export function WhatsAppImportModal({
 
       const { data, error } = await insertMissingPersonas(rows, streamId);
 
+      if (creatingAbortRef.current || !isOpen) {
+        // If the modal was closed while the request was in-flight, don't apply results
+        setCreatingAllPersonas(false);
+        return null;
+      }
+
       if (error || !data) {
         setMapError(getSupabaseErrorMessage(error));
         return null;
@@ -914,14 +965,38 @@ export function WhatsAppImportModal({
       });
 
       const createdMap: Record<string, string> = {};
+      // Map created personas back to the original sender strings using normalized keys
       for (const created of data) {
-        createdMap[created.name] = created.id;
+        const createdKey = normalizePersonaNameKey(created.name);
+        for (const sender of sendersToCreate) {
+          if (normalizePersonaNameKey(sender) === createdKey) {
+            createdMap[sender] = created.id;
+          }
+        }
       }
 
-      setMapping((prev) => ({ ...prev, ...createdMap }));
+      if (Object.keys(createdMap).length === 0) {
+        console.debug("[WhatsApp] No created map entries matched senders; created rows:", data);
+      } else {
+        setMapping((prev) => ({ ...prev, ...createdMap }));
+      }
 
       // Remove created senders from pending
       setPendingPersonaCreations((prev) => prev.filter((s) => !createdMap[s]));
+
+      // Remove any local drafts that correspond to created personas
+      if (Object.keys(createdMap).length > 0) {
+        setDraftPersonas((prev) => {
+          const next = { ...prev };
+          const createdNameKeys = new Set(Object.keys(createdMap).map((s) => normalizePersonaNameKey(s)));
+          for (const key of Object.keys(prev)) {
+            if (createdNameKeys.has(normalizePersonaNameKey(prev[key].name))) {
+              delete next[key];
+            }
+          }
+          return next;
+        });
+      }
 
       return createdMap;
     } catch (err) {
@@ -940,10 +1015,23 @@ export function WhatsAppImportModal({
     if (Object.keys(nextMapping).length !== Object.keys(mapping).length) {
       setMapping(nextMapping);
     }
-    const missing = mappableSenders.filter((sender) => !nextMapping[sender]);
 
-    // Set pending creations instead of creating now
-    setPendingPersonaCreations(missing);
+    // Compute which senders should be created on confirm.
+    // Preserve any existing pending creators (e.g., from Batch Create) and
+    // include any senders currently mapped to local draft persona ids.
+    const draftIds = new Set(Object.keys(draftPersonas));
+    const toCreate = mappableSenders.filter((sender) => {
+      const mappedId = mapping[sender];
+      if (!mappedId) return true;
+      if (draftIds.has(mappedId)) return true;
+      return false;
+    });
+
+    // Merge with any previously-set pending creations to avoid clearing Batch-create
+    setPendingPersonaCreations((prev) => {
+      const merged = new Set(prev.concat(toCreate));
+      return Array.from(merged);
+    });
 
     if (!hasPdfTurns) {
       await handleConfirm(uploads, nextMapping);
@@ -1250,6 +1338,8 @@ export function WhatsAppImportModal({
   };
 
   const handleClose = () => {
+    // Signal any in-progress persona creation to abort
+    creatingAbortRef.current = true;
     setStep("paste");
     setRawText("");
     setParsedTurns([]);
@@ -1268,6 +1358,7 @@ export function WhatsAppImportModal({
     setZipAutoUploadRan(false);
     setExistingShadowReuseCount(0);
     setPendingPersonaCreations([]);
+    setDraftPersonas({});
 
     // Clear tooltip
     setTooltipVisible(false);
@@ -1703,7 +1794,7 @@ export function WhatsAppImportModal({
                         Using existing (shadow): {existingShadowReuseCount}
                       </span>
                       <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
-                        Will create on import (shadow): {pendingPersonaCreations.length}
+                        Will create on import (shadow): {step === "map" ? pendingPersonaCreations.length : 0}
                       </span>
                     </div>
                   </div>
@@ -1731,10 +1822,10 @@ export function WhatsAppImportModal({
 
                 <div className="flex flex-col gap-2">
                   {mappableSenders.map((sender) => {
-                    const assignedId = validMapping[sender];
-                    const assignedPersona = personas?.find(
-                      (p) => p.id === assignedId,
-                    );
+                    const assignedId = mapping[sender];
+                    const assignedPersona =
+                      (assignedId && draftPersonas[assignedId]) ||
+                      personas?.find((p) => p.id === assignedId);
 
                     return (
                       <div
@@ -1820,8 +1911,8 @@ export function WhatsAppImportModal({
                 </div>
 
                 {unmappedCount > 0 && (
-                  <div className="flex flex-col gap-2 border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
-                    <div className="flex items-start gap-1.5">
+                  <div className="flex items-start justify-between gap-2 border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                    <div className="flex items-start gap-1.5 max-w-[70%]">
                       <Info className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>
                         {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will be
@@ -1829,23 +1920,62 @@ export function WhatsAppImportModal({
                         when you import.
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleCreatePersonas(mappableSenders.filter((sender) => !mapping[sender]))}
-                      disabled={creatingAllPersonas}
-                      className="self-end bg-blue-500/10 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-500/20 disabled:opacity-50 transition-colors border border-blue-500/20"
-                    >
-                      {creatingAllPersonas ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="h-3.5 w-3.5" />
-                          Batch create {unmappedCount} missing persona{unmappedCount !== 1 ? "s" : ""}
-                        </>
-                      )}
-                    </button>
+                      <div className="shrink-0">
+                      <button
+                        onClick={() => {
+                          const toCreate = mappableSenders.filter((sender) => !mapping[sender]);
+                          if (toCreate.length === 0) return;
+                          // Build new drafts and mapping entries immediately (local-only)
+                          const prevDrafts = { ...draftPersonas };
+                          const newDrafts: Record<string, {
+                            id: string;
+                            name: string;
+                            color: string;
+                            icon: string;
+                            is_shadow: true;
+                            isDraft: true;
+                          }> = {};
+                          const newMappingEntries: Record<string, string> = {};
+                          for (const [i, sender] of toCreate.entries()) {
+                            // try find existing draft matching sender
+                            const existing = Object.values(prevDrafts).find((d) => normalizePersonaNameKey(d.name) === normalizePersonaNameKey(sender));
+                            if (existing) {
+                              newMappingEntries[sender] = existing.id;
+                              continue;
+                            }
+                            const id = `draft_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
+                            const draft = {
+                              id,
+                              name: sender,
+                              color: PERSONA_COLORS[i % PERSONA_COLORS.length],
+                              icon: "user",
+                              is_shadow: true as const,
+                              isDraft: true as const,
+                            };
+                            newDrafts[id] = draft;
+                            newMappingEntries[sender] = id;
+                          }
+
+                          setPendingPersonaCreations(toCreate);
+                          if (Object.keys(newDrafts).length > 0) setDraftPersonas((prev) => ({ ...prev, ...newDrafts }));
+                          setMapping((prev) => ({ ...prev, ...newMappingEntries }));
+                        }}
+                        disabled={creatingAllPersonas}
+                        className="bg-blue-500/10 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-500/20 disabled:opacity-50 transition-colors border border-blue-500/20"
+                      >
+                        {creatingAllPersonas ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="h-3.5 w-3.5" />
+                            Batch create {unmappedCount} missing persona{unmappedCount !== 1 ? "s" : ""}
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -1866,7 +1996,7 @@ export function WhatsAppImportModal({
                   onBack={() => setStep("range")}
                   onNext={() => void handleMapNext()}
                   nextDisabled={
-                    creatingAllPersonas || (!hasPdfTurns && textTurns.length === 0)
+                    creatingAllPersonas || !allMapped || (!hasPdfTurns && textTurns.length === 0)
                   }
                   shortcutsEnabled={!confirmExitOpen}
                   nextContent={
@@ -2080,7 +2210,7 @@ function StepFooter({
         <button
           onClick={onBack}
           disabled={backDisabled}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
           Back
@@ -2090,7 +2220,7 @@ function StepFooter({
       <button
         onClick={onNext}
         disabled={nextDisabled}
-        className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {nextContent}
       </button>

@@ -400,7 +400,7 @@ function LoginForm() {
   };
 
   // Development Helpers (Completely stripped in production)
-  const testAccounts = [
+  const testAccounts: { label: string; email: string; pass: string; role: string; fullName?: string }[] = [
     {
       label: "Default Test User",
       email: "test@kolamikan.local",
@@ -421,6 +421,11 @@ function LoginForm() {
     },
   ];
 
+  // Provide a default fullName for quick signup flows
+  testAccounts.forEach((t) => {
+    if (!t.fullName) t.fullName = t.label.split(" ")[0] || "User";
+  });
+
   const quickLogin = async (acc: (typeof testAccounts)[0]) => {
     setMode("signin");
     setEmail(acc.email);
@@ -432,6 +437,53 @@ function LoginForm() {
     setSuccessMessage("");
     // Execute login with the credentials directly (not relying on state updates)
     await handleLogin(undefined, acc.email, acc.pass);
+  };
+
+  const quickSignup = async (acc: (typeof testAccounts)[0]) => {
+    setMode("signup");
+    setEmail(acc.email);
+    setPassword(acc.pass);
+    setConfirmPassword(acc.pass);
+    setFullName(acc.fullName || "");
+    setFieldErrors({});
+    setTouchedFields(new Set());
+    setError("");
+    setSuccessMessage("");
+
+    // Perform signup directly to avoid waiting for state updates
+    setLoading(true);
+    try {
+      const { error: authError } = await supabase.auth.signUp({
+        email: acc.email,
+        password: acc.pass,
+        options: { data: { full_name: acc.fullName || acc.label } },
+      });
+
+      if (authError) {
+        setLoading(false);
+        if (
+          authError.message.includes("already registered") ||
+          authError.message.includes("already exists")
+        ) {
+          setError("An account with this email already exists. Please sign in instead.");
+        } else if (authError.message.includes("Password should be")) {
+          setError("Password does not meet security requirements. Please use a stronger password.");
+        } else {
+          setError(authError.message);
+        }
+      } else {
+        setLoading(false);
+        setSuccessMessage("Account created successfully! Please check your email to verify your account.");
+        setPassword("");
+        setConfirmPassword("");
+        setShowPassword(false);
+        setShowConfirmPassword(false);
+      }
+    } catch (err: unknown) {
+      setLoading(false);
+      if (err instanceof Error && err.name === "AbortError") return;
+      setError("A network error occurred. Please check your connection and try again.");
+    }
   };
 
   const isDev = process.env.NODE_ENV === "development";
@@ -783,27 +835,40 @@ function LoginForm() {
             <div className="mb-4 flex items-center gap-2 text-text-default">
               <FlaskConical className="h-5 w-5" />
               <h3 className="text-sm font-bold uppercase tracking-wider">
-                Dev Toolbox: Speed Login
+                Dev Toolbox: Speed Login / Signup
               </h3>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {testAccounts.map((acc) => (
-                <button
+                <div
                   key={acc.email}
-                  onClick={() => quickLogin(acc)}
-                  disabled={loading}
                   className="flex items-center justify-between border border-border-default bg-surface-default p-3 text-left transition-all group"
                 >
-                  <div>
-                    <div className="text-xs font-bold text-text-default">
-                      {acc.label}
-                    </div>
-                    <div className="text-[10px] text-text-subtle uppercase font-medium">
-                      {acc.role}
-                    </div>
+                  <div className="flex-1">
+                    <button
+                      onClick={() => quickLogin(acc)}
+                      disabled={loading}
+                      className="w-full text-left"
+                    >
+                      <div className="text-xs font-bold text-text-default">
+                        {acc.label}
+                      </div>
+                      <div className="text-[10px] text-text-subtle uppercase font-medium">
+                        {acc.role}
+                      </div>
+                    </button>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-text-muted group-hover:translate-x-1 transition-transform" />
-                </button>
+                  <div className="ml-3 flex items-center gap-2">
+                    <button
+                      onClick={() => quickSignup(acc)}
+                      disabled={loading}
+                      className="text-xs font-medium text-action-primary-bg hover:text-action-primary-bg/80"
+                    >
+                      Sign up
+                    </button>
+                    <ChevronRight className="h-4 w-4 text-text-muted group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
               ))}
             </div>
           </div>

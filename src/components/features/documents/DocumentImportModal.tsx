@@ -148,9 +148,20 @@ export function DocumentImportModal({
     setLocalThumbnails({});
   }, [setLocalThumbnails]);
 
+  const handleClose = useCallback(() => {
+    setSubmitError(null);
+    setSubmitWarning(null);
+    revokeLocalThumbnails();
+    getConsumedInitialQueueKeys().clear();
+    setFileInputKey((k) => k + 1);
+    setSelectedFile(null);
+    setTitle("");
+    onClose();
+  }, [onClose, revokeLocalThumbnails]);
+
   // Helper function to process queued file IDs
   const processQueuedFileIds = useCallback(
-    (fileIds: string[]) => {
+    async (fileIds: string[]) => {
       const tempStore = getTempFileStore();
       const retrievedFiles: Array<{ file: File; hash?: string }> = [];
 
@@ -178,45 +189,73 @@ export function DocumentImportModal({
           count: retrievedFiles.length,
         });
 
-        // Start all imports in parallel instead of awaiting each sequentially
-        const importPromises = retrievedFiles.map(({ file, hash }) => {
-          const derivedTitle = file.name.replace(/\.pdf$/i, "");
-          return createImport
-            .mutateAsync({
+        // For each retrieved file, check hash against existing documents and
+        // reuse existing document when a matching hash is found. Otherwise
+        // queue a new import. Start all imports in parallel.
+        const importPromises = retrievedFiles.map(async ({ file, hash }) => {
+          try {
+            const fileHash = hash ?? (await calculateFileHash(file));
+
+            const existingDoc = documents.find(
+              (d) =>
+                (d.source_metadata as Record<string, unknown>)?.fileHash ===
+                fileHash,
+            );
+
+            if (existingDoc) {
+              console.log(
+                "[DocumentImportModal] Found existing document for file hash, reusing:",
+                { fileName: file.name, existingId: existingDoc.id },
+              );
+              if (onSelectDocument) {
+                onSelectDocument(existingDoc);
+                handleClose();
+                return null;
+              }
+
+              setSubmitWarning(
+                `The file "${file.name}" already exists as "${existingDoc.title}". Reusing existing document.`,
+              );
+              return null;
+            }
+
+            const derivedTitle = file.name.replace(/\.pdf$/i, "");
+            const res = await createImport.mutateAsync({
               file,
               title: derivedTitle,
-              flavor: "lattice", // default
-              enableTableStructure: true, // default
-              debugDoclingTables: false, // default
-              fileHash: hash,
-            })
-            .then((res) => {
-              console.log("[DocumentImportModal] queued retrieved file:", {
-                fileName: file.name,
-                result: !!res,
-              });
-              const docId = res?.document?.id;
-              if (docId) {
-                const blobUrl = URL.createObjectURL(file);
-                setLocalThumbnails((prev) => ({
-                  ...prev,
-                  [docId]: blobUrl,
-                }));
-              }
-            })
-            .catch((error) => {
-              console.error(
-                "[DocumentImportModal] Error queueing retrieved file:",
-                error,
-              );
+              flavor: "lattice",
+              enableTableStructure: true,
+              debugDoclingTables: false,
+              fileHash,
             });
+
+            console.log("[DocumentImportModal] queued retrieved file:", {
+              fileName: file.name,
+              result: !!res,
+            });
+
+            const docId = res?.document?.id;
+            if (docId) {
+              const blobUrl = URL.createObjectURL(file);
+              setLocalThumbnails((prev) => ({
+                ...prev,
+                [docId]: blobUrl,
+              }));
+            }
+          } catch (error) {
+            console.error(
+              "[DocumentImportModal] Error queueing retrieved file:",
+              error,
+            );
+          }
+          return null;
         });
 
         // Fire-and-forget; ensure all promises are started
         void Promise.allSettled(importPromises);
       }
     },
-    [createImport],
+    [createImport, documents, handleClose, onSelectDocument],
   );
 
   const selectedFilePreviewUrl = useBlobUrl(selectedFile);
@@ -258,17 +297,6 @@ export function DocumentImportModal({
     return derived;
   }, [selectedFile, title]);
 
-  const handleClose = useCallback(() => {
-    setSubmitError(null);
-    setSubmitWarning(null);
-    revokeLocalThumbnails();
-    getConsumedInitialQueueKeys().clear();
-    setFileInputKey((k) => k + 1);
-    setSelectedFile(null);
-    setTitle("");
-    onClose();
-  }, [onClose, revokeLocalThumbnails]);
-
   const dialogPanelRef = useRef<HTMLDivElement | null>(null);
   const initialQueueKeyRef = useRef<string | null>(null);
 
@@ -302,6 +330,18 @@ export function DocumentImportModal({
     if (pendingIds.length > 0) {
       setPendingFileIds([]); // Clear pending IDs
       processQueuedFileIds(pendingIds);
+    } else {
+      // Fallback: if no pending IDs were stored but there are files in the
+      // global temp store, attempt to process those to avoid dropped files.
+      const tempStore = getTempFileStore();
+      const fallbackKeys = Array.from(tempStore.keys());
+      if (fallbackKeys.length > 0) {
+        console.warn(
+          "[DocumentImportModal] No pending IDs found, falling back to temp store keys:",
+          fallbackKeys,
+        );
+        processQueuedFileIds(fallbackKeys);
+      }
     }
 
     // Also listen for real-time events
@@ -311,9 +351,17 @@ export function DocumentImportModal({
 
       if (!fileIds || !Array.isArray(fileIds) || fileIds.length === 0) {
         console.warn(
-          "[DocumentImportModal] Received event with no fileIds",
+          "[DocumentImportModal] Received event with no fileIds, will attempt to use temp store instead",
           customEvent.detail,
         );
+        const tempStore = getTempFileStore();
+        const keys = Array.from(tempStore.keys());
+        if (keys.length === 0) return;
+        console.log(
+          "[DocumentImportModal] Falling back to temp store keys for import:",
+          keys,
+        );
+        processQueuedFileIds(keys);
         return;
       }
 
@@ -321,7 +369,20 @@ export function DocumentImportModal({
         "[DocumentImportModal] Received kolam_header_documents_import event with fileIds:",
         fileIds,
       );
-      processQueuedFileIds(fileIds);
+
+      // Try to process the provided IDs first. If some IDs are not present in
+      // the temp store (race or cleanup), fall back to processing any remaining
+      // keys in the temp store so we don't drop files.
+      processQueuedFileIds(fileIds).catch(() => {
+        const tempStore = getTempFileStore();
+        const keys = Array.from(tempStore.keys());
+        if (keys.length === 0) return;
+        console.warn(
+          "[DocumentImportModal] Some provided fileIds could not be processed; falling back to temp store keys:",
+          keys,
+        );
+        processQueuedFileIds(keys);
+      });
     };
 
     window.addEventListener(
@@ -408,6 +469,27 @@ export function DocumentImportModal({
           return null;
         }
 
+        const fileHash = hash ?? (await calculateFileHash(file));
+
+        const existingDoc = documents.find(
+          (d) => (d.source_metadata as Record<string, unknown>)?.fileHash === fileHash,
+        );
+
+        if (existingDoc) {
+          console.log(
+            "[DocumentImportModal] Initial queued file matches existing document, reusing:",
+            { fileName: file.name, existingId: existingDoc.id },
+          );
+          if (onSelectDocument) {
+            onSelectDocument(existingDoc);
+            handleClose();
+            return null;
+          }
+
+          setSubmitWarning(`The file "${file.name}" is already in this library as "${existingDoc.title}".`);
+          return null;
+        }
+
         const derivedTitle = file.name.replace(/\.pdf$/i, "");
         console.log("[DocumentImportModal] Derived title from filename:", {
           original: file.name,
@@ -420,7 +502,7 @@ export function DocumentImportModal({
           flavor,
           enableTableStructure,
           debugDoclingTables,
-          fileHash: hash,
+          fileHash,
         });
 
         if (result?.reused) {
@@ -452,6 +534,9 @@ export function DocumentImportModal({
     flavor,
     enableTableStructure,
     debugDoclingTables,
+    documents,
+    onSelectDocument,
+    handleClose,
   ]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -637,28 +722,29 @@ export function DocumentImportModal({
                       accept="*/*"
                       onChange={async (event) => {
                         const file = event.target.files?.[0] ?? null;
-                        
+
                         setSubmitWarning(null);
                         setSubmitError(null);
-                        
+
                         if (file) {
                           try {
                             const hash = await calculateFileHash(file);
                             const existingDoc = documents.find(
                               (d) => (d.source_metadata as Record<string, unknown>)?.fileHash === hash
                             );
-                            if (existingDoc && onSelectDocument) {
+
+                            if (existingDoc) {
+                              // Always prompt the user when a matching-hash document exists.
+                              // Do not set the selected file yet — wait for explicit confirmation.
                               setDuplicateConfirmState({ file, existingDoc });
                               event.target.value = "";
                               return;
-                            } else if (existingDoc) {
-                               setSubmitWarning(`The file "${file.name}" is already in this library as "${existingDoc.title}".`);
                             }
                           } catch (err) {
                             console.error("Failed to hash file", err);
                           }
                         }
-                        
+
                         setSelectedFile(file);
                         // Reset input so same file can be selected again
                         event.target.value = "";
@@ -1055,19 +1141,12 @@ export function DocumentImportModal({
         title="File Already Imported"
         description={
           duplicateConfirmState
-            ? `The file "${duplicateConfirmState.file.name}" has already been imported as "${duplicateConfirmState.existingDoc.title}". Would you like to select the existing one instead?`
+            ? `The file "${duplicateConfirmState.file.name}" has already been imported as "${duplicateConfirmState.existingDoc.title}".`
             : ""
         }
-        confirmLabel="Use Existing"
-        cancelLabel="Upload Anyway"
-        onCancel={() => {
-          if (!duplicateConfirmState) return;
-          setSelectedFile(duplicateConfirmState.file);
-          setSubmitWarning(
-            `The file "${duplicateConfirmState.file.name}" is already in this library as "${duplicateConfirmState.existingDoc.title}".`
-          );
-          setDuplicateConfirmState(null);
-        }}
+        confirmLabel="Use existing"
+        hideCancel
+        onCancel={() => setDuplicateConfirmState(null)}
         onConfirm={() => {
           if (!duplicateConfirmState) return;
           if (onSelectDocument) {

@@ -125,13 +125,25 @@ export function FileAttachmentThumbnail({
     )
       return;
 
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient> | null = null;
+    try {
+      supabase = createClient();
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(
+          "FileAttachmentThumbnail: createClient() failed, skipping Supabase thumbnail checks",
+          e,
+        );
+      }
+      supabase = null;
+    }
     let canceled = false;
 
     async function getSignedUrl() {
       try {
         // Step 1: Try server-generated thumbnail first if thumbnailPath is provided
-        if (thumbnailPath && !skipThumbnail) {
+        // Only attempt if Supabase client is available; otherwise skip to signed URL flow
+        if (thumbnailPath && !skipThumbnail && supabase) {
           if (process.env.NODE_ENV !== "production")
             console.debug(
               "FileAttachmentThumbnail: checking for server-generated thumbnail",
@@ -142,9 +154,9 @@ export function FileAttachmentThumbnail({
             .getPublicUrl(thumbnailPath);
 
           if (!canceled && thumbData?.publicUrl) {
-            // Verify the thumbnail actually exists (some buckets may return a
-            // public URL even if the object isn't present). Use HEAD to avoid
-            // downloading the asset.
+            // Attempt a lightweight HEAD to ensure the object exists. Some
+            // storage setups block HEAD via CORS; in that case we'll still
+            // accept the public URL and allow the image loader to probe it.
             try {
               const headResp = await fetch(thumbData.publicUrl, { method: "HEAD" });
               if (headResp.ok) {
@@ -159,19 +171,25 @@ export function FileAttachmentThumbnail({
                 return;
               }
             } catch (e) {
-              // If HEAD fails (CORS/unsupported), fall back to attempting GET in next phase.
+              // HEAD failed (often due to CORS). Still accept the public URL
+              // so the browser image loader can attempt to fetch it.
               if (process.env.NODE_ENV !== "production")
                 console.debug(
-                  "FileAttachmentThumbnail: HEAD check failed for thumbnail",
+                  "FileAttachmentThumbnail: HEAD check failed for thumbnail, falling back to using publicUrl",
                   thumbData.publicUrl,
                   e,
                 );
+              fetchedStoragePathRef.current = thumbnailPath;
+              setResolvedUrl(thumbData.publicUrl);
+              setIsFromCache(true);
+              return;
             }
           }
         }
 
         // Step 2: Try legacy cached thumbnail (storagePath.png) if storagePath is provided
-        if (storagePath && !skipThumbnail) {
+        // Only attempt if Supabase client is available
+        if (storagePath && !skipThumbnail && supabase) {
           if (process.env.NODE_ENV !== "production")
             console.debug(
               "FileAttachmentThumbnail: checking for legacy cached thumbnail",
@@ -199,12 +217,22 @@ export function FileAttachmentThumbnail({
             } catch (e) {
               if (process.env.NODE_ENV !== "production")
                 console.debug(
-                  "FileAttachmentThumbnail: HEAD check failed for legacy thumbnail",
+                  "FileAttachmentThumbnail: HEAD check failed for legacy thumbnail, falling back to publicUrl",
                   thumbData.publicUrl,
                   e,
                 );
+              fetchedStoragePathRef.current = storagePath;
+              setResolvedUrl(thumbData.publicUrl);
+              setIsFromCache(true);
+              return;
             }
           }
+        } else if (!supabase) {
+          if (process.env.NODE_ENV !== "production")
+            console.debug(
+              "FileAttachmentThumbnail: Supabase client unavailable, skipping cached thumbnail checks",
+              { storagePath, thumbnailPath },
+            );
         } else {
           console.debug(
             "FileAttachmentThumbnail: skipping cached thumbnail fetch (previously failed)",
@@ -214,33 +242,36 @@ export function FileAttachmentThumbnail({
 
         // Step 3: Fallback to the original PDF if no thumbnail exists or we skipped it
         if (storagePath) {
-          console.debug(
-            "FileAttachmentThumbnail: falling back to original PDF",
-            storagePath,
-          );
-          const bucket = "document-files";
-          const { data, error } = await supabase.storage
-            .from(bucket)
-            .createSignedUrl(storagePath, 60 * 60);
+          try {
+            const resp = await fetch(`/api/storage/signed-url`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bucket: "document-files", path: storagePath, expires: 60 * 60 }),
+            });
 
-          if (error) {
-            console.warn(
-              `PDF object not found or error in storage: ${storagePath}`,
-              error,
-            );
+            if (!resp.ok) {
+              const body = await resp.text().catch(() => "");
+              console.warn("FileAttachmentThumbnail: failed to get signed url", storagePath, resp.status, body);
+              if (!canceled) setHasRendered(false);
+              return;
+            }
+
+            const payload = await resp.json();
+            if (!payload?.signedUrl) {
+              if (!canceled) setHasRendered(false);
+              return;
+            }
+
+            if (!canceled) {
+              fetchedStoragePathRef.current = storagePath;
+              setResolvedUrl(payload.signedUrl as string);
+              setIsFromCache(false);
+              setSkipThumbnail(false);
+            }
+          } catch (err) {
+            console.warn("FileAttachmentThumbnail: error fetching signed url", storagePath, err);
             if (!canceled) setHasRendered(false);
             return;
-          }
-
-          if (!canceled && data?.signedUrl) {
-            console.debug(
-              "FileAttachmentThumbnail: obtained fresh signedUrl for PDF",
-              data.signedUrl,
-            );
-            fetchedStoragePathRef.current = storagePath;
-            setResolvedUrl(data.signedUrl);
-            setIsFromCache(false);
-            setSkipThumbnail(false);
           }
         }
       } catch (err) {
@@ -256,7 +287,8 @@ export function FileAttachmentThumbnail({
     return () => {
       canceled = true;
     };
-  }, [url, storagePath, thumbnailPath, resolvedUrl, skipThumbnail, importStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [url, storagePath, thumbnailPath, skipThumbnail, importStatus]);
 
   // When importStatus updates, clear cached fetch state so we re-attempt
   // thumbnail/signed URL resolution. This helps when a thumbnail or file
@@ -387,7 +419,7 @@ export function FileAttachmentThumbnail({
           pdfjsModule = await import("pdfjs-dist");
         }
 
-        const pdfjsCandidate = (pdfjsModule.default || pdfjsModule) as Record<string, unknown>;
+        const pdfjsCandidate = (pdfjsModule.default || pdfjsModule) as unknown as Record<string, unknown>;
         const getDocument =
           (pdfjsCandidate.getDocument as PdfJsModule["getDocument"] | undefined) ??
           ((pdfjsModule as Record<string, unknown>).getDocument as PdfJsModule["getDocument"] | undefined);

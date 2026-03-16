@@ -11,6 +11,7 @@ import {
   Settings,
   Search,
   Users,
+  Paperclip,
 } from "lucide-react";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import Image from "next/image";
@@ -33,6 +34,7 @@ import { CreateDomainModal } from "./CreateDomainModal";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { useDomains } from "@/lib/hooks/useDomains";
 import { EditDomainModal } from "./EditDomainModal";
+import AttachmentsManager from "./AttachmentsManager";
 // PersonaManager is controlled at layout level so the global entry stays in sync
 
 interface DomainSwitcherProps {
@@ -102,6 +104,8 @@ export function DomainSwitcher({
 
   const { domains, error } = useDomains(userId);
 
+  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
+
   const currentDomainId = params?.domain as string;
 
   const showDomainTooltip = (
@@ -163,6 +167,17 @@ export function DomainSwitcher({
           <Users className="h-4 w-4" />
           <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
             Personas
+          </div>
+        </button>
+
+        <button
+          onClick={() => setAttachmentsOpen(true)}
+          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default"
+          title="Attachments"
+        >
+          <Paperclip className="h-4 w-4" />
+          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+            Attachments
           </div>
         </button>
       </div>
@@ -323,6 +338,8 @@ export function DomainSwitcher({
         onClose={() => setIsCreateModalOpen(false)}
         userId={userId}
       />
+
+      <AttachmentsManager isOpen={attachmentsOpen} onClose={() => setAttachmentsOpen(false)} userId={userId} />
 
       <EditDomainModal
         key={editingDomain?.id ?? "domain-editor"}

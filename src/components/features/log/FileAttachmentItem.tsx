@@ -1,4 +1,4 @@
-import { Eye, FileText, Download, ExternalLink, X, Loader2 } from "lucide-react";
+import { Eye, FileText, Download, ExternalLink, X } from "lucide-react";
 import { FileAttachmentThumbnail } from "./FileAttachmentThumbnail";
 
 export interface FileAttachmentViewProps {
@@ -216,11 +216,6 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               importStatus={importStatus ?? null}
               progressPercent={progressPercent}
             />
-            {isProcessing && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/5 backdrop-blur-[1px]">
-                <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
-              </div>
-            )}
           </div>
           <div>
             <div className="text-xs font-medium text-text-default">

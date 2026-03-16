@@ -30,7 +30,7 @@ const ENTRIES_SELECT_FULL=`
  sections!inner (
  id, entry_id, persona_id, persona_name_snapshot, content_json,
  section_type, pdf_display_mode, sort_order, updated_at,
- persona:personas (id, name, icon, color),
+ persona:personas (id, name, icon, color, is_shadow, shadow_stream_id, shadow_document_id),
  section_pdf_attachments (
  id, section_id, document_id, sort_order, title_snapshot,
  annotation_text, referenced_persona_id, referenced_page,
@@ -45,7 +45,7 @@ const ENTRIES_SELECT_LEGACY=`
  sections!inner (
  id, entry_id, persona_id, persona_name_snapshot, content_json,
  sort_order, updated_at,
- persona:personas (id, name, icon, color)
+ persona:personas (id, name, icon, color, is_shadow, shadow_stream_id, shadow_document_id)
  )
 `;
 

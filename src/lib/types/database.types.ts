@@ -826,6 +826,10 @@ export type Database = {
         Args: { payload: Json; target_id: string; target_table: string }
         Returns: undefined
       }
+      cleanup_unused_shadow_persona: {
+        Args: { p_persona_id: string }
+        Returns: undefined
+      }
       create_entry_with_section:
         | {
             Args: {

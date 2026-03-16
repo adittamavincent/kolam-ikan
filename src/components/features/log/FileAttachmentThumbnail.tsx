@@ -174,6 +174,7 @@ export function FileAttachmentThumbnail({
           width={48}
           height={64}
           className="object-cover"
+          unoptimized
           onError={() => setImageFailed(true)}
         />
       )}

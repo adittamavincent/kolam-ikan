@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/hooks/useAuth";
 import {
   Document,
   DocumentImportJob,
@@ -37,19 +38,20 @@ interface CreateDocumentImportArgs {
 export function useDocuments(streamId: string) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const documentsQueryKey = ["documents", user?.id ?? "anonymous"];
 
   const documentsQuery = useQuery({
-    queryKey: ["documents", "user"],
+    queryKey: documentsQueryKey,
     queryFn: async () => {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError || !authData.user) {
+      if (!user?.id) {
         return [] as DocumentWithLatestJob[];
       }
 
       const { data: documents, error } = await supabase
         .from("documents")
         .select("*")
-        .eq("created_by", authData.user.id)
+        .eq("created_by", user.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
@@ -63,7 +65,7 @@ export function useDocuments(streamId: string) {
       const { data: jobs, error: jobError } = await supabase
         .from("document_import_jobs")
         .select("*")
-        .eq("created_by", authData.user.id)
+        .eq("created_by", user.id)
         .order("created_at", { ascending: false });
 
       if (jobError) {
@@ -90,7 +92,7 @@ export function useDocuments(streamId: string) {
         thumbnailUrl: getDocumentThumbnailUrl(document),
       })) as DocumentWithLatestJob[];
     },
-    enabled: true,
+    enabled: !!user?.id,
     refetchInterval: (query) => {
       const documents =
         (query.state.data as DocumentWithLatestJob[] | undefined) ?? [];
@@ -154,7 +156,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
+      queryClient.invalidateQueries({ queryKey: documentsQueryKey });
     },
   });
 
@@ -178,7 +180,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
+      queryClient.invalidateQueries({ queryKey: documentsQueryKey });
     },
   });
 
@@ -202,7 +204,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
+      queryClient.invalidateQueries({ queryKey: documentsQueryKey });
     },
   });
 
@@ -226,7 +228,7 @@ export function useDocuments(streamId: string) {
       return payload;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", "user"] });
+      queryClient.invalidateQueries({ queryKey: documentsQueryKey });
     },
   });
 

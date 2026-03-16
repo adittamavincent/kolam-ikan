@@ -42,7 +42,18 @@ export function usePersonas({
         if (!isShadow) return true;
         if (!includeShadow) return false;
 
-        return true;
+        if (!streamId) return true;
+
+        const hasShadowStreamId =
+          "shadow_stream_id" in persona &&
+          typeof persona.shadow_stream_id === "string" &&
+          persona.shadow_stream_id.length > 0;
+
+        if (hasShadowStreamId) {
+          return persona.shadow_stream_id === streamId;
+        }
+
+        return false;
       });
     },
     enabled: !!user?.id,

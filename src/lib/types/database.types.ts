@@ -444,7 +444,10 @@ export type Database = {
           storage_bucket: string
           storage_path: string
           stream_id: string
+          thumbnail_error: string | null
           thumbnail_path: string | null
+          thumbnail_status: string
+          thumbnail_updated_at: string | null
           title: string
           updated_at: string
         }
@@ -463,7 +466,10 @@ export type Database = {
           storage_bucket?: string
           storage_path: string
           stream_id: string
+          thumbnail_error?: string | null
           thumbnail_path?: string | null
+          thumbnail_status?: string
+          thumbnail_updated_at?: string | null
           title: string
           updated_at?: string
         }
@@ -482,7 +488,10 @@ export type Database = {
           storage_bucket?: string
           storage_path?: string
           stream_id?: string
+          thumbnail_error?: string | null
           thumbnail_path?: string | null
+          thumbnail_status?: string
+          thumbnail_updated_at?: string | null
           title?: string
           updated_at?: string
         }

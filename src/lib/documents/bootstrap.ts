@@ -27,6 +27,10 @@ create table if not exists public.documents (
  file_size_bytes bigint null,
  storage_bucket text not null default 'document-files',
  storage_path text not null,
+ thumbnail_path text null,
+ thumbnail_status text not null default 'pending' check (thumbnail_status in ('pending', 'processing', 'ready', 'failed', 'unsupported')),
+ thumbnail_error text null,
+ thumbnail_updated_at timestamptz null,
  import_status text not null default 'queued' check (import_status in ('queued', 'processing', 'completed', 'failed', 'canceled')),
  source_metadata jsonb not null default '{}'::jsonb,
  extracted_markdown text null,
@@ -63,6 +67,16 @@ alter table public.document_import_jobs
 alter table public.document_import_jobs
  add column if not exists eta_seconds integer null;
 
+alter table public.documents
+ add column if not exists thumbnail_path text null;
+alter table public.documents
+ add column if not exists thumbnail_status text not null default 'pending'
+   check (thumbnail_status in ('pending', 'processing', 'ready', 'failed', 'unsupported'));
+alter table public.documents
+ add column if not exists thumbnail_error text null;
+alter table public.documents
+ add column if not exists thumbnail_updated_at timestamptz null;
+
 create table if not exists public.document_chunks (
  id uuid primary key default gen_random_uuid(),
  document_id uuid not null references public.documents(id) on delete cascade,
@@ -88,6 +102,8 @@ create table if not exists public.document_entry_links (
 
 create index if not exists idx_documents_stream_id_created_at on public.documents(stream_id, created_at desc);
 create index if not exists idx_documents_import_status on public.documents(import_status);
+create index if not exists idx_documents_thumbnail_path on public.documents(thumbnail_path) where thumbnail_path is not null;
+create index if not exists idx_documents_thumbnail_status on public.documents(thumbnail_status);
 create index if not exists idx_document_import_jobs_document_id_created_at on public.document_import_jobs(document_id, created_at desc);
 create index if not exists idx_document_import_jobs_stream_id_status on public.document_import_jobs(stream_id, status);
 create index if not exists idx_document_chunks_document_id_chunk_index on public.document_chunks(document_id, chunk_index);

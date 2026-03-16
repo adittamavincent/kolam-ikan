@@ -24,6 +24,8 @@ interface SectionDraft {
 export interface FileDraftAttachment {
   documentId?: string;
   storagePath?: string;
+  thumbnailPath?: string | null;
+  previewUrl?: string | null;
   titleSnapshot: string;
   annotationText?: string | null;
   referencedPersonaId?: string | null;

@@ -236,12 +236,24 @@ export async function POST(request: Request) {
   const storagePath = `${authData.user.id}/${documentId}/${filename}`;
   const titleValue =
     input.data.title?.trim() || filename.replace(/\.pdf$/i, "");
+  const sourceMetadata = {
+    uploadOrigin: "kolam-ikan-app",
+    workerStatus: "awaiting-pickup",
+    fileHash: input.data.fileHash,
+  };
+  const parserConfig = {
+    flavor: input.data.flavor,
+    enableTableStructure: input.data.enableTableStructure,
+    debugDoclingTables: input.data.debugDoclingTables,
+  };
 
   // --- De-duplication check ---
   if (input.data.fileHash) {
     const { data: existingDoc } = await admin
       .from("documents")
-      .select("id, title, storage_path, import_status")
+      .select(
+        "id, title, storage_path, storage_bucket, import_status, content_type, original_filename, file_size_bytes, extracted_markdown, source_metadata",
+      )
       .eq("created_by", authData.user.id)
       .contains("source_metadata", { fileHash: input.data.fileHash })
       .is("deleted_at", null)
@@ -249,13 +261,150 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingDoc) {
-      // If we found an existing document with the same hash for this user,
-      // we can return it instead of creating a new one.
-      return NextResponse.json({
-        message: "Document already exists, reusing existing one",
-        documentId: existingDoc.id,
-        reused: true,
-      });
+      const { data: latestJob } = await admin
+        .from("document_import_jobs")
+        .select("*")
+        .eq("document_id", existingDoc.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestJob?.status === "queued" || latestJob?.status === "processing") {
+        return NextResponse.json({
+          message: "Document import already running",
+          document: existingDoc,
+          job: latestJob,
+          reused: true,
+        });
+      }
+
+      if (existingDoc.extracted_markdown) {
+        return NextResponse.json({
+          message: "Document already parsed",
+          document: existingDoc,
+          reused: true,
+        });
+      }
+
+      const reusedJobId = crypto.randomUUID();
+      const { data: createdJob, error: createdJobError } = await admin
+        .from("document_import_jobs")
+        .insert({
+          id: reusedJobId,
+          document_id: existingDoc.id,
+          stream_id: input.data.streamId,
+          created_by: authData.user.id,
+          provider: "docling",
+          status: "queued",
+          parser_config: parserConfig,
+        })
+        .select("*")
+        .single();
+
+      if (createdJobError || !createdJob) {
+        return NextResponse.json(
+          {
+            error:
+              createdJobError?.message ??
+              "Failed to create import job for existing document",
+          },
+          { status: 500 },
+        );
+      }
+
+      try {
+        await dispatchImportJob(request, {
+          jobId: reusedJobId,
+          documentId: existingDoc.id,
+          streamId: input.data.streamId,
+          title: existingDoc.title,
+          fileName: existingDoc.original_filename,
+          contentType: existingDoc.content_type,
+          fileSizeBytes: existingDoc.file_size_bytes ?? file.size,
+          storagePath: existingDoc.storage_path,
+          parserConfig,
+        });
+
+        await admin
+          .from("document_import_jobs")
+          .update({
+            status: "processing",
+            progress_percent: 5,
+            progress_message: "Worker accepted import and started processing",
+            eta_seconds: Math.max(
+              15,
+              Math.ceil((existingDoc.file_size_bytes ?? file.size) / (512 * 1024)) *
+                10,
+            ),
+            started_at: new Date().toISOString(),
+          })
+          .eq("id", reusedJobId);
+
+        await admin
+          .from("documents")
+          .update({
+            import_status: "processing",
+            source_metadata: {
+              ...((existingDoc.source_metadata ?? {}) as Record<string, unknown>),
+              workerStatus: "processing",
+            },
+          })
+          .eq("id", existingDoc.id);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to dispatch document import to worker";
+
+        await admin
+          .from("document_import_jobs")
+          .update({
+            status: "failed",
+            progress_percent: 0,
+            progress_message: "Worker dispatch failed",
+            eta_seconds: null,
+            error_message: message,
+            completed_at: new Date().toISOString(),
+          })
+          .eq("id", reusedJobId);
+
+        await admin
+          .from("documents")
+          .update({
+            import_status: "failed",
+            thumbnail_status: "failed",
+            thumbnail_error: message,
+            thumbnail_updated_at: new Date().toISOString(),
+            source_metadata: {
+              ...((existingDoc.source_metadata ?? {}) as Record<string, unknown>),
+              workerStatus: "dispatch_failed",
+            },
+          })
+          .eq("id", existingDoc.id);
+
+        return NextResponse.json({ error: message }, { status: 500 });
+      }
+
+      const { data: refreshedJob } = await admin
+        .from("document_import_jobs")
+        .select("*")
+        .eq("id", reusedJobId)
+        .single();
+
+      const { data: refreshedDocument } = await admin
+        .from("documents")
+        .select("*")
+        .eq("id", existingDoc.id)
+        .single();
+
+      return NextResponse.json(
+        {
+          document: refreshedDocument ?? existingDoc,
+          job: refreshedJob ?? createdJob,
+          reused: true,
+        },
+        { status: 201 },
+      );
     }
   }
 
@@ -280,17 +429,7 @@ export async function POST(request: Request) {
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
-
-  const sourceMetadata = {
-    uploadOrigin: "kolam-ikan-app",
-    workerStatus: "awaiting-pickup",
-    fileHash: input.data.fileHash,
-  };
-  const parserConfig = {
-    flavor: input.data.flavor,
-    enableTableStructure: input.data.enableTableStructure,
-    debugDoclingTables: input.data.debugDoclingTables,
-  };
+  
   let activeDocument: Document | null = null;
   let activeJob: DocumentImportJob | null = null;
 
@@ -307,6 +446,7 @@ export async function POST(request: Request) {
       storage_bucket: "document-files",
       storage_path: storagePath,
       import_status: "queued",
+      thumbnail_status: "pending",
       source_metadata: sourceMetadata,
     })
     .select("*")
@@ -337,6 +477,7 @@ export async function POST(request: Request) {
         storage_bucket: "document-files",
         storage_path: storagePath,
         import_status: "queued",
+        thumbnail_status: "pending",
         source_metadata: sourceMetadata,
       })
       .select("*")
@@ -480,6 +621,9 @@ export async function POST(request: Request) {
       .from("documents")
       .update({
         import_status: "failed",
+        thumbnail_status: "failed",
+        thumbnail_error: message,
+        thumbnail_updated_at: new Date().toISOString(),
         source_metadata: {
           ...sourceMetadata,
           workerStatus: "dispatch_failed",

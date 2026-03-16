@@ -229,8 +229,10 @@ export function LogSection({
                     "Attached PDF"
                   }
                   annotationText={attachment.annotation_text}
+                  documentId={attachment.document_id ?? attachment.document?.id ?? null}
                   storagePath={attachment.document?.storage_path}
                   thumbnailPath={attachment.document?.thumbnail_path}
+                  thumbnailStatus={attachment.document?.thumbnail_status ?? null}
                   importStatus={importStatus}
                   progressPercent={
                     attachment.document?.latestJob?.progress_percent ?? 0

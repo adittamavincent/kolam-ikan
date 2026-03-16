@@ -3,6 +3,7 @@ import { z } from "zod";
 export const FileUploadFormSchema = z.object({
   streamId: z.string().uuid(),
   title: z.string().trim().min(1).max(200).optional(),
+  fileHash: z.string().trim().min(8).max(128).optional(),
 });
 
 export const CreateSectionFileAttachmentSchema = z.object({

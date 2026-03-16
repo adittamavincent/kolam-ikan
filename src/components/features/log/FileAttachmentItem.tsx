@@ -9,6 +9,8 @@ export interface FileAttachmentViewProps {
   annotationText?: string | null;
   storagePath?: string | null;
   thumbnailPath?: string | null;
+  thumbnailStatus?: string | null;
+  documentId?: string | null;
   importStatus?: string | null;
   progressPercent?: number;
   progressMessage?: string | null;
@@ -138,6 +140,8 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
     annotationText,
     storagePath,
     thumbnailPath,
+    thumbnailStatus,
+    documentId,
     importStatus,
     progressPercent = 0,
     progressMessage,
@@ -159,6 +163,8 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
             url={previewUrl}
             storagePath={storagePath}
             thumbnailPath={thumbnailPath}
+            thumbnailStatus={thumbnailStatus}
+            documentId={documentId}
             title={title}
             importStatus={importStatus ?? null}
             progressPercent={progressPercent}
@@ -212,6 +218,8 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               url={previewUrl}
               storagePath={storagePath}
               thumbnailPath={thumbnailPath}
+              thumbnailStatus={thumbnailStatus}
+              documentId={documentId}
               title={title}
               importStatus={importStatus ?? null}
               progressPercent={progressPercent}

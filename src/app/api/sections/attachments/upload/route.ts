@@ -56,6 +56,7 @@ export async function POST(request: Request) {
   const file = formData.get("file");
   const streamIdRaw = formData.get("streamId");
   const titleRaw = formData.get("title");
+  const fileHashRaw = formData.get("fileHash");
 
   if (!(file instanceof File) || typeof streamIdRaw !== "string") {
     return NextResponse.json(
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
   const parsed = FileUploadFormSchema.safeParse({
     streamId: streamIdRaw,
     title: typeof titleRaw === "string" ? titleRaw : undefined,
+    fileHash: typeof fileHashRaw === "string" ? fileHashRaw : undefined,
   });
 
   if (!parsed.success) {
@@ -162,8 +164,10 @@ const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWit
     extractedAuthor: pdfMetadata.author,
     extractedCreationDate: pdfMetadata.creationDate,
     pageCount: pdfMetadata.pageCount,
+    fileHash: parsed.data.fileHash,
   } : {
     uploadOrigin: "entry-creator",
+    fileHash: parsed.data.fileHash,
   };
 
   const { data: inserted, error: insertError } = await admin
@@ -179,6 +183,7 @@ const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWit
       storage_bucket: "document-files",
       storage_path: storagePath,
       import_status: "completed",
+      thumbnail_status: "pending",
       source_metadata: sourceMetadata,
       extraction_metadata: {
         ...sourceMetadata,

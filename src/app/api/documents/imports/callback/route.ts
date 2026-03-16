@@ -111,6 +111,22 @@ export async function POST(request: Request) {
     thumbnail_path: payload.thumbnailPath,
   };
 
+  const thumbnailStatus =
+    payload.thumbnailStatus ??
+    (payload.thumbnailPath
+      ? "ready"
+      : payload.status === "completed"
+        ? "failed"
+        : undefined);
+
+  if (thumbnailStatus) {
+    Object.assign(documentPatch, {
+      thumbnail_status: thumbnailStatus,
+      thumbnail_error: payload.thumbnailError ?? null,
+      thumbnail_updated_at: now,
+    });
+  }
+
   const { error: documentError } = await admin
     .from("documents")
     .update(documentPatch)

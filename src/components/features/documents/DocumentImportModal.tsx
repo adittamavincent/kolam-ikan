@@ -763,6 +763,8 @@ export function DocumentImportModal({
                           url={selectedFilePreviewUrl}
                           storagePath={null}
                           thumbnailPath={null}
+                          thumbnailStatus={null}
+                          documentId={null}
                           title={selectedFile?.name ?? "No file selected"}
                         />
                       </div>
@@ -1012,6 +1014,8 @@ export function DocumentImportModal({
                               url={localThumbnails[document.id] || null}
                               storagePath={document.storage_path}
                               thumbnailPath={document.thumbnail_path}
+                              thumbnailStatus={document.thumbnail_status ?? null}
+                              documentId={document.id}
                               title={document.title}
                               importStatus={status}
                               progressPercent={progressPercent}

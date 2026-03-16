@@ -40,6 +40,10 @@ export const DocumentImportCallbackSchema = z.object({
   errorMessage: z.string().optional(),
   chunks: z.array(DocumentChunkPayloadSchema).optional(),
   thumbnailPath: z.string().optional(),
+  thumbnailStatus: z
+    .enum(["pending", "processing", "ready", "failed", "unsupported"])
+    .optional(),
+  thumbnailError: z.string().optional(),
 });
 
 export type CreateDocumentImportInput = z.infer<

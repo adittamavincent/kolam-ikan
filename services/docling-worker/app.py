@@ -8,6 +8,7 @@ import math
 import os
 import tempfile
 from pathlib import Path
+from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
@@ -16,7 +17,6 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pdf2image import convert_from_path  # type: ignore
 from PIL import Image
 from pydantic import BaseModel, Field
-from supabase import create_client, Client
 
 from converters import convert_to_markdown
 from docling.chunking import HierarchicalChunker
@@ -84,6 +84,67 @@ def rewrite_localhost_url(url: str, override_base_url: str | None) -> str:
     return url
 
 
+def _supabase_headers(service_key: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {service_key}",
+        "apikey": service_key,
+    }
+
+
+def upload_thumbnail_to_storage(
+    supabase_url: str,
+    service_key: str,
+    thumbnail_path: str,
+    file_data: bytes,
+) -> bool:
+    url = f"{supabase_url}/storage/v1/object/thumbnails/{thumbnail_path}"
+    headers = {
+        **_supabase_headers(service_key),
+        "Content-Type": "image/png",
+        "x-upsert": "true",
+    }
+    try:
+        response = httpx.post(url, headers=headers, content=file_data, timeout=60.0)
+        if response.status_code >= 300:
+            logger.error(
+                "Thumbnail upload failed (%s): %s",
+                response.status_code,
+                response.text,
+            )
+            return False
+        return True
+    except Exception:  # noqa: BLE001
+        logger.exception("Thumbnail upload failed with exception")
+        return False
+
+
+def update_document_thumbnail_status(
+    supabase_url: str,
+    service_key: str,
+    document_id: str,
+    payload: dict[str, Any],
+) -> bool:
+    url = f"{supabase_url}/rest/v1/documents?id=eq.{document_id}"
+    headers = {
+        **_supabase_headers(service_key),
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+    try:
+        response = httpx.patch(url, headers=headers, json=payload, timeout=30.0)
+        if response.status_code >= 300:
+            logger.error(
+                "Document update failed (%s): %s",
+                response.status_code,
+                response.text,
+            )
+            return False
+        return True
+    except Exception:  # noqa: BLE001
+        logger.exception("Document update failed with exception")
+        return False
+
+
 class ParserConfig(BaseModel):
     flavor: str = Field(default="lattice")
     enableTableStructure: bool = Field(default=True)
@@ -105,6 +166,54 @@ class ImportRequest(BaseModel):
     fileUrl: str
     callbackUrl: str
     callbackToken: str
+
+
+class ThumbnailRequest(BaseModel):
+    documentId: str
+    fileName: str
+    contentType: str
+    fileUrl: str
+
+
+async def download_source_file(
+    file_url: str,
+    file_name: str,
+    content_type: str,
+) -> Path:
+    storage_url = rewrite_localhost_url(
+        file_url,
+        os.getenv("DOC_IMPORT_STORAGE_BASE_URL", "").strip() or None,
+    )
+
+    download_timeout = float(os.getenv("DOC_IMPORT_DOWNLOAD_TIMEOUT", "300"))
+    max_attempts = int(os.getenv("DOC_IMPORT_MAX_DOWNLOAD_ATTEMPTS", "3"))
+    last_exc: Exception | None = None
+    suffix = Path(file_name).suffix or ".bin"
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            if content_type == "text/url" or file_name.startswith(("http://", "https://")):
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as temp_file:
+                    temp_file_path = Path(temp_file.name)
+                    temp_file.write(file_name)
+            else:
+                async with httpx.AsyncClient(timeout=download_timeout) as client:
+                    async with client.stream("GET", storage_url) as response:
+                        response.raise_for_status()
+                        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+                            temp_file_path = Path(temp_file.name)
+                            async for chunk in response.aiter_bytes(chunk_size=8192):
+                                if chunk:
+                                    temp_file.write(chunk)
+
+            last_exc = None
+            return temp_file_path
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Download attempt %s failed for %s", attempt, storage_url)
+            last_exc = exc
+
+    assert last_exc is not None
+    raise last_exc
 
 
 def _prewarm_models() -> None:
@@ -209,6 +318,8 @@ async def send_progress(
     error_message: str | None = None,
     chunks: list[dict[str, Any]] | None = None,
     thumbnail_path: str | None = None,
+    thumbnail_status: str | None = None,
+    thumbnail_error: str | None = None,
 ) -> None:
     payload: dict[str, Any] = {
         "documentId": request.documentId,
@@ -232,6 +343,10 @@ async def send_progress(
         payload["chunks"] = chunks
     if thumbnail_path is not None:
         payload["thumbnailPath"] = thumbnail_path
+    if thumbnail_status is not None:
+        payload["thumbnailStatus"] = thumbnail_status
+    if thumbnail_error is not None:
+        payload["thumbnailError"] = thumbnail_error
 
     await post_callback(request, payload)
 
@@ -241,7 +356,7 @@ def generate_and_upload_thumbnail(
     document_id: str,
     content_type: str,
     file_name: str,
-) -> str | None:
+) -> tuple[str | None, str, str | None]:
     """Generate thumbnail for supported types and upload to Supabase storage."""
     temp_thumb_path: Path | None = None
     try:
@@ -260,45 +375,46 @@ def generate_and_upload_thumbnail(
             thumb_image.thumbnail((300, 400))
         else:
             # DOCX/PPTX/audio/URL types intentionally skip thumbnail generation.
-            return None
+            logger.info(
+                "Skipping thumbnail generation for %s (content_type=%s, filename=%s)",
+                document_id,
+                content_type,
+                file_name,
+            )
+            return None, "unsupported", None
 
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_thumb:
             thumb_image.save(temp_thumb.name, "PNG")
             temp_thumb_path = Path(temp_thumb.name)
 
         # Upload to Supabase storage
-        supabase_url = os.getenv("SUPABASE_URL")
-        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-        if not supabase_url or not supabase_key:
-            logger.error("Supabase credentials not configured for thumbnail upload")
-            return None
-
-        supabase: Client = create_client(supabase_url, supabase_key)
-
         thumbnail_path = f"{document_id}.png"
 
         with open(temp_thumb_path, "rb") as f:
             file_data = f.read()
 
-        response = supabase.storage.from_("thumbnails").upload(
-            path=thumbnail_path,
-            file=file_data,
-            file_options={"content-type": "image/png"}
-        )
+        supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
-        # supabase-py returns upload metadata, not an HTTP response object.
-        # Any upload failure throws; if we get here, treat it as success.
-        if not response:
-            logger.error("Failed to upload thumbnail for document %s: empty upload response", document_id)
-            return None
+        if not supabase_url or not supabase_key:
+            logger.error("Supabase credentials not configured for thumbnail upload")
+            return None, "failed", "Supabase credentials not configured"
+
+        upload_ok = upload_thumbnail_to_storage(
+            supabase_url,
+            supabase_key,
+            thumbnail_path,
+            file_data,
+        )
+        if not upload_ok:
+            return None, "failed", "Thumbnail upload failed"
 
         logger.info("Generated and uploaded thumbnail for %s", document_id)
-        return thumbnail_path
+        return thumbnail_path, "ready", None
 
-    except Exception:
+    except Exception as exc:
         logger.exception("Failed to generate/upload thumbnail for document %s", document_id)
-        return None
+        return None, "failed", str(exc)
     finally:
         if temp_thumb_path and temp_thumb_path.exists():
             temp_thumb_path.unlink(missing_ok=True)
@@ -307,38 +423,11 @@ def generate_and_upload_thumbnail(
 async def process_import(request: ImportRequest) -> None:
     temp_file_path: Path | None = None
     try:
-        storage_url = rewrite_localhost_url(
+        temp_file_path = await download_source_file(
             request.fileUrl,
-            os.getenv("DOC_IMPORT_STORAGE_BASE_URL", "").strip() or None,
+            request.fileName,
+            request.contentType,
         )
-
-        # Stream download in chunks to avoid large memory spikes and add simple retries.
-        download_timeout = float(os.getenv("DOC_IMPORT_DOWNLOAD_TIMEOUT", "300"))
-        max_attempts = int(os.getenv("DOC_IMPORT_MAX_DOWNLOAD_ATTEMPTS", "3"))
-        last_exc: Exception | None = None
-        suffix = Path(request.fileName).suffix or ".bin"
-        for attempt in range(1, max_attempts + 1):
-            try:
-                if request.contentType == "text/url" or request.fileName.startswith(("http://", "https://")):
-                    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as temp_file:
-                        temp_file_path = Path(temp_file.name)
-                        temp_file.write(request.fileName)
-                else:
-                    async with httpx.AsyncClient(timeout=download_timeout) as client:
-                        async with client.stream("GET", storage_url) as response:
-                            response.raise_for_status()
-                            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
-                                temp_file_path = Path(temp_file.name)
-                                async for chunk in response.aiter_bytes(chunk_size=8192):
-                                    if chunk:
-                                        temp_file.write(chunk)
-                last_exc = None
-                break
-            except Exception as exc:  # noqa: BLE001
-                logger.exception("Download attempt %s failed for %s", attempt, storage_url)
-                last_exc = exc
-        if last_exc is not None:
-            raise last_exc
 
         await send_progress(
             request,
@@ -348,7 +437,7 @@ async def process_import(request: ImportRequest) -> None:
             eta_seconds=5,
         )
 
-        thumbnail_path = generate_and_upload_thumbnail(
+        thumbnail_path, thumbnail_status, thumbnail_error = generate_and_upload_thumbnail(
             temp_file_path,
             request.documentId,
             request.contentType,
@@ -363,6 +452,9 @@ async def process_import(request: ImportRequest) -> None:
             progress_percent=35,
             progress_message="Converting to markdown",
             eta_seconds=max(8, math.ceil(file_size / (512 * 1024)) * 6),
+            thumbnail_path=thumbnail_path,
+            thumbnail_status=thumbnail_status,
+            thumbnail_error=thumbnail_error,
         )
 
         loop = asyncio.get_running_loop()
@@ -435,6 +527,8 @@ async def process_import(request: ImportRequest) -> None:
             warning_messages=[],
             chunks=chunks,
             thumbnail_path=thumbnail_path,
+            thumbnail_status=thumbnail_status,
+            thumbnail_error=thumbnail_error,
         )
 
         logger.info("Completed import job %s for document %s", request.jobId, request.documentId)
@@ -451,6 +545,54 @@ async def process_import(request: ImportRequest) -> None:
             )
         except Exception:  # noqa: BLE001
             logger.exception("Failed to send failure callback for job %s", request.jobId)
+    finally:
+        if temp_file_path and temp_file_path.exists():
+            temp_file_path.unlink(missing_ok=True)
+
+@app.post("/thumbnails")
+async def create_thumbnail(request: ThumbnailRequest) -> dict[str, Any]:
+    temp_file_path: Path | None = None
+    try:
+        temp_file_path = await download_source_file(
+            request.fileUrl,
+            request.fileName,
+            request.contentType,
+        )
+
+        thumbnail_path, thumbnail_status, thumbnail_error = generate_and_upload_thumbnail(
+            temp_file_path,
+            request.documentId,
+            request.contentType,
+            request.fileName,
+        )
+
+        supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if supabase_url and supabase_key:
+            update_payload = {
+                "thumbnail_status": thumbnail_status,
+                "thumbnail_error": thumbnail_error,
+                "thumbnail_updated_at": datetime.utcnow().isoformat(),
+            }
+            if thumbnail_status == "ready":
+                update_payload["thumbnail_path"] = thumbnail_path
+            update_document_thumbnail_status(
+                supabase_url,
+                supabase_key,
+                request.documentId,
+                update_payload,
+            )
+        else:
+            logger.error("Supabase credentials not configured for thumbnail status update")
+
+        return {
+            "status": thumbnail_status,
+            "thumbnailPath": thumbnail_path,
+            "error": thumbnail_error,
+        }
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Failed thumbnail job for document %s", request.documentId)
+        return {"status": "failed", "error": str(exc)}
     finally:
         if temp_file_path and temp_file_path.exists():
             temp_file_path.unlink(missing_ok=True)

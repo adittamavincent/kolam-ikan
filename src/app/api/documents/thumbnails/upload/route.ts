@@ -85,6 +85,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
+    // Link this newly generated thumbnail back to the document record.
+    // This resolves issues where the backend `thumbnail_path` remained null
+    // after a successful direct-attach file upload on the UI side.
+    const { error: dbUpdateError } = await admin
+      .from("documents")
+      .update({
+        thumbnail_path: thumbnailPath,
+        thumbnail_status: "ready",
+        thumbnail_error: null,
+        thumbnail_updated_at: new Date().toISOString(),
+      })
+      .eq("storage_path", storagePath)
+      // Only attach if not already populated to prevent race conditions with Docling
+      .is("thumbnail_path", null);
+
+    if (dbUpdateError) {
+      console.warn("[Thumbnail API] DB update warning:", dbUpdateError);
+    }
+
+    console.info("[Thumbnail API] Uploaded thumbnail", {
+      userId: authData.user.id,
+      storagePath,
+      thumbnailPath,
+    });
+
     return NextResponse.json({ success: true, path: thumbnailPath });
   } catch (error) {
     console.error("[Thumbnail API] Unexpected error:", error);

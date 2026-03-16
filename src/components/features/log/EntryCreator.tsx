@@ -460,8 +460,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                       author: null,
                       creationDate: null,
                       storagePath: attachment.storagePath ?? "",
-                      thumbnailPath: null,
-                      previewUrl: null,
+                      thumbnailPath: attachment.thumbnailPath ?? null,
+                      previewUrl: attachment.previewUrl ?? null,
                       annotationText: attachment.annotationText ?? null,
                       referencedPersonaId:
                         attachment.referencedPersonaId ?? null,
@@ -506,6 +506,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           referencedPersonaId: attachment.referencedPersonaId ?? null,
           referencedPage: attachment.referencedPage ?? null,
           fileHash: attachment.fileHash,
+          previewUrl: attachment.previewUrl ?? null,
         })),
         content: [],
       });
@@ -1523,6 +1524,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                       const importStatus =
                                         docDetail?.import_status ??
                                         latestJob?.status;
+                                      const thumbnailStatus =
+                                        docDetail?.thumbnail_status ?? null;
                                       const isProcessing =
                                         importStatus === "queued" ||
                                         importStatus === "processing";
@@ -1549,12 +1552,18 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                           variant="creator"
                                           title={attachment.titleSnapshot}
                                           subtitle={`${attachment.pageCount > 0 ? `${attachment.pageCount} pages` : "PDF"}${attachment.author ? ` • ${attachment.author}` : ""}`}
+                                          documentId={
+                                            attachment.documentId ??
+                                            docDetail?.id ??
+                                            null
+                                          }
                                           storagePath={attachment.storagePath}
                                           thumbnailPath={
                                             attachment.thumbnailPath ??
                                             docDetail?.thumbnail_path ??
                                             null
                                           }
+                                          thumbnailStatus={thumbnailStatus}
                                           importStatus={importStatus ?? null}
                                           progressPercent={progressPercent}
                                           progressMessage={progressMessage}

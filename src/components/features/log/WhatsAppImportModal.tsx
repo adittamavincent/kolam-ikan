@@ -123,10 +123,12 @@ interface ParsedTurn {
 interface PdfUploadState {
   status: "pending" | "uploading" | "done" | "error" | "skipped";
   file?: File;
+  fileHash?: string;
   documentId?: string;
   storagePath?: string;
   thumbnailPath?: string;
   titleSnapshot?: string;
+  previewUrl?: string; // Preserve local Blob URL after upload
   error?: string;
 }
 
@@ -1060,13 +1062,95 @@ export function WhatsAppImportModal({
       for (const t of pdfTurns) {
         const matched = findBestPdfForTurn(t, zipPdfIndex);
         if (!matched) continue;
-        handleFileSelect(t.id, matched);
+        handleFileSelect(t.id, matched, t.preferredTitle ?? t.filename);
       }
     }
   };
 
-  const handleFileSelect = (turnId: string, file: File) => {
-    setUploads((prev) => ({ ...prev, [turnId]: { status: "pending", file } }));
+  const handleFileSelect = async (
+    turnId: string,
+    file: File,
+    titleHint?: string,
+  ) => {
+    const blobUrl = URL.createObjectURL(file);
+    const safeTitle =
+      titleHint?.trim() ||
+      file.name.replace(/\.[^/.]+$/, "") ||
+      "Document";
+
+    setUploads((prev) => ({
+      ...prev,
+      [turnId]: {
+        ...prev[turnId],
+        status: "uploading",
+        file,
+        previewUrl: blobUrl,
+        titleSnapshot: safeTitle,
+        error: undefined,
+      },
+    }));
+
+    try {
+      const fileHash = await calculateFileHash(file);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("streamId", streamId);
+      formData.append("title", safeTitle);
+      formData.append("fileHash", fileHash);
+
+      const response = await fetch("/api/sections/attachments/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            document?: {
+              id: string;
+              storage_path: string;
+              thumbnail_path: string | null;
+              title: string;
+            };
+            previewUrl?: string | null;
+            error?: string;
+          }
+        | null;
+
+      if (!response.ok || !payload?.document) {
+        throw new Error(payload?.error ?? "Failed to upload attachment");
+      }
+
+      const doc = payload.document;
+
+      setUploads((prev) => ({
+        ...prev,
+        [turnId]: {
+          ...prev[turnId],
+          status: "pending",
+          file,
+          fileHash,
+          documentId: doc.id,
+          storagePath: doc.storage_path,
+          thumbnailPath: doc.thumbnail_path ?? undefined,
+          previewUrl: payload.previewUrl ?? blobUrl,
+          titleSnapshot: doc.title || safeTitle,
+          error: undefined,
+        },
+      }));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to upload attachment";
+      setUploads((prev) => ({
+        ...prev,
+        [turnId]: {
+          ...prev[turnId],
+          status: "error",
+          file,
+          previewUrl: blobUrl,
+          error: message,
+        },
+      }));
+    }
   };
 
   const handleProcessAndConfirm = async () => {
@@ -1134,6 +1218,7 @@ export function WhatsAppImportModal({
             documentId: upload.documentId,
             storagePath: upload.storagePath,
             thumbnailPath: upload.thumbnailPath,
+            ...(upload.previewUrl ? { previewUrl: upload.previewUrl } : {}),
             titleSnapshot:
               upload.titleSnapshot ??
               turn.preferredTitle ??
@@ -1163,7 +1248,7 @@ export function WhatsAppImportModal({
               fileSize: file.size,
               fileType: file.type,
             });
-          const hash = await calculateFileHash(file);
+          const hash = upload.fileHash ?? (await calculateFileHash(file));
 
           if (!transferFiles.find((f) => f.file === file)) {
             transferFiles.push({ file, hash });
@@ -1172,9 +1257,16 @@ export function WhatsAppImportModal({
           // Create a blob URL for immediate preview display
           const blobUrl = URL.createObjectURL(file);
 
+          // Track this preview URL within the upload state, even though it's still pending
+          // Update synchronously without recreating the entire object
+          upload.previewUrl = blobUrl;
+
           // Include placeholder attachment in inject payload so EntryCreator creates the section
           // The actual documentId will be added once Dockling processing completes
           const attachment = {
+            documentId: upload.documentId,
+            storagePath: upload.storagePath,
+            thumbnailPath: upload.thumbnailPath,
             titleSnapshot:
               upload.titleSnapshot ??
               turn.preferredTitle ??
@@ -1303,6 +1395,7 @@ export function WhatsAppImportModal({
           documentId: upload.documentId,
           storagePath: upload.storagePath,
           thumbnailPath: upload.thumbnailPath,
+          ...(upload.previewUrl ? { previewUrl: upload.previewUrl } : {}),
           titleSnapshot:
             upload.titleSnapshot ??
             turn.preferredTitle ??
@@ -2051,9 +2144,14 @@ export function WhatsAppImportModal({
                         key={turn.id}
                         turn={turn}
                         upload={upload}
-                        onFileSelect={(file) => handleFileSelect(turn.id, file)}
+                        onFileSelect={(file, titleHint) => handleFileSelect(turn.id, file, titleHint)}
                         onRetry={() =>
-                          upload.file && handleFileSelect(turn.id, upload.file)
+                          upload.file &&
+                          handleFileSelect(
+                            turn.id,
+                            upload.file,
+                            turn.preferredTitle ?? turn.filename,
+                          )
                         }
                         onSkip={() =>
                           setUploads((prev) => ({
@@ -2240,7 +2338,7 @@ function PdfUploadRow({
 }: {
   turn: ParsedTurn;
   upload: PdfUploadState;
-  onFileSelect: (file: File) => void;
+  onFileSelect: (file: File, titleHint?: string) => void;
   onRetry: () => void;
   onSkip: () => void;
   onUnskip: () => void;
@@ -2271,6 +2369,8 @@ function PdfUploadRow({
             url={previewUrl}
             storagePath={upload.storagePath}
             thumbnailPath={upload.thumbnailPath}
+            thumbnailStatus={null}
+            documentId={upload.documentId ?? null}
             title={filename}
             importStatus={isError ? "failed" : isUploading ? "processing" : isQueued ? "queued" : isDone ? "completed" : null}
           />
@@ -2367,7 +2467,7 @@ function PdfUploadRow({
                 className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) onFileSelect(file);
+                  if (file) onFileSelect(file, turn.preferredTitle ?? turn.filename);
                   e.target.value = "";
                 }}
               />

@@ -3,14 +3,22 @@ services:
     build:
       context: ./services/docling-worker
     container_name: kolam_docling_worker
+    env_file:
+      - .env.local
     environment:
       DOC_IMPORT_CALLBACK_BASE_URL: http://host.docker.internal:3000
       DOC_IMPORT_STORAGE_BASE_URL: http://host.docker.internal:54321
       # Supabase admin credentials required for thumbnail uploads and other admin operations
-      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_URL: ${SUPABASE_URL_DOCKER:-http://host.docker.internal:54321}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ./services/docling-worker:/app
+      - docling_models:/root/.cache/huggingface
     ports:
       - "8090:8090"
     restart: unless-stopped
+
+volumes:
+  docling_models:

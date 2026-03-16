@@ -1,17 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useState } from "react";
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from "@headlessui/react";
 import { Paperclip, Trash2, Download, X } from "lucide-react";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
-
-interface Attachment {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  dataUrl: string; // data URL for preview / download
-}
+import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
+import { useDocuments } from "@/lib/hooks/useDocuments";
 
 interface AttachmentsManagerProps {
   isOpen: boolean;
@@ -19,50 +13,20 @@ interface AttachmentsManagerProps {
   userId: string;
 }
 
-const STORAGE_KEY = (userId: string) => `attachments:${userId}`;
-
 export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManagerProps) {
-  const [attachments, setAttachments] = useState<Attachment[]>(() => {
-    try {
-      if (typeof window === "undefined") return [];
-      const raw = localStorage.getItem(STORAGE_KEY(userId));
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  });
+  const { documents, isLoading, deleteDocument } = useDocuments(userId);
   const [docImportOpen, setDocImportOpen] = useState(false);
-
-  // Reload attachments when the userId changes — defer setState to avoid
-  // triggering cascading renders in an effect body.
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      const raw = localStorage.getItem(STORAGE_KEY(userId));
-      const data = raw ? JSON.parse(raw) : [];
-      Promise.resolve().then(() => setAttachments(data));
-    } catch {
-      Promise.resolve().then(() => setAttachments([]));
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY(userId), JSON.stringify(attachments));
-    } catch {
-      // ignore storage errors
-    }
-  }, [attachments, userId]);
-
+  const attachments = documents ?? [];
 
   const handleRemove = (id: string) => {
-    setAttachments((s) => s.filter((a) => a.id !== id));
+    deleteDocument.mutate({ documentId: id });
   };
 
-  const handleDownload = (att: Attachment) => {
+  const handleDownload = (url: string | null, filename: string) => {
+    if (!url) return;
     const a = document.createElement("a");
-    a.href = att.dataUrl;
-    a.download = att.name;
+    a.href = url;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -121,33 +85,54 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                   </div>
 
                   <div className="max-h-64 overflow-y-auto border border-border-default p-2 bg-surface-default">
-                    {attachments.length === 0 && (
+                    {isLoading && (
+                      <div className="text-sm text-text-muted">Loading attachments…</div>
+                    )}
+                    {!isLoading && attachments.length === 0 && (
                       <div className="text-sm text-text-muted">No attachments yet.</div>
                     )}
 
                     <ul className="space-y-2">
-                      {attachments.map((att) => (
+                      {attachments.map((att) => {
+                        const name = att.title || att.original_filename || "Document";
+                        return (
                         <li key={att.id} className="flex items-center justify-between gap-2 rounded p-2 hover:bg-surface-subtle">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded bg-surface-subtle text-text-muted">
-                              <Paperclip className="h-4 w-4" />
-                            </div>
+                            <FileAttachmentThumbnail
+                              url={att.fileUrl ?? null}
+                              storagePath={att.storage_path}
+                              thumbnailPath={att.thumbnail_path}
+                              thumbnailStatus={att.thumbnail_status}
+                              documentId={att.id}
+                              title={name}
+                              importStatus={att.import_status}
+                            />
                             <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-text-default">{att.name}</div>
-                              <div className="text-[10px] text-text-muted">{Math.round(att.size / 1024)} KB • {att.type || "—"}</div>
+                              <div className="truncate text-sm font-medium text-text-default">{name}</div>
+                              <div className="text-[10px] text-text-muted">
+                                {att.file_size_bytes ? `${Math.round(att.file_size_bytes / 1024)} KB` : "—"}
+                                {" • "}
+                                {att.content_type || "—"}
+                              </div>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <button onClick={() => handleDownload(att)} className="text-text-muted hover:text-text-default">
+                            <button
+                              onClick={() => handleDownload(att.fileUrl ?? null, name)}
+                              className="text-text-muted hover:text-text-default"
+                            >
                               <Download className="h-4 w-4" />
                             </button>
-                            <button onClick={() => handleRemove(att.id)} className="text-status-error-text hover:opacity-80">
+                            <button
+                              onClick={() => handleRemove(att.id)}
+                              className="text-status-error-text hover:opacity-80"
+                            >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </li>
-                      ))}
+                      )})}
                     </ul>
                   </div>
                 </div>

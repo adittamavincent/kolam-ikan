@@ -682,11 +682,11 @@ export function DocumentImportModal({
             <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95 translate-y-4"
+              enterFrom="opacity-0 translate-y-4"
               enterTo="opacity-100 scale-100 translate-y-0"
               leave="ease-in duration-200"
               leaveFrom="opacity-100 scale-100 translate-y-0"
-              leaveTo="opacity-0 scale-95 translate-y-4"
+              leaveTo="opacity-0 translate-y-4"
             >
           <DialogPanel
             ref={dialogPanelRef}

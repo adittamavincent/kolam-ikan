@@ -54,7 +54,7 @@ export function StreamView({ streamId }: { streamId: string }) {
   }, []);
 
   return (
-    <div className="flex flex-1 relative min-h-0 h-full">
+    <div className="flex flex-1 relative min-w-0 min-h-0 h-full w-full">
       <LogPane streamId={streamId} logWidth={logWidth} />
       <CanvasPane streamId={streamId} />
 

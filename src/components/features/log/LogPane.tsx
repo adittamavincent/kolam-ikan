@@ -941,6 +941,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const isVisible = resolvedWidth > 0;
   const containerStyle = {
     width: `${resolvedWidth}%`,
+    maxWidth: `${resolvedWidth}%`,
+    flex: `0 0 ${resolvedWidth}%`,
     minWidth: "0px",
     opacity: isVisible ? 1 : 0,
     transition: "all 400ms cubic-bezier(0.4, 0, 0.2, 1)",

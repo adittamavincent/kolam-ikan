@@ -509,7 +509,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 border border-border-default bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all">
             <button
               onClick={() => setMode("log-only")}
-              className={` p-2 transition-all ${
+              className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isLogMaximized
                   ? "bg-action-primary-bg text-white shadow-md"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
@@ -521,7 +521,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
             <button
               onClick={() => setMode("balanced")}
-              className={` p-2 transition-all ${
+              className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isBalanced
                   ? "bg-action-primary-bg text-white shadow-md"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
@@ -533,7 +533,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
             <button
               onClick={() => setMode("canvas-only")}
-              className={` p-2 transition-all ${
+              className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isCanvasMaximized
                   ? "bg-action-primary-bg text-white shadow-md"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
@@ -567,11 +567,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             <TransitionChild
               as={Fragment}
               enter="ease-out duration-200"
-              enterFrom="opacity-0 scale-95"
-              enterTo="opacity-100 scale-100"
+              enterFrom="opacity-0"
+              enterTo="opacity-100"
               leave="ease-in duration-150"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
+              leaveFrom="opacity-100"
+              leaveTo="opacity-0"
             >
               <DialogPanel className="w-full max-w-2xl border border-border-default bg-surface-default p-5 shadow-2xl">
                 <DialogTitle className="text-sm font-semibold text-text-default">

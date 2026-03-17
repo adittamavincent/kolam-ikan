@@ -1497,11 +1497,11 @@ export function WhatsAppImportModal({
             <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95 translate-y-4"
+              enterFrom="opacity-0 translate-y-4"
               enterTo="opacity-100 scale-100 translate-y-0"
               leave="ease-in duration-200"
               leaveFrom="opacity-100 scale-100 translate-y-0"
-              leaveTo="opacity-0 scale-95 translate-y-4"
+              leaveTo="opacity-0 translate-y-4"
             >
               <DialogPanel className="flex w-full max-w-xl flex-col border border-border-default/70 bg-surface-default shadow-2xl transition-all">
             {/* ─── Header ────────────────────────────────────────────────── */}

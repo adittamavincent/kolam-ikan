@@ -53,11 +53,11 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
             <TransitionChild
               as={Fragment}
               enter="ease-out duration-300"
-              enterFrom="opacity-0 scale-95"
+              enterFrom="opacity-0"
               enterTo="opacity-100 scale-100"
               leave="ease-in duration-200"
               leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0 scale-95"
+              leaveTo="opacity-0"
             >
               <DialogPanel className="w-full max-w-2xl transform overflow-hidden bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
                 <div className="flex items-start justify-between">

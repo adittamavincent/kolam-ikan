@@ -282,11 +282,11 @@ export function DomainSwitcher({
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
-            enterFrom="transform opacity-0 scale-95"
+            enterFrom="transform opacity-0"
             enterTo="transform opacity-100 scale-100"
             leave="transition ease-in duration-75"
             leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0 scale-95"
+            leaveTo="transform opacity-0"
           >
             <MenuItems
               id={`${profileMenuIdBase}-items`}
@@ -378,11 +378,11 @@ export function DomainSwitcher({
               <TransitionChild
                 as={Fragment}
                 enter="ease-out duration-300"
-                enterFrom="opacity-0 scale-95"
+                enterFrom="opacity-0"
                 enterTo="opacity-100 scale-100"
                 leave="ease-in duration-200"
                 leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0 scale-95"
+                leaveTo="opacity-0"
               >
                 <DialogPanel className="w-full max-w-md transform overflow-hidden bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
                   <DialogTitle

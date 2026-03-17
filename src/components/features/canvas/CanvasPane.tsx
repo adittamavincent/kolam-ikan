@@ -37,6 +37,8 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   // Calculate smooth animation - slides in from right with decompression
   const containerStyle = {
     width: `${canvasWidth}%`,
+    maxWidth: `${canvasWidth}%`,
+    flex: `0 0 ${canvasWidth}%`,
     minWidth: "0px",
     opacity: isVisible ? 1 : 0,
     transition: "all 400ms cubic-bezier(0.4, 0, 0.2, 1)",

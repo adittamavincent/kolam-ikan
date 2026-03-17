@@ -92,11 +92,11 @@ export function ConfirmDialog({
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-200"
-            enterFrom="opacity-0 translate-y-2 scale-95"
+            enterFrom="opacity-0 translate-y-2"
             enterTo="opacity-100 translate-y-0 scale-100"
             leave="ease-in duration-150"
             leaveFrom="opacity-100 translate-y-0 scale-100"
-            leaveTo="opacity-0 translate-y-2 scale-95"
+            leaveTo="opacity-0 translate-y-2"
           >
             <Dialog.Panel className="w-full max-w-lg border border-border-default bg-surface-default p-6 text-left shadow-2xl">
               <div className="flex items-start gap-3">

@@ -11,17 +11,17 @@ const config: Config = {
       colors: {
         // Kolam Ikan Brand Colors
         primary: {
-          50: "#f0f9ff",
-          100: "#e0f2fe",
-          200: "#bae6fd",
-          300: "#7dd3fc",
-          400: "#38bdf8",
-          500: "#0ea5e9",
-          600: "#0284c7",
-          700: "#0369a1",
-          800: "#075985",
-          900: "#0c4a6e",
-          950: "#082f49",
+          50: "#eef3ff",
+          100: "#dae6ff",
+          200: "#b7cfff",
+          300: "#95b8ff",
+          400: "#7fa8ff",
+          500: "#568af2",
+          600: "#4d78cc",
+          700: "#4269b9",
+          800: "#375698",
+          900: "#2e477b",
+          950: "#243963",
         },
         // Semantic Tokens
         background: "var(--background)",
@@ -71,11 +71,11 @@ const config: Config = {
           },
         },
         // Domain Colors
-        programming: "#3B82F6", // Blue
-        internship: "#8B5CF6", // Purple
-        gym: "#EF4444", // Red
-        scholarship: "#10B981", // Green
-        hima: "#F59E0B", // Orange
+        programming: "#61afef", // One Dark blue
+        internship: "#c678dd", // One Dark purple
+        gym: "#e06c75", // One Dark red
+        scholarship: "#98c379", // One Dark green
+        hima: "#e5c07b", // One Dark yellow
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

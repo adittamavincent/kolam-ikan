@@ -13,24 +13,24 @@
   /* -------------------------------------------------------------------------- */
 
   /* Primary Brand Colors */
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-200: #bae6fd;
-  --color-primary-300: #7dd3fc;
-  --color-primary-400: #38bdf8;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-  --color-primary-800: #075985;
-  --color-primary-900: #0c4a6e;
-  --color-primary-950: #082f49;
+  --color-primary-50: #eef3ff;
+  --color-primary-100: #dae6ff;
+  --color-primary-200: #b7cfff;
+  --color-primary-300: #95b8ff;
+  --color-primary-400: #7fa8ff;
+  --color-primary-500: #568af2;
+  --color-primary-600: #4d78cc;
+  --color-primary-700: #4269b9;
+  --color-primary-800: #375698;
+  --color-primary-900: #2e477b;
+  --color-primary-950: #243963;
 
   /* Domain Colors */
-  --color-programming: #3b82f6;
-  --color-internship: #8b5cf6;
-  --color-gym: #ef4444;
-  --color-scholarship: #10b981;
-  --color-hima: #f59e0b;
+  --color-programming: #61afef;
+  --color-internship: #c678dd;
+  --color-gym: #e06c75;
+  --color-scholarship: #98c379;
+  --color-hima: #e5c07b;
 
   /* -------------------------------------------------------------------------- */
   /*  SEMANTIC TOKENS (Theming System)                                         */
@@ -75,132 +75,88 @@
   --color-status-success-text: var(--status-success-text);
 }
 
-/* -------------------------------------------------------------------------- */
-/*  THEME VARIABLES (Light/Dark Implementation)                              */
-/* -------------------------------------------------------------------------- */
-
 :root {
-  color-scheme: light dark;
-  /* Base - Light Mode */
-  --background: #ffffff;
-  --foreground: #111827;
-  /* gray-900 */
+  color-scheme: dark;
+
+  /* Base - One Dark */
+  --background: #21252b;
+  --foreground: #abb2bf;
 
   /* Surfaces */
-  --bg-surface-default: #ffffff;
-  --bg-surface-subtle: #f9fafb;
-  /* gray-50 */
-  --bg-surface-elevated: #ffffff;
-  --bg-surface-hover: #f3f4f6;
-  /* gray-100 */
-  --bg-surface-dark: #111827;
-  /* gray-900 */
-  --bg-surface-overlay: rgba(0, 0, 0, 0.5);
+  --bg-surface-default: #21252b;
+  --bg-surface-subtle: #282c34;
+  --bg-surface-elevated: #2c313a;
+  --bg-surface-hover: #323844;
+  --bg-surface-dark: #1b1f24;
+  --bg-surface-overlay: rgba(18, 20, 24, 0.72);
 
   /* Text */
-  --text-default: #111827;
-  /* gray-900 */
-  --text-subtle: #4b5563;
-  /* gray-600 */
-  --text-muted: #9ca3af;
-  /* gray-400 */
+  --text-default: #abb2bf;
+  --text-subtle: #a0a7b4;
+  --text-muted: #5c6370;
   --text-inverse: #ffffff;
 
   /* Borders */
-  --border-default: #e5e7eb;
-  /* gray-200 */
-  --border-subtle: #f3f4f6;
-  /* gray-100 */
-  --border-strong: #d1d5db;
-  /* gray-300 */
+  --border-default: #333841;
+  --border-subtle: #2d3137;
+  --border-strong: #464c55;
 
-  /* Action: Primary (Blue) */
-  --action-primary-bg: #0369a1;
-  /* primary-700 for better contrast (AA) */
-  --action-primary-hover: #075985;
-  /* primary-800 */
-  --action-primary-text: #ffffff;
-  --action-primary-disabled: #93c5fd;
+  /* Action */
+  --action-primary-bg: #568af2;
+  --action-primary-hover: #6494ed;
+  --action-primary-text: #eef3ff;
+  --action-primary-disabled: #4269b9;
 
-  /* Action: Secondary (White/Gray) */
-  --action-secondary-bg: #ffffff;
-  --action-secondary-hover: #f9fafb;
-  /* gray-50 */
-  --action-secondary-text: #374151;
-  /* gray-700 */
-  --action-secondary-border: #d1d5db;
-  /* gray-300 */
+  --action-secondary-bg: #3d424b;
+  --action-secondary-hover: #414855;
+  --action-secondary-text: #a0a7b4;
+  --action-secondary-border: #464c55;
 
   /* Status */
-  --status-error-bg: #fef2f2;
-  /* red-50 */
-  --status-error-border: #fecaca;
-  /* red-200 */
-  --status-error-text: #b91c1c;
-  /* red-700 for better contrast */
-  --status-success-bg: #f0fdf4;
-  /* green-50 */
-  --status-success-text: #15803d;
-  /* green-700 for consistency */
+  --status-error-bg: #4d232e;
+  --status-error-border: #692746;
+  --status-error-text: #e06c75;
+  --status-success-bg: #2b4242;
+  --status-success-text: #98c379;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Base - Dark Mode */
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Keep One Dark tokens for all system appearances */
+    --background: #21252b;
+    --foreground: #abb2bf;
 
-    /* Surfaces */
-    --bg-surface-default: #0a0a0a;
-    --bg-surface-subtle: #171717;
-    /* neutral-900 */
-    --bg-surface-elevated: #262626;
-    /* neutral-800 */
-    --bg-surface-hover: #2a2a2a;
-    --bg-surface-dark: #0f0f0f;
-    --bg-surface-overlay: rgba(0, 0, 0, 0.7);
+    --bg-surface-default: #21252b;
+    --bg-surface-subtle: #282c34;
+    --bg-surface-elevated: #2c313a;
+    --bg-surface-hover: #323844;
+    --bg-surface-dark: #1b1f24;
+    --bg-surface-overlay: rgba(18, 20, 24, 0.72);
 
-    /* Text */
-    --text-default: #ededed;
-    --text-subtle: #a3a3a3;
-    /* neutral-400 */
-    --text-muted: #525252;
-    /* neutral-600 */
-    --text-inverse: #000000;
+    --text-default: #abb2bf;
+    --text-subtle: #a0a7b4;
+    --text-muted: #5c6370;
+    --text-inverse: #ffffff;
 
-    /* Borders */
-    --border-default: #3f3f3f;
-    /* neutral-700 for visibility */
-    --border-subtle: #2a2a2a;
-    /* slightly above surface-subtle */
-    --border-strong: #525252;
-    /* neutral-600 */
+    --border-default: #333841;
+    --border-subtle: #2d3137;
+    --border-strong: #464c55;
 
-    /* Action: Primary */
-    --action-primary-bg: #38bdf8;
-    /* primary-400 (lighter for dark mode) */
-    --action-primary-hover: #7dd3fc;
-    /* primary-300 */
-    --action-primary-text: #082f49;
-    /* primary-950 (dark text on light btn) */
+    --action-primary-bg: #568af2;
+    --action-primary-hover: #6494ed;
+    --action-primary-text: #eef3ff;
+    --action-primary-disabled: #4269b9;
 
-    /* Action: Secondary */
-    --action-secondary-bg: #171717;
-    --action-secondary-hover: #262626;
-    --action-secondary-text: #e5e5e5;
-    --action-secondary-border: #404040;
+    --action-secondary-bg: #3d424b;
+    --action-secondary-hover: #414855;
+    --action-secondary-text: #a0a7b4;
+    --action-secondary-border: #464c55;
 
-    /* Status */
-    --status-error-bg: #450a0a;
-    /* red-950 */
-    --status-error-border: #7f1d1d;
-    /* red-900 */
-    --status-error-text: #f87171;
-    /* red-400 */
-    --status-success-bg: #052e16;
-    /* green-950 */
-    --status-success-text: #4ade80;
-    /* green-400 */
+    --status-error-bg: #4d232e;
+    --status-error-border: #692746;
+    --status-error-text: #e06c75;
+    --status-success-bg: #2b4242;
+    --status-success-text: #98c379;
   }
 }
 
@@ -208,6 +164,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: #323844;
+  color: #d7dae0;
 }
 
 /* -------------------------------------------------------------------------- */

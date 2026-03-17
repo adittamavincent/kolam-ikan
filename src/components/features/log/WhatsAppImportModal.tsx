@@ -28,15 +28,15 @@ import {
   Upload,
   UserPlus,
 } from "lucide-react";
-import { usePersonas } from "@/lib/hooks/usePersonas";
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { DynamicIcon } from "@/components/shared/DynamicIcon";
-import { FileAttachmentThumbnail } from "./FileAttachmentThumbnail";
-import { createClient } from "@/lib/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
 
-// ─── Global temp file store ──────────────────────────────────────────────────
-// Use a Map to temporarily store File objects since they don't serialize well through events
+import { useQueryClient } from "@tanstack/react-query";
+import { createClient } from "@/lib/supabase/client";
+import { usePersonas } from "@/lib/hooks/usePersonas";
+import { useDocuments } from "@/lib/hooks/useDocuments";
+import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
+import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+
 declare global {
   interface Window {
     kolam_temp_files?: Map<
@@ -76,6 +76,7 @@ const setPendingFileIds = (ids: string[]): void => {
 
 const generateFileId = (): string =>
   `file_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
 import JSZip from "jszip";
 import { calculateFileHash } from "@/lib/utils/hash";
 
@@ -121,7 +122,7 @@ interface ParsedTurn {
 }
 
 interface PdfUploadState {
-  status: "pending" | "uploading" | "done" | "error" | "skipped";
+  status: "pending" | "uploading" | "done" | "error" | "skipped" | "exists";
   file?: File;
   fileHash?: string;
   documentId?: string;
@@ -130,6 +131,14 @@ interface PdfUploadState {
   titleSnapshot?: string;
   previewUrl?: string; // Preserve local Blob URL after upload
   error?: string;
+  existingDocument?: {
+    id?: string;
+    storagePath?: string;
+    thumbnailPath?: string | null;
+    title?: string;
+    created_at?: string;
+    user_id?: string | null;
+  } | null;
 }
 
 interface ParsedZipData {
@@ -579,6 +588,7 @@ export function WhatsAppImportModal({
   const [zipAutoUploadRan, setZipAutoUploadRan] = useState(false);
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
+  const [allPdfsExistDialogOpen, setAllPdfsExistDialogOpen] = useState(false);
   const [existingShadowReuseCount, setExistingShadowReuseCount] = useState(0);
   const [pendingPersonaCreations, setPendingPersonaCreations] = useState<string[]>([]);
   const [draftPersonas, setDraftPersonas] = useState<Record<string, {
@@ -662,7 +672,7 @@ export function WhatsAppImportModal({
     (u) => u.status === "uploading",
   );
   const doneUploadCount = Object.values(uploads).filter(
-    (u) => u.status === "done",
+    (u) => u.status === "done" || u.status === "exists",
   ).length;
   const queuedUploadCount = Object.values(uploads).filter(
     (u) => u.status === "pending" && !!u.file,
@@ -675,7 +685,7 @@ export function WhatsAppImportModal({
   const allPdfsPrepared = pdfTurns.every((turn) => {
     const upload = uploads[turn.id];
     if (!upload) return false;
-    if (upload.status === "skipped" || upload.status === "done") return true;
+    if (upload.status === "skipped" || upload.status === "done" || upload.status === "exists") return true;
     return !!upload.file;
   });
   // Live preview (step 1 only)
@@ -696,6 +706,9 @@ export function WhatsAppImportModal({
     () => getStreamShadowPersonas(personas, streamId),
     [personas, streamId],
   );
+
+  // Documents the user/stream already has — used for duplicate detection
+  const { documents } = useDocuments(streamId);
 
   const shadowPersonaIds = useMemo(
     () => new Set(shadowPersonas.map((p) => p.id)),
@@ -1040,30 +1053,161 @@ export function WhatsAppImportModal({
       return;
     }
 
-    // Initialize upload slots
-    setUploads((prev) => {
-      const next: Record<string, PdfUploadState> = { ...prev };
-      for (const t of pdfTurns) {
-        if (!next[t.id]) next[t.id] = { status: "pending" };
-      }
-      return next;
-    });
-    setStep("files");
+    // Duplicate-detection: compare file hashes and storage/name keys against existing documents
+    try {
+      const docs = documents ?? [];
+      type DocLite = {
+        source_metadata?: { fileHash?: string } | undefined;
+        storage_path?: string | undefined;
+        title?: string | undefined;
+        id?: string;
+        thumbnail_path?: string | undefined;
+        created_at?: string | undefined;
+        user_id?: string | null | undefined;
+      };
 
-    // Clear tooltip when leaving map step (though tooltip is only in range, be safe)
-    setTooltipVisible(false);
-    setTooltipContent(null);
-    setTooltipPos(null);
-    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
-    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      const docsByHash = new Map<string, DocLite>();
+      const docsByKey = new Map<string, DocLite>();
 
-    if (!zipAutoUploadRan && Object.keys(zipPdfIndex).length > 0) {
-      setZipAutoUploadRan(true);
-      for (const t of pdfTurns) {
-        const matched = findBestPdfForTurn(t, zipPdfIndex);
-        if (!matched) continue;
-        handleFileSelect(t.id, matched, t.preferredTitle ?? t.filename);
+      for (const d of docs) {
+        const dd = d as unknown as DocLite;
+        const fh = dd?.source_metadata?.fileHash;
+        if (fh) docsByHash.set(String(fh).toLowerCase(), dd);
+        const storage = dd?.storage_path ?? "";
+        if (storage) docsByKey.set(normalizeAttachmentKey(storage), dd);
+        const titleKey = normalizeAttachmentKey(dd?.title ?? "");
+        if (titleKey) docsByKey.set(titleKey, dd);
       }
+
+      const checks = await Promise.all(
+        pdfTurns.map(async (t) => {
+          const existingUpload = uploads[t.id];
+          let fileHash = existingUpload?.fileHash;
+          let matchedDoc: unknown | null = null;
+
+          // If already have a hash from an earlier upload, prefer it
+          if (fileHash) {
+            matchedDoc = docsByHash.get(String(fileHash).toLowerCase()) ?? null;
+          }
+
+          // If not matched, try to find a file from ZIP and hash it
+          if (!matchedDoc) {
+            const candidate = findBestPdfForTurn(t, zipPdfIndex);
+              if (candidate && !fileHash) {
+                try {
+                  fileHash = await calculateFileHash(candidate);
+                } catch {
+                  fileHash = undefined;
+                }
+                if (fileHash) matchedDoc = docsByHash.get(String(fileHash).toLowerCase()) ?? null;
+              }
+          }
+
+          // Fallback: match by normalized filename/path
+          if (!matchedDoc) {
+            const key = normalizeAttachmentKey(t.filename ?? t.fullPath);
+            if (key) matchedDoc = docsByKey.get(key) ?? null;
+          }
+
+          return { turnId: t.id, matchedDoc, fileHash };
+        }),
+      );
+
+      const matchedAll = checks.every((c) => c.matchedDoc);
+
+      // If all PDFs already exist for this stream/user, show dialog and don't proceed to files
+      if (matchedAll && checks.length > 0) {
+        // Annotate uploads state so UI can show details if needed
+        setUploads((prev) => {
+          const next: Record<string, PdfUploadState> = { ...prev };
+          const normalizeDoc = (d: DocLite | undefined | null) =>
+            d
+              ? {
+                  id: d.id,
+                  storagePath: d.storage_path ?? undefined,
+                  thumbnailPath: d.thumbnail_path ?? undefined,
+                  title: d.title ?? undefined,
+                  created_at: d.created_at ?? undefined,
+                  user_id: d.user_id ?? undefined,
+                }
+              : null;
+
+          for (const c of checks) {
+            next[c.turnId] = {
+              ...(next[c.turnId] ?? { status: "exists" }),
+              status: "exists",
+              fileHash: c.fileHash,
+              existingDocument: normalizeDoc(c.matchedDoc as DocLite | null),
+            };
+          }
+          return next;
+        });
+
+        setAllPdfsExistDialogOpen(true);
+        return;
+      }
+
+      // Otherwise initialize upload slots (mark existing ones as exists)
+      setUploads((prev) => {
+        const next: Record<string, PdfUploadState> = { ...prev };
+        for (const t of pdfTurns) {
+          const check = checks.find((c) => c.turnId === t.id);
+          if (check?.matchedDoc) {
+            const normalizeDoc = (d: DocLite | undefined | null) =>
+              d
+                ? {
+                    id: d.id,
+                    storagePath: d.storage_path ?? undefined,
+                    thumbnailPath: d.thumbnail_path ?? undefined,
+                    title: d.title ?? undefined,
+                    created_at: d.created_at ?? undefined,
+                    user_id: d.user_id ?? undefined,
+                  }
+                : null;
+
+            next[t.id] = {
+              ...(next[t.id] ?? {}),
+              status: "exists",
+              fileHash: check.fileHash,
+              existingDocument: normalizeDoc(check.matchedDoc as DocLite | null),
+            };
+          } else {
+            if (!next[t.id]) next[t.id] = { status: "pending" };
+            else next[t.id].status = next[t.id].status ?? "pending";
+          }
+        }
+        return next;
+      });
+
+      setStep("files");
+
+      // Clear tooltip when leaving map step (though tooltip is only in range, be safe)
+      setTooltipVisible(false);
+      setTooltipContent(null);
+      setTooltipPos(null);
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+
+      if (!zipAutoUploadRan && Object.keys(zipPdfIndex).length > 0) {
+        setZipAutoUploadRan(true);
+        for (const t of pdfTurns) {
+          // Only auto-fill files for turns that are not already existing
+          if ((uploads[t.id]?.status ?? "") === "exists") continue;
+          const matched = findBestPdfForTurn(t, zipPdfIndex);
+          if (!matched) continue;
+          handleFileSelect(t.id, matched, t.preferredTitle ?? t.filename);
+        }
+      }
+    } catch {
+      // Fallback to original behavior if duplicate-check fails
+      setUploads((prev) => {
+        const next: Record<string, PdfUploadState> = { ...prev };
+        for (const t of pdfTurns) {
+          if (!next[t.id]) next[t.id] = { status: "pending" };
+        }
+        return next;
+      });
+      setStep("files");
     }
   };
 
@@ -1208,19 +1352,24 @@ export function WhatsAppImportModal({
             : null,
           });
 
-        // If already uploaded (done) → include in inject payload
+        // If already uploaded (done) or already exists → include in inject payload
         if (
-          upload?.status === "done" &&
-          upload.documentId &&
-          upload.storagePath
+          (upload?.status === "done" && upload.documentId && upload.storagePath) ||
+          (upload?.status === "exists" && upload.existingDocument && (upload.existingDocument.id || upload.existingDocument.storagePath))
         ) {
+          const docId = upload?.status === "done" ? upload!.documentId : upload!.existingDocument?.id;
+          const storagePath = upload?.status === "done" ? upload!.storagePath : upload!.existingDocument?.storagePath;
+          const thumbnailPath = (upload?.status === "done" ? upload!.thumbnailPath : upload!.existingDocument?.thumbnailPath) ?? undefined;
+          const titleFromDoc = upload?.status === "done" ? upload!.titleSnapshot : upload!.existingDocument?.title;
+
           const attachment = {
-            documentId: upload.documentId,
-            storagePath: upload.storagePath,
-            thumbnailPath: upload.thumbnailPath,
-            ...(upload.previewUrl ? { previewUrl: upload.previewUrl } : {}),
+            documentId: docId,
+            storagePath,
+            thumbnailPath,
+            ...(upload?.previewUrl ? { previewUrl: upload.previewUrl } : {}),
             titleSnapshot:
               upload.titleSnapshot ??
+              titleFromDoc ??
               turn.preferredTitle ??
               turn.filename ??
               "Document",
@@ -1288,7 +1437,7 @@ export function WhatsAppImportModal({
             });
           }
         }
-        // If skipped or error, ignore
+        // If skipped, error, or exists-without-doc, ignore (exists-with-doc handled above)
       }
     }
 
@@ -1384,35 +1533,52 @@ export function WhatsAppImportModal({
         });
       } else {
         const upload = uploadsSnapshot[turn.id];
-        if (
-          !upload ||
-          upload.status !== "done" ||
-          !upload.documentId ||
-          !upload.storagePath
-        )
-          continue;
-        const attachment = {
-          documentId: upload.documentId,
-          storagePath: upload.storagePath,
-          thumbnailPath: upload.thumbnailPath,
-          ...(upload.previewUrl ? { previewUrl: upload.previewUrl } : {}),
-          titleSnapshot:
-            upload.titleSnapshot ??
-            turn.preferredTitle ??
-            turn.filename ??
-            "Document",
-        };
+        if (!upload) continue;
+        if (upload.status === "done" && upload.documentId && upload.storagePath) {
+          const attachment = {
+            documentId: upload.documentId,
+            storagePath: upload.storagePath,
+            thumbnailPath: upload.thumbnailPath,
+            ...(upload.previewUrl ? { previewUrl: upload.previewUrl } : {}),
+            titleSnapshot:
+              upload.titleSnapshot ??
+              turn.preferredTitle ??
+              turn.filename ??
+              "Document",
+          };
 
-        const last = payloadTurns[payloadTurns.length - 1];
-        if (last?.type === "pdf") {
-          last.attachments.push(attachment);
-        } else {
-          payloadTurns.push({
-            type: "pdf",
-            personaId,
-            personaName,
-            attachments: [attachment],
-          });
+          const last = payloadTurns[payloadTurns.length - 1];
+          if (last?.type === "pdf") {
+            last.attachments.push(attachment);
+          } else {
+            payloadTurns.push({
+              type: "pdf",
+              personaId,
+              personaName,
+              attachments: [attachment],
+            });
+          }
+        } else if (upload.status === "exists" && upload.existingDocument) {
+          const ed = upload.existingDocument;
+          const attachment = {
+            documentId: ed.id,
+            storagePath: ed.storagePath,
+            thumbnailPath: ed.thumbnailPath ?? undefined,
+            titleSnapshot:
+              upload.titleSnapshot ?? ed.title ?? turn.preferredTitle ?? turn.filename ?? "Document",
+          };
+
+          const last = payloadTurns[payloadTurns.length - 1];
+          if (last?.type === "pdf") {
+            last.attachments.push(attachment);
+          } else {
+            payloadTurns.push({
+              type: "pdf",
+              personaId,
+              personaName,
+              attachments: [attachment],
+            });
+          }
         }
       }
     }
@@ -2249,6 +2415,19 @@ export function WhatsAppImportModal({
           handleClose();
         }}
       />
+      <ConfirmDialog
+        open={allPdfsExistDialogOpen}
+        title="Attachments already exist"
+        description="All detected PDF attachments already exist in your account. Nothing needs importing."
+        confirmLabel="Okay"
+        hideCancel
+        onCancel={() => setAllPdfsExistDialogOpen(false)}
+        onConfirm={() => {
+          setAllPdfsExistDialogOpen(false);
+          // Even if all PDFs exist, proceed to the files step so user can review statuses
+          setStep("files");
+        }}
+      />
       </Dialog>
     </Transition>
   );
@@ -2395,6 +2574,11 @@ function PdfUploadRow({
             Sent by{" "}
             <span className="font-medium text-text-default">{turn.sender}</span>
           </p>
+          {upload.status === "exists" && upload.existingDocument && (
+            <p className="text-[10px] text-text-muted">
+              Already in account: <span className="font-medium text-text-default">{upload.existingDocument.title ?? upload.existingDocument.id}</span>
+            </p>
+          )}
           {upload.file && (
             <p className="text-[10px] text-text-muted">
               Size: {formatBytes(upload.file.size)}
@@ -2448,7 +2632,7 @@ function PdfUploadRow({
       )}
 
       {/* Action buttons */}
-      {!isUploading && !isDone && (
+      {!isUploading && !isDone && !isSkipped && (
         <div className="flex flex-wrap items-center gap-1.5">
           {isSkipped ? (
             <button
@@ -2458,6 +2642,27 @@ function PdfUploadRow({
               <Undo2 className="h-3 w-3" />
               Undo skip
             </button>
+          ) : upload.status === "exists" ? (
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 bg-surface-subtle px-2 py-0.5 text-[11px] font-medium text-text-default">
+                Already exists
+              </span>
+              {upload.existingDocument?.id && (
+                <button
+                  onClick={() => {
+                    try {
+                        const url = `/documents/${upload.existingDocument!.id}`;
+                        window.open(url, "_blank");
+                      } catch {
+                        // ignore
+                      }
+                  }}
+                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+                >
+                  View
+                </button>
+              )}
+            </div>
           ) : (
             <>
               <input

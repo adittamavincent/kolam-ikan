@@ -227,30 +227,16 @@ body {
   font-size: 0.875rem !important; /* 14px */
 }
 
-/* Ensure BlockNote elements respect the parent font-size */
-.blocknote-editor .bn-container,
-.blocknote-editor .bn-editor {
-  font-size: inherit !important;
-}
-
-/* Scale down headings proportionally */
-.blocknote-editor h1.bn-inline-content {
-  font-size: 1.5rem !important;
-}
-.blocknote-editor h2.bn-inline-content {
-  font-size: 1.25rem !important;
-}
-.blocknote-editor h3.bn-inline-content {
-  font-size: 1.125rem !important;
-}
+/* Keep BlockNote typography geometry on defaults so side-menu alignment stays correct. */
 
 /* Scale down UI elements slightly (toolbar, menus) to feel more compact */
 .blocknote-editor .bn-toolbar,
-.blocknote-editor .bn-side-menu,
 .blocknote-editor .bn-suggestion-menu {
   transform: scale(0.9);
   transform-origin: top left;
 }
+
+/* Let BlockNote manage side-menu geometry natively. */
 
 /* Handle specific BlockNote elements that might contain long text */
 .bn-block-content,
@@ -292,18 +278,9 @@ body {
 /*  BLOCKNOTE READ-ONLY: HIDE SIDE MENU (plus + drag handle)                 */
 /* -------------------------------------------------------------------------- */
 
-/* Give visible vertical rhythm between BlockNote blocks/paragraphs. */
-.blocknote-editor .bn-block-content {
-  padding-block: 0.3rem !important;
-}
+/* (removed vertical rhythm rule per request) */
 
-.blocknote-editor .bn-block + .bn-block {
-  margin-top: 0.3rem;
-}
-
-.blocknote-editor .ProseMirror > * + * {
-  margin-top: 0.3rem;
-}
+/* Keep default BlockNote block rhythm to avoid side-menu offset drift. */
 
 .blocknote-readonly .bn-side-menu {
   display: none !important;
@@ -320,3 +297,212 @@ body {
     @apply transition-all duration-200 active:scale-[0.98] active:translate-y-[0.5px];
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/*  STYLAIN: IDE (B) THEME                                                   */
+/* -------------------------------------------------------------------------- */
+
+/* When the root has `.stylain-ide` we apply IDE-like fonts and colors */
+.stylain-ide {
+  --stylain-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+    "JetBrains Mono", monospace;
+  --stylain-code-bg: #0f1720;
+  --stylain-code-fg: #d6deeb;
+  --stylain-bg: #0b0f14;
+  --stylain-surface: #0f1720;
+  --stylain-border: #1f2933;
+  --stylain-accent: #7aa2f7;
+}
+
+.stylain-ide body {
+  background: var(--stylain-bg);
+  color: var(--stylain-code-fg);
+}
+
+.stylain-ide .blocknote-editor {
+  font-family: var(--stylain-font-mono) !important;
+  background: transparent !important;
+  color: var(--stylain-code-fg) !important;
+}
+
+.stylain-ide .stylain-raw-editor {
+  border-color: var(--stylain-border) !important;
+  background: var(--stylain-surface) !important;
+}
+
+.stylain-ide .stylain-raw-gutter {
+  background: color-mix(in srgb, var(--stylain-surface) 88%, black 12%) !important;
+  border-color: var(--stylain-border) !important;
+  color: var(--stylain-code-fg) !important;
+  opacity: 0.78;
+  font-family: var(--stylain-font-mono) !important;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+}
+
+.stylain-ide .stylain-raw-gutter::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.stylain-ide .stylain-raw-input {
+  font-family: var(--stylain-font-mono) !important;
+  color: var(--stylain-code-fg) !important;
+  caret-color: var(--stylain-code-fg) !important;
+  line-height: 1.5rem !important;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  overscroll-behavior: none;
+}
+
+.stylain-ide .stylain-raw-input::placeholder {
+  color: color-mix(in srgb, var(--stylain-code-fg) 55%, transparent 45%);
+}
+
+.stylain-ide .stylain-raw-measure {
+  font-family: var(--stylain-font-mono) !important;
+  font-size: 13px;
+  line-height: 1.5rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.stylain-ide .stylain-raw-measure-row {
+  min-height: 1.5rem;
+}
+
+.stylain-ide .bn-editor,
+.stylain-ide .bn-container,
+.stylain-ide .ProseMirror {
+  background: transparent !important;
+  color: var(--stylain-code-fg) !important;
+  caret-color: var(--stylain-code-fg) !important;
+}
+
+/* More specific font-family overrides to ensure BlockNote inner content uses monospace */
+.stylain-ide .blocknote-editor .bn-editor,
+.stylain-ide .blocknote-editor .bn-editor .ProseMirror,
+.stylain-ide .blocknote-editor .bn-block-content,
+.stylain-ide .blocknote-editor .bn-inline-content,
+.stylain-ide .blocknote-editor .ProseMirror p,
+.stylain-ide .blocknote-editor .ProseMirror div,
+.stylain-ide .blocknote-editor .ProseMirror code {
+  font-family: var(--stylain-font-mono) !important;
+  font-variant-ligatures: none !important;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  STYLAIN B: Line numbers (continuous across sections)                       */
+/*  Adds a left gutter with line numbers for every rendered block inside the    */
+/*  ProseMirror editor. Works across paragraphs, headings, lists, code blocks. */
+/* -------------------------------------------------------------------------- */
+.stylain-ide .blocknote-editor .bn-editor .ProseMirror {
+  counter-reset: stylain-line-number;
+  position: relative;
+}
+
+/* Give the editor content a left padding to make room for the gutter */
+.stylain-ide .blocknote-editor .bn-editor .ProseMirror {
+  padding-left: 3.5rem; /* room for numbers */
+}
+
+/* Increment the counter for every top-level block (agnostic to block type) */
+.stylain-ide .blocknote-editor .bn-editor .ProseMirror > * {
+  counter-increment: stylain-line-number;
+  position: relative;
+}
+
+/* Render the number in the gutter */
+.stylain-ide .blocknote-editor .bn-editor .ProseMirror > *::before {
+  content: counter(stylain-line-number);
+  position: absolute;
+  left: -3.5rem;
+  width: 3rem;
+  text-align: right;
+  color: var(--stylain-code-fg);
+  opacity: 0.65;
+  font-family: var(--stylain-font-mono) !important;
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1;
+  padding-right: 0.5rem;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Ensure code blocks show their internal lines clearly; keep numbering for the block itself */
+.stylain-ide .blocknote-editor .ProseMirror pre {
+  white-space: pre-wrap;
+}
+
+/* Make the gutter accessible: ensure focusable elements still get standard outline */
+.stylain-ide .blocknote-editor .bn-editor .ProseMirror > *:focus::before {
+  outline: none;
+  opacity: 0.95;
+}
+
+
+/* Code blocks / syntax-looking highlights */
+.stylain-ide .ProseMirror pre,
+.stylain-ide .ProseMirror pre code {
+  background: var(--stylain-code-bg) !important;
+  color: var(--stylain-code-fg) !important;
+  border-radius: 6px;
+  padding: 0.5rem;
+}
+
+.stylain-ide .bn-toolbar,
+.stylain-ide .bn-side-menu {
+  background: rgba(255,255,255,0.02) !important;
+  border: 1px solid var(--stylain-border) !important;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+/* Log pane, entry creator, canvas containers — prefer strong contrast */
+.stylain-ide .log-pane,
+.stylain-ide .entry-creator,
+.stylain-ide .canvas-pane,
+.stylain-ide .log-pane {
+  background: var(--stylain-surface);
+  border: 1px solid var(--stylain-border);
+  color: var(--stylain-code-fg);
+}
+
+/* Smooth transitions to reduce flicker on theme switch */
+.stylain-ide .blocknote-editor,
+.stylain-ide .bn-editor,
+.stylain-ide .bn-container,
+.stylain-ide .ProseMirror,
+.stylain-ide .log-pane,
+.stylain-ide .entry-creator,
+.stylain-ide .canvas-pane {
+  transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+/* Accessibility: maintain minimum contrast for focus rings */
+.stylain-ide :focus {
+  outline: 2px solid var(--stylain-accent);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Advanced Markdown (am-) styles                                              */
+/* -------------------------------------------------------------------------- */
+.am-root {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-default);
+}
+.am-root p { margin: 0 0 0.75rem 0; }
+.am-block { border-radius: 8px; padding: 12px; margin: 0 0 0.75rem 0; }
+.am-code pre { background: #0b0f14; color: #e6edf3; padding: 12px; border-radius: 6px; overflow: auto; }
+.am-table { border-collapse: collapse; width: 100%; margin-bottom: 0.75rem; }
+.am-table th, .am-table td { border: 1px solid rgba(0,0,0,0.08); padding: 6px 8px; text-align: left; }
+.am-table thead th { background: #f6f9ff; }
+.am-root mark { padding: 0 4px; border-radius: 3px; background: #fff7b2; }
+
+

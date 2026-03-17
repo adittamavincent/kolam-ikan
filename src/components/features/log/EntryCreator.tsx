@@ -1175,7 +1175,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   return (
     <>
-      <div className="relative border border-border-default/50 bg-surface-default group ">
+      <div className="entry-creator relative border border-border-default/50 bg-surface-default group ">
         {(status === "saving" || status === "error") && (
           <NavigationGuard onFlush={flushPendingSaves} />
         )}

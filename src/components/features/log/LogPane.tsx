@@ -1199,7 +1199,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   return (
     <>
       <div
-        className={`border-r border-border-default bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
+        className={`log-pane border-r border-border-default bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
         style={containerStyle}
       >
       <div className="flex h-full flex-col" style={contentStyle}>

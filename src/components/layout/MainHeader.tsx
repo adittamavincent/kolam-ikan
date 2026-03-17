@@ -11,6 +11,7 @@ import {
   MenuItems,
   Transition,
 } from "@headlessui/react";
+import StylainHeader from "./StylainHeader";
 import {
   PanelLeft,
   Globe,
@@ -141,6 +142,7 @@ export function MainHeader() {
 
       {streamId && (
         <div className="flex items-center gap-1.5">
+          <StylainHeader />
           {logState && (
             <>
               <button

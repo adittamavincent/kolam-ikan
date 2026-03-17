@@ -186,7 +186,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
   return (
     <div
-      className={`bg-surface-default relative overflow-hidden z-20 ${
+      className={`canvas-pane bg-surface-default relative overflow-hidden z-20 ${
         isVisible ? "" : "pointer-events-none"
       }`}
       style={containerStyle}

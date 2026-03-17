@@ -16,6 +16,7 @@ interface SectionDraft {
   personaId: string | null;
   personaName?: string;
   content: PartialBlock[];
+  contentTextSnapshot?: string;
   pdfDisplayMode?: "inline" | "download" | "external";
   fileAttachments?: FileDraftAttachment[];
   updatedAt: number;
@@ -44,6 +45,7 @@ export interface DraftContent {
   personaId: string | null;
   content: PartialBlock[];
   personaName?: string;
+  contentTextSnapshot?: string;
   pdfDisplayMode?: "inline" | "download" | "external";
   fileAttachments?: FileDraftAttachment[];
 }
@@ -107,6 +109,59 @@ const hasMeaningfulDraftContent = (
   return content.some((block) => hasMeaningfulBlockPayload(block));
 };
 
+const blocksToPlainText = (blocks: PartialBlock[] | undefined): string => {
+  if (!Array.isArray(blocks) || blocks.length === 0) return "";
+
+  const extractInlineText = (content: unknown): string => {
+    if (!Array.isArray(content)) return "";
+    return content
+      .map((item) => {
+        if (!item || typeof item !== "object") return "";
+        const record = item as { text?: unknown };
+        return typeof record.text === "string" ? record.text : "";
+      })
+      .join("");
+  };
+
+  const extractBlockText = (block: PartialBlock): string => {
+    const contentText = extractInlineText(block.content);
+    const childText = Array.isArray(block.children)
+      ? block.children.map(extractBlockText).join("\n")
+      : "";
+    return [contentText, childText].filter(Boolean).join("\n");
+  };
+
+  return blocks.map(extractBlockText).filter(Boolean).join("\n");
+};
+
+const textToBlocks = (text: string): PartialBlock[] => {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  if (!normalized.trim()) {
+    return [{ type: "paragraph", content: [] }];
+  }
+  return normalized.split("\n").map((line) => ({
+    type: "paragraph",
+    content: line
+      ? [{ type: "text", text: line, styles: {} }]
+      : [],
+  }));
+};
+
+function deepClone<T>(value: T): T {
+  try {
+    if (typeof structuredClone === "function") {
+      return structuredClone(value);
+    }
+  } catch {
+    // fall through
+  }
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return value;
+  }
+}
+
 function getSupabaseErrorMessage(error: unknown): string {
   if (!error || typeof error !== "object") return "Unknown error";
 
@@ -143,43 +198,91 @@ function isMissingPdfSchemaError(message: string): boolean {
 
 function readLocalDraft(streamId: string): DraftState | null {
   try {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${streamId}`);
+    const key = `${STORAGE_PREFIX}${streamId}`;
+    const raw = localStorage.getItem(key);
+    console.log(`[Draft] Reading draft for ${streamId}:`, raw ? 'found' : 'not found');
     if (!raw) return null;
-    return JSON.parse(raw) as DraftState;
-  } catch {
+    try {
+      const parsed = JSON.parse(raw) as DraftState;
+      const sectionKeys = Object.keys(parsed.sections || {});
+      console.log(
+        `[Draft] Parsed draft for ${streamId} with ${sectionKeys.length} sections: ${sectionKeys.join(", ")}`,
+      );
+
+      // Log lightweight per-section metadata for debugging
+      sectionKeys.forEach((k) => {
+        const s = parsed.sections[k] as SectionDraft | undefined;
+        if (!s) return;
+        const contentLen = Array.isArray(s.content) ? s.content.length : 0;
+        const snapshotLen = typeof s.contentTextSnapshot === 'string' ? s.contentTextSnapshot.trim().length : 0;
+        const attachmentsLen = Array.isArray(s.fileAttachments) ? s.fileAttachments.length : 0;
+        console.log(`[Draft] Section ${k}: type=${s.sectionType} personaId=${s.personaId} contentLen=${contentLen} snapshotLen=${snapshotLen} attachments=${attachmentsLen}`);
+      });
+
+      return parsed;
+    } catch (e) {
+      console.error(`[Draft] Failed to parse draft for ${streamId}:`, e);
+      return null;
+    }
+  } catch (e) {
+    console.error(`[Draft] Failed to read draft for ${streamId}:`, e);
     return null;
   }
 }
 
 function writeLocalDraft(streamId: string, state: DraftState): void {
   try {
-    // Keep every section that has either a persona assignment or is a PDF section.
-    const active = Object.entries(state.sections).filter(
-      ([, s]) => s.sectionType === "PDF" || !!s.personaId,
+    // Keep every section that has either a persona assignment, is a PDF
+    // section, or contains meaningful content even if no persona is set.
+    const active = Object.entries(state.sections).filter(([, s]) =>
+      s.sectionType === "PDF" ||
+      !!s.personaId ||
+      hasMeaningfulDraftContent(s.content) ||
+      hasTextValue(s.contentTextSnapshot) ||
+      (Array.isArray(s.fileAttachments) && s.fileAttachments.length > 0),
     );
     if (active.length === 0) {
-      localStorage.removeItem(`${STORAGE_PREFIX}${streamId}`);
+      const key = `${STORAGE_PREFIX}${streamId}`;
+      try {
+        localStorage.removeItem(key);
+        console.log(`[Draft] Cleared draft for ${streamId} (no active sections)`);
+      } catch (e) {
+        console.error(`[Draft] Failed to clear draft for ${streamId}:`, e);
+      }
       return;
     }
     const clean: DraftState = {
       sections: Object.fromEntries(active),
       sectionOrder: state.sectionOrder.filter((instanceId) =>
-        Object.prototype.hasOwnProperty.call(
-          Object.fromEntries(active),
-          instanceId,
-        ),
+        Object.prototype.hasOwnProperty.call(Object.fromEntries(active), instanceId),
       ),
       updatedAt: Date.now(),
     };
-    localStorage.setItem(`${STORAGE_PREFIX}${streamId}`, JSON.stringify(clean));
-  } catch {
-    // Ignore storage errors
+    const key = `${STORAGE_PREFIX}${streamId}`;
+    try {
+      // Log per-section sizes to help debug missing content issues
+      Object.entries(clean.sections).forEach(([id, s]) => {
+        const contentLen = Array.isArray(s.content) ? s.content.length : 0;
+        const snapshotLen = typeof s.contentTextSnapshot === 'string' ? s.contentTextSnapshot.trim().length : 0;
+        const attachmentsLen = Array.isArray(s.fileAttachments) ? s.fileAttachments.length : 0;
+        console.log(`[Draft] Persisting section ${id}: type=${s.sectionType} personaId=${s.personaId} contentLen=${contentLen} snapshotLen=${snapshotLen} attachments=${attachmentsLen}`);
+      });
+
+      const json = JSON.stringify(clean);
+      localStorage.setItem(key, json);
+      console.log(`[Draft] Saved draft for ${streamId} with ${active.length} sections`);
+    } catch (e) {
+      console.error(`[Draft] Failed to save draft for ${streamId}:`, e);
+    }
+  } catch (e) {
+    console.error(`[Draft] Failed to write draft for ${streamId}:`, e);
   }
 }
 
 function removeLocalDraft(streamId: string): void {
   try {
-    localStorage.removeItem(`${STORAGE_PREFIX}${streamId}`);
+    const key = `${STORAGE_PREFIX}${streamId}`;
+    localStorage.removeItem(key);
   } catch {
     // Ignore storage errors
   }
@@ -252,12 +355,26 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         const loaded: Record<string, DraftContent> = {};
         Object.entries(local.sections).forEach(([id, s]) => {
           const sectionType = s.sectionType ?? "PERSONA";
-          if (sectionType === "PERSONA" && !s.personaId) return;
+          // Allow persona sections without an assigned persona to be
+          // recovered if they contain meaningful content. Only skip
+          // truly empty persona sections.
+          if (
+            sectionType === "PERSONA" &&
+            !s.personaId &&
+            !hasMeaningfulDraftContent(s.content)
+          )
+            return;
           loaded[id] = {
             sectionType,
             personaId: s.personaId,
             personaName: s.personaName,
-            content: s.content || [],
+            content:
+              s.content && s.content.length > 0
+                ? s.content
+                : s.contentTextSnapshot
+                ? textToBlocks(s.contentTextSnapshot)
+                : [],
+            contentTextSnapshot: s.contentTextSnapshot,
             pdfDisplayMode: s.pdfDisplayMode,
             fileAttachments: s.fileAttachments ?? [],
           };
@@ -299,11 +416,32 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         return;
       }
 
+      const incomingContent = deepClone(content || []);
+      const incomingSnapshot = blocksToPlainText(incomingContent);
+      const existing = draftStateRef.current.sections[instanceId];
+      const existingContent = existing?.content ?? [];
+      const existingSnapshot = existing?.contentTextSnapshot ?? "";
+      const incomingMeaningful =
+        hasMeaningfulDraftContent(incomingContent) ||
+        hasTextValue(incomingSnapshot);
+      const existingMeaningful =
+        hasMeaningfulDraftContent(existingContent) ||
+        hasTextValue(existingSnapshot);
+      const resolvedContent =
+        !incomingMeaningful && existingMeaningful
+          ? existingContent
+          : incomingContent;
+      const resolvedSnapshot =
+        !incomingMeaningful && existingMeaningful
+          ? existingSnapshot
+          : incomingSnapshot;
+
       draftStateRef.current.sections[instanceId] = {
         sectionType: "PERSONA",
         personaId,
         personaName,
-        content: content || [],
+        content: resolvedContent,
+        contentTextSnapshot: resolvedSnapshot,
         updatedAt: Date.now(),
       };
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
@@ -344,13 +482,34 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         return;
       }
 
+      const incomingContent = deepClone(payload.content ?? []);
+      const incomingSnapshot = blocksToPlainText(incomingContent);
+      const existing = draftStateRef.current.sections[instanceId];
+      const existingContent = existing?.content ?? [];
+      const existingSnapshot = existing?.contentTextSnapshot ?? "";
+      const incomingMeaningful =
+        hasMeaningfulDraftContent(incomingContent) ||
+        hasTextValue(incomingSnapshot);
+      const existingMeaningful =
+        hasMeaningfulDraftContent(existingContent) ||
+        hasTextValue(existingSnapshot);
+      const resolvedContent =
+        !incomingMeaningful && existingMeaningful
+          ? existingContent
+          : incomingContent;
+      const resolvedSnapshot =
+        !incomingMeaningful && existingMeaningful
+          ? existingSnapshot
+          : incomingSnapshot;
+
       draftStateRef.current.sections[instanceId] = {
         sectionType: "PDF",
         personaId: payload.personaId ?? null,
         personaName: payload.personaName,
-        content: payload.content ?? [],
+        content: resolvedContent,
+        contentTextSnapshot: resolvedSnapshot,
         pdfDisplayMode: payload.displayMode,
-        fileAttachments: payload.attachments,
+        fileAttachments: deepClone(payload.attachments),
         updatedAt: Date.now(),
       };
 
@@ -384,11 +543,17 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
   // 4. Content Retriever
   const getDraftContent = useCallback(
     (instanceId: string) => {
-      return (
-        draftStateRef.current.sections[instanceId]?.content ||
-        initialDrafts[instanceId]?.content ||
-        []
-      );
+      const section = draftStateRef.current.sections[instanceId];
+      const fallback = initialDrafts[instanceId];
+      const content = section?.content || fallback?.content || [];
+      if (Array.isArray(content) && content.length > 0) {
+        return deepClone(content);
+      }
+      const snapshot = section?.contentTextSnapshot || fallback?.contentTextSnapshot;
+      if (snapshot && snapshot.trim().length > 0) {
+        return deepClone(textToBlocks(snapshot));
+      }
+      return [];
     },
     [initialDrafts],
   );
@@ -400,7 +565,9 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       return {
         displayMode:
           current?.pdfDisplayMode ?? fallback?.pdfDisplayMode ?? "inline",
-        attachments: current?.fileAttachments ?? fallback?.fileAttachments ?? [],
+        attachments: deepClone(
+          current?.fileAttachments ?? fallback?.fileAttachments ?? [],
+        ),
       };
     },
     [initialDrafts],
@@ -423,7 +590,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       if (draft.sectionType === "PDF") {
         return (draft.fileAttachments?.length ?? 0) > 0;
       }
-      return hasMeaningfulDraftContent(draft.content) && !!draft.personaId;
+      return hasMeaningfulDraftContent(draft.content);
     });
 
     if (meaningfulSections.length === 0) return null;

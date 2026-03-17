@@ -83,6 +83,31 @@ function textToBlockContent(text: string) {
   return [{ type: "text" as const, text: value, styles: {} }];
 }
 
+function blocksToPlainText(blocks: PartialBlock[] | undefined): string {
+  if (!Array.isArray(blocks) || blocks.length === 0) return "";
+
+  const extractInlineText = (content: unknown): string => {
+    if (!Array.isArray(content)) return "";
+    return content
+      .map((item) => {
+        if (!item || typeof item !== "object") return "";
+        const record = item as { text?: unknown };
+        return typeof record.text === "string" ? record.text : "";
+      })
+      .join("");
+  };
+
+  const extractBlockText = (block: PartialBlock): string => {
+    const contentText = extractInlineText(block.content);
+    const childText = Array.isArray(block.children)
+      ? block.children.map(extractBlockText).join("\n")
+      : "";
+    return [contentText, childText].filter(Boolean).join("\n");
+  };
+
+  return blocks.map(extractBlockText).filter(Boolean).join("\n");
+}
+
 function parseMarkdownishMessageToBlocks(message: string): PartialBlock[] {
   const normalized = message.replace(/\r\n?/g, "\n");
   const lines = normalized.split("\n");
@@ -163,6 +188,55 @@ function parseMarkdownishMessageToBlocks(message: string): PartialBlock[] {
     },
   ];
 }
+
+const hasTextValue = (value: unknown): boolean =>
+  typeof value === "string" && value.trim().length > 0;
+
+const hasMeaningfulBlockPayload = (value: unknown): boolean => {
+  if (hasTextValue(value)) return true;
+  if (Array.isArray(value)) {
+    return value.some((item) => hasMeaningfulBlockPayload(item));
+  }
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+
+  if (
+    hasTextValue(record.text) ||
+    hasTextValue(record.url) ||
+    hasTextValue(record.src) ||
+    hasTextValue(record.href)
+  ) {
+    return true;
+  }
+
+  if (
+    hasMeaningfulBlockPayload(record.content) ||
+    hasMeaningfulBlockPayload(record.children)
+  ) {
+    return true;
+  }
+
+  for (const nestedValue of Object.values(record)) {
+    if (hasMeaningfulBlockPayload(nestedValue)) {
+      return true;
+    }
+  }
+
+  const blockType = typeof record.type === "string" ? record.type : null;
+  if (blockType && blockType !== "paragraph") {
+    return true;
+  }
+
+  return false;
+};
+
+const hasMeaningfulDraftContent = (content: PartialBlock[] | undefined): boolean => {
+  if (!Array.isArray(content) || content.length === 0) return false;
+  return content.some((block) => hasMeaningfulBlockPayload(block));
+};
 
 function SortableSection({
   id,
@@ -349,6 +423,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   // Refs for editors to clear them
   const editorRefs = useRef<Record<string, BlockNoteEditorType>>({});
   const pendingFocusInstanceIdRef = useRef<string | null>(null);
+  const editorReadyAtRef = useRef<Record<string, number>>({});
+  const userEditedRef = useRef<Record<string, boolean>>({});
 
   const focusEditorForInstance = (instanceId: string) => {
     let attempts = 0;
@@ -478,12 +554,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 }),
           }),
         );
-        setSections(
-          loadedSections.filter((section) => {
-            if (section.kind === "PDF") return true;
-            return !!section.personaId;
-          }),
-        );
+        // Restore all loaded sections (including persona-less sections
+        // that contain meaningful content). The draft system already
+        // filtered out empty/irrelevant sections during load.
+        setSections(loadedSections);
       }
       // Don't auto-initialize with a default persona
       // Let the user explicitly select a persona or add a section
@@ -603,8 +677,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   // Sync active instances with draft system whenever sections change
   useEffect(() => {
+    if (isLoading) return;
     setActiveInstances(sections.map((section) => section.instanceId));
-  }, [sections, setActiveInstances]);
+  }, [sections, setActiveInstances, isLoading]);
 
   // WhatsApp chat inject listener
   useEffect(() => {
@@ -837,30 +912,50 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   };
 
   const toggleSectionKind = (instanceId: string) => {
-    setSections((prev) =>
-      prev.map((section) => {
-        if (section.instanceId !== instanceId) return section;
-        if (section.kind === "PERSONA") {
-          return {
-            instanceId,
-            kind: "PDF",
-            displayMode: "inline",
-            attachments: [],
-            personaId: section.personaId,
-            personaName:
-              personas?.find((p) => p.id === section.personaId)?.name || null,
-            note: "",
-            isUploading: false,
-          };
-        } else {
-          return {
-            instanceId,
-            kind: "PERSONA",
-            personaId: section.personaId || "",
-          };
-        }
-      }),
-    );
+    const section = sections.find((s) => s.instanceId === instanceId);
+    if (!section) return;
+
+    if (section.kind === "PERSONA") {
+      const personaName = personas?.find((p) => p.id === section.personaId)?.name || null;
+      setSections((prev) =>
+        prev.map((s) =>
+          s.instanceId !== instanceId
+            ? s
+            : {
+                instanceId,
+                kind: "PDF" as const,
+                displayMode: "inline",
+                attachments: [],
+                personaId: section.personaId,
+                personaName,
+                note: "",
+                isUploading: false,
+              },
+        ),
+      );
+      // Persist section type change so reload shows the correct kind
+      savePdfDraft(instanceId, {
+        displayMode: "inline",
+        personaId: section.personaId,
+        personaName: personaName ?? undefined,
+        attachments: [],
+        content: getDraftContent(instanceId),
+      });
+    } else {
+      const personaId = section.personaId || "";
+      setSections((prev) =>
+        prev.map((s) =>
+          s.instanceId !== instanceId
+            ? s
+            : { instanceId, kind: "PERSONA" as const, personaId },
+        ),
+      );
+      // Persist section type change; only save if we have a valid persona
+      if (personaId) {
+        const personaName = personas?.find((p) => p.id === personaId)?.name;
+        saveDraft(instanceId, personaId, getDraftContent(instanceId), personaName);
+      }
+    }
   };
 
   const requestClearSections = () => {
@@ -1347,7 +1442,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           }));
                   }
 
-                  if (!isAttachment && !persona) return null;
+                  // Allow persona-less PERSONA sections to render so recovered
+                  // drafts without an assigned persona are visible to the user.
 
                   return (
                     <SortableSection key={instanceId} id={instanceId}>
@@ -1415,6 +1511,32 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               <BlockNoteEditor
                                 initialContent={getDraftContent(instanceId)}
                                 onChange={(content) => {
+                                  const existingContent = getDraftContent(instanceId);
+                                  const readyAt = editorReadyAtRef.current[instanceId];
+                                  const withinHydrationWindow =
+                                    readyAt === undefined || Date.now() - readyAt < 500;
+                                  const incomingMeaningful =
+                                    hasMeaningfulDraftContent(content);
+                                  const existingMeaningful =
+                                    hasMeaningfulDraftContent(existingContent);
+                                  const editorFocused =
+                                    editorRefs.current[instanceId]?.isFocused?.() ?? false;
+                                  const incomingText = blocksToPlainText(content);
+                                  const existingText = blocksToPlainText(existingContent);
+                                  const textChanged = incomingText !== existingText;
+
+                                  if (
+                                    editorFocused &&
+                                    !withinHydrationWindow &&
+                                    textChanged
+                                  ) {
+                                    userEditedRef.current[instanceId] = true;
+                                  }
+
+                                  if (!incomingMeaningful && existingMeaningful) {
+                                    if (!userEditedRef.current[instanceId]) return;
+                                  }
+
                                   saveDraft(
                                     instanceId,
                                     section.personaId,
@@ -1424,7 +1546,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                 }}
                                 placeholder={`What would ${persona?.name || "they"} say?`}
                                 onEditorReady={(editor) => {
+                                  editorReadyAtRef.current[instanceId] = Date.now();
                                   editorRefs.current[instanceId] = editor;
+                                  userEditedRef.current[instanceId] = false;
                                   if (
                                     pendingFocusInstanceIdRef.current ===
                                     instanceId

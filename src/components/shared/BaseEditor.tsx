@@ -49,8 +49,13 @@ export default function BaseEditor({
   const rawMarkdownRef = useRef(rawMarkdown);
   const parserEditorRef = useRef<BlockNoteEditor | null>(null);
   const rawEditedRef = useRef<boolean>(false);
-  const debounceTimerRef = useRef<number | null>(null);
+  const ignoreNextRawChangeRef = useRef<boolean>(false);
+  const programmaticRawRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasInitializedRef = useRef<boolean>(false);
+  const previousStylainModeRef = useRef<"A" | "B">("A");
+  const lastBlocksRef = useRef<PartialBlock[] | null>(null);
+  const onChangeRef = useRef(onChange);
 
   type EditorCreateOptions = Parameters<typeof BlockNoteEditor.create>[0];
 
@@ -147,6 +152,55 @@ export default function BaseEditor({
     return normalizeBlocks(fallbackBlocksFromText(trimmedMarkdown));
   }, [ensureParserEditor, fallbackBlocksFromText, normalizeBlocks]);
 
+  const formatMarkdown = useCallback((markdown: string): string => {
+    if (!markdown.trim()) return markdown;
+    
+    const lines = markdown.split('\n');
+    const formatted: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const prevLine = i > 0 ? lines[i - 1] : '';
+      const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
+      
+      // Add blank line before headings (except at start)
+      if (line.match(/^#{1,6}\s/) && i > 0 && prevLine.trim() !== '') {
+        formatted.push('');
+      }
+      
+      // Add blank line before lists if previous line is not empty and not part of the same list and not a heading
+      if (line.match(/^(\s*[-*+]\s|\s*\d+\.\s)/) && i > 0 && prevLine.trim() !== '' && !prevLine.match(/^(\s*[-*+]\s|\s*\d+\.\s)|^#{1,6}\s/)) {
+        formatted.push('');
+      }
+      
+      // Add blank line before code blocks if previous line is not empty
+      if (line.match(/^```/) && i > 0 && prevLine.trim() !== '') {
+        formatted.push('');
+      }
+      
+      // Add blank line after code block endings
+      if (line.match(/^```$/) && nextLine && nextLine.trim() !== '') {
+        formatted.push(line);
+        formatted.push('');
+        continue;
+      }
+      
+      formatted.push(line);
+      
+      // Add blank line after headings if next line is content
+      if (line.match(/^#{1,6}\s/) && nextLine && nextLine.trim() !== '' && !nextLine.match(/^#{1,6}\s/)) {
+        formatted.push('');
+      }
+    }
+    
+    // Remove trailing empty lines
+    while (formatted.length > 0 && formatted[formatted.length - 1].trim() === '') {
+      formatted.pop();
+    }
+    
+    return formatted.join('\n');
+  }, []);
+
   const blocksToMarkdown = useCallback((blocks: PartialBlock[]): string => {
     try {
       const parserEditor = ensureParserEditor();
@@ -158,14 +212,11 @@ export default function BaseEditor({
       // collapse blank lines between consecutive list items
       md = md.replace(/(-\s.*)\n\s*\n(?=-\s)/g, "$1\n");
       md = md.replace(/(\d+\.\s.*)\n\s*\n(?=\d+\.\s)/g, "$1\n");
-      // remove extra blank line immediately before a list so paragraph + list is single-spaced
-      md = md.replace(/\n\s*\n(?=-\s)/g, "\n");
-      md = md.replace(/\n\s*\n(?=\d+\.\s)/g, "\n");
-      return md;
+      return formatMarkdown(md);
     } catch {
       return "";
     }
-  }, [ensureParserEditor]);
+  }, [ensureParserEditor, formatMarkdown]);
 
   useEffect(() => {
     currentEditorRef.current = currentEditor;
@@ -176,6 +227,10 @@ export default function BaseEditor({
   }, [initialContent]);
 
   useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
     rawMarkdownRef.current = rawMarkdown;
   }, [rawMarkdown]);
 
@@ -183,12 +238,47 @@ export default function BaseEditor({
     if (typeof window === "undefined") return;
 
     let initial: PartialBlock[] | undefined;
-    if (stylainMode === "A") {
+    
+    // On first mount, use initialContent if available, ignoring empty rawMarkdown.
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      initial = initialContentRef.current && initialContentRef.current.length > 0
+        ? initialContentRef.current
+        : undefined;
+        
+      if (initial) {
+        // Pre-fill rawMarkdown so switching to mode B works smoothly
+        const nextMarkdown = blocksToMarkdown(initial);
+        programmaticRawRef.current = nextMarkdown;
+        ignoreNextRawChangeRef.current = true;
+        setRawMarkdown(nextMarkdown);
+      }
+    } else if (stylainMode === "A") {
       // Always parse the raw markdown when entering A so edits (including
       // explicit deletions) made in B are reflected in the BlockNote doc.
-      const parsed = parseMarkdownToBlocks(rawMarkdownRef.current ?? "");
-      initial = parsed.length > 0 ? parsed : undefined;
+      if (previousStylainModeRef.current === "B" && !rawEditedRef.current && lastBlocksRef.current) {
+        initial = lastBlocksRef.current;
+      } else {
+        const parsed = parseMarkdownToBlocks(rawMarkdownRef.current ?? "");
+        initial = parsed.length > 0 ? parsed : undefined;
+        // Only push markdown -> blocks if there's actual text content.
+        const rawText = rawMarkdownRef.current ?? "";
+        if (onChangeRef.current && rawText.trim().length > 0) {
+          onChangeRef.current(parsed);
+        }
+      }
     } else {
+      // Switching to B: first save current blocks if editor exists
+      if (previousStylainModeRef.current === "A" && currentEditorRef.current && onChangeRef.current) {
+        onChangeRef.current(currentEditorRef.current.document as PartialBlock[]);
+      }
+      lastBlocksRef.current = (currentEditorRef.current &&
+        currentEditorRef.current.document &&
+        currentEditorRef.current.document.length > 0)
+        ? (currentEditorRef.current.document as PartialBlock[])
+        : initialContentRef.current && initialContentRef.current.length > 0
+        ? initialContentRef.current
+        : null;
       initial =
         (currentEditorRef.current &&
         currentEditorRef.current.document &&
@@ -209,31 +299,48 @@ export default function BaseEditor({
         return newEditor;
       });
 
-      if (stylainMode === "B") {
-        // If the user actively edited raw markdown in B (including clearing it),
-        // preserve that exact text. Otherwise, serialize current blocks to
-        // markdown so B starts with a representation of the document.
-        if (
-          rawEditedRef.current ||
-          (rawMarkdownRef.current && rawMarkdownRef.current.trim().length > 0)
-        ) {
-          setRawMarkdown(rawMarkdownRef.current);
-        } else {
-          const blocksForMarkdown = normalizeBlocks(
-            (initial && initial.length > 0
-              ? initial
-              : (newEditor.document as PartialBlock[])) ?? [],
-          );
-          const markdown = blocksToMarkdown(blocksForMarkdown);
-          setRawMarkdown(markdown.replace(/\n+$/, ""));
-        }
+      if (stylainMode === "B" && previousStylainModeRef.current === "A") {
+        // Only serialize current blocks to markdown when transitioning from A to B.
+        // This ensures proper formatting is applied (acting as a "prettify" tool)
+        // and that any changes from mode A are accurately reflected.
+        const blocksForMarkdown = normalizeBlocks(
+          (initial && initial.length > 0
+            ? initial
+            : (newEditor.document as PartialBlock[])) ?? [],
+        );
+        const markdown = blocksToMarkdown(blocksForMarkdown);
+        const nextMarkdown = markdown.replace(/\n+$/, "");
+        programmaticRawRef.current = nextMarkdown;
+        ignoreNextRawChangeRef.current = true;
+        setRawMarkdown(nextMarkdown);
       }
     } catch {
       console.error("Failed to (re)create BlockNote editor");
     }
 
+    // Update previous mode
+    previousStylainModeRef.current = stylainMode;
+
     return () => {};
-  }, [stylainMode, createEditor, parseMarkdownToBlocks, blocksToMarkdown, normalizeBlocks]);
+  }, [stylainMode, createEditor, parseMarkdownToBlocks, blocksToMarkdown, normalizeBlocks, formatMarkdown]);
+
+  // Update editor content when initialContent changes after mount
+  useEffect(() => {
+    if (!currentEditor || !initialContent || initialContent.length === 0) return;
+    const currentBlocks = currentEditor.document;
+    if (currentBlocks.length === 0 || JSON.stringify(currentBlocks) !== JSON.stringify(initialContent)) {
+      try {
+        currentEditor.replaceBlocks(currentBlocks, initialContent);
+        const nextMarkdown = blocksToMarkdown(initialContent);
+        programmaticRawRef.current = nextMarkdown;
+        ignoreNextRawChangeRef.current = true;
+        setRawMarkdown(nextMarkdown);
+        lastBlocksRef.current = initialContent;
+      } catch (e) {
+        console.error("Failed to update editor content", e);
+      }
+    }
+  }, [currentEditor, initialContent, blocksToMarkdown]);
 
   const savedSelectionRef = useRef<Range[] | null>(null);
   const activeElementRef = useRef<Element | null>(null);
@@ -350,16 +457,17 @@ export default function BaseEditor({
 
   useEffect(() => {
     return () => {
-      if (debounceTimerRef.current) {
-        window.clearTimeout(debounceTimerRef.current);
-      }
       try {
+        // Also flush to onChange if unmounting in mode B to not lose edits
+        if (stylainMode === "B" && rawEditedRef.current && editable && onChange) {
+          onChange(parseMarkdownToBlocks(rawMarkdownRef.current));
+        }
         if (parserEditorRef.current && typeof parserEditorRef.current.unmount === "function") {
           parserEditorRef.current.unmount();
         }
       } catch {}
     };
-  }, []);
+  }, [stylainMode, editable, onChange, parseMarkdownToBlocks]);
 
   // Persist last known editor height across remounts so switching
   // stylain modes doesn't collapse the editor to a tiny height and
@@ -373,16 +481,40 @@ export default function BaseEditor({
 
   const handleRawMarkdownChange = (nextMarkdown: string | undefined) => {
     const text = nextMarkdown ?? "";
+    const prev = rawMarkdownRef.current;
+    const programmatic = ignoreNextRawChangeRef.current &&
+      programmaticRawRef.current !== null &&
+      programmaticRawRef.current === text;
+
     setRawMarkdown(text);
+    rawMarkdownRef.current = text;
+
+    if (programmatic) {
+      ignoreNextRawChangeRef.current = false;
+      programmaticRawRef.current = null;
+      return;
+    }
+
+    if (ignoreNextRawChangeRef.current) {
+      ignoreNextRawChangeRef.current = false;
+      programmaticRawRef.current = null;
+    }
+
+    if (text === prev) return;
     rawEditedRef.current = true;
     if (!editable || !onChange) return;
-    if (debounceTimerRef.current) {
-      window.clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = window.setTimeout(() => {
-      onChange(parseMarkdownToBlocks(text));
-    }, 150);
+    onChange(parseMarkdownToBlocks(text));
   };
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (stylainMode === "B" && rawEditedRef.current && editable && onChange) {
+        onChange(parseMarkdownToBlocks(rawMarkdownRef.current));
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [stylainMode, editable, onChange, parseMarkdownToBlocks]);
 
   return (
     <div 

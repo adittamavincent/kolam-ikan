@@ -270,7 +270,13 @@ export default function BaseEditor({
     } else {
       // Switching to B: first save current blocks if editor exists
       if (previousStylainModeRef.current === "A" && currentEditorRef.current && onChangeRef.current) {
-        onChangeRef.current(currentEditorRef.current.document as PartialBlock[]);
+        const doc = currentEditorRef.current.document as PartialBlock[];
+        const docJson = JSON.stringify(doc);
+        const initialJson = JSON.stringify(initialContentRef.current ?? null);
+        const lastJson = JSON.stringify(lastBlocksRef.current ?? null);
+        if (docJson !== initialJson && docJson !== lastJson) {
+          onChangeRef.current(doc);
+        }
       }
       lastBlocksRef.current = (currentEditorRef.current &&
         currentEditorRef.current.document &&

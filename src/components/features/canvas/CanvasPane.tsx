@@ -71,6 +71,20 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           hasReceivedFirstChange.current = true;
           return;
         }
+        // Ignore events that don't actually change content. Some editor
+        // events (selection/cursor/programmatic updates) will emit
+        // onChange without modifying the document; avoid marking the
+        // canvas dirty in that case.
+        const prev = canvas.content_json as PartialBlock[] | undefined;
+        if (
+          prev &&
+          Array.isArray(prev) &&
+          prev.length === blocks.length &&
+          JSON.stringify(prev) === JSON.stringify(blocks)
+        ) {
+          return;
+        }
+
         markDirty(streamId);
         debouncedUpdate(canvas.id, blocks);
       }

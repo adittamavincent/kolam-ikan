@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Fira_Code } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { DevAuthGuard } from "@/components/shared/DevAuthGuard";
@@ -9,6 +9,10 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
+});
+const firaCode = Fira_Code({
+  subsets: ["latin"],
+  variable: "--font-fira-code",
 });
 
 export const metadata: Metadata = {
@@ -23,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${firaCode.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
         <Locator />
         <Providers>

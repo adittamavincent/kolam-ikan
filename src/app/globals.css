@@ -304,7 +304,7 @@ body {
 
 /* When the root has `.stylain-ide` we apply IDE-like fonts and colors */
 .stylain-ide {
-  --stylain-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+  --stylain-font-mono: var(--font-fira-code), "Fira Code", "Fira Code VF", ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
     "JetBrains Mono", monospace;
   --stylain-code-bg: #0f1720;
   --stylain-code-fg: #d6deeb;
@@ -312,6 +312,29 @@ body {
   --stylain-surface: #0f1720;
   --stylain-border: #1f2933;
   --stylain-accent: #7aa2f7;
+}
+
+/* Explicitly prefer Fira Code for IDE/editor elements as a strong fallback */
+.stylain-ide,
+.stylain-ide code,
+.stylain-ide pre,
+.stylain-ide .cm-editor,
+.stylain-ide .cm-scroller,
+.stylain-ide .cm-content,
+.stylain-ide .blocknote-editor,
+.stylain-ide .bn-editor,
+.stylain-ide .bn-editor .ProseMirror,
+.stylain-ide .stylain-raw-input,
+.stylain-ide .stylain-raw-measure {
+  font-family: var(--font-fira-code), "Fira Code", "Fira Code VF", var(--stylain-font-mono) !important;
+  font-variant-ligatures: contextual !important;
+  font-feature-settings: 
+    "liga" 1, "clig" 1, "calt" 1, "rlig" 1, "zero" 1, "onum" 1, "tnum" 1,
+    "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1, "ss07" 1, "ss08" 1, "ss09" 1, "ss10" 1,
+    "ss11" 1, "ss12" 1, "ss13" 1, "ss14" 1, "ss15" 1, "ss16" 1, "ss17" 1, "ss18" 1, "ss19" 1, "ss20" 1,
+    "cv01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "cv05" 1, "cv06" 1, "cv07" 1, "cv08" 1, "cv09" 1, "cv10" 1,
+    "cv11" 1, "cv12" 1, "cv13" 1, "cv14" 1, "cv15" 1, "cv16" 1, "cv17" 1, "cv18" 1, "cv19" 1, "cv20" 1,
+    "cv21" 1, "cv22" 1, "cv23" 1, "cv24" 1, "cv25" 1, "cv26" 1, "cv27" 1, "cv28" 1, "cv29" 1, "cv30" 1, "cv31" 1;
 }
 
 .stylain-ide body {
@@ -392,7 +415,37 @@ body {
 .stylain-ide .blocknote-editor .ProseMirror div,
 .stylain-ide .blocknote-editor .ProseMirror code {
   font-family: var(--stylain-font-mono) !important;
-  font-variant-ligatures: none !important;
+  font-variant-ligatures: contextual !important;
+  font-feature-settings: 
+    "liga" 1, "clig" 1, "calt" 1, "rlig" 1, "zero" 1, "onum" 1, "tnum" 1,
+    "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1, "ss07" 1, "ss08" 1, "ss09" 1, "ss10" 1,
+    "ss11" 1, "ss12" 1, "ss13" 1, "ss14" 1, "ss15" 1, "ss16" 1, "ss17" 1, "ss18" 1, "ss19" 1, "ss20" 1,
+    "cv01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "cv05" 1, "cv06" 1, "cv07" 1, "cv08" 1, "cv09" 1, "cv10" 1,
+    "cv11" 1, "cv12" 1, "cv13" 1, "cv14" 1, "cv15" 1, "cv16" 1, "cv17" 1, "cv18" 1, "cv19" 1, "cv20" 1,
+    "cv21" 1, "cv22" 1, "cv23" 1, "cv24" 1, "cv25" 1, "cv26" 1, "cv27" 1, "cv28" 1, "cv29" 1, "cv30" 1, "cv31" 1;
+}
+
+/* Apply Fira Code and ligatures to Monaco and raw editor elements even when not in .stylain-ide */
+.stylain-raw-editor .monaco-editor,
+.stylain-raw-editor .monaco-editor .view-lines,
+.stylain-raw-editor .monaco-editor .view-line,
+.monaco-editor,
+.monaco-editor .view-lines,
+.monaco-editor .view-line,
+.blocknote-editor,
+.bn-editor,
+.bn-editor .ProseMirror,
+.stylain-raw-input,
+.stylain-raw-measure {
+  font-family: var(--font-fira-code), "Fira Code", "Fira Code VF", var(--stylain-font-mono) !important;
+  font-variant-ligatures: contextual !important;
+  font-feature-settings:
+    "liga" 1, "clig" 1, "calt" 1, "rlig" 1, "zero" 1, "onum" 1, "tnum" 1,
+    "ss01" 1, "ss02" 1, "ss03" 1, "ss04" 1, "ss05" 1, "ss06" 1, "ss07" 1, "ss08" 1, "ss09" 1, "ss10" 1,
+    "ss11" 1, "ss12" 1, "ss13" 1, "ss14" 1, "ss15" 1, "ss16" 1, "ss17" 1, "ss18" 1, "ss19" 1, "ss20" 1,
+    "cv01" 1, "cv02" 1, "cv03" 1, "cv04" 1, "cv05" 1, "cv06" 1, "cv07" 1, "cv08" 1, "cv09" 1, "cv10" 1,
+    "cv11" 1, "cv12" 1, "cv13" 1, "cv14" 1, "cv15" 1, "cv16" 1, "cv17" 1, "cv18" 1, "cv19" 1, "cv20" 1,
+    "cv21" 1, "cv22" 1, "cv23" 1, "cv24" 1, "cv25" 1, "cv26" 1, "cv27" 1, "cv28" 1, "cv29" 1, "cv30" 1, "cv31" 1;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -413,6 +413,21 @@ export default function BaseEditor({
                       // sometimes layout changes immediately after mount (fonts/DOM), run a couple more times
                       requestAnimationFrame(() => updateHeight());
                       const timer = window.setTimeout(updateHeight, 80);
+                          // If the browser provides the FontFaceSet API, wait for fonts to load
+                          // and then re-run layout to avoid width/cursor mismatches.
+                          try {
+                            const docWithFonts = document as unknown as {
+                              fonts?: { ready?: Promise<unknown> };
+                            };
+                            if (docWithFonts?.fonts?.ready) {
+                              docWithFonts.fonts.ready.then(() => {
+                                try {
+                                  updateHeight();
+                                  window.setTimeout(updateHeight, 50);
+                                } catch {}
+                              }).catch(() => {});
+                            }
+                          } catch {}
                       // cleanup
                       const editorObj = editor as unknown as EditorLike;
                       editorObj.__baseEditorCleanup = () => {
@@ -431,7 +446,9 @@ export default function BaseEditor({
               lineNumbersMinChars: 3,
               glyphMargin: false,
               readOnly: !editable,
-              fontFamily: "var(--stylain-font-mono), monospace",
+              fontFamily: "var(--font-fira-code), \"Fira Code\", \"Fira Code VF\", var(--stylain-font-mono), monospace",
+              fontLigatures:
+                '"liga" on, "clig" on, "calt" on, "rlig" on, "zero" on, "onum" on, "tnum" on, "ss01" on, "ss02" on, "ss03" on, "ss04" on, "ss05" on, "ss06" on, "ss07" on, "ss08" on, "ss09" on, "ss10" on, "ss11" on, "ss12" on, "ss13" on, "ss14" on, "ss15" on, "ss16" on, "ss17" on, "ss18" on, "ss19" on, "ss20" on, "cv01" on, "cv02" on, "cv03" on, "cv04" on, "cv05" on, "cv06" on, "cv07" on, "cv08" on, "cv09" on, "cv10" on, "cv11" on, "cv12" on, "cv13" on, "cv14" on, "cv15" on, "cv16" on, "cv17" on, "cv18" on, "cv19" on, "cv20" on, "cv21" on, "cv22" on, "cv23" on, "cv24" on, "cv25" on, "cv26" on, "cv27" on, "cv28" on, "cv29" on, "cv30" on, "cv31" on',
               fontSize: 13,
               lineHeight: 24,
               cursorBlinking: "blink",

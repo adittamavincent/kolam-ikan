@@ -353,7 +353,7 @@ export default function BaseEditor({
   return (
     <div 
       ref={containerRef}
-      className="blocknote-editor w-full max-w-full overflow-hidden wrap-anywhere [word-break:break-word]"
+      className={`${stylainMode === "B" ? "stylain-editor-shell" : "blocknote-editor"} w-full max-w-full overflow-hidden wrap-anywhere [word-break:break-word]`}
     >
       {stylainMode === "B" ? (
         <div 
@@ -429,10 +429,13 @@ export default function BaseEditor({
               minimap: { enabled: false },
               wordWrap: "on",
               lineNumbersMinChars: 3,
+              glyphMargin: false,
               readOnly: !editable,
               fontFamily: "var(--stylain-font-mono), monospace",
               fontSize: 13,
               lineHeight: 24,
+              cursorBlinking: "blink",
+              cursorWidth: 2,
               renderLineHighlight: "none",
               scrollBeyondLastLine: false,
               hideCursorInOverviewRuler: true,

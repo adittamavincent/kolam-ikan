@@ -24,23 +24,66 @@ function entryToMarkdown(entry: EntryWithSections): string {
 
 function blocksToMarkdown(blocks: BlockNoteBlock[]): string {
   if (!Array.isArray(blocks)) return "";
-  return blocks
-    .map((block) => {
-      const text =
-        block.content?.map((c: { text: string }) => c.text).join("") || "";
-      if (block.type === "heading") {
-        const level = (block.props?.level as number) || 1;
-        return `${"#".repeat(level)} ${text}`;
+
+  const out: string[] = [];
+  let i = 0;
+  while (i < blocks.length) {
+    const block = blocks[i];
+    const text =
+      block.content?.map((c: { text: string }) => c.text).join("") || "";
+
+    if (block.type === "bulletListItem") {
+      // collect consecutive bullet items and render as a single list
+      const items: string[] = [];
+      while (i < blocks.length && blocks[i].type === "bulletListItem") {
+        const itemText =
+          blocks[i].content?.map((c: { text: string }) => c.text).join("") || "";
+        items.push(`- ${itemText}`);
+        i++;
       }
-      if (block.type === "bulletListItem") {
-        return `- ${text}`;
+      out.push(items.join("\n"));
+      continue;
+    }
+
+    if (block.type === "numberedListItem") {
+      const items: string[] = [];
+      let num = 1;
+      while (i < blocks.length && blocks[i].type === "numberedListItem") {
+        const itemText =
+          blocks[i].content?.map((c: { text: string }) => c.text).join("") || "";
+        items.push(`${num}. ${itemText}`);
+        num++;
+        i++;
       }
-      if (block.type === "numberedListItem") {
-        return `1. ${text}`;
-      }
-      return text;
-    })
-    .join("\n\n");
+      out.push(items.join("\n"));
+      continue;
+    }
+
+    if (block.type === "heading") {
+      const level = (block.props?.level as number) || 1;
+      out.push(`${"#".repeat(level)} ${text}`);
+      i++;
+      continue;
+    }
+
+    // default: paragraph or other inline block
+    out.push(text);
+    i++;
+  }
+
+  // join blocks with a single blank line between block-level elements
+  let md = out.join("\n\n");
+  // normalize CRLF
+  md = md.replace(/\r\n?/g, "\n");
+  // ensure list markers use '-' and preserve indentation
+  md = md.replace(/^(\s*)[*+]\s+/gm, "$1- ");
+  // collapse blank lines between consecutive list items
+  md = md.replace(/(-\s.*)\n\s*\n(?=-\s)/g, "$1\n");
+  md = md.replace(/(\d+\.\s.*)\n\s*\n(?=\d+\.\s)/g, "$1\n");
+  // remove extra blank line immediately before a list so paragraph + list is single-spaced
+  md = md.replace(/\n\s*\n(?=-\s)/g, "\n");
+  md = md.replace(/\n\s*\n(?=\d+\.\s)/g, "\n");
+  return md;
 }
 
 export function downloadMarkdown(content: string, filename: string) {

@@ -48,6 +48,7 @@ export default function BaseEditor({
   const initialContentRef = useRef<PartialBlock[] | undefined>(initialContent);
   const rawMarkdownRef = useRef(rawMarkdown);
   const parserEditorRef = useRef<BlockNoteEditor | null>(null);
+  const rawEditedRef = useRef<boolean>(false);
   const debounceTimerRef = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -122,7 +123,20 @@ export default function BaseEditor({
   );
 
   const parseMarkdownToBlocks = useCallback((markdown: string): PartialBlock[] => {
-    const trimmedMarkdown = markdown.replace(/\n+$/, "");
+    let trimmedMarkdown = markdown.replace(/\n+$/, "");
+    // normalize CRLF
+    trimmedMarkdown = trimmedMarkdown.replace(/\r\n?/g, "\n");
+    // normalize common bullet markers to '-' (preserve indentation)
+    trimmedMarkdown = trimmedMarkdown.replace(/^(\s*)[*+]\s+/gm, "$1- ");
+    // collapse blank lines between consecutive list items
+    trimmedMarkdown = trimmedMarkdown.replace(/(-\s.*)\n\s*\n(?=-\s)/g, "$1\n");
+    trimmedMarkdown = trimmedMarkdown.replace(/(\d+\.\s.*)\n\s*\n(?=\d+\.\s)/g, "$1\n");
+    // remove extra blank line immediately before a list so paragraph + list is single-spaced
+    trimmedMarkdown = trimmedMarkdown.replace(/\n\s*\n(?=\s*[-]\s)/g, "\n");
+    // ensure blank line after list before non-list text to prevent merging
+    trimmedMarkdown = trimmedMarkdown.replace(/(\n- .*\n)([^\n\s-0-9])/g, "$1\n$2");
+    trimmedMarkdown = trimmedMarkdown.replace(/(\n\d+\. .*\n)([^\n\s-0-9])/g, "$1\n$2");
+
     try {
       const parserEditor = ensureParserEditor();
       const parsed = parserEditor.tryParseMarkdownToBlocks(trimmedMarkdown);
@@ -136,7 +150,18 @@ export default function BaseEditor({
   const blocksToMarkdown = useCallback((blocks: PartialBlock[]): string => {
     try {
       const parserEditor = ensureParserEditor();
-      return parserEditor.blocksToMarkdownLossy(blocks);
+      let md = parserEditor.blocksToMarkdownLossy(blocks);
+      // normalize CRLF
+      md = md.replace(/\r\n?/g, "\n");
+      // normalize common bullet markers to '-' (preserve indentation)
+      md = md.replace(/^(\s*)[*+]\s+/gm, "$1- ");
+      // collapse blank lines between consecutive list items
+      md = md.replace(/(-\s.*)\n\s*\n(?=-\s)/g, "$1\n");
+      md = md.replace(/(\d+\.\s.*)\n\s*\n(?=\d+\.\s)/g, "$1\n");
+      // remove extra blank line immediately before a list so paragraph + list is single-spaced
+      md = md.replace(/\n\s*\n(?=-\s)/g, "\n");
+      md = md.replace(/\n\s*\n(?=\d+\.\s)/g, "\n");
+      return md;
     } catch {
       return "";
     }
@@ -158,8 +183,10 @@ export default function BaseEditor({
     if (typeof window === "undefined") return;
 
     let initial: PartialBlock[] | undefined;
-    if (stylainMode === "A" && rawMarkdownRef.current.trim().length > 0) {
-      const parsed = parseMarkdownToBlocks(rawMarkdownRef.current);
+    if (stylainMode === "A") {
+      // Always parse the raw markdown when entering A so edits (including
+      // explicit deletions) made in B are reflected in the BlockNote doc.
+      const parsed = parseMarkdownToBlocks(rawMarkdownRef.current ?? "");
       initial = parsed.length > 0 ? parsed : undefined;
     } else {
       initial =
@@ -183,10 +210,13 @@ export default function BaseEditor({
       });
 
       if (stylainMode === "B") {
-        // If the user already has raw markdown (they were in B mode before),
-        // prefer preserving their exact text rather than re-serializing
-        // the editor blocks (which can introduce escape characters).
-        if (rawMarkdownRef.current && rawMarkdownRef.current.trim().length > 0) {
+        // If the user actively edited raw markdown in B (including clearing it),
+        // preserve that exact text. Otherwise, serialize current blocks to
+        // markdown so B starts with a representation of the document.
+        if (
+          rawEditedRef.current ||
+          (rawMarkdownRef.current && rawMarkdownRef.current.trim().length > 0)
+        ) {
           setRawMarkdown(rawMarkdownRef.current);
         } else {
           const blocksForMarkdown = normalizeBlocks(
@@ -309,11 +339,14 @@ export default function BaseEditor({
     if (currentEditor && onChange) {
       const unsubscribe = currentEditor.onChange(() => {
         if (stylainMode === "B") return;
+        // Update rawMarkdown to keep it in sync with BlockNote changes
+        const markdown = blocksToMarkdown(currentEditor.document);
+        setRawMarkdown(markdown.replace(/\n+$/, ""));
         onChange(currentEditor.document);
       });
       return unsubscribe;
     }
-  }, [currentEditor, onChange, stylainMode]);
+  }, [currentEditor, onChange, stylainMode, blocksToMarkdown]);
 
   useEffect(() => {
     return () => {
@@ -341,6 +374,7 @@ export default function BaseEditor({
   const handleRawMarkdownChange = (nextMarkdown: string | undefined) => {
     const text = nextMarkdown ?? "";
     setRawMarkdown(text);
+    rawEditedRef.current = true;
     if (!editable || !onChange) return;
     if (debounceTimerRef.current) {
       window.clearTimeout(debounceTimerRef.current);

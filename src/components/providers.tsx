@@ -2,7 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
+import { initStylain } from "@/lib/theme/stylain";
 import { useSidebar } from "@/lib/hooks/useSidebar";
 import { useLayout } from "@/lib/hooks/useLayout";
 
@@ -31,9 +32,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
 
-  useEffect(() => {
-    useSidebar.persist.rehydrate();
-    useLayout.persist.rehydrate();
+  useLayoutEffect(() => {
+    // Initialize stylain synchronously before paint to avoid
+    // hydration mismatches for attributes like `data-stylain-mode`.
+    try {
+      initStylain();
+    } catch {}
+
+    // Restore persisted UI state
+    try {
+      useSidebar.persist.rehydrate();
+      useLayout.persist.rehydrate();
+    } catch {}
   }, []);
 
   return (

@@ -49,6 +49,7 @@ export default function BaseEditor({
   const rawMarkdownRef = useRef(rawMarkdown);
   const parserEditorRef = useRef<BlockNoteEditor | null>(null);
   const debounceTimerRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   type EditorCreateOptions = Parameters<typeof BlockNoteEditor.create>[0];
 
@@ -211,6 +212,14 @@ export default function BaseEditor({
     if (typeof window === "undefined") return;
     const willHandler = () => {
       try {
+        if (containerRef.current) {
+          const height = containerRef.current.getBoundingClientRect().height;
+          // Store the exact height of the BlockNote editor so Monaco starts with the same height.
+          // Fallback to 24 if it's too small.
+          const freshHeight = Math.max(24, Math.ceil(height));
+          lastEditorHeightRef.current = freshHeight;
+          setEditorHeightState(freshHeight);
+        }
         const sel = window.getSelection();
         if (sel && sel.rangeCount > 0) {
           const ranges: Range[] = [];
@@ -319,7 +328,15 @@ export default function BaseEditor({
     };
   }, []);
 
-  const [editorHeight, setEditorHeight] = useState<number>(24);
+  // Persist last known editor height across remounts so switching
+  // stylain modes doesn't collapse the editor to a tiny height and
+  // cause a visual flicker.
+  const lastEditorHeightRef = useRef<number>(24);
+  const [editorHeight, setEditorHeightState] = useState<number>(lastEditorHeightRef.current);
+  const setEditorHeight = useCallback((h: number) => {
+    lastEditorHeightRef.current = h;
+    setEditorHeightState(h);
+  }, []);
 
   const handleRawMarkdownChange = (nextMarkdown: string | undefined) => {
     const text = nextMarkdown ?? "";
@@ -334,7 +351,10 @@ export default function BaseEditor({
   };
 
   return (
-    <div className="blocknote-editor w-full max-w-full overflow-hidden wrap-anywhere [word-break:break-word]">
+    <div 
+      ref={containerRef}
+      className="blocknote-editor w-full max-w-full overflow-hidden wrap-anywhere [word-break:break-word]"
+    >
       {stylainMode === "B" ? (
         <div 
           className="stylain-raw-editor relative flex w-full border border-border-default/40 bg-surface-subtle/40 overflow-hidden"
@@ -350,6 +370,7 @@ export default function BaseEditor({
                   const getContainerWidth = () => {
                     try {
                       const dom = (editor as unknown as EditorLike).getDomNode?.();
+                      if (dom && dom.parentElement?.clientWidth) return dom.parentElement.clientWidth;
                       if (dom && dom.clientWidth) return dom.clientWidth;
                       const layoutInfo = (editor as unknown as EditorLike).getLayoutInfo?.();
                       return layoutInfo?.width;
@@ -360,6 +381,12 @@ export default function BaseEditor({
 
                   const updateHeight = () => {
                     try {
+                      const width = getContainerWidth();
+                      // If the container width is suspiciously small (e.g. 0 before layout),
+                      // the text is word-wrapping aggressively and returning an artificially massive height.
+                      // Skip this layout tick to avoid the "large height flicker".
+                      if (width !== undefined && width < 50) return;
+
                       const editorLike = editor as unknown as EditorLike & { getContentHeight?: () => number };
                       const contentHeight =
                         typeof editorLike.getContentHeight === "function"

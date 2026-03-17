@@ -84,10 +84,9 @@ export function onStylainChanged(fn: (e: CustomEvent<{ mode: Mode }>) => void) {
   return () => window.removeEventListener(EVENT_DID, fn as EventListener);
 }
 
-if (typeof window !== "undefined") {
-  try {
-    initStylain();
-  } catch {}
-}
+// Do not auto-initialize during module evaluation to avoid
+// potential SSR hydration mismatches. Call `initStylain()` from a
+// client-side entry point (e.g. a top-level client provider) so the
+// DOM attributes are only mutated after hydration.
 
 export type { Mode };

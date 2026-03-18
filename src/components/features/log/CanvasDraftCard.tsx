@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { PartialBlock } from "@blocknote/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
@@ -96,8 +97,16 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const starterBaselineContent = useCanvasDraft(
     (s) => s.starterBaselineByStream[streamId]?.content ?? null,
   );
+  const setStarterBaseline = useCanvasDraft((s) => s.setStarterBaseline);
+  const markClean = useCanvasDraft((s) => s.markClean);
   const [snapshotName, setSnapshotName] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  // Local override that represents the most-recently committed snapshot
+  // This helps the UI immediately compare against the newly created
+  // snapshot before the server-side `latestCanvasVersion` has refetched.
+  const [committedBaseline, setCommittedBaseline] = useState<
+    PartialBlock[] | null | undefined
+  >(undefined);
 
   const { data: latestCanvasVersion, isLoading: isLatestVersionLoading } =
     useQuery({
@@ -118,21 +127,42 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     });
 
   const hasDraftDiff = useMemo(() => {
-    const latestNormalized = normalizeCanvasContent(
-      latestCanvasVersion?.content_json,
-    );
-    const baselineNormalized =
-      latestNormalized ?? normalizeCanvasContent(starterBaselineContent);
+    // Prefer the locally committed baseline override if present. This ensures
+    // the UI flips to "committed" immediately after a successful commit.
+    const baselineSource =
+      committedBaseline !== undefined
+        ? committedBaseline
+        : latestCanvasVersion
+        ? latestCanvasVersion.content_json
+        : starterBaselineContent;
+
+    const baselineNormalized = normalizeCanvasContent(baselineSource);
     const currentNormalized = normalizeCanvasContent(
       liveContent ?? canvas?.content_json,
     );
     return baselineNormalized !== currentNormalized;
   }, [
-    latestCanvasVersion?.content_json,
+    committedBaseline,
+    latestCanvasVersion,
     starterBaselineContent,
     liveContent,
     canvas?.content_json,
   ]);
+
+  // Clear the local committedBaseline override once the server's latest
+  // snapshot matches the local committed content — avoids stale override.
+  useEffect(() => {
+    if (committedBaseline === undefined) return;
+    const latestNormalized = normalizeCanvasContent(
+      latestCanvasVersion?.content_json,
+    );
+    const committedNormalized = normalizeCanvasContent(committedBaseline);
+    if (latestNormalized !== null && latestNormalized === committedNormalized) {
+      // Defer clearing to avoid synchronous setState inside the effect body.
+      // This prevents the lint rule complaining about cascading renders.
+      setTimeout(() => setCommittedBaseline(undefined), 0);
+    }
+  }, [latestCanvasVersion?.content_json, committedBaseline]);
 
   const commitMutation = useMutation({
     mutationFn: async () => {
@@ -143,15 +173,26 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
-        content_json: canvas.content_json as unknown as Json,
+        content_json:
+          (liveContent ?? canvas.content_json) as unknown as Json,
         name,
         created_by: userData.user?.id ?? null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
+      const committedContent =
+        liveContent ?? (canvas?.content_json as unknown as PartialBlock[] | null);
+
       setSnapshotName("");
       setIsExpanded(false);
+
+      // Ensure the draft checker uses the latest committed snapshot immediately.
+      setStarterBaseline(streamId, canvas?.id ?? null, committedContent);
+      // Local override so UI compares against the just-committed content
+      setCommittedBaseline(committedContent);
+      markClean(streamId);
+
       queryClient.invalidateQueries({
         queryKey: ["canvas-versions", streamId],
       });

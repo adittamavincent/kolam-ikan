@@ -226,6 +226,22 @@ function removeLocalDraft(streamId: string): void {
   }
 }
 
+function shouldHydrateFromLocalSnapshot(): boolean {
+  if (typeof window === "undefined" || typeof performance === "undefined") {
+    return false;
+  }
+
+  const navEntry = performance.getEntriesByType(
+    "navigation",
+  )[0] as PerformanceNavigationTiming | undefined;
+
+  if (navEntry?.type) {
+    return navEntry.type === "reload";
+  }
+
+  return false;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function useDraftSystem({ streamId }: UseDraftSystemProps) {
@@ -245,6 +261,21 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     updatedAt: Date.now(),
   });
 
+  const hydrateFromLocalRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    hydrateFromLocalRef.current = shouldHydrateFromLocalSnapshot();
+  }, []);
+
+  const snapshotLocalDraft = useCallback(() => {
+    if (!streamId) return;
+    draftStateRef.current = {
+      ...draftStateRef.current,
+      updatedAt: Date.now(),
+    };
+    writeLocalDraft(streamId, draftStateRef.current);
+  }, [streamId]);
+
   // 1. Initial Load and Legacy Cleanup
   useEffect(() => {
     setIsLoading(true);
@@ -259,8 +290,10 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     async function initializeDrafts() {
       if (!streamId) return;
 
-      // Load purely localized drafted sections
-      const local = readLocalDraft(streamId);
+      // Recover local snapshot only on a real page reload.
+      const local = hydrateFromLocalRef.current
+        ? readLocalDraft(streamId)
+        : null;
       if (local && Object.keys(local.sections).length > 0) {
         draftStateRef.current = {
           ...local,
@@ -294,6 +327,9 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           };
         });
         setInitialDrafts(loaded);
+        if (Object.keys(loaded).length > 0) {
+          setStatus("saved");
+        }
       }
       setIsLoading(false);
     }
@@ -316,7 +352,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         delete draftStateRef.current.sections[instanceId];
         draftStateRef.current.sectionOrder =
           draftStateRef.current.sectionOrder.filter((id) => id !== instanceId);
-        writeLocalDraft(streamId, draftStateRef.current);
         setInitialDrafts((prev) => {
           const next = { ...prev };
           delete next[instanceId];
@@ -337,10 +372,9 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
         draftStateRef.current.sectionOrder.push(instanceId);
       }
-      writeLocalDraft(streamId, draftStateRef.current);
       setStatus("saved");
     },
-    [streamId],
+    [],
   );
 
   const savePdfDraft = useCallback(
@@ -361,8 +395,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         delete draftStateRef.current.sections[instanceId];
         draftStateRef.current.sectionOrder =
           draftStateRef.current.sectionOrder.filter((id) => id !== instanceId);
-        writeLocalDraft(streamId, draftStateRef.current);
-
         setInitialDrafts((prev) => {
           const next = { ...prev };
           delete next[instanceId];
@@ -386,11 +418,9 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
         draftStateRef.current.sectionOrder.push(instanceId);
       }
-
-      writeLocalDraft(streamId, draftStateRef.current);
       setStatus("saved");
     },
-    [streamId],
+    [],
   );
 
   // 3. Clear/Discard whole draft
@@ -617,11 +647,33 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         (id, idx) => instanceIds.indexOf(id) === idx,
       );
       draftStateRef.current.sectionOrder = deduped;
-      writeLocalDraft(streamId, draftStateRef.current);
+      draftStateRef.current.updatedAt = Date.now();
     },
-    [streamId],
+    [],
   );
-  const flushPendingSaves = useCallback(async () => {}, []);
+  const flushPendingSaves = useCallback(async () => {
+    snapshotLocalDraft();
+  }, [snapshotLocalDraft]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleBeforeUnload = () => {
+      snapshotLocalDraft();
+    };
+
+    const handlePageHide = () => {
+      snapshotLocalDraft();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [snapshotLocalDraft]);
 
   return {
     status,

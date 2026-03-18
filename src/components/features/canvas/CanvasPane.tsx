@@ -26,28 +26,23 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const [editor, setEditor] = useState<BlockNoteEditorType | null>(null);
   const [highlightTerm] = useState<string | null>(null);
   const [snapshotName, setSnapshotName] = useState("");
-  const markDirty = useCanvasDraft((s) => s.markDirty);
   const markClean = useCanvasDraft((s) => s.markClean);
+  const setLiveContent = useCanvasDraft((s) => s.setLiveContent);
+  const clearLiveContent = useCanvasDraft((s) => s.clearLiveContent);
+  const setStarterBaseline = useCanvasDraft((s) => s.setStarterBaseline);
+  const setSyncStatus = useCanvasDraft((s) => s.setSyncStatus);
+  const markDirty = useCanvasDraft((s) => s.markDirty);
+  const setLocalStatus = useCanvasDraft((s) => s.setLocalStatus);
+  const syncStatus = useCanvasDraft((s) => s.dbSyncStatusByStream[streamId]) || "idle";
+  const localStatus = useCanvasDraft((s) => s.localSaveStatusByStream[streamId]) || "idle";
   const hasReceivedFirstChange = useRef(false);
   const ignoreStylainChangeRef = useRef(false);
-  const editorRef = useRef<BlockNoteEditorType | null>(null);
-  const canvasRef = useRef<typeof canvas>(canvas);
-  const pendingModeSyncTimerRef = useRef<number | null>(null);
-  const preModeSwitchDocRef = useRef<string | null>(null);
-  const targetModeRef = useRef<"A" | "B" | null>(null);
   const [isModeChanging, setIsModeChanging] = useState(false);
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId]);
 
   const isVisible = canvasWidth > 0;
-
-  useEffect(() => {
-    editorRef.current = editor;
-  }, [editor]);
-
-  useEffect(() => {
-    canvasRef.current = canvas;
-  }, [canvas]);
 
   // Calculate smooth animation - slides in from right with decompression
   const containerStyle = {
@@ -67,15 +62,69 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     transition: "transform 400ms cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isEquivalentBlocks = useCallback((a: any, b: any): boolean => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    
+    // Normalize blocks for comparison to ignore IDs and empty children
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const normalize = (val: any): any => {
+      if (Array.isArray(val)) {
+        const filtered = val.map(normalize).filter(v => v !== undefined);
+        return filtered.length > 0 ? filtered : undefined;
+      }
+      if (typeof val === "object" && val !== null) {
+        // Essential fields for a BlockNote block
+        const { type, content, props, children } = val;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const res: any = { type };
+        if (content) res.content = content;
+        // Only keep non-default props if possible, or just keep them all for now
+        if (props && Object.keys(props).length > 0) res.props = props;
+        if (children && Array.isArray(children) && children.length > 0) {
+          const normChildren = normalize(children);
+          if (normChildren) res.children = normChildren;
+        }
+        return res;
+      }
+      return val;
+    };
+
+    try {
+      return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
+    } catch {
+      return false;
+    }
+  }, []);
+
   const debouncedUpdate = useMemo(
     () =>
-      debounce((id: string, blocks: PartialBlock[]) => {
-        updateCanvas.mutate({
-          id,
-          updates: { content_json: blocks as unknown as Json },
-        });
+      debounce(async (id: string, blocks: PartialBlock[]) => {
+        // Double check against latest DB version if needed, but for now 
+        // rely on the caller sending only real changes.
+        setSyncStatus(streamId, "syncing");
+        setLocalStatus(streamId, "saving");
+        try {
+          await updateCanvas.mutateAsync({
+            id,
+            updates: { content_json: blocks as unknown as Json },
+          });
+          setSyncStatus(streamId, "synced");
+          setLocalStatus(streamId, "saved");
+          markClean(streamId);
+          // After a short delay, move back to idle if no more changes
+          setTimeout(() => {
+            if (useCanvasDraft.getState().dbSyncStatusByStream[streamId] === "synced") {
+              setSyncStatus(streamId, "idle");
+            }
+          }, 2000);
+        } catch {
+          setSyncStatus(streamId, "error");
+          setLocalStatus(streamId, "error");
+        }
       }, 2000),
-    [updateCanvas],
+    [updateCanvas, setSyncStatus, setLocalStatus, streamId, markClean],
   );
 
   const handleContentChange = useCallback(
@@ -86,31 +135,58 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           hasReceivedFirstChange.current = true;
           return;
         }
-        // Ignore events that don't actually change content. Some editor
-        // events (selection/cursor/programmatic updates) will emit
-        // onChange without modifying the document; avoid marking the
-        // canvas dirty in that case.
-        const prev = canvas.content_json as PartialBlock[] | undefined;
-        if (
-          prev &&
-          Array.isArray(prev) &&
-          prev.length === blocks.length &&
-          JSON.stringify(prev) === JSON.stringify(blocks)
-        ) {
+        
+        // Use lenient comparison to ignore transient formatting/ID changes
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const prev = (liveContent || canvas.content_json) as any;
+        if (isEquivalentBlocks(prev, blocks)) {
           return;
         }
 
+        setLiveContent(streamId, blocks);
         markDirty(streamId);
         debouncedUpdate(canvas.id, blocks);
       }
     },
-    [canvas, debouncedUpdate, markDirty, streamId],
+    [canvas, liveContent, isEquivalentBlocks, setLiveContent, markDirty, streamId, debouncedUpdate],
   );
 
-  // Reset first-change flag when canvas key changes (e.g., after restore)
+  // Reset first-change flag when canvas ID changes (but NOT on updated_at)
   useEffect(() => {
     hasReceivedFirstChange.current = false;
-  }, [canvas?.id, canvas?.updated_at]);
+  }, [canvas?.id]);
+
+  // Sync initial content once if DB canvas is loaded but no local cache yet
+  useEffect(() => {
+    if (canvas?.content_json) {
+      if (!liveContent) {
+        setLiveContent(streamId, (canvas.content_json as PartialBlock[] | null) ?? null);
+      } else {
+        // If we HAVE local content but it's different from DB, start background sync
+        const dbContentJson = JSON.stringify(canvas.content_json);
+        const localContentJson = JSON.stringify(liveContent);
+        if (dbContentJson !== localContentJson) {
+           console.log(`[CanvasPane] detecting local change on mount, starting sync for ${streamId}`);
+           debouncedUpdate(canvas.id, liveContent);
+        }
+      }
+    }
+  }, [canvas?.id, canvas?.content_json, liveContent, setLiveContent, streamId, debouncedUpdate]);
+
+  useEffect(() => {
+    setStarterBaseline(
+      streamId,
+      canvas?.id ?? null,
+      (canvas?.content_json as PartialBlock[] | null) ?? null,
+    );
+  }, [canvas?.id, canvas?.content_json, setStarterBaseline, streamId]);
+
+  useEffect(() => {
+    return () => {
+      clearLiveContent(streamId);
+      setStarterBaseline(streamId, null, null);
+    };
+  }, [clearLiveContent, setStarterBaseline, streamId]);
 
   const saveSnapshotMutation = useMutation({
     mutationFn: async (nameOverride?: string) => {
@@ -133,6 +209,9 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       markClean(streamId);
       queryClient.invalidateQueries({
         queryKey: ["canvas-versions", streamId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas-latest-version", streamId],
       });
     },
   });
@@ -168,86 +247,15 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const clearPendingModeSync = () => {
-      if (pendingModeSyncTimerRef.current !== null) {
-        window.clearTimeout(pendingModeSyncTimerRef.current);
-        pendingModeSyncTimerRef.current = null;
-      }
+    const cancelCurrentWriteSession = () => {
+      debouncedUpdate.cancel();
     };
 
-    const persistEditorDocument = () => {
-      const currentCanvas = canvasRef.current;
-      const currentEditor = editorRef.current;
-      if (!currentCanvas || !currentEditor) return false;
-
-      const blocks = currentEditor.document;
-      const prev = currentCanvas.content_json as PartialBlock[] | undefined;
-
-      if (
-        prev &&
-        Array.isArray(prev) &&
-        prev.length === blocks.length &&
-        JSON.stringify(prev) === JSON.stringify(blocks)
-      ) {
-        return true;
-      }
-
-      queryClient.setQueryData(["canvas", streamId], (oldData: unknown) => {
-        if (oldData && typeof oldData === "object" && "id" in oldData) {
-          return {
-            ...oldData,
-            content_json: blocks as unknown as Json,
-          };
-        }
-        return oldData;
-      });
-
-      markDirty(streamId);
-      updateCanvas.mutate({
-        id: currentCanvas.id,
-        updates: { content_json: blocks as unknown as Json },
-      });
-
-      return true;
-    };
-
-    const scheduleModeSync = (attempt = 0) => {
-      clearPendingModeSync();
-      pendingModeSyncTimerRef.current = window.setTimeout(() => {
-        const currentEditor = editorRef.current;
-        const currentDocJson = currentEditor
-          ? JSON.stringify(currentEditor.document)
-          : null;
-        const preSwitchJson = preModeSwitchDocRef.current;
-        const stillPreSwitchDoc =
-          targetModeRef.current === "A" &&
-          preSwitchJson !== null &&
-          currentDocJson !== null &&
-          currentDocJson === preSwitchJson;
-
-        if (stillPreSwitchDoc && attempt < 10) {
-          scheduleModeSync(attempt + 1);
-          return;
-        }
-
-        persistEditorDocument();
-        pendingModeSyncTimerRef.current = null;
-      }, 30);
-    };
-
-    const will = (event: Event) => {
+    const will = () => {
       try {
-        const detail = (event as CustomEvent<{ mode?: "A" | "B" }>).detail;
-        targetModeRef.current = detail?.mode ?? null;
-        preModeSwitchDocRef.current = editorRef.current
-          ? JSON.stringify(editorRef.current.document)
-          : null;
-        clearPendingModeSync();
+        cancelCurrentWriteSession();
         ignoreStylainChangeRef.current = true;
         setIsModeChanging(true);
-        // Commit any debounced pending content before mode teardown.
-        debouncedUpdate.flush();
-        debouncedUpdate.cancel();
         // Clear after a short period in case no did event fires
         window.setTimeout(() => {
           try {
@@ -260,12 +268,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
     const handleStylainModeChange = () => {
       try {
-        // B -> A must wait for BaseEditor to rebuild BlockNote from raw markdown.
-        if (targetModeRef.current === "A") {
-          scheduleModeSync(0);
-        } else {
-          persistEditorDocument();
-        }
+        cancelCurrentWriteSession();
         // Allow a small settling time before re-enabling
         window.setTimeout(() => {
           try {
@@ -282,11 +285,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     window.addEventListener("stylain_mode_changed", handleStylainModeChange as EventListener);
 
     return () => {
-      clearPendingModeSync();
+      cancelCurrentWriteSession();
       window.removeEventListener("stylain_mode_will_change", will as EventListener);
       window.removeEventListener("stylain_mode_changed", handleStylainModeChange as EventListener);
     };
-  }, [updateCanvas, markDirty, streamId, queryClient, debouncedUpdate]);
+  }, [debouncedUpdate]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -324,6 +327,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     };
   }, [handleSaveSnapshot]);
 
+  const isCanvasDirty = useCanvasDraft((s) => s.dirtyStreams.has(streamId));
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.dispatchEvent(
@@ -333,10 +337,13 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           hasCanvas: Boolean(canvas),
           snapshotName,
           isSavingSnapshot: saveSnapshotMutation.isPending,
+          syncStatus,
+          localStatus,
+          isDirty: isCanvasDirty,
         },
       }),
     );
-  }, [streamId, canvas, snapshotName, saveSnapshotMutation.isPending]);
+  }, [streamId, canvas, snapshotName, saveSnapshotMutation.isPending, syncStatus, isCanvasDirty, localStatus]);
 
   return (
     <div
@@ -350,8 +357,8 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-24">
           {canvas ? (
             <BlockNoteEditor
-              key={`canvas-${canvas.id}-${canvas.updated_at ?? "na"}`}
-              initialContent={canvas.content_json as unknown as PartialBlock[]}
+              key={`canvas-${canvas.id}`}
+              initialContent={(liveContent || canvas.content_json) as unknown as PartialBlock[]}
               onChange={handleContentChange}
               onEditorReady={setEditor}
               placeholder="Start writing on the canvas..."

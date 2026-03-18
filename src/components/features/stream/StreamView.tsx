@@ -61,7 +61,6 @@ export function StreamView({ streamId }: { streamId: string }) {
       {/* Bridge Trigger Button */}
       <button
         onClick={() => {
-          window.dispatchEvent(new Event("kolam_flush_drafts"));
           setIsBridgeOpen(true);
         }}
         className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-action-primary-bg px-4 py-2 text-action-primary-text hover:opacity-90 transition-opacity"

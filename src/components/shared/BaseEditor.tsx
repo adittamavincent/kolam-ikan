@@ -13,6 +13,7 @@ import { getStylainMode, onStylainChanged } from "@/lib/theme/stylain";
 import bridge from "@/lib/blocknote-markdown-bridge";
 import Editor from "@monaco-editor/react";
 import { BlockNoteBlock } from "@/lib/types";
+import debounce from "lodash/debounce";
 
 type EditorLike = {
   getDomNode?: () => HTMLElement | null;
@@ -131,29 +132,41 @@ export default function BaseEditor({
     [isEmptyParagraph],
   );
 
-  const parseMarkdownToBlocks = useCallback((markdown: string): PartialBlock[] => {
-    let trimmedMarkdown = markdown.replace(/\n+$/, "");
+  const parseMarkdownToBlocks = useCallback((markdown: string, preserveTrailing = false): PartialBlock[] => {
+    let text = markdown;
+    if (!preserveTrailing) {
+      text = text.replace(/\n+$/, "");
+    }
     // normalize CRLF
-    trimmedMarkdown = trimmedMarkdown.replace(/\r\n?/g, "\n");
+    text = text.replace(/\r\n?/g, "\n");
     // normalize common bullet markers to '-' (preserve indentation)
-    trimmedMarkdown = trimmedMarkdown.replace(/^(\s*)[*+]\s+/gm, "$1- ");
+    text = text.replace(/^(\s*)[*+]\s+/gm, "$1- ");
+    
+    let blocks: PartialBlock[] = [];
+    
     // If this markdown contains our bridge metadata spans, prefer the bridge
     // parser so custom attrs (data-bn) are preserved.
-    if (/<span\s+data-bn=/.test(trimmedMarkdown)) {
+    if (/<span\s+data-bn=/.test(text)) {
       try {
-        const bridged = bridge.bridgeMarkdownToBlocks(trimmedMarkdown);
-        return normalizeBlocks(bridged as PartialBlock[]);
+        blocks = bridge.bridgeMarkdownToBlocks(text) as PartialBlock[];
       } catch {}
     }
 
-    try {
-      const parserEditor = ensureParserEditor();
-      const parsed = parserEditor.tryParseMarkdownToBlocks(trimmedMarkdown);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return normalizeBlocks(parsed as PartialBlock[]);
-      }
-    } catch {}
-    return normalizeBlocks(fallbackBlocksFromText(trimmedMarkdown));
+    if (blocks.length === 0) {
+      try {
+        const parserEditor = ensureParserEditor();
+        const parsed = parserEditor.tryParseMarkdownToBlocks(text);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          blocks = parsed as PartialBlock[];
+        }
+      } catch {}
+    }
+
+    if (blocks.length === 0) {
+      blocks = fallbackBlocksFromText(text);
+    }
+
+    return preserveTrailing ? blocks : normalizeBlocks(blocks);
   }, [ensureParserEditor, fallbackBlocksFromText, normalizeBlocks]);
 
   const formatMarkdown = useCallback((markdown: string): string => {
@@ -359,12 +372,37 @@ export default function BaseEditor({
     return () => {};
   }, [stylainMode, createEditor, parseMarkdownToBlocks, blocksToMarkdown, normalizeBlocks, formatMarkdown]);
 
+  const isEquivalent = useCallback((a: PartialBlock[] | null | undefined, b: PartialBlock[] | null | undefined) => {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    // For deep comparison without strict object identity, stringify is okay
+    // but we can optimize it or make it more lenient later if needed.
+    return JSON.stringify(a) === JSON.stringify(b);
+  }, []);
+
+  const debouncedOnChangeRef = useRef<ReturnType<typeof debounce> | null>(null);
+
+  useEffect(() => {
+    debouncedOnChangeRef.current = debounce((blocks: PartialBlock[]) => {
+      if (onChangeRef.current) onChangeRef.current(blocks);
+    }, 1000);
+    return () => debouncedOnChangeRef.current?.cancel();
+  }, []);
+
   // Update editor content when initialContent changes after mount
   useEffect(() => {
     if (reconcilingRef.current) return;
     if (!currentEditor || !initialContent || initialContent.length === 0) return;
+    
+    // In mode B, we prioritize the user's active keyboard buffer.
+    // If they've edited raw markdown, we shouldn't let incoming initialContent
+    // (potentially just a synced version of what they just typed) stomp over it.
+    if (stylainMode === "B" && (rawEditedRef.current || ignoreNextRawChangeRef.current)) {
+       return;
+    }
+
     const currentBlocks = currentEditor.document;
-    if (currentBlocks.length === 0 || JSON.stringify(currentBlocks) !== JSON.stringify(initialContent)) {
+    if (currentBlocks.length === 0 || !isEquivalent(currentBlocks as unknown as PartialBlock[], initialContent)) {
       try {
         currentEditor.replaceBlocks(currentBlocks, initialContent);
         const nextMarkdown = blocksToMarkdown(initialContent);
@@ -376,7 +414,7 @@ export default function BaseEditor({
         console.error("Failed to update editor content", e);
       }
     }
-  }, [currentEditor, initialContent, blocksToMarkdown]);
+  }, [currentEditor, initialContent, blocksToMarkdown, isEquivalent, stylainMode]);
 
   const savedSelectionRef = useRef<Range[] | null>(null);
   const activeElementRef = useRef<Element | null>(null);
@@ -413,22 +451,6 @@ export default function BaseEditor({
 
     const didHandler = () => {
       try {
-        // Flush current editor document to onChange so parent can persist it
-        try {
-          if (onChangeRef.current) {
-            if (previousStylainModeRef.current === "B") {
-              const parsed = parseMarkdownToBlocks(rawMarkdownRef.current);
-              try {
-                onChangeRef.current(parsed);
-              } catch {}
-            } else if (currentEditorRef.current) {
-              const doc = currentEditorRef.current.document as PartialBlock[];
-              try {
-                onChangeRef.current(doc);
-              } catch {}
-            }
-          }
-        } catch {}
         // End reconciling after mode change settled
         reconcilingRef.current = false;
       } catch {}
@@ -541,16 +563,12 @@ export default function BaseEditor({
   useEffect(() => {
     return () => {
       try {
-        // Also flush to onChange if unmounting in mode B to not lose edits
-        if (stylainMode === "B" && rawEditedRef.current && editable && onChange) {
-          onChange(parseMarkdownToBlocks(rawMarkdownRef.current));
-        }
         if (parserEditorRef.current && typeof parserEditorRef.current.unmount === "function") {
           parserEditorRef.current.unmount();
         }
       } catch {}
     };
-  }, [stylainMode, editable, onChange, parseMarkdownToBlocks]);
+  }, []);
 
   // Persist last known editor height across remounts so switching
   // stylain modes doesn't collapse the editor to a tiny height and
@@ -586,18 +604,17 @@ export default function BaseEditor({
     if (text === prev) return;
     rawEditedRef.current = true;
     if (!editable || !onChange || ignoreStylainChangeRef.current) return;
-    onChange(parseMarkdownToBlocks(text));
+    // When actively editing in B mode, we MUST preserve trailing newlines.
+    // Otherwise, hitting Enter at the end of the file will create a newline
+    // that immediately gets stripped by the round-trip through onChange blocks,
+    // making it impossible to add new lines at the bottom.
+    const blocks = parseMarkdownToBlocks(text, true);
+    if (debouncedOnChangeRef.current) {
+       debouncedOnChangeRef.current(blocks);
+    } else {
+       onChange(blocks);
+    }
   };
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (stylainMode === "B" && rawEditedRef.current && editable && onChange) {
-        onChange(parseMarkdownToBlocks(rawMarkdownRef.current));
-      }
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [stylainMode, editable, onChange, parseMarkdownToBlocks]);
 
   return (
     <div 

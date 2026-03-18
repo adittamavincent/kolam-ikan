@@ -28,6 +28,10 @@ import {
   Check,
   ChevronDown,
   Plus,
+  CloudOff,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
 type LogHeaderState = {
@@ -40,6 +44,10 @@ type LogHeaderState = {
   sortOrder: "newest" | "oldest";
   searchTerm: string;
   branchNames: string[];
+  status?: "idle" | "saving" | "saved" | "error";
+  syncStatus?: "idle" | "syncing" | "synced" | "error";
+  localStatus?: "idle" | "saving" | "saved" | "error";
+  isDirty?: boolean;
 };
 
 type CanvasHeaderState = {
@@ -47,6 +55,9 @@ type CanvasHeaderState = {
   hasCanvas: boolean;
   snapshotName: string;
   isSavingSnapshot: boolean;
+  syncStatus?: "idle" | "syncing" | "synced" | "error";
+  localStatus?: "idle" | "saving" | "saved" | "error";
+  isDirty?: boolean;
 };
 
 export function MainHeader() {
@@ -70,17 +81,25 @@ export function MainHeader() {
     if (typeof window === "undefined") return;
 
     const onLogState = (event: Event) => {
-      const detail = (event as CustomEvent<LogHeaderState>).detail;
+      const detail = (event as CustomEvent<Partial<LogHeaderState>>).detail;
       if (detail?.streamId === streamId) {
-        setLogState(detail);
-        setSearchTerm(detail.searchTerm ?? "");
+        setLogState((prev) => {
+          if (!prev) return detail as LogHeaderState;
+          return { ...prev, ...detail };
+        });
+        if (detail.searchTerm !== undefined) {
+          setSearchTerm(detail.searchTerm ?? "");
+        }
       }
     };
 
     const onCanvasState = (event: Event) => {
-      const detail = (event as CustomEvent<CanvasHeaderState>).detail;
+      const detail = (event as CustomEvent<Partial<CanvasHeaderState>>).detail;
       if (detail?.streamId === streamId) {
-        setCanvasState(detail);
+        setCanvasState((prev) => {
+          if (!prev) return detail as CanvasHeaderState;
+          return { ...prev, ...detail };
+        });
       }
     };
 
@@ -106,6 +125,49 @@ export function MainHeader() {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
   };
+    
+  // Cloud sync = database persistence (mostly for Canvas)
+  const getCloudSyncStatus = () => {
+    const hasError =
+      canvasState?.syncStatus === "error" || logState?.syncStatus === "error";
+    const isSaving =
+      canvasState?.syncStatus === "syncing" ||
+      logState?.syncStatus === "syncing";
+    const isDirty = Boolean(canvasState?.isDirty || logState?.isDirty);
+    const isSavedFromCanvas =
+      canvasState?.syncStatus === "synced" ||
+      (canvasState?.syncStatus === "idle" && !canvasState?.isDirty);
+    const isSavedFromLog =
+      logState?.syncStatus === "synced" ||
+      (logState?.syncStatus === "idle" && !logState?.isDirty);
+
+    if (hasError) return "error";
+    if (isSaving) return "saving";
+    if (isDirty) return "idle";
+    if (isSavedFromCanvas || isSavedFromLog) return "saved";
+    return "idle";
+  };
+
+  // Local sync = localStorage/Cache persistence (Log drafts & Canvas live content)
+  const getLocalSyncStatus = () => {
+    const isSaving =
+      logState?.localStatus === "saving" ||
+      logState?.status === "saving" ||
+      canvasState?.localStatus === "saving";
+    const isError =
+      logState?.localStatus === "error" ||
+      logState?.status === "error" ||
+      canvasState?.localStatus === "error";
+    const isDirty = logState?.isDirty || canvasState?.isDirty;
+    
+    if (isSaving) return "saving";
+    if (isError) return "error";
+    if (isDirty) return "dirty";
+    return "saved";
+  };
+
+  const cloudStatus = getCloudSyncStatus();
+  const localStatus = getLocalSyncStatus();
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-default px-3">
@@ -136,6 +198,41 @@ export function MainHeader() {
                 Global
               </span>
             )}
+            
+            {/* 2-Row Sync Badge */}
+            <div className="ml-4 flex flex-col justify-center border-l border-border-default/40 pl-3">
+              {/* Cloud Row */}
+              <div className="flex items-center gap-1.5 group">
+                {cloudStatus === "saving" ? (
+                  <RefreshCw className="h-2.5 w-2.5 animate-spin text-text-muted/60" />
+                ) : cloudStatus === "error" ? (
+                  <CloudOff className="h-2.5 w-2.5 text-red-500" />
+                ) : cloudStatus === "saved" ? (
+                  <Check className="h-2.5 w-2.5 text-emerald-500/80" />
+                ) : (
+                  <div className="h-2.5 w-2.5 rounded-full border border-border-default/50" />
+                )}
+                <span className={`text-[8px] font-bold uppercase tracking-widest ${cloudStatus === 'error' ? 'text-red-500' : 'text-text-muted/50'}`}>
+                  {cloudStatus === 'saving' ? 'Syncing' : cloudStatus === 'error' ? 'Cloud Error' : 'Database'}
+                </span>
+              </div>
+              
+              {/* Local Row */}
+              <div className="mt-0.5 flex items-center gap-1.5 group">
+                {localStatus === "saving" ? (
+                  <Save className="h-2.5 w-2.5 animate-pulse text-text-muted/60" />
+                ) : localStatus === "dirty" ? (
+                  <CloudOff className="h-2.5 w-2.5 text-amber-500/80" />
+                ) : localStatus === "error" ? (
+                  <AlertCircle className="h-2.5 w-2.5 text-red-500" />
+                ) : (
+                  <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500/80" />
+                )}
+                <span className={`text-[9px] font-black uppercase tracking-tighter ${localStatus === 'dirty' ? 'text-amber-500' : 'text-text-muted/80'}`}>
+                  {localStatus === 'saving' ? 'Saving' : localStatus === 'dirty' ? 'Unsaved' : 'Local Cache'}
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -200,7 +297,7 @@ export function MainHeader() {
                 title={
                   logState.showStash
                     ? "Hide stashed entries"
-                    : `Show stash (${logState.stashCount})`
+                    : `Show stash (${logState.stashCount ?? 0})`
                 }
               >
                 <Archive className="h-4 w-4" />
@@ -229,7 +326,7 @@ export function MainHeader() {
               <Menu as="div" className="relative hidden md:block">
                 <MenuButton className="inline-flex items-center gap-1.5 bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus: focus-visible: focus-visible:">
                   <GitBranch className="h-3 w-3" />
-                  {logState.currentBranch}
+                  {logState.currentBranch ?? "main"}
                   <ChevronDown className="h-3 w-3" />
                 </MenuButton>
                 <Transition
@@ -249,7 +346,7 @@ export function MainHeader() {
                     <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
                       Checkout Branch
                     </div>
-                    {logState.branchNames.map((branchName) => (
+                    {logState.branchNames?.map((branchName) => (
                       <MenuItem key={branchName}>
                         {({ active }) => (
                           <button
@@ -274,7 +371,7 @@ export function MainHeader() {
                       onClick={() => {
                         const requested = window.prompt(
                           "Branch name",
-                          `${logState.currentBranch || "main"}-new`,
+                          `${logState.currentBranch ?? "main"}-new`,
                         );
                         if (requested === null) return;
                         const branchName = requested.trim();
@@ -295,7 +392,7 @@ export function MainHeader() {
 
               <span className="hidden items-center gap-1 bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted md:inline-flex">
                 <GitCommitHorizontal className="h-3 w-3" />
-                {logState.commitCount}
+                {logState.commitCount ?? 0}
               </span>
             </>
           )}

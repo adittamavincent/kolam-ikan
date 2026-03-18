@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
@@ -12,14 +12,127 @@ interface CanvasDraftCardProps {
   streamId: string;
 }
 
+type PlainRecord = Record<string, unknown>;
+
+function hasTextValue(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasMeaningfulPayload(value: unknown): boolean {
+  if (hasTextValue(value)) return true;
+
+  if (Array.isArray(value)) {
+    return value.some((item) => hasMeaningfulPayload(item));
+  }
+
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as PlainRecord;
+
+  if (
+    hasTextValue(record.text) ||
+    hasTextValue(record.url) ||
+    hasTextValue(record.src) ||
+    hasTextValue(record.href)
+  ) {
+    return true;
+  }
+
+  if (
+    hasMeaningfulPayload(record.content) ||
+    hasMeaningfulPayload(record.children)
+  ) {
+    return true;
+  }
+
+  const blockType = typeof record.type === "string" ? record.type : null;
+  if (blockType && blockType !== "paragraph") {
+    return true;
+  }
+
+  return false;
+}
+
+function stripVolatileFields(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripVolatileFields(item));
+  }
+
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  const record = value as PlainRecord;
+  const next: PlainRecord = {};
+
+  for (const [key, child] of Object.entries(record)) {
+    if (key === "id") continue;
+    next[key] = stripVolatileFields(child);
+  }
+
+  return next;
+}
+
+function normalizeCanvasContent(value: unknown): string | null {
+  if (!value || !Array.isArray(value) || value.length === 0) {
+    return null;
+  }
+
+  const canonical = stripVolatileFields(value);
+  if (!hasMeaningfulPayload(canonical)) {
+    return null;
+  }
+
+  return JSON.stringify(canonical);
+}
+
 export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { canvas } = useCanvas(streamId);
-  const markClean = useCanvasDraft((s) => s.markClean);
-  const isDirty = useCanvasDraft((s) => s.isDirty(streamId));
+  const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId] ?? null);
+  const starterBaselineContent = useCanvasDraft(
+    (s) => s.starterBaselineByStream[streamId]?.content ?? null,
+  );
   const [snapshotName, setSnapshotName] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const { data: latestCanvasVersion, isLoading: isLatestVersionLoading } =
+    useQuery({
+      queryKey: ["canvas-latest-version", streamId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("canvas_versions")
+          .select("id, content_json, created_at")
+          .eq("stream_id", streamId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) throw error;
+        return data;
+      },
+      enabled: !!streamId,
+    });
+
+  const hasDraftDiff = useMemo(() => {
+    const latestNormalized = normalizeCanvasContent(
+      latestCanvasVersion?.content_json,
+    );
+    const baselineNormalized =
+      latestNormalized ?? normalizeCanvasContent(starterBaselineContent);
+    const currentNormalized = normalizeCanvasContent(
+      liveContent ?? canvas?.content_json,
+    );
+    return baselineNormalized !== currentNormalized;
+  }, [
+    latestCanvasVersion?.content_json,
+    starterBaselineContent,
+    liveContent,
+    canvas?.content_json,
+  ]);
 
   const commitMutation = useMutation({
     mutationFn: async () => {
@@ -39,14 +152,17 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     onSuccess: () => {
       setSnapshotName("");
       setIsExpanded(false);
-      markClean(streamId);
       queryClient.invalidateQueries({
         queryKey: ["canvas-versions", streamId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas-latest-version", streamId],
       });
     },
   });
 
-  if (!isDirty) return null;
+  if (isLatestVersionLoading) return null;
+  if (!hasDraftDiff) return null;
 
   return (
     <div className=" border border-dashed border-border-default/50 bg-amber-500/4 overflow-hidden transition-all">

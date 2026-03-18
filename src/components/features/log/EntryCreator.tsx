@@ -48,6 +48,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
 import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
+import debounce from "lodash/debounce";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { PersonaManager } from "@/components/features/persona/PersonaManager";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
@@ -361,6 +362,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     existingDoc: DocumentWithLatestJob;
     instanceId: string;
   } | null>(null);
+  const [headerLocalStatus, setHeaderLocalStatus] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [headerCloudStatus, setHeaderCloudStatus] = useState<
+    "idle" | "syncing" | "synced" | "error"
+  >("idle");
+  const [headerDirty, setHeaderDirty] = useState(false);
+  const cloudSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const selectedBranch = currentBranch ?? "main";
 
@@ -464,8 +475,47 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     streamId,
   });
 
+  const debouncedSave = useMemo(
+    () =>
+      debounce(
+        (
+          instanceId: string,
+          personaId: string,
+          content: PartialBlock[],
+          personaName: string,
+        ) => {
+          setHeaderLocalStatus("saving");
+          saveDraft(instanceId, personaId, content, personaName);
+          setHeaderDirty(false);
+          setHeaderLocalStatus("saved");
+          setHeaderCloudStatus("syncing");
+          if (cloudSyncTimeoutRef.current) {
+            clearTimeout(cloudSyncTimeoutRef.current);
+          }
+          cloudSyncTimeoutRef.current = setTimeout(() => {
+            setHeaderCloudStatus("synced");
+            cloudSyncTimeoutRef.current = null;
+          }, 1200);
+        },
+        1000,
+      ),
+    [saveDraft],
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+      if (cloudSyncTimeoutRef.current) {
+        clearTimeout(cloudSyncTimeoutRef.current);
+      }
+    };
+  }, [debouncedSave]);
+
   useEffect(() => {
     console.log(`[EntryCreator] mount streamId=${streamId}`);
+    setHeaderDirty(false);
+    setHeaderLocalStatus("idle");
+    setHeaderCloudStatus("idle");
     return () => {
       console.log(`[EntryCreator] unmount streamId=${streamId}`);
     };
@@ -481,32 +531,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       // Ignore write failures (quota/private mode).
     }
   }, [personaUsageCounts, personaUsageStorageKey]);
-
-  // Flush handler for global `kolam_flush_drafts` event. Ensures all
-  // editors write their current content into the draft system immediately.
-  useEffect(() => {
-    const handler = () => {
-      try {
-        sections.forEach((section) => {
-          const instanceId = section.instanceId;
-          // Only persist PERSONA sections via saveDraft here. PDF sections
-          // have their own persistence path (savePdfDraft) and may not
-          // include a personaId/personaName in the same shape.
-          if (section.kind === "PERSONA") {
-            const editor = editorRefs.current[instanceId];
-            const content = editor && editor.document
-              ? (editor.document as PartialBlock[])
-              : getDraftContent(instanceId);
-            saveDraft(instanceId, section.personaId, content);
-          }
-        });
-      } catch {
-        /* swallow */
-      }
-    };
-    window.addEventListener("kolam_flush_drafts", handler as EventListener);
-    return () => window.removeEventListener("kolam_flush_drafts", handler as EventListener);
-  }, [sections, saveDraft, getDraftContent]);
 
   // Clean up persona usage counts for deleted personas
   useEffect(() => {
@@ -713,7 +737,35 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     const ids = sections.map((section) => section.instanceId);
     console.log(`[EntryCreator] syncing active instances for ${streamId}:`, ids);
     setActiveInstances(ids);
-  }, [sections, setActiveInstances, isLoading, streamId]);
+    const localStatus =
+      status === "error"
+        ? "error"
+        : status === "saving"
+          ? "saving"
+          : headerLocalStatus;
+    const syncStatus = status === "error" ? "error" : headerCloudStatus;
+    
+    window.dispatchEvent(
+      new CustomEvent("kolam_log_state", {
+        detail: {
+          streamId,
+          status,
+          localStatus,
+          syncStatus,
+          isDirty: headerDirty,
+        },
+      }),
+    );
+  }, [
+    sections,
+    setActiveInstances,
+    isLoading,
+    streamId,
+    status,
+    headerDirty,
+    headerLocalStatus,
+    headerCloudStatus,
+  ]);
 
   // WhatsApp chat inject listener
   useEffect(() => {
@@ -1564,6 +1616,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     textChanged
                                   ) {
                                     userEditedRef.current[instanceId] = true;
+                                    setHeaderDirty(true);
+                                    setHeaderLocalStatus("idle");
+                                    setHeaderCloudStatus("idle");
                                   }
 
                                   
@@ -1581,7 +1636,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     // swallow logging errors
                                   }
 
-                                  saveDraft(
+                                  debouncedSave(
                                     instanceId,
                                     section.personaId,
                                     content,

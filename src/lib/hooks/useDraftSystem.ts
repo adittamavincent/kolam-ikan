@@ -51,7 +51,6 @@ export interface DraftContent {
 }
 
 const STORAGE_PREFIX = "kolam_draft_v2_";
-
 // ─── Content Helpers ──────────────────────────────────────────────────────────
 
 const hasTextValue = (value: unknown): boolean =>
@@ -200,82 +199,21 @@ function readLocalDraft(streamId: string): DraftState | null {
   try {
     const key = `${STORAGE_PREFIX}${streamId}`;
     const raw = localStorage.getItem(key);
-    console.log(`[Draft] Reading draft for ${streamId}:`, raw ? 'found' : 'not found');
     if (!raw) return null;
-    try {
-      const parsed = JSON.parse(raw) as DraftState;
-      const sectionKeys = Object.keys(parsed.sections || {});
-      console.log(
-        `[Draft] Parsed draft for ${streamId} with ${sectionKeys.length} sections: ${sectionKeys.join(", ")}`,
-      );
-
-      // Log lightweight per-section metadata for debugging
-      sectionKeys.forEach((k) => {
-        const s = parsed.sections[k] as SectionDraft | undefined;
-        if (!s) return;
-        const contentLen = Array.isArray(s.content) ? s.content.length : 0;
-        const snapshotLen = typeof s.contentTextSnapshot === 'string' ? s.contentTextSnapshot.trim().length : 0;
-        const attachmentsLen = Array.isArray(s.fileAttachments) ? s.fileAttachments.length : 0;
-        console.log(`[Draft] Section ${k}: type=${s.sectionType} personaId=${s.personaId} contentLen=${contentLen} snapshotLen=${snapshotLen} attachments=${attachmentsLen}`);
-      });
-
-      return parsed;
-    } catch (e) {
-      console.error(`[Draft] Failed to parse draft for ${streamId}:`, e);
-      return null;
-    }
-  } catch (e) {
-    console.error(`[Draft] Failed to read draft for ${streamId}:`, e);
+    const parsed = JSON.parse(raw) as DraftState;
+    return parsed;
+  } catch {
     return null;
   }
 }
 
 function writeLocalDraft(streamId: string, state: DraftState): void {
   try {
-    // Keep every section that has either a persona assignment, is a PDF
-    // section, or contains meaningful content even if no persona is set.
-    const active = Object.entries(state.sections).filter(([, s]) =>
-      s.sectionType === "PDF" ||
-      !!s.personaId ||
-      hasMeaningfulDraftContent(s.content) ||
-      hasTextValue(s.contentTextSnapshot) ||
-      (Array.isArray(s.fileAttachments) && s.fileAttachments.length > 0),
-    );
-    if (active.length === 0) {
-      const key = `${STORAGE_PREFIX}${streamId}`;
-      try {
-        localStorage.removeItem(key);
-        console.log(`[Draft] Cleared draft for ${streamId} (no active sections)`);
-      } catch (e) {
-        console.error(`[Draft] Failed to clear draft for ${streamId}:`, e);
-      }
-      return;
-    }
-    const clean: DraftState = {
-      sections: Object.fromEntries(active),
-      sectionOrder: state.sectionOrder.filter((instanceId) =>
-        Object.prototype.hasOwnProperty.call(Object.fromEntries(active), instanceId),
-      ),
-      updatedAt: Date.now(),
-    };
     const key = `${STORAGE_PREFIX}${streamId}`;
-    try {
-      // Log per-section sizes to help debug missing content issues
-      Object.entries(clean.sections).forEach(([id, s]) => {
-        const contentLen = Array.isArray(s.content) ? s.content.length : 0;
-        const snapshotLen = typeof s.contentTextSnapshot === 'string' ? s.contentTextSnapshot.trim().length : 0;
-        const attachmentsLen = Array.isArray(s.fileAttachments) ? s.fileAttachments.length : 0;
-        console.log(`[Draft] Persisting section ${id}: type=${s.sectionType} personaId=${s.personaId} contentLen=${contentLen} snapshotLen=${snapshotLen} attachments=${attachmentsLen}`);
-      });
-
-      const json = JSON.stringify(clean);
-      localStorage.setItem(key, json);
-      console.log(`[Draft] Saved draft for ${streamId} with ${active.length} sections`);
-    } catch (e) {
-      console.error(`[Draft] Failed to save draft for ${streamId}:`, e);
-    }
-  } catch (e) {
-    console.error(`[Draft] Failed to write draft for ${streamId}:`, e);
+    const json = JSON.stringify(state);
+    localStorage.setItem(key, json);
+  } catch {
+    // Ignore storage errors
   }
 }
 
@@ -296,7 +234,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     Record<string, DraftContent>
   >({});
   const [isLoading, setIsLoading] = useState(true);
-  const [recoveryAvailable, setRecoveryAvailable] = useState(false);
 
   const queryClient = useQueryClient();
   const supabase = createClient();
@@ -313,7 +250,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     setIsLoading(true);
     setInitialDrafts({});
     setStatus("idle");
-    setRecoveryAvailable(false);
     draftStateRef.current = {
       sections: {},
       sectionOrder: [],
@@ -322,25 +258,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
     async function initializeDrafts() {
       if (!streamId) return;
-
-      try {
-        // Run completely asynchronously; cleanup any DB drafts
-        // that shouldn't exist anymore to fix "Zombie/Ghost" drafts problem.
-        supabase
-          .from("entries")
-          .delete()
-          .eq("stream_id", streamId)
-          .eq("is_draft", true)
-          .then(({ error }) => {
-            if (error)
-              console.error("Failed to clean up ghost DB drafts:", error);
-          });
-
-        // Cleanup obsolete localStorage schema
-        localStorage.removeItem(`kolam_draft_${streamId}`);
-      } catch {
-        // ignore safety failures
-      }
 
       // Load purely localized drafted sections
       const local = readLocalDraft(streamId);
@@ -355,9 +272,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         const loaded: Record<string, DraftContent> = {};
         Object.entries(local.sections).forEach(([id, s]) => {
           const sectionType = s.sectionType ?? "PERSONA";
-          // Allow persona sections without an assigned persona to be
-          // recovered if they contain meaningful content. Only skip
-          // truly empty persona sections.
           if (
             sectionType === "PERSONA" &&
             !s.personaId &&
@@ -380,13 +294,12 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           };
         });
         setInitialDrafts(loaded);
-        setRecoveryAvailable(true);
       }
       setIsLoading(false);
     }
 
     initializeDrafts();
-  }, [streamId, supabase]);
+  }, [streamId]);
 
   // 2. Local save Draft
   const saveDraft = useCallback(
@@ -399,14 +312,11 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     ) => {
       setStatus("saving");
 
-      // Only remove the section when explicitly force-deleted (X button).
-      // Empty content is fine — the section still exists.
       if (forceDelete) {
         delete draftStateRef.current.sections[instanceId];
         draftStateRef.current.sectionOrder =
           draftStateRef.current.sectionOrder.filter((id) => id !== instanceId);
         writeLocalDraft(streamId, draftStateRef.current);
-
         setInitialDrafts((prev) => {
           const next = { ...prev };
           delete next[instanceId];
@@ -416,32 +326,12 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         return;
       }
 
-      const incomingContent = deepClone(content || []);
-      const incomingSnapshot = blocksToPlainText(incomingContent);
-      const existing = draftStateRef.current.sections[instanceId];
-      const existingContent = existing?.content ?? [];
-      const existingSnapshot = existing?.contentTextSnapshot ?? "";
-      const incomingMeaningful =
-        hasMeaningfulDraftContent(incomingContent) ||
-        hasTextValue(incomingSnapshot);
-      const existingMeaningful =
-        hasMeaningfulDraftContent(existingContent) ||
-        hasTextValue(existingSnapshot);
-      const resolvedContent =
-        !incomingMeaningful && existingMeaningful
-          ? existingContent
-          : incomingContent;
-      const resolvedSnapshot =
-        !incomingMeaningful && existingMeaningful
-          ? existingSnapshot
-          : incomingSnapshot;
-
       draftStateRef.current.sections[instanceId] = {
         sectionType: "PERSONA",
         personaId,
         personaName,
-        content: resolvedContent,
-        contentTextSnapshot: resolvedSnapshot,
+        content,
+        contentTextSnapshot: blocksToPlainText(content),
         updatedAt: Date.now(),
       };
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
@@ -482,34 +372,14 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         return;
       }
 
-      const incomingContent = deepClone(payload.content ?? []);
-      const incomingSnapshot = blocksToPlainText(incomingContent);
-      const existing = draftStateRef.current.sections[instanceId];
-      const existingContent = existing?.content ?? [];
-      const existingSnapshot = existing?.contentTextSnapshot ?? "";
-      const incomingMeaningful =
-        hasMeaningfulDraftContent(incomingContent) ||
-        hasTextValue(incomingSnapshot);
-      const existingMeaningful =
-        hasMeaningfulDraftContent(existingContent) ||
-        hasTextValue(existingSnapshot);
-      const resolvedContent =
-        !incomingMeaningful && existingMeaningful
-          ? existingContent
-          : incomingContent;
-      const resolvedSnapshot =
-        !incomingMeaningful && existingMeaningful
-          ? existingSnapshot
-          : incomingSnapshot;
-
       draftStateRef.current.sections[instanceId] = {
         sectionType: "PDF",
         personaId: payload.personaId ?? null,
         personaName: payload.personaName,
-        content: resolvedContent,
-        contentTextSnapshot: resolvedSnapshot,
+        content: payload.content ?? [],
+        contentTextSnapshot: blocksToPlainText(payload.content ?? []),
         pdfDisplayMode: payload.displayMode,
-        fileAttachments: deepClone(payload.attachments),
+        fileAttachments: payload.attachments,
         updatedAt: Date.now(),
       };
 
@@ -532,13 +402,8 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       updatedAt: Date.now(),
     };
     setInitialDrafts({});
-    setRecoveryAvailable(false);
     setStatus("idle");
   }, [streamId]);
-
-  const discardRecovery = useCallback(() => {
-    clearDraft();
-  }, [clearDraft]);
 
   // 4. Content Retriever
   const getDraftContent = useCallback(
@@ -715,7 +580,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         updatedAt: Date.now(),
       };
       setInitialDrafts({});
-      setRecoveryAvailable(false);
       setStatus("idle");
 
       // Refresh dependent data views
@@ -771,8 +635,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     clearDraft,
     setActiveInstances,
     flushPendingSaves,
-    recoveryAvailable,
-    discardRecovery,
     activeEntryId: null,
   };
 }

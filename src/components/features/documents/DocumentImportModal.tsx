@@ -168,12 +168,6 @@ export function DocumentImportModal({
       for (const id of fileIds) {
         const fileData = tempStore.get(id);
         if (fileData) {
-          console.log("[DocumentImportModal] Retrieved file from temp store:", {
-            id,
-            fileName: fileData.file.name,
-            fileSize: fileData.file.size,
-            hasHash: !!fileData.hash,
-          });
           retrievedFiles.push(fileData);
           tempStore.delete(id); // Clean up after retrieving
         } else {
@@ -185,9 +179,6 @@ export function DocumentImportModal({
       }
 
       if (retrievedFiles.length > 0) {
-        console.log("[DocumentImportModal] Processing retrieved files:", {
-          count: retrievedFiles.length,
-        });
 
         // For each retrieved file, check hash against existing documents and
         // reuse existing document when a matching hash is found. Otherwise
@@ -203,10 +194,6 @@ export function DocumentImportModal({
             );
 
             if (existingDoc) {
-              console.log(
-                "[DocumentImportModal] Found existing document for file hash, reusing:",
-                { fileName: file.name, existingId: existingDoc.id },
-              );
               if (onSelectDocument) {
                 onSelectDocument(existingDoc);
                 handleClose();
@@ -279,21 +266,9 @@ export function DocumentImportModal({
   const derivedTitle = useMemo(() => {
     if (title.trim()) return title.trim();
     if (!selectedFile || !selectedFile.name) {
-      console.debug(
-        "[DocumentImportModal] derivedTitle: selectedFile or name is missing",
-        {
-          selectedFileExists: !!selectedFile,
-          selectedFileName: selectedFile?.name,
-        },
-      );
       return "";
     }
     const derived = selectedFile.name.replace(/\.pdf$/i, "");
-
-    console.log("[DocumentImportModal] derivedTitle computed:", {
-      original: selectedFile.name,
-      derived,
-    });
     return derived;
   }, [selectedFile, title]);
 
@@ -319,13 +294,6 @@ export function DocumentImportModal({
 
     // First check if there are pending file IDs stored
     const pendingIds = getPendingFileIds();
-    console.log(
-      "[DocumentImportModal] Checking for pending files on modal open:",
-      {
-        pendingIds,
-        count: pendingIds.length,
-      },
-    );
 
     if (pendingIds.length > 0) {
       setPendingFileIds([]); // Clear pending IDs
@@ -357,18 +325,11 @@ export function DocumentImportModal({
         const tempStore = getTempFileStore();
         const keys = Array.from(tempStore.keys());
         if (keys.length === 0) return;
-        console.log(
-          "[DocumentImportModal] Falling back to temp store keys for import:",
-          keys,
-        );
         processQueuedFileIds(keys);
         return;
       }
 
-      console.log(
-        "[DocumentImportModal] Received kolam_header_documents_import event with fileIds:",
-        fileIds,
-      );
+      
 
       // Try to process the provided IDs first. If some IDs are not present in
       // the temp store (race or cleanup), fall back to processing any remaining
@@ -401,16 +362,7 @@ export function DocumentImportModal({
     if (!isOpen || !initialQueuedFiles || initialQueuedFiles.length === 0)
       return;
 
-    console.log("[DocumentImportModal] Received initialQueuedFiles:", {
-      count: initialQueuedFiles.length,
-      files: initialQueuedFiles.map((f) => ({
-        name: f.file?.name,
-        size: f.file?.size,
-        type: f.file?.type,
-        hasHash: !!f.hash,
-        isFile: f.file instanceof File,
-      })),
-    });
+    
 
     // Build a queue key from valid files only - only require file and name
     const validFiles = initialQueuedFiles.filter((f) => {
@@ -453,15 +405,7 @@ export function DocumentImportModal({
     // Kick off all imports in parallel so UI shows all queued items immediately
     const importPromises = validFiles.map(async ({ file, hash }) => {
       try {
-        console.log("[DocumentImportModal] Processing file for import:", {
-          fileExists: !!file,
-          fileName: file?.name,
-          fileSize: file?.size,
-          fileType: file?.type,
-          fileLastModified: file?.lastModified,
-          isFileInstance: file instanceof File,
-          hash,
-        });
+        
 
         if (!file || !file.name) {
           console.error("[DocumentImportModal] File or file.name is undefined!", { file });
@@ -476,10 +420,6 @@ export function DocumentImportModal({
         );
 
         if (existingDoc) {
-          console.log(
-            "[DocumentImportModal] Initial queued file matches existing document, reusing:",
-            { fileName: file.name, existingId: existingDoc.id },
-          );
           if (onSelectDocument) {
             onSelectDocument(existingDoc);
             handleClose();
@@ -491,10 +431,6 @@ export function DocumentImportModal({
         }
 
         const derivedTitle = file.name.replace(/\.pdf$/i, "");
-        console.log("[DocumentImportModal] Derived title from filename:", {
-          original: file.name,
-          derived: derivedTitle,
-        });
 
         const result = await createImport.mutateAsync({
           file,
@@ -546,24 +482,14 @@ export function DocumentImportModal({
       return;
     }
 
-    console.log("[DocumentImportModal] handleSubmit started:", {
-      fileName: selectedFile.name,
-      fileSize: selectedFile.size,
-      fileType: selectedFile.type,
-      derivedTitle,
-    });
+    
 
     setSubmitError(null);
 
     try {
       const fileHash = await calculateFileHash(selectedFile);
 
-      console.log("[DocumentImportModal] Submitting import:", {
-        fileName: selectedFile.name,
-        derivedTitle,
-        fileHash,
-        flavor,
-      });
+      
 
       const result = await createImport.mutateAsync({
         file: selectedFile,

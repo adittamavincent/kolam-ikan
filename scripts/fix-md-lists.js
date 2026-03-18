@@ -36,11 +36,44 @@ function normalize(content) {
       if (j < lines.length && new RegExp('^\\s*\\-\\s+').test(lines[j])) {
         // remove the blank lines we just pushed
         for (let k = 0; k < blankCount; k++) out.pop();
+
+        // normalize nested list indentation: prefer 4-space indent relative to parent
+        const parentIndent = (line.match(/^\s*/)[0] || '').length;
+        const nextLine = lines[j];
+        const nextIndentMatch = nextLine.match(/^(\s*)/);
+        const nextIndent = (nextIndentMatch && nextIndentMatch[1].length) || 0;
+        if (nextIndent > parentIndent) {
+          const desiredIndent = parentIndent + 4;
+          const rest = nextLine.trimStart();
+          lines[j] = ' '.repeat(desiredIndent) + rest;
+        }
+
         i = j - 1; // continue from the line before the next list item
       }
     }
   }
-  return out.join('\n');
+  // Second pass: remove blank lines that appear between a paragraph/heading and a list
+  // (e.g., Prettier may insert a blank line before a list after a paragraph).
+  const cleaned = [];
+  for (let i = 0; i < out.length; i++) {
+    // If this is a blank line, look ahead to see if the next non-blank is a list
+    if (out[i].trim() === '') {
+      let j = i + 1;
+      while (j < out.length && out[j].trim() === '') j++;
+      const nextIsList = j < out.length && /^\s*-\s+/.test(out[j]);
+      // find previous non-blank in cleaned
+      let p = cleaned.length - 1;
+      while (p >= 0 && cleaned[p].trim() === '') p--;
+      const prevLine = p >= 0 ? cleaned[p] : null;
+      const prevIsList = !!prevLine && /^\s*-\s+/.test(prevLine);
+      // If the blank line is adjacent to a list (either before or after), skip it
+      if (nextIsList || prevIsList) {
+        continue; // skip pushing this blank line
+      }
+    }
+    cleaned.push(out[i]);
+  }
+  return cleaned.join('\n');
 }
 
 function processFile(file) {

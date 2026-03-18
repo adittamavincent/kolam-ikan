@@ -47,6 +47,14 @@ export function setStylainMode(mode: Mode) {
   const hasLocalStorage = typeof globalThis !== "undefined" && "localStorage" in globalThis;
   const hasWindow = typeof window !== "undefined";
   try {
+    if (mode === CURRENT_MODE) {
+      if (hasLocalStorage) {
+        globalThis.localStorage.setItem(STORAGE_KEY, mode);
+      }
+      if (hasWindow) applyClass(mode);
+      return;
+    }
+
     if (hasWindow) {
       window.dispatchEvent(new CustomEvent(EVENT_WILL, { detail: { mode } }));
     }
@@ -55,22 +63,26 @@ export function setStylainMode(mode: Mode) {
     }
     CURRENT_MODE = mode;
     if (hasWindow) applyClass(mode);
-    try {
-      if (hasWindow) (window as StylainWindow).__stylain_mode = mode;
-    } catch {}
+
+    // Ensure all updates are completed before dispatching the final event
     if (hasWindow && typeof window.requestAnimationFrame === "function") {
       window.requestAnimationFrame(() => {
         window.dispatchEvent(new CustomEvent(EVENT_DID, { detail: { mode } }));
       });
     } else if (hasWindow) {
-      window.dispatchEvent(new CustomEvent(EVENT_DID, { detail: { mode } }));
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent(EVENT_DID, { detail: { mode } }));
+      }, 0);
     }
-  } catch {
+  } catch (error) {
+    console.error("Failed to set Stylain mode:", error);
     try {
       if (hasLocalStorage) globalThis.localStorage.setItem(STORAGE_KEY, mode);
       CURRENT_MODE = mode;
       if (hasWindow) applyClass(mode);
-    } catch {}
+    } catch (nestedError) {
+      console.error("Nested error while setting Stylain mode:", nestedError);
+    }
   }
 }
 

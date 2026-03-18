@@ -10,7 +10,9 @@ import {
   useState,
 } from "react";
 import { getStylainMode, onStylainChanged } from "@/lib/theme/stylain";
+import bridge from "@/lib/blocknote-markdown-bridge";
 import Editor from "@monaco-editor/react";
+import { BlockNoteBlock } from "@/lib/types";
 
 type EditorLike = {
   getDomNode?: () => HTMLElement | null;
@@ -56,6 +58,8 @@ export default function BaseEditor({
   const previousStylainModeRef = useRef<"A" | "B">("A");
   const lastBlocksRef = useRef<PartialBlock[] | null>(null);
   const onChangeRef = useRef(onChange);
+  const reconcilingRef = useRef<boolean>(false);
+  const ignoreStylainChangeRef = useRef(false);
 
   type EditorCreateOptions = Parameters<typeof BlockNoteEditor.create>[0];
 
@@ -133,14 +137,14 @@ export default function BaseEditor({
     trimmedMarkdown = trimmedMarkdown.replace(/\r\n?/g, "\n");
     // normalize common bullet markers to '-' (preserve indentation)
     trimmedMarkdown = trimmedMarkdown.replace(/^(\s*)[*+]\s+/gm, "$1- ");
-    // collapse blank lines between consecutive list items
-    trimmedMarkdown = trimmedMarkdown.replace(/(-\s.*)\n\s*\n(?=-\s)/g, "$1\n");
-    trimmedMarkdown = trimmedMarkdown.replace(/(\d+\.\s.*)\n\s*\n(?=\d+\.\s)/g, "$1\n");
-    // remove extra blank line immediately before a list so paragraph + list is single-spaced
-    trimmedMarkdown = trimmedMarkdown.replace(/\n\s*\n(?=\s*[-]\s)/g, "\n");
-    // ensure blank line after list before non-list text to prevent merging
-    trimmedMarkdown = trimmedMarkdown.replace(/(\n- .*\n)([^\n\s-0-9])/g, "$1\n$2");
-    trimmedMarkdown = trimmedMarkdown.replace(/(\n\d+\. .*\n)([^\n\s-0-9])/g, "$1\n$2");
+    // If this markdown contains our bridge metadata spans, prefer the bridge
+    // parser so custom attrs (data-bn) are preserved.
+    if (/<span\s+data-bn=/.test(trimmedMarkdown)) {
+      try {
+        const bridged = bridge.bridgeMarkdownToBlocks(trimmedMarkdown);
+        return normalizeBlocks(bridged as PartialBlock[]);
+      } catch {}
+    }
 
     try {
       const parserEditor = ensureParserEditor();
@@ -209,14 +213,20 @@ export default function BaseEditor({
       md = md.replace(/\r\n?/g, "\n");
       // normalize common bullet markers to '-' (preserve indentation)
       md = md.replace(/^(\s*)[*+]\s+/gm, "$1- ");
-      // collapse blank lines between consecutive list items
-      md = md.replace(/(-\s.*)\n\s*\n(?=-\s)/g, "$1\n");
-      md = md.replace(/(\d+\.\s.*)\n\s*\n(?=\d+\.\s)/g, "$1\n");
-      return formatMarkdown(md);
+      // Use bridge to emit bridge-aware markdown when possible so Monaco can
+      // receive inline metadata (e.g., colors) that round-trip back to
+      // BlockNote when converting back.
+      try {
+        const bridged = bridge.blocksToBridgeMarkdown(blocks as unknown as BlockNoteBlock[]);
+        // If the bridge produced non-empty output, prefer it (it includes
+        // metadata wrappers). Fall back to lossy output otherwise.
+        if (bridged && bridged.trim().length > 0) return bridged;
+      } catch {}
+      return md;
     } catch {
       return "";
     }
-  }, [ensureParserEditor, formatMarkdown]);
+  }, [ensureParserEditor]);
 
   useEffect(() => {
     currentEditorRef.current = currentEditor;
@@ -229,6 +239,25 @@ export default function BaseEditor({
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    const start = () => {
+      try {
+        reconcilingRef.current = true;
+      } catch {}
+    };
+    const end = () => {
+      try {
+        reconcilingRef.current = false;
+      } catch {}
+    };
+    window.addEventListener("kolam_reconciling_start", start as EventListener);
+    window.addEventListener("kolam_reconciling_end", end as EventListener);
+    return () => {
+      window.removeEventListener("kolam_reconciling_start", start as EventListener);
+      window.removeEventListener("kolam_reconciling_end", end as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     rawMarkdownRef.current = rawMarkdown;
@@ -332,6 +361,7 @@ export default function BaseEditor({
 
   // Update editor content when initialContent changes after mount
   useEffect(() => {
+    if (reconcilingRef.current) return;
     if (!currentEditor || !initialContent || initialContent.length === 0) return;
     const currentBlocks = currentEditor.document;
     if (currentBlocks.length === 0 || JSON.stringify(currentBlocks) !== JSON.stringify(initialContent)) {
@@ -354,6 +384,10 @@ export default function BaseEditor({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const willHandler = () => {
+      try {
+        // Signal reconciling to avoid editor auto-replace during mode switch
+        reconcilingRef.current = true;
+      } catch {}
       try {
         if (containerRef.current) {
           const height = containerRef.current.getBoundingClientRect().height;
@@ -378,6 +412,26 @@ export default function BaseEditor({
     };
 
     const didHandler = () => {
+      try {
+        // Flush current editor document to onChange so parent can persist it
+        try {
+          if (onChangeRef.current) {
+            if (previousStylainModeRef.current === "B") {
+              const parsed = parseMarkdownToBlocks(rawMarkdownRef.current);
+              try {
+                onChangeRef.current(parsed);
+              } catch {}
+            } else if (currentEditorRef.current) {
+              const doc = currentEditorRef.current.document as PartialBlock[];
+              try {
+                onChangeRef.current(doc);
+              } catch {}
+            }
+          }
+        } catch {}
+        // End reconciling after mode change settled
+        reconcilingRef.current = false;
+      } catch {}
       try {
         const sel = window.getSelection();
         if (sel) {
@@ -409,7 +463,7 @@ export default function BaseEditor({
       window.removeEventListener("stylain_mode_will_change", willHandler as EventListener);
       window.removeEventListener("stylain_mode_changed", didHandler as EventListener);
     };
-  }, []);
+  }, [parseMarkdownToBlocks]);
 
   useEffect(() => {
     if (currentEditor && onEditorReady) {
@@ -426,6 +480,29 @@ export default function BaseEditor({
       setStylainMode(e.detail.mode);
     });
     return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const will = () => {
+      ignoreStylainChangeRef.current = true;
+    };
+
+    const did = () => {
+      // Allow a small settling time before re-enabling
+      setTimeout(() => {
+        ignoreStylainChangeRef.current = false;
+      }, 200);
+    };
+
+    window.addEventListener("stylain_mode_will_change", will as EventListener);
+    window.addEventListener("stylain_mode_changed", did as EventListener);
+
+    return () => {
+      window.removeEventListener("stylain_mode_will_change", will as EventListener);
+      window.removeEventListener("stylain_mode_changed", did as EventListener);
+    };
   }, []);
 
   useEffect(() => {
@@ -451,7 +528,7 @@ export default function BaseEditor({
   useEffect(() => {
     if (currentEditor && onChange) {
       const unsubscribe = currentEditor.onChange(() => {
-        if (stylainMode === "B") return;
+        if (stylainMode === "B" || ignoreStylainChangeRef.current) return;
         // Update rawMarkdown to keep it in sync with BlockNote changes
         const markdown = blocksToMarkdown(currentEditor.document);
         setRawMarkdown(markdown.replace(/\n+$/, ""));
@@ -508,7 +585,7 @@ export default function BaseEditor({
 
     if (text === prev) return;
     rawEditedRef.current = true;
-    if (!editable || !onChange) return;
+    if (!editable || !onChange || ignoreStylainChangeRef.current) return;
     onChange(parseMarkdownToBlocks(text));
   };
 

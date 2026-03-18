@@ -1,4 +1,5 @@
 import { EntryWithSections, BlockNoteBlock } from "@/lib/types";
+import bridge from "@/lib/blocknote-markdown-bridge";
 
 export function exportEntriesToMarkdown(entries: EntryWithSections[]): string {
   return entries.map(entryToMarkdown).join("\n\n---\n\n");
@@ -77,12 +78,11 @@ function blocksToMarkdown(blocks: BlockNoteBlock[]): string {
   md = md.replace(/\r\n?/g, "\n");
   // ensure list markers use '-' and preserve indentation
   md = md.replace(/^(\s*)[*+]\s+/gm, "$1- ");
-  // collapse blank lines between consecutive list items
-  md = md.replace(/(-\s.*)\n\s*\n(?=-\s)/g, "$1\n");
-  md = md.replace(/(\d+\.\s.*)\n\s*\n(?=\d+\.\s)/g, "$1\n");
-  // remove extra blank line immediately before a list so paragraph + list is single-spaced
-  md = md.replace(/\n\s*\n(?=-\s)/g, "\n");
-  md = md.replace(/\n\s*\n(?=\d+\.\s)/g, "\n");
+  // Prefer bridge output so exported markdown preserves custom metadata
+  try {
+    const bridged = bridge.blocksToBridgeMarkdown(blocks);
+    if (bridged && bridged.trim().length > 0) return bridged;
+  } catch {}
   return md;
 }
 

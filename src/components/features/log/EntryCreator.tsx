@@ -463,7 +463,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   } = useDraftSystem({
     streamId,
   });
-  const [discardedRecovery, setDiscardedRecovery] = useState(false);
+
+  useEffect(() => {
+    console.log(`[EntryCreator] mount streamId=${streamId}`);
+    return () => {
+      console.log(`[EntryCreator] unmount streamId=${streamId}`);
+    };
+  }, [streamId]);
 
   useEffect(() => {
     try {
@@ -475,6 +481,32 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       // Ignore write failures (quota/private mode).
     }
   }, [personaUsageCounts, personaUsageStorageKey]);
+
+  // Flush handler for global `kolam_flush_drafts` event. Ensures all
+  // editors write their current content into the draft system immediately.
+  useEffect(() => {
+    const handler = () => {
+      try {
+        sections.forEach((section) => {
+          const instanceId = section.instanceId;
+          // Only persist PERSONA sections via saveDraft here. PDF sections
+          // have their own persistence path (savePdfDraft) and may not
+          // include a personaId/personaName in the same shape.
+          if (section.kind === "PERSONA") {
+            const editor = editorRefs.current[instanceId];
+            const content = editor && editor.document
+              ? (editor.document as PartialBlock[])
+              : getDraftContent(instanceId);
+            saveDraft(instanceId, section.personaId, content);
+          }
+        });
+      } catch {
+        /* swallow */
+      }
+    };
+    window.addEventListener("kolam_flush_drafts", handler as EventListener);
+    return () => window.removeEventListener("kolam_flush_drafts", handler as EventListener);
+  }, [sections, saveDraft, getDraftContent]);
 
   // Clean up persona usage counts for deleted personas
   useEffect(() => {
@@ -516,7 +548,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   // Initialize selection with existing drafts only
   useEffect(() => {
-    if (sections.length === 0 && !isLoading && !discardedRecovery) {
+    if (sections.length === 0 && !isLoading) {
       // If we have initial drafts, use them
       if (initialDrafts && Object.keys(initialDrafts).length > 0) {
         const loadedSections = Object.entries(initialDrafts).map(
@@ -562,7 +594,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       // Don't auto-initialize with a default persona
       // Let the user explicitly select a persona or add a section
     }
-  }, [initialDrafts, isLoading, sections.length, discardedRecovery]);
+  }, [initialDrafts, isLoading, sections.length]);
 
   const persistPdfSection = useCallback(
     (instanceId: string, draft: Extract<SectionState, { kind: "PDF" }>) => {
@@ -678,8 +710,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   // Sync active instances with draft system whenever sections change
   useEffect(() => {
     if (isLoading) return;
-    setActiveInstances(sections.map((section) => section.instanceId));
-  }, [sections, setActiveInstances, isLoading]);
+    const ids = sections.map((section) => section.instanceId);
+    console.log(`[EntryCreator] syncing active instances for ${streamId}:`, ids);
+    setActiveInstances(ids);
+  }, [sections, setActiveInstances, isLoading, streamId]);
 
   // WhatsApp chat inject listener
   useEffect(() => {
@@ -689,7 +723,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
       clearDraft();
       editorRefs.current = {};
-      setDiscardedRecovery(true);
 
       const newSections: SectionState[] = [];
 
@@ -1515,10 +1548,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   const readyAt = editorReadyAtRef.current[instanceId];
                                   const withinHydrationWindow =
                                     readyAt === undefined || Date.now() - readyAt < 500;
-                                  const incomingMeaningful =
-                                    hasMeaningfulDraftContent(content);
-                                  const existingMeaningful =
-                                    hasMeaningfulDraftContent(existingContent);
+                                  // determine if incoming/existing drafts have meaningful text
+                                  // (kept for potential future use)
+                                  hasMeaningfulDraftContent(content);
+                                  hasMeaningfulDraftContent(existingContent);
                                   const editorFocused =
                                     editorRefs.current[instanceId]?.isFocused?.() ?? false;
                                   const incomingText = blocksToPlainText(content);
@@ -1533,8 +1566,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     userEditedRef.current[instanceId] = true;
                                   }
 
-                                  if (!incomingMeaningful && existingMeaningful) {
-                                    if (!userEditedRef.current[instanceId]) return;
+                                  
+
+                                  try {
+                                    const incomingTextLen = incomingText.length;
+                                    const existingTextLen = existingText.length;
+                                    console.log(`[EntryCreator] saveDraft -> instance=${instanceId} stream=${streamId}`, {
+                                      personaId: section.personaId,
+                                      incomingTextLen,
+                                      existingTextLen,
+                                      editorFocused,
+                                    });
+                                  } catch {
+                                    // swallow logging errors
                                   }
 
                                   saveDraft(

@@ -12,36 +12,15 @@ import {
   FileText,
   Layers,
   
-  Plus,
   Clock,
-  Sparkles,
-  TrendingUp,
   AlertCircle,
   RefreshCw,
   Copy,
+  Users,
 } from "lucide-react";
 import { useDomains } from "@/lib/hooks/useDomains";
+import { usePersonas } from "@/lib/hooks/usePersonas";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
-
-function getDomainDuplicateErrorMessage(error: unknown) {
-  const maybeError = error as {
-    code?: string;
-    message?: string;
-  } | null;
-  if (
-    maybeError?.code === "23505" &&
-    maybeError?.message?.includes("idx_unique_active_domain_name")
-  ) {
-    return "A domain with this name already exists.";
-  }
-  if (
-    maybeError?.code === "23505" &&
-    maybeError?.message?.includes("unique_canvas_per_stream")
-  ) {
-    return "Domain duplication hit a canvas conflict. Please retry after refreshing.";
-  }
-  return maybeError?.message ?? "Failed to duplicate domain.";
-}
 
 // --- Types ---
 
@@ -130,21 +109,7 @@ function ActivityItemSkeleton() {
   );
 }
 
-function QuickActionSkeleton() {
-  return (
-    <div className="flex items-center gap-3 border border-border-default bg-surface-default p-3">
-      <div className="h-8 w-8 shrink-0 bg-surface-elevated" />
-      <div className="min-w-0 flex-1">
-        <div className="flex h-4.5 items-center">
-          <div className="h-3 w-24 bg-surface-elevated" />
-        </div>
-        <div className="mt-0.5 flex h-4 items-center">
-          <div className="h-2 w-32 bg-surface-elevated" />
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 // --- Sub-components ---
 
@@ -206,17 +171,34 @@ function DomainCard({
   userId?: string | null;
   refetchDomains: () => void;
 }) {
-  const { duplicateDomain } = useDomains(userId ?? "");
+  const { duplicateDomain, domains } = useDomains(userId ?? "");
 
   const handleDuplicate = async () => {
+    const suggested = `${domain.name} — copy`;
+    const requestedName = window.prompt("Duplicate domain as", suggested);
+    const newName = requestedName?.trim();
+    if (!newName) return;
+
+    const duplicate = domains?.some(
+      (existingDomain) =>
+        existingDomain.id !== domain.id &&
+        existingDomain.name.toLowerCase() === newName.toLowerCase(),
+    );
+
+    if (duplicate) {
+      alert("A domain with this name already exists");
+      return;
+    }
+
     try {
       await duplicateDomain.mutateAsync({ 
         id: domain.id,
-        newName: `${domain.name} (Copy)`
-      }); // Correctly call the mutation
+        newName
+      });
       refetchDomains(); // Trigger stats update after duplication
     } catch (error) {
       console.error("Failed to duplicate domain:", error);
+      alert("Failed to duplicate domain. Please try again.");
     }
   };
 
@@ -249,7 +231,7 @@ function DomainCard({
             onClick={handleDuplicate}
             className="text-sm text-action-primary hover:underline"
           >
-            Duplicate
+            <Copy className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -302,32 +284,7 @@ function RecentActivityItem({
   );
 }
 
-function QuickAction({
-  icon: Icon,
-  label,
-  description,
-  onClick,
-}: {
-  icon: React.ElementType;
-  label: string;
-  description: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="group flex items-center gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.98] active:translate-y-px"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center bg-action-primary-bg/10 transition-colors group-hover:bg-action-primary-bg/20">
-        <Icon className="h-4 w-4 text-action-primary-bg" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-text-default leading-tight">{label}</p>
-        <p className="text-[11px] text-text-subtle mt-0.5">{description}</p>
-      </div>
-    </button>
-  );
-}
+
 
 function ErrorBanner({
   message,
@@ -357,6 +314,7 @@ export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
+  const { personas, isLoading: personasLoading } = usePersonas();
 
   const userId = user?.id;
 
@@ -489,7 +447,7 @@ export default function HomePage() {
   const totalEntries =
     domainsWithCounts?.reduce((s, d) => s + d.entryCount, 0) ?? 0;
 
-  const isLoading = authLoading || domainsLoading;
+  const isLoading = authLoading || domainsLoading || personasLoading;
 
   // ---- Greeting ----
   const hour = new Date().getHours();
@@ -550,9 +508,10 @@ export default function HomePage() {
 
         {/* ---- Stat Cards ---- */}
         <section className="mb-8">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
             {isLoading ? (
               <>
+                <StatCardSkeleton />
                 <StatCardSkeleton />
                 <StatCardSkeleton />
                 <StatCardSkeleton />
@@ -584,59 +543,18 @@ export default function HomePage() {
                   label="Entries"
                   color="amber"
                 />
+                <StatCard
+                  icon={Users}
+                  value={personas?.length ?? 0}
+                  label="Personas"
+                  color="emerald"
+                />
               </>
             )}
           </div>
         </section>
 
-        {/* ---- Quick Actions ---- */}
-        <section className="mb-8">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text-default">
-            <TrendingUp className="h-4 w-4 text-text-muted" />
-            Quick Actions
-          </h2>
-          {isLoading ? (
-            <div className="grid gap-3 md:grid-cols-3">
-              <QuickActionSkeleton />
-              <QuickActionSkeleton />
-              <QuickActionSkeleton />
-            </div>
-          ) : totalDomains > 0 ? (
-            <div className="grid gap-3 md:grid-cols-3">
-              <QuickAction
-                icon={Globe}
-                label="Browse Domains"
-                description="Explore your knowledge domains"
-                onClick={() => {
-                  const first = domainsWithCounts?.[0];
-                  if (first) router.push(`/${first.id}`);
-                }}
-              />
-              <QuickAction
-                icon={Plus}
-                label="New Entry"
-                description="Start writing in a stream"
-                onClick={() => {
-                  const first = domainsWithCounts?.[0];
-                  if (first) router.push(`/${first.id}`);
-                }}
-              />
-              <QuickAction
-                icon={Sparkles}
-                label="Recent Activity"
-                description="Continue where you left off"
-                onClick={() => {
-                  const first = recentStreams?.[0];
-                  if (first?.cabinet?.domain_id) {
-                    router.push(`/${first.cabinet.domain_id}/${first.id}`);
-                  } else if (domainsWithCounts?.[0]) {
-                    router.push(`/${domainsWithCounts[0].id}`);
-                  }
-                }}
-              />
-            </div>
-          ) : null}
-        </section>
+
 
         <div className="grid gap-8 lg:grid-cols-5">
           {/* ---- Domains Overview (left 3 cols) ---- */}

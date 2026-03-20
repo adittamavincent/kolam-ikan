@@ -3,10 +3,10 @@ import threading
 from pathlib import Path
 from typing import Any, Tuple
 
-import pandas as pd
+import pandas as pd # type: ignore
 
-from docling.datamodel.base_models import InputFormat
-from docling.document_converter import DocumentConverter
+from docling.datamodel.base_models import InputFormat # type: ignore
+from docling.document_converter import DocumentConverter # type: ignore
 
 logger = logging.getLogger("office_converter")
 
@@ -35,7 +35,7 @@ def convert_office(file_path: Path, content_type: str, file_name: str, options: 
         is_xlsx = file_name.lower().endswith(".xlsx") or content_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         
         md_text = ""
-        metadata = {"inputFormat": "office"}
+        metadata: dict[str, Any] = {"inputFormat": "office"}
         
         try:
             conv = _get_office_converter()

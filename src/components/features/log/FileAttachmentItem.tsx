@@ -25,14 +25,14 @@ export interface FileAttachmentViewProps {
   displayMode?: "inline" | "download" | "external";
   
   // Actions
-  onPreviewPdf?: () => void;
+  onPreviewFile?: () => void;
   onPreviewParsed?: () => void;
   onRemove?: () => void;
 }
 
-function PdfAttachmentActions({
+function FileAttachmentActions({
   title,
-  onPreviewPdf,
+  onPreviewFile,
   onPreviewParsed,
   canOpenParsed,
   previewUrl,
@@ -41,7 +41,7 @@ function PdfAttachmentActions({
   showPreviewButtons = false,
 }: {
   title: string;
-  onPreviewPdf?: () => void;
+  onPreviewFile?: () => void;
   onPreviewParsed?: () => void;
   canOpenParsed?: boolean;
   previewUrl?: string | null;
@@ -49,25 +49,25 @@ function PdfAttachmentActions({
   onRemove?: () => void;
   showPreviewButtons?: boolean;
 }) {
-  const shouldShowPreviewPdf = showPreviewButtons || !!onPreviewPdf;
+  const shouldShowPreviewFile = showPreviewButtons || !!onPreviewFile;
   const shouldShowPreviewParsed = showPreviewButtons || !!onPreviewParsed;
 
-  if (!shouldShowPreviewPdf && !shouldShowPreviewParsed && !previewUrl && !onRemove)
+  if (!shouldShowPreviewFile && !shouldShowPreviewParsed && !previewUrl && !onRemove)
     return null;
 
   return (
     <div className="flex items-center gap-1">
-      {shouldShowPreviewPdf && (
+      {shouldShowPreviewFile && (
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onPreviewPdf?.();
+            onPreviewFile?.();
           }}
-          disabled={!onPreviewPdf}
+          disabled={!onPreviewFile}
           className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
           aria-label={`Preview ${title}`}
-          title={onPreviewPdf ? "Open PDF preview" : "PDF preview unavailable"}
+          title={onPreviewFile ? "Open file preview" : "File preview unavailable"}
         >
           <Eye className="h-3.5 w-3.5" />
         </button>
@@ -102,7 +102,7 @@ function PdfAttachmentActions({
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
           className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
-          aria-label="Open PDF in new tab"
+          aria-label="Open file in new tab"
           title="Open in new tab"
         >
           {displayMode === "download" ? (
@@ -150,7 +150,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
     isProcessing,
     canOpenParsed,
     displayMode = "external",
-    onPreviewPdf,
+    onPreviewFile,
     onPreviewParsed,
     onRemove,
   } = props;
@@ -182,12 +182,12 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
         </div>
 
         <div className="shrink-0">
-          <PdfAttachmentActions
+          <FileAttachmentActions
             title={title}
             canOpenParsed={canOpenParsed}
             displayMode={displayMode}
             previewUrl={previewUrl}
-            onPreviewPdf={onPreviewPdf}
+            onPreviewFile={onPreviewFile}
             onPreviewParsed={onPreviewParsed}
             onRemove={onRemove}
             showPreviewButtons
@@ -252,12 +252,12 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
         </div>
 
         <div className="shrink-0">
-          <PdfAttachmentActions
+          <FileAttachmentActions
             title={title}
             canOpenParsed={canOpenParsed}
             displayMode={displayMode}
             previewUrl={previewUrl}
-            onPreviewPdf={onPreviewPdf}
+            onPreviewFile={onPreviewFile}
             onPreviewParsed={onPreviewParsed}
             onRemove={onRemove}
           />

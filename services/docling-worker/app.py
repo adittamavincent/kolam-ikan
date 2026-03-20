@@ -12,15 +12,15 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import urlparse
 
-import httpx
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+import httpx # type: ignore
+from fastapi import BackgroundTasks, FastAPI, HTTPException # type: ignore
 from pdf2image import convert_from_path  # type: ignore
-from PIL import Image
-from pydantic import BaseModel, Field
+from PIL import Image # type: ignore
+from pydantic import BaseModel, Field # type: ignore
 
-from converters import convert_to_markdown
-from docling.chunking import HierarchicalChunker
-from progress_tracker import PageProgress
+from converters import convert_to_markdown # type: ignore
+from docling.chunking import HierarchicalChunker # type: ignore
+from progress_tracker import PageProgress # type: ignore
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("docling-worker")
@@ -60,7 +60,7 @@ async def import_worker() -> None:
 @app.on_event("startup")
 async def start_import_worker() -> None:
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, _prewarm_models)
+    await loop.run_in_executor(None, lambda: _prewarm_models()) # type: ignore
 
     # Spawn the background consumer task after models are warmed.
     asyncio.create_task(import_worker())
@@ -193,18 +193,18 @@ async def download_source_file(
     for attempt in range(1, max_attempts + 1):
         try:
             if content_type == "text/url" or file_name.startswith(("http://", "https://")):
-                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as temp_file:
-                    temp_file_path = Path(temp_file.name)
-                    temp_file.write(file_name)
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False, encoding="utf-8") as temp_text_file:
+                    temp_file_path = Path(temp_text_file.name)
+                    temp_text_file.write(file_name)
             else:
                 async with httpx.AsyncClient(timeout=download_timeout) as client:
                     async with client.stream("GET", storage_url) as response:
                         response.raise_for_status()
-                        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
-                            temp_file_path = Path(temp_file.name)
+                        with tempfile.NamedTemporaryFile(mode="wb", suffix=suffix, delete=False) as temp_bin_file: # type: ignore
+                            temp_file_path = Path(temp_bin_file.name)
                             async for chunk in response.aiter_bytes(chunk_size=8192):
                                 if chunk:
-                                    temp_file.write(chunk)
+                                    temp_bin_file.write(chunk) # type: ignore
 
             last_exc = None
             return temp_file_path
@@ -219,7 +219,7 @@ async def download_source_file(
 def _prewarm_models() -> None:
     """Best-effort prewarm to avoid first-job cold start."""
     try:
-        from converters.pdf_converter import _get_converter
+        from converters.pdf_converter import _get_converter # type: ignore
 
         _get_converter(enable_table_structure=False)
         logger.info("Prewarmed Docling PDF converter")
@@ -367,7 +367,7 @@ def generate_and_upload_thumbnail(
             images = convert_from_path(str(source_path), first_page=1, last_page=1, size=(300, 400))
             if not images:
                 logger.warning("No images generated from PDF for document %s", document_id)
-                return None
+                return None, "failed", "No images generated from PDF"
             thumb_image = images[0]
         elif ctype.startswith("image/") or lowered_name.endswith((".png", ".jpg", ".jpeg", ".tiff", ".webp")):
             with Image.open(source_path) as image:
@@ -401,8 +401,8 @@ def generate_and_upload_thumbnail(
             return None, "failed", "Supabase credentials not configured"
 
         upload_ok = upload_thumbnail_to_storage(
-            supabase_url,
-            supabase_key,
+            str(supabase_url),
+            str(supabase_key),
             thumbnail_path,
             file_data,
         )
@@ -418,6 +418,7 @@ def generate_and_upload_thumbnail(
     finally:
         if temp_thumb_path and temp_thumb_path.exists():
             temp_thumb_path.unlink(missing_ok=True)
+    return None, "failed", "Unknown error" # Fallback return if reaching here
 
 
 async def process_import(request: ImportRequest) -> None:
@@ -495,7 +496,7 @@ async def process_import(request: ImportRequest) -> None:
 
         markdown, extraction_metadata = await loop.run_in_executor(
             None,
-            lambda: convert_to_markdown(
+            lambda: convert_to_markdown( # type: ignore
                 temp_file_path,
                 request.contentType,
                 request.fileName,
@@ -596,6 +597,7 @@ async def create_thumbnail(request: ThumbnailRequest) -> dict[str, Any]:
     finally:
         if temp_file_path and temp_file_path.exists():
             temp_file_path.unlink(missing_ok=True)
+    return {"status": "failed", "error": "Internal processor error"}
 
 
 @app.get("/healthz")

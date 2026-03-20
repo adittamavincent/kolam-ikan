@@ -58,7 +58,10 @@ function hasMeaningfulPayload(value: unknown): boolean {
 
 function stripVolatileFields(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map((item) => stripVolatileFields(item));
+    const normalized = value
+      .map((item) => stripVolatileFields(item))
+      .filter((item) => item !== undefined);
+    return normalized.length > 0 ? normalized : undefined;
   }
 
   if (!value || typeof value !== "object") {
@@ -66,14 +69,40 @@ function stripVolatileFields(value: unknown): unknown {
   }
 
   const record = value as PlainRecord;
-  const next: PlainRecord = {};
+  const blockType = typeof record.type === "string" ? record.type : null;
+  if (blockType) {
+    const normalizedBlock: PlainRecord = { type: blockType };
+    const normalizedContent = stripVolatileFields(record.content);
+    const normalizedProps = stripVolatileFields(record.props);
+    const normalizedChildren = stripVolatileFields(record.children);
 
-  for (const [key, child] of Object.entries(record)) {
-    if (key === "id") continue;
-    next[key] = stripVolatileFields(child);
+    if (normalizedContent !== undefined) {
+      normalizedBlock.content = normalizedContent;
+    }
+    if (
+      normalizedProps &&
+      typeof normalizedProps === "object" &&
+      Object.keys(normalizedProps as PlainRecord).length > 0
+    ) {
+      normalizedBlock.props = normalizedProps;
+    }
+    if (normalizedChildren !== undefined) {
+      normalizedBlock.children = normalizedChildren;
+    }
+
+    return normalizedBlock;
   }
 
-  return next;
+  const next: PlainRecord = {};
+  for (const [key, child] of Object.entries(record)) {
+    if (key === "id") continue;
+    const normalized = stripVolatileFields(child);
+    if (normalized !== undefined) {
+      next[key] = normalized;
+    }
+  }
+
+  return Object.keys(next).length > 0 ? next : undefined;
 }
 
 function normalizeCanvasContent(value: unknown): string | null {

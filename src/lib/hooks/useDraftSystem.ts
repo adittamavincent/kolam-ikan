@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { PartialBlock } from "@blocknote/core";
 import { Json } from "@/lib/types/database.types";
-import { SectionPdfAttachmentInsert } from "@/lib/types";
+import { SectionFileAttachmentInsert } from "@/lib/types";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -12,12 +12,12 @@ interface UseDraftSystemProps {
 }
 
 interface SectionDraft {
-  sectionType: "PERSONA" | "PDF";
+  sectionType: "PERSONA" | "FILE_ATTACHMENT";
   personaId: string | null;
   personaName?: string;
   content: PartialBlock[];
   contentTextSnapshot?: string;
-  pdfDisplayMode?: "inline" | "download" | "external";
+  fileDisplayMode?: "inline" | "download" | "external";
   fileAttachments?: FileDraftAttachment[];
   updatedAt: number;
 }
@@ -41,12 +41,12 @@ interface DraftState {
 }
 
 export interface DraftContent {
-  sectionType: "PERSONA" | "PDF";
+  sectionType: "PERSONA" | "FILE_ATTACHMENT";
   personaId: string | null;
   content: PartialBlock[];
   personaName?: string;
   contentTextSnapshot?: string;
-  pdfDisplayMode?: "inline" | "download" | "external";
+  fileDisplayMode?: "inline" | "download" | "external";
   fileAttachments?: FileDraftAttachment[];
 }
 
@@ -181,12 +181,12 @@ function getSupabaseErrorMessage(error: unknown): string {
   return maybeError.code ? `Code ${maybeError.code}` : "Unknown error";
 }
 
-function isMissingPdfSchemaError(message: string): boolean {
+function isMissingFileSchemaError(message: string): boolean {
   const text = message.toLowerCase();
   return (
     (text.includes("section_type") ||
-      text.includes("pdf_display_mode") ||
-      text.includes("section_pdf_attachments")) &&
+      text.includes("file_display_mode") ||
+      text.includes("section_attachments")) &&
     (text.includes("column") ||
       text.includes("relation") ||
       text.includes("does not exist"))
@@ -322,7 +322,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                 ? textToBlocks(s.contentTextSnapshot)
                 : [],
             contentTextSnapshot: s.contentTextSnapshot,
-            pdfDisplayMode: s.pdfDisplayMode,
+            fileDisplayMode: s.fileDisplayMode,
             fileAttachments: s.fileAttachments ?? [],
           };
         });
@@ -377,7 +377,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     [],
   );
 
-  const savePdfDraft = useCallback(
+  const saveFileAttachmentDraft = useCallback(
     (
       instanceId: string,
       payload: {
@@ -405,12 +405,12 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       }
 
       draftStateRef.current.sections[instanceId] = {
-        sectionType: "PDF",
+        sectionType: "FILE_ATTACHMENT",
         personaId: payload.personaId ?? null,
         personaName: payload.personaName,
         content: payload.content ?? [],
         contentTextSnapshot: blocksToPlainText(payload.content ?? []),
-        pdfDisplayMode: payload.displayMode,
+        fileDisplayMode: payload.displayMode,
         fileAttachments: payload.attachments,
         updatedAt: Date.now(),
       };
@@ -453,13 +453,13 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     [initialDrafts],
   );
 
-  const getPdfDraft = useCallback(
+  const getFileAttachmentDraft = useCallback(
     (instanceId: string) => {
       const current = draftStateRef.current.sections[instanceId];
       const fallback = initialDrafts[instanceId];
       return {
         displayMode:
-          current?.pdfDisplayMode ?? fallback?.pdfDisplayMode ?? "inline",
+          current?.fileDisplayMode ?? fallback?.fileDisplayMode ?? "inline",
         attachments: deepClone(
           current?.fileAttachments ?? fallback?.fileAttachments ?? [],
         ),
@@ -480,9 +480,9 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           !!value.draft,
       );
 
-    // Safety check - ignore commit if content has zero meaning and no PDF attachments.
+    // Safety check - ignore commit if content has zero meaning and no file attachments.
     const meaningfulSections = orderedSections.filter(({ draft }) => {
-      if (draft.sectionType === "PDF") {
+      if (draft.sectionType === "FILE_ATTACHMENT") {
         return (draft.fileAttachments?.length ?? 0) > 0;
       }
       return hasMeaningfulDraftContent(draft.content);
@@ -512,7 +512,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       }
       newEntryId = entryData.id;
 
-      const pdfAttachmentInserts: SectionPdfAttachmentInsert[] = [];
+      const attachmentInserts: SectionFileAttachmentInsert[] = [];
 
       for (let index = 0; index < meaningfulSections.length; index += 1) {
         const { draft } = meaningfulSections[index];
@@ -526,7 +526,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
             content_json: draft.content as Json,
             sort_order: index,
             section_type: draft.sectionType,
-            pdf_display_mode: draft.pdfDisplayMode ?? "inline",
+            file_display_mode: draft.fileDisplayMode ?? "inline",
           })
           .select("id")
           .single();
@@ -535,17 +535,17 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           const sectionErrorMessage = getSupabaseErrorMessage(sectionError);
 
           if (
-            draft.sectionType === "PDF" &&
-            isMissingPdfSchemaError(sectionErrorMessage)
+            draft.sectionType === "FILE_ATTACHMENT" &&
+            isMissingFileSchemaError(sectionErrorMessage)
           ) {
             throw new Error(
-              "PDF sections require the latest database migration. Please apply migrations and retry.",
+              "File attachments require the latest database migration. Please apply migrations and retry.",
             );
           }
 
           if (
             draft.sectionType === "PERSONA" &&
-            isMissingPdfSchemaError(sectionErrorMessage)
+            isMissingFileSchemaError(sectionErrorMessage)
           ) {
             const legacyInsert = await supabase
               .from("sections")
@@ -570,11 +570,14 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
           );
         }
 
-        if (draft.sectionType === "PDF" && draft.fileAttachments?.length) {
+        if (
+          draft.sectionType === "FILE_ATTACHMENT" &&
+          draft.fileAttachments?.length
+        ) {
           draft.fileAttachments.forEach((attachment, attachmentIndex) => {
             if (!attachment.documentId) return;
 
-            pdfAttachmentInserts.push({
+            attachmentInserts.push({
               section_id: insertedSection.id,
               document_id: attachment.documentId,
               sort_order: attachmentIndex,
@@ -587,18 +590,18 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         }
       }
 
-      if (pdfAttachmentInserts.length > 0) {
+      if (attachmentInserts.length > 0) {
         const { error: attachmentError } = await supabase
-          .from("section_pdf_attachments")
-          .insert(pdfAttachmentInserts);
+          .from("section_attachments")
+          .insert(attachmentInserts);
         if (attachmentError) {
           const attachmentMessage = getSupabaseErrorMessage(attachmentError);
-          if (isMissingPdfSchemaError(attachmentMessage)) {
+          if (isMissingFileSchemaError(attachmentMessage)) {
             throw new Error(
-              "PDF attachments require the latest database migration. Please apply migrations and retry.",
+              "File attachments require the latest database migration. Please apply migrations and retry.",
             );
           }
-          throw new Error(`Failed to attach PDFs: ${attachmentMessage}`);
+          throw new Error(`Failed to attach files: ${attachmentMessage}`);
         }
       }
 
@@ -678,11 +681,11 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
   return {
     status,
     saveDraft,
-    savePdfDraft,
+    saveFileAttachmentDraft,
     commitDraft,
     initialDrafts,
     getDraftContent,
-    getPdfDraft,
+    getFileAttachmentDraft,
     isLoading,
     clearDraft,
     setActiveInstances,

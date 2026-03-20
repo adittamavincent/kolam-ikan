@@ -2,15 +2,15 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Tuple
 
-from .pdf_converter import convert_pdf
-from .office_converter import convert_office
-from .text_converter import convert_text
-from .image_converter import convert_image
-from .audio_converter import convert_audio
-from .web_converter import convert_web
+from .pdf_converter import convert_pdf # type: ignore
+from .office_converter import convert_office # type: ignore
+from .text_converter import convert_text # type: ignore
+from .image_converter import convert_image # type: ignore
+from .audio_converter import convert_audio # type: ignore
+from .web_converter import convert_web # type: ignore
 
 if TYPE_CHECKING:
-    from progress_tracker import PageProgress
+    from progress_tracker import PageProgress # type: ignore
 
 logger = logging.getLogger("converters")
 

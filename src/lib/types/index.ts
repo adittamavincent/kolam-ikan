@@ -64,12 +64,12 @@ export type Section = Database["public"]["Tables"]["sections"]["Row"];
 export type SectionInsert = Database["public"]["Tables"]["sections"]["Insert"];
 export type SectionUpdate = Database["public"]["Tables"]["sections"]["Update"];
 
-export type SectionPdfAttachment =
-  Database["public"]["Tables"]["section_pdf_attachments"]["Row"];
-export type SectionPdfAttachmentInsert =
-  Database["public"]["Tables"]["section_pdf_attachments"]["Insert"];
-export type SectionPdfAttachmentUpdate =
-  Database["public"]["Tables"]["section_pdf_attachments"]["Update"];
+export type SectionFileAttachment =
+  Database["public"]["Tables"]["section_attachments"]["Row"];
+export type SectionFileAttachmentInsert =
+  Database["public"]["Tables"]["section_attachments"]["Insert"];
+export type SectionFileAttachmentUpdate =
+  Database["public"]["Tables"]["section_attachments"]["Update"];
 
 export type Canvas = Database["public"]["Tables"]["canvases"]["Row"];
 export type CanvasInsert = Database["public"]["Tables"]["canvases"]["Insert"];
@@ -129,16 +129,15 @@ export interface EntryWithSections extends Entry {
   sections: SectionWithPersona[];
 }
 
-export interface SectionWithPersona extends Omit<
-  Section,
-  "section_type" | "pdf_display_mode"
-> {
+export interface SectionWithPersona
+  extends Omit<Section, "section_type" | "file_display_mode"> {
   section_type?: Section["section_type"];
-  pdf_display_mode?: Section["pdf_display_mode"];
+  file_display_mode?: Section["file_display_mode"];
   persona?: Persona;
-  section_pdf_attachments?: SectionPdfAttachmentWithDocument[];
+  section_attachments?: SectionFileAttachmentWithDocument[];
 }
 
-export interface SectionPdfAttachmentWithDocument extends SectionPdfAttachment {
+export interface SectionFileAttachmentWithDocument
+  extends SectionFileAttachment {
   document?: DocumentWithLatestJob;
 }

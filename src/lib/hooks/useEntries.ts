@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { EntryWithSections } from "@/lib/types";
 import { Json } from "@/lib/types/database.types";
 import { PartialBlock } from "@blocknote/core";
-import { SectionPdfAttachmentInsert } from "@/lib/types";
+import { SectionFileAttachmentInsert } from "@/lib/types";
 
 interface UseEntriesOptions {
   search?: string;
@@ -25,13 +25,13 @@ interface AmendEntryInput {
   }>;
 }
 
-const ENTRIES_SELECT_FULL=`
+const ENTRIES_SELECT_FULL = `
  id, stream_id, is_draft, created_at, updated_at, deleted_at,
  sections!inner (
  id, entry_id, persona_id, persona_name_snapshot, content_json,
- section_type, pdf_display_mode, sort_order, updated_at,
+ section_type, file_display_mode, sort_order, updated_at,
  persona:personas (id, name, icon, color, is_shadow, shadow_stream_id, shadow_document_id),
- section_pdf_attachments (
+ section_attachments (
  id, section_id, document_id, sort_order, title_snapshot,
  annotation_text, referenced_persona_id, referenced_page,
  created_at, updated_at,
@@ -59,8 +59,8 @@ function isMissingColumnError(
       msg.includes("relation") ||
       msg.includes("does not exist")) &&
     (msg.includes("section_type") ||
-      msg.includes("pdf_display_mode") ||
-      msg.includes("section_pdf_attachments"))
+      msg.includes("file_display_mode") ||
+      msg.includes("section_attachments"))
   );
 }
 
@@ -90,7 +90,7 @@ function normalizeEntryOrder(entries: EntryWithSections[]): EntryWithSections[] 
     ...entry,
     sections: orderBySortOrder(entry.sections).map((section) => ({
       ...section,
-      section_pdf_attachments: orderBySortOrder(section.section_pdf_attachments),
+      section_attachments: orderBySortOrder(section.section_attachments),
     })),
   }));
 }
@@ -221,6 +221,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         queryKey: ["bridge-token-entries", streamId],
       });
       queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
     },
   });
 
@@ -317,6 +320,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         queryKey: ["bridge-token-entries", streamId],
       });
       queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
     },
   });
 
@@ -341,6 +347,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         queryKey: ["bridge-token-entries", streamId],
       });
       queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
     },
   });
 
@@ -364,9 +373,10 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
-      queryClient.invalidateQueries({
-        queryKey: ["bridge-token-entries", streamId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
     },
   });
 
@@ -389,7 +399,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
           persona_id: section.persona_id,
           persona_name_snapshot: section.persona_name_snapshot,
           section_type: section.section_type,
-          pdf_display_mode: section.pdf_display_mode,
+          file_display_mode: section.file_display_mode,
           sort_order: index,
         }));
 
@@ -400,10 +410,10 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
         if (sectionsError) throw sectionsError;
 
-        const attachmentInserts: SectionPdfAttachmentInsert[] = [];
+        const attachmentInserts: SectionFileAttachmentInsert[] = [];
         insertedSections?.forEach((insertedSection) => {
           const sourceSection = entry.sections?.[insertedSection.sort_order];
-          sourceSection?.section_pdf_attachments?.forEach((attachment, idx) => {
+          sourceSection?.section_attachments?.forEach((attachment, idx) => {
             attachmentInserts.push({
               section_id: insertedSection.id,
               document_id: attachment.document_id,
@@ -418,7 +428,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
         if (attachmentInserts.length > 0) {
           const { error: attachmentsError } = await supabase
-            .from("section_pdf_attachments")
+            .from("section_attachments")
             .insert(attachmentInserts);
           if (attachmentsError) throw attachmentsError;
         }
@@ -433,9 +443,10 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
-      queryClient.invalidateQueries({
-        queryKey: ["bridge-token-entries", streamId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
     },
   });
 
@@ -459,7 +470,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
           persona_id: section.persona_id,
           persona_name_snapshot: `↩ Revert of ${section.persona_name_snapshot || "Unknown"} (${revertDate})`,
           section_type: section.section_type,
-          pdf_display_mode: section.pdf_display_mode,
+          file_display_mode: section.file_display_mode,
           sort_order: index,
         }));
 
@@ -470,10 +481,10 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
         if (sectionsError) throw sectionsError;
 
-        const attachmentInserts: SectionPdfAttachmentInsert[] = [];
+        const attachmentInserts: SectionFileAttachmentInsert[] = [];
         insertedSections?.forEach((insertedSection) => {
           const sourceSection = entry.sections?.[insertedSection.sort_order];
-          sourceSection?.section_pdf_attachments?.forEach((attachment, idx) => {
+          sourceSection?.section_attachments?.forEach((attachment, idx) => {
             attachmentInserts.push({
               section_id: insertedSection.id,
               document_id: attachment.document_id,
@@ -488,7 +499,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
         if (attachmentInserts.length > 0) {
           const { error: attachmentsError } = await supabase
-            .from("section_pdf_attachments")
+            .from("section_attachments")
             .insert(attachmentInserts);
           if (attachmentsError) throw attachmentsError;
         }
@@ -503,9 +514,10 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
-      queryClient.invalidateQueries({
-        queryKey: ["bridge-token-entries", streamId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
     },
   });
 

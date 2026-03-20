@@ -2,11 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
 import * as dotenv from "dotenv";
-import { testAccounts } from "../src/lib/test-accounts";
+import { devTestAccounts } from "../src/lib/dev/test-accounts";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
-const TEST_EMAILS = testAccounts.map((a) => a.email);
+const TEST_EMAILS = devTestAccounts.map((a) => a.email);
 
 const RESET_STATEMENTS = [
   `TRUNCATE TABLE
@@ -23,10 +23,10 @@ const RESET_STATEMENTS = [
   ...TEST_EMAILS.map((e) => `DELETE FROM auth.users WHERE email = '${e}'`),
 ];
 
-const TEST_ACCOUNTS = testAccounts.map((a) => ({
+const TEST_ACCOUNTS = devTestAccounts.map((a) => ({
   email: a.email,
   password: a.pass,
-  name: a.fullName || a.label,
+  name: a.fullName ?? a.label,
 }));
 
 async function globalSetup() {

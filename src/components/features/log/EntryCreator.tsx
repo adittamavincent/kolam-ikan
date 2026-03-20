@@ -47,7 +47,7 @@ import { DocumentImportModal } from "@/components/features/documents/DocumentImp
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
-import { useDraftSystem } from "@/lib/hooks/useDraftSystem";
+import { useDraftSystem, FileDraftAttachment } from "@/lib/hooks/useDraftSystem";
 import debounce from "lodash/debounce";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { PersonaManager } from "@/components/features/persona/PersonaManager";
@@ -294,7 +294,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   };
 
-  interface PdfAttachmentState {
+  interface FileAttachmentState {
     documentId?: string;
     titleSnapshot: string;
     pageCount: number;
@@ -317,9 +317,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       }
     | {
         instanceId: string;
-        kind: "PDF";
+        kind: "FILE_ATTACHMENT";
         displayMode: "inline" | "download" | "external";
-        attachments: PdfAttachmentState[];
+        attachments: FileAttachmentState[];
         personaId?: string | null;
         personaName?: string | null;
         note: string;
@@ -330,7 +330,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const [personaUsageCounts, setPersonaUsageCounts] = useState<
     Record<string, number>
   >(getInitialPersonaUsage);
-  const [pdfPickerTargetInstanceId, setPdfPickerTargetInstanceId] = useState<
+  const [filePickerTargetInstanceId, setFilePickerTargetInstanceId] = useState<
     string | null
   >(null);
   const [importModalFiles, setImportModalFiles] = useState<
@@ -347,8 +347,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     previewUrl: string | null;
     importStatus?: string;
   } | null>(null);
-  const [activePreviewTab, setActivePreviewTab] = useState<"pdf" | "parsed">(
-    "pdf",
+  const [activePreviewTab, setActivePreviewTab] = useState<"file" | "parsed">(
+    "file",
   );
   const [parsedPreviewLoading, setParsedPreviewLoading] = useState(false);
   const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
@@ -378,7 +378,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const attachedDocumentIds = useMemo(() => {
     const ids = new Set<string>();
     for (const section of sections) {
-      if (section.kind !== "PDF") continue;
+      if (section.kind !== "FILE_ATTACHMENT") continue;
       for (const attachment of section.attachments) {
         if (attachment.documentId) {
           ids.add(attachment.documentId);
@@ -414,7 +414,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   }, [attachedDocumentIds, attachedDocDetails]);
 
   const hasUnparsedAttachments = unparsedAttachedCount > 0;
-  const commitBlockedByPdfStatus =
+  const commitBlockedByFileAttachmentStatus =
     attachedDocumentIds.length > 0 &&
     (isDocumentsLoading || hasUnparsedAttachments);
 
@@ -462,11 +462,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const {
     status,
     saveDraft,
-    savePdfDraft,
+    saveFileAttachmentDraft,
     commitDraft,
     initialDrafts,
     getDraftContent,
-    getPdfDraft,
+    getFileAttachmentDraft,
     isLoading,
     setActiveInstances,
     flushPendingSaves,
@@ -578,14 +578,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         const loadedSections = Object.entries(initialDrafts).map(
           ([instanceId, draft]) => ({
             instanceId,
-            ...(draft.sectionType === "PDF"
+            ...(draft.sectionType === "FILE_ATTACHMENT"
               ? {
-                  kind: "PDF" as const,
+                  kind: "FILE_ATTACHMENT" as const,
                   personaId: draft.personaId ?? null,
                   personaName: draft.personaName,
-                  displayMode: draft.pdfDisplayMode ?? "inline",
+                  displayMode: draft.fileDisplayMode ?? "inline",
                   attachments: (draft.fileAttachments ?? []).map(
-                    (attachment) => ({
+                    (attachment: FileDraftAttachment) => ({
                       documentId: attachment.documentId ?? "",
                       titleSnapshot: attachment.titleSnapshot,
                       pageCount: 0,
@@ -620,11 +620,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   }, [initialDrafts, isLoading, sections.length]);
 
-  const persistPdfSection = useCallback(
-    (instanceId: string, draft: Extract<SectionState, { kind: "PDF" }>) => {
-      if (!draft || draft.kind !== "PDF") return;
+  const persistFileAttachmentSection = useCallback(
+    (
+      instanceId: string,
+      draft: Extract<SectionState, { kind: "FILE_ATTACHMENT" }>,
+    ) => {
+      if (!draft || draft.kind !== "FILE_ATTACHMENT") return;
 
-      savePdfDraft(instanceId, {
+      saveFileAttachmentDraft(instanceId, {
         displayMode: draft.displayMode,
         personaId: draft.personaId,
         personaName: draft.personaName ?? undefined,
@@ -641,7 +644,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         content: [],
       });
     },
-    [savePdfDraft],
+    [saveFileAttachmentDraft],
   );
 
   // Watch imported documents and automatically update pending attachments.
@@ -663,7 +666,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       // 1. Update any pending attachments that match this document's ID or hash
       for (let i = 0; i < nextSections.length; i++) {
         const section = nextSections[i];
-        if (section.kind !== "PDF") continue;
+        if (section.kind !== "FILE_ATTACHMENT") continue;
 
         let sectionChanged = false;
         const nextAttachments = section.attachments.map((att) => {
@@ -712,9 +715,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
         if (sectionChanged) {
           nextSections[i] = { ...section, attachments: nextAttachments };
-          persistPdfSection(
+          persistFileAttachmentSection(
             section.instanceId,
-            nextSections[i] as Extract<SectionState, { kind: "PDF" }>,
+            nextSections[i] as Extract<SectionState, { kind: "FILE_ATTACHMENT" }>,
           );
         }
       }
@@ -726,9 +729,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   }, [
     importedDocuments,
     attachedDocumentIds,
-    savePdfDraft,
+    saveFileAttachmentDraft,
     sections,
-    persistPdfSection,
+    persistFileAttachmentSection,
   ]);
 
   // Sync active instances with draft system whenever sections change
@@ -794,14 +797,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             personaId: turn.personaId,
           });
         } else {
-          // PDF turn — create one attachment section bound to sender persona
+          // File attachment turn — create one attachment section bound to sender persona
           const attachments = turn.attachments;
 
           if (!attachments || attachments.length === 0) {
             continue;
           }
 
-          savePdfDraft(instanceId, {
+          saveFileAttachmentDraft(instanceId, {
             displayMode: "inline",
             personaId: turn.personaId,
             personaName: turn.personaName ?? undefined,
@@ -819,7 +822,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           });
           newSections.push({
             instanceId,
-            kind: "PDF" as const,
+            kind: "FILE_ATTACHMENT" as const,
             personaId: turn.personaId,
             personaName: turn.personaName,
             displayMode: "inline",
@@ -856,7 +859,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         onInject as EventListener,
       );
     };
-  }, [streamId, clearDraft, saveDraft, savePdfDraft]);
+  }, [streamId, clearDraft, saveDraft, saveFileAttachmentDraft]);
 
   // Keyboard shortcuts
   useKeyboard([
@@ -885,9 +888,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   ]);
 
   const handleCommit = async () => {
-    if (commitBlockedByPdfStatus) {
+    if (commitBlockedByFileAttachmentStatus) {
       console.warn(
-        "Commit blocked: one or more attached PDF documents are still queued/processing or failed.",
+        "Commit blocked: one or more attached documents are still queued/processing or failed.",
       );
       return;
     }
@@ -974,11 +977,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         const persona = personas?.find((p) => p.id === section.personaId);
         saveDraft(instanceId, section.personaId, [], persona?.name, true);
       } else {
-        savePdfDraft(
+        saveFileAttachmentDraft(
           instanceId,
           {
+            content: [],
             displayMode: section.displayMode,
             attachments: [],
+            personaId: section.personaId ?? null,
+            personaName: section.personaName ?? undefined,
           },
           true,
         );
@@ -1008,7 +1014,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             ? s
             : {
                 instanceId,
-                kind: "PDF" as const,
+                kind: "FILE_ATTACHMENT" as const,
                 displayMode: "inline",
                 attachments: [],
                 personaId: section.personaId,
@@ -1019,7 +1025,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         ),
       );
       // Persist section type change so reload shows the correct kind
-      savePdfDraft(instanceId, {
+      saveFileAttachmentDraft(instanceId, {
         displayMode: "inline",
         personaId: section.personaId,
         personaName: personaName ?? undefined,
@@ -1085,40 +1091,45 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     focusEditorForInstance(instanceId);
   };
 
-  const updatePdfSection = (
+  const updateFileAttachmentSection = (
     instanceId: string,
     updater: (
-      section: Extract<SectionState, { kind: "PDF" }>,
-    ) => Extract<SectionState, { kind: "PDF" }>,
+      section: Extract<SectionState, { kind: "FILE_ATTACHMENT" }>,
+    ) => Extract<SectionState, { kind: "FILE_ATTACHMENT" }>,
   ) => {
     setSections((prev) =>
       prev.map((section) => {
-        if (section.instanceId !== instanceId || section.kind !== "PDF")
+        if (
+          section.instanceId !== instanceId ||
+          section.kind !== "FILE_ATTACHMENT"
+        )
           return section;
         return updater(section);
       }),
     );
   };
 
-  const attachDocumentToPdfSection = async (
+  const attachDocumentToFileAttachmentSection = async (
     instanceId: string,
     document: DocumentWithLatestJob,
   ) => {
-    updatePdfSection(instanceId, (section) => ({
+    updateFileAttachmentSection(instanceId, (section) => ({
       ...section,
       isUploading: true,
     }));
 
     const existing = sections.find(
-      (section) => section.instanceId === instanceId && section.kind === "PDF",
-    ) as Extract<SectionState, { kind: "PDF" }> | undefined;
+      (section) =>
+        section.instanceId === instanceId &&
+        section.kind === "FILE_ATTACHMENT",
+    ) as Extract<SectionState, { kind: "FILE_ATTACHMENT" }> | undefined;
     if (
       existing?.attachments.some(
-        (attachment: PdfAttachmentState) =>
+        (attachment: FileAttachmentState) =>
           attachment.documentId === document.id,
       )
     ) {
-      updatePdfSection(instanceId, (section) => ({
+      updateFileAttachmentSection(instanceId, (section) => ({
         ...section,
         isUploading: false,
       }));
@@ -1157,7 +1168,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       extractedCreationDate?: string;
     };
 
-    const nextAttachment: PdfAttachmentState = {
+    const nextAttachment: FileAttachmentState = {
       documentId: document.id,
       titleSnapshot: document.title,
       pageCount: sourceMetadata.pageCount ?? 0,
@@ -1173,27 +1184,31 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
     setSections((prev) => {
       const draftToPersist = prev.find(
-        (s) => s.instanceId === instanceId && s.kind === "PDF",
-      ) as Extract<SectionState, { kind: "PDF" }> | undefined;
+        (s) => s.instanceId === instanceId && s.kind === "FILE_ATTACHMENT",
+      ) as Extract<SectionState, { kind: "FILE_ATTACHMENT" }> | undefined;
 
       if (draftToPersist) {
-        const updated: Extract<SectionState, { kind: "PDF" }> = {
+        const updated: Extract<SectionState, { kind: "FILE_ATTACHMENT" }> = {
           ...draftToPersist,
           isUploading: false,
           attachments: [...draftToPersist.attachments, nextAttachment],
         };
-        Promise.resolve().then(() => persistPdfSection(instanceId, updated));
+        Promise.resolve().then(() =>
+          persistFileAttachmentSection(instanceId, updated),
+        );
         return prev.map((s) =>
-          s.instanceId === instanceId && s.kind === "PDF" ? updated : s,
+          s.instanceId === instanceId && s.kind === "FILE_ATTACHMENT"
+            ? updated
+            : s,
         );
       }
       return prev;
     });
   };
 
-  const removePdfAttachment = (
+  const removeFileAttachment = (
     instanceId: string,
-    attachmentToRemove: PdfAttachmentState,
+    attachmentToRemove: FileAttachmentState,
     attachmentIndex: number,
     source: "section" | "draft",
   ) => {
@@ -1228,19 +1243,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     };
 
     const section = sections.find(
-      (s) => s.instanceId === instanceId && s.kind === "PDF",
-    ) as Extract<SectionState, { kind: "PDF" }> | undefined;
-    const draft = getPdfDraft(instanceId);
+      (s) => s.instanceId === instanceId && s.kind === "FILE_ATTACHMENT",
+    ) as Extract<SectionState, { kind: "FILE_ATTACHMENT" }> | undefined;
+    const draft = getFileAttachmentDraft(instanceId);
 
-    const nextDraftAttachments = draft.attachments.filter(
+    const nextDraftAttachments = (draft?.attachments ?? []).filter(
       (attachment, index) =>
         source === "draft"
           ? index !== attachmentIndex
           : !matchesAttachment(attachment, attachmentToRemove),
     );
 
-    savePdfDraft(instanceId, {
-      displayMode: section?.displayMode ?? draft.displayMode,
+    saveFileAttachmentDraft(instanceId, {
+      displayMode: section?.displayMode ?? draft?.displayMode ?? "inline",
       personaId: section?.personaId ?? null,
       personaName: section?.personaName ?? undefined,
       attachments: nextDraftAttachments,
@@ -1249,7 +1264,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
     setSections((prev) =>
       prev.map((s) => {
-        if (s.instanceId !== instanceId || s.kind !== "PDF") return s;
+        if (s.instanceId !== instanceId || s.kind !== "FILE_ATTACHMENT")
+          return s;
         return {
           ...s,
           attachments: s.attachments.filter((attachment, index) =>
@@ -1298,15 +1314,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   };
 
   const openAttachmentPreview = (
-    attachment: PdfAttachmentState,
+    attachment: FileAttachmentState,
     importStatus?: string,
-    preferredTab?: "pdf" | "parsed",
+    preferredTab?: "file" | "parsed",
   ) => {
     const nextTab =
       preferredTab ??
       (importStatus === "completed" && attachment.documentId
         ? "parsed"
-        : "pdf");
+        : "file");
 
     setAttachmentPreview({
       documentId: attachment.documentId,
@@ -1329,7 +1345,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     setAttachmentPreview(null);
     setParsedPreview(null);
     setParsedPreviewError(null);
-    setActivePreviewTab("pdf");
+    setActivePreviewTab("file");
   };
 
   const sensors = useSensors(useSensor(PointerSensor));
@@ -1489,42 +1505,48 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <div className="flex flex-col divide-y divide-border-subtle/30">
                 {sections.map((section) => {
                   const { instanceId } = section;
-                  const isAttachment = section.kind === "PDF";
+                  const isAttachment = section.kind === "FILE_ATTACHMENT";
                   const isPersona = section.kind === "PERSONA";
                   const persona = section.personaId
                     ? personas?.find((p) => p.id === section.personaId)
                     : null;
 
-                  let pdfDraft: ReturnType<typeof getPdfDraft> | undefined;
-                  let effectiveAttachments: PdfAttachmentState[] = [];
+                  let attachmentDraft:
+                    | ReturnType<typeof getFileAttachmentDraft>
+                    | undefined;
+                  let effectiveAttachments: FileAttachmentState[] = [];
                   let attachmentsSource: "section" | "draft" = "section";
-                  let pdfSection:
-                    | Extract<SectionState, { kind: "PDF" }>
+                  let attachmentSection:
+                    | Extract<SectionState, { kind: "FILE_ATTACHMENT" }>
                     | undefined;
 
                   if (isAttachment) {
-                    pdfSection = section;
-                    pdfDraft = getPdfDraft(instanceId);
+                    attachmentSection = section;
+                    attachmentDraft = getFileAttachmentDraft(instanceId);
                     attachmentsSource =
-                      pdfSection.attachments.length > 0 ? "section" : "draft";
+                      attachmentSection.attachments.length > 0
+                        ? "section"
+                        : "draft";
                     effectiveAttachments =
                       attachmentsSource === "section"
-                        ? pdfSection.attachments
-                        : pdfDraft.attachments.map((attachment) => ({
-                            documentId: attachment.documentId ?? "",
-                            storagePath: attachment.storagePath ?? "",
-                            titleSnapshot: attachment.titleSnapshot,
-                            pageCount: 0,
-                            author: null,
-                            creationDate: null,
-                            thumbnailPath: null,
-                            previewUrl: null,
-                            annotationText: attachment.annotationText ?? null,
-                            referencedPersonaId:
-                              attachment.referencedPersonaId ?? null,
-                            referencedPage: attachment.referencedPage ?? null,
-                            fileHash: attachment.fileHash,
-                          }));
+                        ? attachmentSection.attachments
+                        : (attachmentDraft?.attachments ?? []).map(
+                            (attachment) => ({
+                              documentId: attachment.documentId ?? "",
+                              storagePath: attachment.storagePath ?? "",
+                              titleSnapshot: attachment.titleSnapshot,
+                              pageCount: 0,
+                              author: null,
+                              creationDate: null,
+                              thumbnailPath: null,
+                              previewUrl: null,
+                              annotationText: attachment.annotationText ?? null,
+                              referencedPersonaId:
+                                attachment.referencedPersonaId ?? null,
+                              referencedPage: attachment.referencedPage ?? null,
+                              fileHash: attachment.fileHash,
+                            }),
+                          );
                   }
 
                   // Allow persona-less PERSONA sections to render so recovered
@@ -1552,7 +1574,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               menuProps={{
                                 currentPersona: persona || null,
                                 isAttachment: isAttachment,
-                                filePersonaName: pdfSection?.personaName ?? undefined,
+                                filePersonaName: attachmentSection?.personaName ?? undefined,
                                 globalPersonas: globalPersonas,
                                 shadowPersonas: shadowPersonas,
                                 onSelect: (pId: string) => changePersona(instanceId, pId),
@@ -1659,7 +1681,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               />
                             </div>
                           ) : (
-                            /* PDF ATTACHMENTS BLOCK */
+                            /* FILE ATTACHMENTS BLOCK */
                             <div className="p-4 space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
                                 <label className="inline-flex cursor-pointer items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
@@ -1705,7 +1727,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                         setImportModalFiles([{ file }]);
                                       }
 
-                                      setPdfPickerTargetInstanceId(instanceId);
+                                      setFilePickerTargetInstanceId(instanceId);
                                     }}
                                   />
                                 </label>
@@ -1715,7 +1737,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   className="inline-flex items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
                                   onClick={() => {
                                     setImportModalFiles([]);
-                                    setPdfPickerTargetInstanceId(instanceId);
+                                    setFilePickerTargetInstanceId(instanceId);
                                   }}
                                 >
                                   <FileText className="h-3 w-3" />
@@ -1725,13 +1747,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                 {section.isUploading && (
                                   <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
                                     <Loader2 className="h-3 w-3 animate-spin" />
-                                    Uploading PDFs...
+                                    Uploading files...
                                   </span>
                                 )}
                               </div>
                               {effectiveAttachments.length === 0 ? (
                                 <div className="border border-dashed border-border-default bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
-                                  Drop or attach one or more PDFs to start
+                                  Drop or attach one or more files to start
                                   building this section.
                                 </div>
                               ) : (
@@ -1774,7 +1796,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                           }
                                           variant="creator"
                                           title={attachment.titleSnapshot}
-                                          subtitle={`${attachment.pageCount > 0 ? `${attachment.pageCount} pages` : "PDF"}${attachment.author ? ` • ${attachment.author}` : ""}`}
+                                          subtitle={`${attachment.pageCount > 0 ? `${attachment.pageCount} pages` : "File"}${attachment.author ? ` • ${attachment.author}` : ""}`}
                                           documentId={
                                             attachment.documentId ??
                                             docDetail?.id ??
@@ -1793,12 +1815,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                           previewUrl={attachment.previewUrl}
                                           isProcessing={isProcessing}
                                           canOpenParsed={canOpenParsed}
-                                          displayMode={pdfSection?.displayMode}
-                                          onPreviewPdf={() =>
+                                          displayMode={attachmentSection?.displayMode}
+                                          onPreviewFile={() =>
                                             openAttachmentPreview(
                                               attachment,
                                               importStatus,
-                                              "pdf",
+                                              "file",
                                             )
                                           }
                                           onPreviewParsed={() =>
@@ -1809,7 +1831,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                             )
                                           }
                                           onRemove={() =>
-                                            removePdfAttachment(
+                                            removeFileAttachment(
                                               instanceId,
                                               attachment,
                                               attachmentIndex,
@@ -1843,7 +1865,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <span className="mx-1">→</span>
                 <span className="font-medium">{selectedBranch || "main"}</span>
               </div>
-              {commitBlockedByPdfStatus && (
+              {commitBlockedByFileAttachmentStatus && (
                 <div className="inline-flex items-center gap-2 ml-3 border border-border-default/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -1861,16 +1883,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   </svg>
                   <span>
                     {isDocumentsLoading
-                      ? "Checking PDFs"
-                      : `${unparsedAttachedCount} PDF${unparsedAttachedCount === 1 ? "" : "s"} not ready`}
+                      ? "Checking Attachments"
+                      : `${unparsedAttachedCount} attachment${unparsedAttachedCount === 1 ? "" : "s"} not ready`}
                   </span>
                 </div>
               )}
               <button
                 onClick={handleCommit}
-                disabled={status === "saving" || commitBlockedByPdfStatus}
+                disabled={status === "saving" || commitBlockedByFileAttachmentStatus}
                 className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-medium transition-all ${
-                  status !== "saving" && !commitBlockedByPdfStatus
+                  status !== "saving" && !commitBlockedByFileAttachmentStatus
                     ? "bg-action-primary-bg text-white hover:bg-action-primary-hover"
                     : "bg-surface-subtle text-text-muted cursor-not-allowed"
                 }`}
@@ -1883,16 +1905,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         </div>
 
         <DocumentImportModal
-          isOpen={!!pdfPickerTargetInstanceId}
+          isOpen={!!filePickerTargetInstanceId}
           onClose={() => {
-            setPdfPickerTargetInstanceId(null);
+            setFilePickerTargetInstanceId(null);
             setImportModalFiles([]);
           }}
           streamId={streamId}
           onSelectDocument={(document) => {
-            if (!pdfPickerTargetInstanceId) return;
-            void attachDocumentToPdfSection(
-              pdfPickerTargetInstanceId,
+            if (!filePickerTargetInstanceId) return;
+            void attachDocumentToFileAttachmentSection(
+              filePickerTargetInstanceId,
               document,
             );
           }}
@@ -1943,12 +1965,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           setImportModalFiles([
             { file: duplicateCheck.file, hash: duplicateCheck.hash },
           ]);
-          setPdfPickerTargetInstanceId(duplicateCheck.instanceId);
+          setFilePickerTargetInstanceId(duplicateCheck.instanceId);
           setDuplicateCheck(null);
         }}
         onConfirm={() => {
           if (!duplicateCheck) return;
-          void attachDocumentToPdfSection(
+          void attachDocumentToFileAttachmentSection(
             duplicateCheck.instanceId,
             duplicateCheck.existingDoc,
           );

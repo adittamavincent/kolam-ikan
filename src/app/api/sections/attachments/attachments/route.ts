@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const { data, error } = await supabase
-    .from("section_pdf_attachments")
+    .from("section_attachments")
     .insert({
       section_id: parsed.data.sectionId,
       document_id: parsed.data.documentId,
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
   if (error || !data) {
     return NextResponse.json(
-      { error: error?.message ?? "Failed to attach PDF to section" },
+      { error: error?.message ?? "Failed to attach file to section" },
       { status: 400 },
     );
   }
@@ -61,7 +61,7 @@ export async function PATCH(request: Request) {
     const updates = reorderParse.data.orderedAttachmentIds.map(
       (attachmentId, index) =>
         supabase
-          .from("section_pdf_attachments")
+          .from("section_attachments")
           .update({ sort_order: index })
           .eq("id", attachmentId)
           .eq("section_id", reorderParse.data.sectionId),
@@ -88,7 +88,7 @@ export async function PATCH(request: Request) {
   }
 
   const { data, error } = await supabase
-    .from("section_pdf_attachments")
+    .from("section_attachments")
     .update(updateParse.data.updates)
     .eq("id", updateParse.data.attachmentId)
     .select("*")
@@ -121,7 +121,7 @@ export async function DELETE(request: Request) {
   }
 
   const { error } = await supabase
-    .from("section_pdf_attachments")
+    .from("section_attachments")
     .delete()
     .eq("id", parsed.data.attachmentId);
 

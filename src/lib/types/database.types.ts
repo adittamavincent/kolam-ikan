@@ -642,7 +642,7 @@ export type Database = {
           },
         ]
       }
-      section_pdf_attachments: {
+      section_attachments: {
         Row: {
           annotation_text: string | null
           created_at: string
@@ -708,8 +708,8 @@ export type Database = {
           content_json: Json
           created_at: string | null
           entry_id: string
+          file_display_mode: string
           id: string
-          pdf_display_mode: string
           persona_id: string | null
           persona_name_snapshot: string | null
           search_text: string | null
@@ -721,8 +721,8 @@ export type Database = {
           content_json?: Json
           created_at?: string | null
           entry_id: string
+          file_display_mode?: string
           id?: string
-          pdf_display_mode?: string
           persona_id?: string | null
           persona_name_snapshot?: string | null
           search_text?: string | null
@@ -734,8 +734,8 @@ export type Database = {
           content_json?: Json
           created_at?: string | null
           entry_id?: string
+          file_display_mode?: string
           id?: string
-          pdf_display_mode?: string
           persona_id?: string | null
           persona_name_snapshot?: string | null
           search_text?: string | null
@@ -850,6 +850,14 @@ export type Database = {
             }
             Returns: Json
           }
+      duplicate_domain: {
+        Args: {
+          p_new_name: string
+          p_new_user_id: string
+          p_orig_domain_id: string
+        }
+        Returns: string
+      }
       exec_sql: { Args: { sql: string }; Returns: undefined }
       get_domain_stats: {
         Args: { p_user_id: string }

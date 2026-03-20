@@ -2,14 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
 import * as dotenv from "dotenv";
+import { devTestAccounts } from "../src/lib/dev/test-accounts";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
-const TEST_EMAILS = [
-  "test@kolamikan.local",
-  "admin@kolamikan.local",
-  "new@kolamikan.local",
-];
+const TEST_EMAILS = devTestAccounts.map((a) => a.email);
 
 const RESET_STATEMENTS = [
   `TRUNCATE TABLE

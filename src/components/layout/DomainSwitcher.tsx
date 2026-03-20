@@ -6,7 +6,6 @@ import {
   Home,
   Plus,
   RefreshCw,
-  AlertCircle,
   LogOut,
   Settings,
   Search,
@@ -102,7 +101,7 @@ export function DomainSwitcher({
     },
   ]);
 
-  const { domains, error } = useDomains(userId);
+  const { domains } = useDomains(userId);
 
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
 
@@ -184,15 +183,9 @@ export function DomainSwitcher({
 
       {/* Domain List */}
       <div className="flex-1 w-full flex flex-col items-center space-y-2 overflow-y-auto px-2 scrollbar-hide py-1">
-        {!domains && !error && (
+        {!domains && (
           <div className="flex h-8 w-8 items-center justify-center">
             <RefreshCw className="h-3 w-3 animate-spin text-text-muted" />
-          </div>
-        )}
-
-        {error && (
-          <div className="flex h-8 w-8 items-center justify-center bg-status-error-bg/20 text-status-error-text">
-            <AlertCircle className="h-4 w-4" />
           </div>
         )}
 

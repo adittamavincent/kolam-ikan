@@ -13,7 +13,7 @@ import { useEntries } from "@/lib/hooks/useEntries";
 import { EntryCreator } from "./EntryCreator";
 import { LogSection } from "./LogSection";
 import {
-  PdfAttachmentPreviewData,
+  FileAttachmentPreviewData,
   FileAttachmentPreviewDialog,
   ParsedPreviewData,
 } from "./FileAttachmentPreviewDialog";
@@ -43,7 +43,7 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
-import { EntryWithSections, SectionPdfAttachmentWithDocument } from "@/lib/types";
+import { EntryWithSections, SectionFileAttachmentWithDocument } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { PartialBlock } from "@blocknote/core";
@@ -353,9 +353,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     entry: EntryWithSections;
   } | null>(null);
   const [attachmentPreview, setAttachmentPreview] =
-    useState<PdfAttachmentPreviewData | null>(null);
-  const [activePreviewTab, setActivePreviewTab] = useState<"pdf" | "parsed">(
-    "pdf",
+    useState<FileAttachmentPreviewData | null>(null);
+  const [activePreviewTab, setActivePreviewTab] = useState<"file" | "parsed">(
+    "file",
   );
   const [parsedPreview, setParsedPreview] = useState<ParsedPreviewData | null>(
     null,
@@ -457,7 +457,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     enabled: !!streamId,
   });
 
-  const openLogParsedPreview = useCallback(
+  const handleParsedPreview = useCallback(
     async (documentId: string, titleSnapshot: string) => {
       setParsedPreviewLoading(true);
       setParsedPreviewError(null);
@@ -492,10 +492,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     [supabase],
   );
 
-  const openLogAttachmentPreview = useCallback(
+  const handleAttachmentPreview = useCallback(
     async (
-      attachment: SectionPdfAttachmentWithDocument,
-      preferredTab?: "pdf" | "parsed",
+      attachment: SectionFileAttachmentWithDocument,
+      preferredTab?: "file" | "parsed",
     ) => {
       const importStatus =
         attachment.document?.import_status ??
@@ -505,7 +505,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       const title =
         attachment.title_snapshot ||
         attachment.document?.title ||
-        "Attached PDF";
+        "Attached File";
 
       let previewUrl: string | null = null;
       const storagePath = attachment.document?.storage_path;
@@ -520,7 +520,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
       const nextTab =
         preferredTab ??
-        (isParsedReadyStatus(importStatus) && documentId ? "parsed" : "pdf");
+        (isParsedReadyStatus(importStatus) && documentId ? "parsed" : "file");
 
       setAttachmentPreview({
         documentId,
@@ -533,25 +533,25 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       setParsedPreviewError(null);
 
       if (nextTab === "parsed" && documentId) {
-        void openLogParsedPreview(documentId, title);
+        void handleParsedPreview(documentId, title);
       }
     },
-    [openLogParsedPreview, supabase],
+    [handleParsedPreview, supabase],
   );
 
-  const closeLogAttachmentPreview = useCallback(() => {
+  const closeAttachmentPreview = useCallback(() => {
     if (parsedPreviewLoading) return;
     setAttachmentPreview(null);
     setParsedPreview(null);
     setParsedPreviewError(null);
-    setActivePreviewTab("pdf");
+    setActivePreviewTab("file");
   }, [parsedPreviewLoading]);
 
-  const handleLogAttachmentPreview = useCallback(
-    (attachment: SectionPdfAttachmentWithDocument, tab: "pdf" | "parsed") => {
-      void openLogAttachmentPreview(attachment, tab);
+  const openAttachmentPreview = useCallback(
+    (attachment: SectionFileAttachmentWithDocument, tab: "file" | "parsed") => {
+      void handleAttachmentPreview(attachment, tab);
     },
-    [openLogAttachmentPreview],
+    [handleAttachmentPreview],
   );
 
   const { data: branches, refetch: refetchBranches } = useQuery({
@@ -1420,7 +1420,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     key={section.id}
                                     section={section}
                                     streamId={streamId}
-                                    onPreviewAttachment={handleLogAttachmentPreview}
+                                    onPreviewAttachment={openAttachmentPreview}
                                     editable={isAmending}
                                     onContentChange={(content) => {
                                       if (!isAmending) return;
@@ -1487,7 +1487,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
       <FileAttachmentPreviewDialog
         open={!!attachmentPreview}
-        onClose={closeLogAttachmentPreview}
+        onClose={closeAttachmentPreview}
         attachmentPreview={attachmentPreview}
         activePreviewTab={activePreviewTab}
         onActivePreviewTabChange={setActivePreviewTab}
@@ -1495,7 +1495,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         parsedPreviewLoading={parsedPreviewLoading}
         parsedPreviewError={parsedPreviewError}
         onRequestParsedPreview={(documentId, titleSnapshot) => {
-          void openLogParsedPreview(documentId, titleSnapshot);
+          void handleParsedPreview(documentId, titleSnapshot);
         }}
       />
 

@@ -9,7 +9,7 @@ import {
 } from "@headlessui/react";
 import { Loader2, X } from "lucide-react";
 
-export interface PdfAttachmentPreviewData {
+export interface FileAttachmentPreviewData {
   documentId?: string;
   title: string;
   previewUrl: string | null;
@@ -25,9 +25,9 @@ export interface ParsedPreviewData {
 interface FileAttachmentPreviewDialogProps {
   open: boolean;
   onClose: () => void;
-  attachmentPreview: PdfAttachmentPreviewData | null;
-  activePreviewTab: "pdf" | "parsed";
-  onActivePreviewTabChange: (tab: "pdf" | "parsed") => void;
+  attachmentPreview: FileAttachmentPreviewData | null;
+  activePreviewTab: "file" | "parsed";
+  onActivePreviewTabChange: (tab: "file" | "parsed") => void;
   parsedPreview: ParsedPreviewData | null;
   parsedPreviewLoading: boolean;
   parsedPreviewError: string | null;
@@ -78,21 +78,21 @@ export function FileAttachmentPreviewDialog({
           <div className="flex items-start justify-between gap-3 border-b border-border-default px-4 py-3">
             <div className="min-w-0 flex-1">
               <DialogTitle className="truncate text-sm font-semibold text-text-default">
-                {attachmentPreview?.title ?? parsedPreview?.title ?? "PDF Preview"}
+                {attachmentPreview?.title ?? parsedPreview?.title ?? "File Preview"}
               </DialogTitle>
               <div className="mt-2 flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => {
-                    onActivePreviewTabChange("pdf");
+                    onActivePreviewTabChange("file");
                   }}
                   className={`px-2 py-1 text-[11px] font-medium transition-colors ${
-                    activePreviewTab === "pdf"
+                    activePreviewTab === "file"
                       ? "bg-action-primary-bg text-white"
                       : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
                   }`}
                 >
-                  PDF
+                  File
                 </button>
                 <button
                   type="button"
@@ -130,12 +130,12 @@ export function FileAttachmentPreviewDialog({
           </div>
 
           <div className="min-h-40 max-h-[70vh] overflow-auto p-4">
-            {activePreviewTab === "pdf" &&
+            {activePreviewTab === "file" &&
               (attachmentPreview?.previewUrl ? (
                 <iframe
                   src={attachmentPreview.previewUrl}
                   className="h-[68vh] w-full border border-border-default bg-surface-subtle"
-                  title={`PDF preview for ${attachmentPreview.title}`}
+                  title={`File preview for ${attachmentPreview.title}`}
                 />
               ) : (
                 <div className="border border-border-default bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">

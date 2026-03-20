@@ -2,14 +2,14 @@ import logging
 from pathlib import Path
 from typing import Any, Tuple
 import json
-import httpx
+import httpx # type: ignore
 try:
     import html2text  # type: ignore[import]
 except Exception:
     html2text = None
 
 try:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup # type: ignore
 except ImportError:
     BeautifulSoup = None
 

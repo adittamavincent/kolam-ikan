@@ -2,8 +2,8 @@ import json
 import logging
 from pathlib import Path
 from typing import Any, Tuple
-import yaml
-import pandas as pd
+import yaml # type: ignore
+import pandas as pd # type: ignore
 try:
     import html2text  # type: ignore[import]
 except Exception:

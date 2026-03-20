@@ -37,7 +37,7 @@ interface FieldError {
 }
 
 import { Suspense } from "react";
-import { testAccounts } from "../../../lib/test-accounts";
+import { devTestAccounts, DevTestAccount } from "@/lib/dev/test-accounts";
 
 function LoginForm() {
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -401,8 +401,12 @@ function LoginForm() {
   };
 
   // Development Helpers (Completely stripped in production)
+  // Provide a default fullName for quick signup flows
+  devTestAccounts.forEach((t) => {
+    if (!t.fullName) t.fullName = t.label.split(" ")[0] || "User";
+  });
 
-  const quickLogin = async (acc: (typeof testAccounts)[0]) => {
+  const quickLogin = async (acc: DevTestAccount) => {
     setMode("signin");
     setEmail(acc.email);
     setPassword(acc.pass);
@@ -415,7 +419,7 @@ function LoginForm() {
     await handleLogin(undefined, acc.email, acc.pass);
   };
 
-  const quickSignup = async (acc: (typeof testAccounts)[0]) => {
+  const quickSignup = async (acc: DevTestAccount) => {
     setMode("signup");
     setEmail(acc.email);
     setPassword(acc.pass);
@@ -814,8 +818,8 @@ function LoginForm() {
                 Dev Toolbox: Speed Login / Signup
               </h3>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {testAccounts.map((acc) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {devTestAccounts.map((acc) => (
                 <div
                   key={acc.email}
                   className="flex items-center justify-between border border-border-default bg-surface-default p-3 text-left transition-all group"

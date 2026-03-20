@@ -38,6 +38,7 @@ import {
   STREAM_KIND,
 } from "@/lib/types";
 import { useSidebar } from "@/lib/hooks/useSidebar";
+import { useAuth } from "@/lib/hooks/useAuth";
 import {
   applyOptimisticCabinetCreation,
   applyOptimisticStreamCreation,
@@ -754,6 +755,8 @@ export function Navigator({}: NavigatorProps) {
   const domainId = params?.domain as string | undefined;
   const activeStreamId = params?.stream as string | undefined;
   const { hide: hideSidebar } = useSidebar();
+  const { user } = useAuth();
+  const userId = user?.id;
 
   const [draggedItem, setDraggedItem] = useState<{
     id: string;
@@ -1158,6 +1161,11 @@ export function Navigator({}: NavigatorProps) {
       if (domainId) {
         queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
       }
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      }
     },
   });
 
@@ -1205,6 +1213,11 @@ export function Navigator({}: NavigatorProps) {
       if (domainId) {
         queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
       }
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      }
     },
   });
 
@@ -1243,6 +1256,11 @@ export function Navigator({}: NavigatorProps) {
       if (domainId) {
         queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
       }
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      }
     },
   });
 
@@ -1280,6 +1298,11 @@ export function Navigator({}: NavigatorProps) {
     onSettled: () => {
       if (domainId) {
         queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
+      }
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       }
     },
   });
@@ -1330,6 +1353,11 @@ export function Navigator({}: NavigatorProps) {
     onSettled: () => {
       if (domainId) {
         queryClient.invalidateQueries({ queryKey: ["cabinets", domainId] });
+      }
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       }
     },
   });
@@ -1420,6 +1448,11 @@ export function Navigator({}: NavigatorProps) {
     onSettled: () => {
       if (domainId) {
         queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
+      }
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+        queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       }
     },
   });

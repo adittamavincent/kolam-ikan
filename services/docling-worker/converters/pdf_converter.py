@@ -21,10 +21,10 @@ except Exception:
     pytesseract = None
     convert_from_path = None
 
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from progress_tracker import DoclingProgressInterceptor, PageProgress
+from docling.datamodel.base_models import InputFormat # type: ignore
+from docling.datamodel.pipeline_options import PdfPipelineOptions # type: ignore
+from docling.document_converter import DocumentConverter, PdfFormatOption # type: ignore
+from progress_tracker import DoclingProgressInterceptor, PageProgress # type: ignore
 
 logger = logging.getLogger("pdf_converter")
 
@@ -68,10 +68,10 @@ def validate_pdf(pdf_path: Path) -> Tuple[bool, str]:
 def _ocr_page(pdf_path: Path, page_number: int, ocr_lang: str) -> str:
     if pytesseract is None or convert_from_path is None:
         return ""
-    images = convert_from_path(str(pdf_path), first_page=page_number + 1, last_page=page_number + 1)
+    images = convert_from_path(str(pdf_path), first_page=page_number + 1, last_page=page_number + 1) # type: ignore
     if not images:
         return ""
-    return pytesseract.image_to_string(images[0], lang=ocr_lang) or ""
+    return pytesseract.image_to_string(images[0], lang=ocr_lang) or "" # type: ignore
 
 
 def _convert_pdf_page_by_page(
@@ -112,7 +112,7 @@ def _convert_pdf_page_by_page(
 
         tracker.tick(completed=page_index, total=tracker.total_pages)
         if on_progress:
-            on_progress(tracker)
+            on_progress(tracker) # type: ignore
 
     return "\n\n".join(part for part in page_markdown_parts if part.strip()), None
 
@@ -180,7 +180,7 @@ def convert_pdf(
                         df = table.df
                         md_table = df.to_markdown(index=False)
                         table_blocks.append(f"\n\n### Table {i + 1}\n\n{md_table}\n")
-                        tables_count += 1
+                        tables_count += 1 # type: ignore
                     except Exception:
                         pass
             except Exception:

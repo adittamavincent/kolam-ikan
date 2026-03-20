@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
-from converters.pdf_converter import convert_pdf
+from converters.pdf_converter import convert_pdf # type: ignore
 
 if TYPE_CHECKING:
-    from progress_tracker import PageProgress
+    from progress_tracker import PageProgress # type: ignore
 
 
 @dataclass

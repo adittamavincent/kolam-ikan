@@ -198,7 +198,7 @@ export async function POST(request: Request) {
   }
 
   if (file.size <= 0) {
-    return NextResponse.json({ error: "PDF file is empty" }, { status: 400 });
+    return NextResponse.json({ error: "File is empty" }, { status: 400 });
   }
 
   const input = CreateDocumentImportSchema.safeParse({
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const filename = sanitizeFilename(file.name || "document.pdf");
+  const filename = sanitizeFilename(file.name || "document");
   const documentId = crypto.randomUUID();
   const jobId = crypto.randomUUID();
   const storagePath = `${authData.user.id}/${documentId}/${filename}`;

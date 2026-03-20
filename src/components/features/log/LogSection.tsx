@@ -24,9 +24,9 @@ interface LogSectionProps {
   onContentChange?: (content: PartialBlock[]) => void;
   onPreviewAttachment?: (
     attachment: NonNullable<
-      SectionWithPersona["section_pdf_attachments"]
+      SectionWithPersona["section_attachments"]
     >[number],
-    tab: "pdf" | "parsed",
+    tab: "file" | "parsed",
   ) => void;
 }
 
@@ -150,24 +150,24 @@ export function LogSection({
     () => (personas ?? []).filter((persona) => isShadowPersona(persona)),
     [personas],
   );
-  const attachments = section.section_pdf_attachments ?? [];
+  const attachments = section.section_attachments ?? [];
   const hasAttachments = attachments.length > 0;
   const shouldShowEditor =
-    section.section_type !== "PDF" || editableContent.length > 0;
+    section.section_type !== "FILE_ATTACHMENT" || editableContent.length > 0;
   const showEmptyAttachmentsNotice =
-    section.section_type === "PDF" && !hasAttachments;
+    section.section_type === "FILE_ATTACHMENT" && !hasAttachments;
 
   return (
     <SectionPreset
       persona={currentPersona || null}
-      isAttachment={section.section_type === "PDF"}
+      isAttachment={section.section_type === "FILE_ATTACHMENT"}
       className="flex flex-col group relative transition-all"
       centerHeader={
         <PersonaItem
           persona={currentPersona ?? null}
           menuProps={{
             currentPersona: currentPersona || null,
-            isAttachment: section.section_type === "PDF",
+            isAttachment: section.section_type === "FILE_ATTACHMENT",
             filePersonaName: section.persona_name_snapshot ?? undefined,
             globalPersonas: globalPersonas,
             shadowPersonas: shadowPersonas,
@@ -226,7 +226,7 @@ export function LogSection({
                   title={
                     attachment.title_snapshot ||
                     attachment.document?.title ||
-                    "Attached PDF"
+                    "File Attachment"
                   }
                   annotationText={attachment.annotation_text}
                   documentId={attachment.document_id ?? attachment.document?.id ?? null}
@@ -238,9 +238,9 @@ export function LogSection({
                     attachment.document?.latestJob?.progress_percent ?? 0
                   }
                   canOpenParsed={canOpenParsed}
-                  onPreviewPdf={
+                  onPreviewFile={
                     onPreviewAttachment
-                      ? () => onPreviewAttachment(attachment, "pdf")
+                      ? () => onPreviewAttachment(attachment, "file")
                       : undefined
                   }
                   onPreviewParsed={
@@ -256,7 +256,7 @@ export function LogSection({
 
         {showEmptyAttachmentsNotice && (
           <div className="text-[11px] text-text-muted">
-            No PDF attachments in this section.
+            No file attachments in this section.
           </div>
         )}
       </div>

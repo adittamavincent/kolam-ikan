@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Any, Tuple
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance # type: ignore
 try:
     import pytesseract  # type: ignore[import]
 except Exception:

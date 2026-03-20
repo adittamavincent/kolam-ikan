@@ -21,7 +21,7 @@ class PageProgress:
         with self._lock:
             now = time.monotonic()
             if self._last_tick_at is not None:
-                duration = now - self._last_tick_at
+                duration = now - (self._last_tick_at or 0.0) # type: ignore
                 if duration > 0:
                     self.page_durations.append(duration)
             self._last_tick_at = now
@@ -50,7 +50,7 @@ class PageProgress:
         remaining = max(0, self.total_pages - self.completed_pages)
         if remaining == 0:
             return 0
-        recent = self.page_durations[-5:]
+        recent = self.page_durations[-5:] # type: ignore
         avg_per_page = sum(recent) / len(recent)
         return max(1, math.ceil(avg_per_page * remaining))
 
@@ -82,7 +82,7 @@ class ProgressTqdm:
             self._n += 1
             if self._on_tick:
                 try:
-                    self._on_tick(self._n, self._total)
+                    self._on_tick(self._n, self._total) # type: ignore
                 except Exception:
                     pass
 
@@ -90,7 +90,7 @@ class ProgressTqdm:
         self._n += n
         if self._on_tick:
             try:
-                self._on_tick(self._n, self._total)
+                self._on_tick(self._n, self._total) # type: ignore
             except Exception:
                 pass
 
@@ -136,7 +136,7 @@ class DoclingProgressInterceptor:
 
     def __enter__(self) -> "DoclingProgressInterceptor":
         import sys
-        import tqdm as tqdm_module
+        import tqdm as tqdm_module # type: ignore
 
         self._original_tqdm = tqdm_module.tqdm
         self._original_trange = getattr(tqdm_module, "trange", None)
@@ -155,7 +155,7 @@ class DoclingProgressInterceptor:
 
     def __exit__(self, *args: Any) -> None:
         import sys
-        import tqdm as tqdm_module
+        import tqdm as tqdm_module # type: ignore
 
         if self._original_tqdm is not None:
             tqdm_module.tqdm = self._original_tqdm

@@ -18,8 +18,30 @@ import {
   TrendingUp,
   AlertCircle,
   RefreshCw,
+  Copy,
 } from "lucide-react";
+import { useDomains } from "@/lib/hooks/useDomains";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
+
+function getDomainDuplicateErrorMessage(error: unknown) {
+  const maybeError = error as {
+    code?: string;
+    message?: string;
+  } | null;
+  if (
+    maybeError?.code === "23505" &&
+    maybeError?.message?.includes("idx_unique_active_domain_name")
+  ) {
+    return "A domain with this name already exists.";
+  }
+  if (
+    maybeError?.code === "23505" &&
+    maybeError?.message?.includes("unique_canvas_per_stream")
+  ) {
+    return "Domain duplication hit a canvas conflict. Please retry after refreshing.";
+  }
+  return maybeError?.message ?? "Failed to duplicate domain.";
+}
 
 // --- Types ---
 
@@ -176,13 +198,36 @@ function StatCard({
 function DomainCard({
   domain,
   onClick,
+  userId,
+  refetchDomains,
 }: {
   domain: DomainWithCounts;
   onClick: () => void;
+  userId?: string | null;
+  refetchDomains: () => void;
 }) {
+  const { duplicateDomain } = useDomains(userId ?? "");
+
+  const handleDuplicate = async () => {
+    try {
+      await duplicateDomain.mutateAsync({ 
+        id: domain.id,
+        newName: `${domain.name} (Copy)`
+      }); // Correctly call the mutation
+      refetchDomains(); // Trigger stats update after duplication
+    } catch (error) {
+      console.error("Failed to duplicate domain:", error);
+    }
+  };
+
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick();
+      }}
       className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
@@ -199,6 +244,14 @@ function DomainCard({
             </p>
           )}
         </div>
+        <div className="ml-2 flex items-start">
+          <button
+            onClick={handleDuplicate}
+            className="text-sm text-action-primary hover:underline"
+          >
+            Duplicate
+          </button>
+        </div>
       </div>
       <div className="flex gap-4 text-xs text-text-muted mt-auto pt-2 border-t border-border-default/50 w-full">
         <span className="flex items-center gap-1">
@@ -211,7 +264,7 @@ function DomainCard({
           <span className="font-medium">{domain.entryCount}</span> ent
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -614,7 +667,9 @@ export default function HomePage() {
                   <DomainCard
                     key={domain.id}
                     domain={domain}
+                    userId={userId}
                     onClick={() => router.push(`/${domain.id}`)}
+                    refetchDomains={refetchDomains}
                   />
                 ))}
               </div>

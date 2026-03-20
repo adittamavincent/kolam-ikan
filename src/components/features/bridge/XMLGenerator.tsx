@@ -54,7 +54,7 @@ export function XMLGenerator({
       const { data } = await supabase
         .from("entries")
         .select(
-          "*, sections(*, persona:personas(*), section_pdf_attachments(*, document:documents(*)))",
+          "*, sections(*, persona:personas(*), section_attachments(*, document:documents(*)))",
         )
         .in("id", selectedEntries)
         .order("created_at", { ascending: true });
@@ -106,7 +106,7 @@ export function XMLGenerator({
       const { data } = await supabase
         .from("entries")
         .select(
-          "*, sections(*, persona:personas(*), section_pdf_attachments(*, document:documents(*)))",
+          "*, sections(*, persona:personas(*), section_attachments(*, document:documents(*)))",
         )
         .in("stream_id", additionalGlobalStreamIds)
         .eq("is_draft", false)
@@ -166,8 +166,8 @@ export function XMLGenerator({
       if (!ents) return;
       ents.forEach((entry) => {
         entry.sections.forEach((section) => {
-          if (section.section_pdf_attachments) {
-            section.section_pdf_attachments.forEach((att) => {
+          if (section.section_attachments) {
+            section.section_attachments.forEach((att) => {
               if (att.document && !allFiles.some((f) => f.id === att.document!.id)) {
                 allFiles.push({
                   id: att.document.id,
@@ -361,10 +361,10 @@ function entryToMarkdown(entry: EntryWithSections): string {
     );
 
     if (
-      section.section_pdf_attachments &&
-      section.section_pdf_attachments.length > 0
+      section.section_attachments &&
+      section.section_attachments.length > 0
     ) {
-      const links = section.section_pdf_attachments
+      const links = section.section_attachments
         .map(
           (att) => `[File: ${att.document?.original_filename}](#${att.document?.id})`
         )

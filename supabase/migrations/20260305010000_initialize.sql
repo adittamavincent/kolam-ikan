@@ -263,26 +263,25 @@ BEGIN
       WHERE c.domain_id = d.id
         AND c.deleted_at IS NULL
     ) as cabinet_count,
-    -- Stream Count (active streams in active cabinets)
+    -- Stream Count (active streams: either top-level or in active cabinets)
     (
       SELECT COUNT(*)
       FROM streams s
-      JOIN cabinets c ON s.cabinet_id = c.id
-      WHERE c.domain_id = d.id
-        AND c.deleted_at IS NULL
+      LEFT JOIN cabinets c ON s.cabinet_id = c.id
+      WHERE s.domain_id = d.id
         AND s.deleted_at IS NULL
+        AND (s.cabinet_id IS NULL OR c.deleted_at IS NULL)
     ) as stream_count,
-    -- Entry Count (active entries in active streams in active cabinets)
-    -- Note: Counts drafts as well, matching previous dashboard logic
+    -- Entry Count (active entries in active streams: either top-level or in active cabinets)
     (
       SELECT COUNT(*)
       FROM entries e
       JOIN streams s ON e.stream_id = s.id
-      JOIN cabinets c ON s.cabinet_id = c.id
-      WHERE c.domain_id = d.id
-        AND c.deleted_at IS NULL
+      LEFT JOIN cabinets c ON s.cabinet_id = c.id
+      WHERE s.domain_id = d.id
         AND s.deleted_at IS NULL
         AND e.deleted_at IS NULL
+        AND (s.cabinet_id IS NULL OR c.deleted_at IS NULL)
     ) as entry_count
   FROM domains d
   WHERE d.user_id = p_user_id

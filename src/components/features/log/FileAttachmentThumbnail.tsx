@@ -23,7 +23,7 @@ function isLikelyImageUrl(url: string) {
   );
 }
 
-function isLikelyPdfUrl(url: string, title?: string) {
+function isPdf(url: string, title?: string) {
   if (url.startsWith("blob:")) {
     return Boolean(title?.toLowerCase().endsWith(".pdf"));
   }
@@ -39,7 +39,7 @@ export function FileAttachmentThumbnail({
   importStatus = null,
   progressPercent = null,
 }: FileAttachmentThumbnailProps) {
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
 
   const { thumbnailPath: ensuredThumbnailPath, thumbnailStatus: ensuredStatus } = useEnsureThumbnail({
@@ -65,9 +65,9 @@ export function FileAttachmentThumbnail({
 
   const previewUrl = useMemo(() => {
     if (resolvedThumbnailUrl) return resolvedThumbnailUrl;
-    if (pdfPreviewUrl) return pdfPreviewUrl;
+    if (filePreviewUrl) return filePreviewUrl;
     return url ?? null;
-  }, [resolvedThumbnailUrl, pdfPreviewUrl, url]);
+  }, [resolvedThumbnailUrl, filePreviewUrl, url]);
 
   useEffect(() => {
     setImageFailed(false);
@@ -76,14 +76,14 @@ export function FileAttachmentThumbnail({
   useEffect(() => {
     let cancelled = false;
 
-    if (!url || resolvedThumbnailUrl || !isLikelyPdfUrl(url, title) || !url.startsWith("blob:")) {
-      setPdfPreviewUrl(null);
+    if (!url || resolvedThumbnailUrl || !isPdf(url, title) || !url.startsWith("blob:")) {
+      setFilePreviewUrl(null);
       return () => {
         cancelled = true;
       };
     }
 
-    const renderPdfPreview = async () => {
+    const generatePreview = async () => {
       try {
         const pdfjsModule = await import("pdfjs-dist/legacy/build/pdf");
         // `pdfjs-dist` exposes complex types we don't need to fully model here.
@@ -94,8 +94,8 @@ export function FileAttachmentThumbnail({
         const data = await response.arrayBuffer();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const loadingTask = (pdfjs as any).getDocument({ data, disableWorker: true } as any);
-        const pdf = await loadingTask.promise;
-        const page = await pdf.getPage(1);
+        const doc = await loadingTask.promise;
+        const page = await doc.getPage(1);
 
         const viewport = page.getViewport({ scale: 1 });
         const maxWidth = 96;
@@ -117,20 +117,20 @@ export function FileAttachmentThumbnail({
         const dataUrl = canvas.toDataURL("image/png");
 
         if (!cancelled) {
-          setPdfPreviewUrl(dataUrl);
+          setFilePreviewUrl(dataUrl);
         }
 
-        if (typeof pdf.destroy === "function") {
-          await pdf.destroy();
+        if (typeof doc.destroy === "function") {
+          await doc.destroy();
         }
       } catch {
         if (!cancelled) {
-          setPdfPreviewUrl(null);
+          setFilePreviewUrl(null);
         }
       }
     };
 
-    void renderPdfPreview();
+    void generatePreview();
 
     return () => {
       cancelled = true;
@@ -139,10 +139,10 @@ export function FileAttachmentThumbnail({
 
   const previewKind = useMemo<"image" | "none">(() => {
     if (resolvedThumbnailUrl) return "image";
-    if (pdfPreviewUrl) return "image";
+    if (filePreviewUrl) return "image";
     if (url && isLikelyImageUrl(url)) return "image";
     return "none";
-  }, [resolvedThumbnailUrl, pdfPreviewUrl, url]);
+  }, [resolvedThumbnailUrl, filePreviewUrl, url]);
 
   const effectivePreviewUrl = previewKind === "none" ? null : previewUrl;
   const hasPreview = previewKind === "image" && !!effectivePreviewUrl && !imageFailed;

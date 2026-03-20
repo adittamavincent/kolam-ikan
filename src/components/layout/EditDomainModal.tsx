@@ -9,6 +9,36 @@ import {
 } from "@/lib/constants/domainIcons";
 import { Domain } from "@/lib/types";
 
+function getDomainDuplicateErrorMessage(error: unknown) {
+  const maybeError = error as {
+    code?: string;
+    message?: string;
+    details?: string | null;
+  } | null;
+  if (
+    maybeError?.code === "23505" &&
+    maybeError?.message?.includes("idx_unique_active_domain_name")
+  ) {
+    return "A domain with this name already exists.";
+  }
+  if (
+    maybeError?.code === "23505" &&
+    maybeError?.message?.includes("unique_canvas_per_stream")
+  ) {
+    return "Domain duplication hit a canvas conflict. Please retry after refreshing.";
+  }
+  if (
+    maybeError?.code === "23505" &&
+    maybeError?.message?.includes("duplicate key value")
+  ) {
+    return "A domain with this name already exists.";
+  }
+  if (maybeError?.message) {
+    return maybeError.message;
+  }
+  return "Failed to duplicate domain. Please try again.";
+}
+
 interface EditDomainModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -24,7 +54,7 @@ export function EditDomainModal({
   domain,
   onDeleteSuccess,
 }: EditDomainModalProps) {
-  const { updateDomain, deleteDomain, domains } = useDomains(userId);
+  const { updateDomain, deleteDomain, duplicateDomain, domains } = useDomains(userId);
   const [name, setName] = useState(domain?.name ?? "");
   const [icon, setIcon] = useState(domain?.icon || DEFAULT_DOMAIN_ICON);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +116,34 @@ export function EditDomainModal({
     }
   };
 
-  const isMutating = updateDomain.isPending || deleteDomain.isPending;
+  const isMutating = updateDomain.isPending || deleteDomain.isPending || duplicateDomain.isPending;
+
+  const handleDuplicate = async () => {
+    if (!domain) return;
+
+    const suggested = `${name} — copy`;
+    const requestedName = window.prompt("Duplicate domain as", suggested);
+    const newName = requestedName?.trim();
+    if (!newName) return;
+
+    const duplicate = domains?.some(
+      (existingDomain) =>
+        existingDomain.id !== domain.id &&
+        existingDomain.name.toLowerCase() === newName.toLowerCase(),
+    );
+
+    if (duplicate) {
+      setError("A domain with this name already exists");
+      return;
+    }
+
+    try {
+      await duplicateDomain.mutateAsync({ id: domain.id, newName });
+      onClose();
+    } catch (err) {
+      setError(getDomainDuplicateErrorMessage(err));
+    }
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -202,6 +259,21 @@ export function EditDomainModal({
                           <Trash2 className="h-4 w-4" />
                           {confirmDelete ? "Confirm Delete" : "Delete Domain"}
                         </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDuplicate}
+                      disabled={isMutating}
+                      className="inline-flex items-center justify-center gap-2 border border-border-default px-4 py-2 text-sm font-medium text-text-default transition-colors hover:bg-surface-subtle"
+                    >
+                      {duplicateDomain.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Duplicating...
+                        </>
+                      ) : (
+                        <>Duplicate Domain</>
                       )}
                     </button>
                     <button

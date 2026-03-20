@@ -2,23 +2,11 @@ import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
 import * as dotenv from "dotenv";
+import { testAccounts } from "../src/lib/test-accounts";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
-const TEST_EMAILS = [
-  "test@kolamikan.local",
-  "admin@kolamikan.local",
-  "new@kolamikan.local",
-  "demo1@kolamikan.local",
-  "demo2@kolamikan.local",
-  "demo3@kolamikan.local",
-  "qa1@kolamikan.local",
-  "qa2@kolamikan.local",
-  "qa3@kolamikan.local",
-  "user1@kolamikan.local",
-  "user2@kolamikan.local",
-  "user3@kolamikan.local",
-];
+const TEST_EMAILS = testAccounts.map((a) => a.email);
 
 const RESET_STATEMENTS = [
   `TRUNCATE TABLE
@@ -35,20 +23,11 @@ const RESET_STATEMENTS = [
   ...TEST_EMAILS.map((e) => `DELETE FROM auth.users WHERE email = '${e}'`),
 ];
 
-const TEST_ACCOUNTS = [
-  { email: "test@kolamikan.local", password: "KolamTest2026!", name: "Test User" },
-  { email: "admin@kolamikan.local", password: "KolamTest2026!", name: "Admin User" },
-  { email: "new@kolamikan.local", password: "KolamTest2026!", name: "New User" },
-  { email: "demo1@kolamikan.local", password: "KolamTest2026!", name: "Demo One" },
-  { email: "demo2@kolamikan.local", password: "KolamTest2026!", name: "Demo Two" },
-  { email: "demo3@kolamikan.local", password: "KolamTest2026!", name: "Demo Three" },
-  { email: "qa1@kolamikan.local", password: "KolamTest2026!", name: "QA One" },
-  { email: "qa2@kolamikan.local", password: "KolamTest2026!", name: "QA Two" },
-  { email: "qa3@kolamikan.local", password: "KolamTest2026!", name: "QA Three" },
-  { email: "user1@kolamikan.local", password: "KolamTest2026!", name: "User One" },
-  { email: "user2@kolamikan.local", password: "KolamTest2026!", name: "User Two" },
-  { email: "user3@kolamikan.local", password: "KolamTest2026!", name: "User Three" },
-];
+const TEST_ACCOUNTS = testAccounts.map((a) => ({
+  email: a.email,
+  password: a.pass,
+  name: a.fullName || a.label,
+}));
 
 async function globalSetup() {
   console.log("\n🧹 E2E Global Setup: Resetting database...\n");

@@ -37,6 +37,7 @@ interface FieldError {
 }
 
 import { Suspense } from "react";
+import { testAccounts } from "../../../lib/test-accounts";
 
 function LoginForm() {
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -400,25 +401,6 @@ function LoginForm() {
   };
 
   // Development Helpers (Completely stripped in production)
-  const testAccounts: { label: string; email: string; pass: string; role: string; fullName?: string }[] = [
-    { label: "Default Test User", email: "test@kolamikan.local", pass: "KolamTest2026!", role: "User" },
-    { label: "Admin Account", email: "admin@kolamikan.local", pass: "KolamTest2026!", role: "Admin" },
-    { label: "Empty Account", email: "new@kolamikan.local", pass: "KolamTest2026!", role: "Demo" },
-    { label: "Demo One", email: "demo1@kolamikan.local", pass: "KolamTest2026!", role: "Demo" },
-    { label: "Demo Two", email: "demo2@kolamikan.local", pass: "KolamTest2026!", role: "Demo" },
-    { label: "Demo Three", email: "demo3@kolamikan.local", pass: "KolamTest2026!", role: "Demo" },
-    { label: "QA One", email: "qa1@kolamikan.local", pass: "KolamTest2026!", role: "QA" },
-    { label: "QA Two", email: "qa2@kolamikan.local", pass: "KolamTest2026!", role: "QA" },
-    { label: "QA Three", email: "qa3@kolamikan.local", pass: "KolamTest2026!", role: "QA" },
-    { label: "User One", email: "user1@kolamikan.local", pass: "KolamTest2026!", role: "User" },
-    { label: "User Two", email: "user2@kolamikan.local", pass: "KolamTest2026!", role: "User" },
-    { label: "User Three", email: "user3@kolamikan.local", pass: "KolamTest2026!", role: "User" },
-  ];
-
-  // Provide a default fullName for quick signup flows
-  testAccounts.forEach((t) => {
-    if (!t.fullName) t.fullName = t.label.split(" ")[0] || "User";
-  });
 
   const quickLogin = async (acc: (typeof testAccounts)[0]) => {
     setMode("signin");

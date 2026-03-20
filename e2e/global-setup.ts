@@ -9,6 +9,15 @@ const TEST_EMAILS = [
   "test@kolamikan.local",
   "admin@kolamikan.local",
   "new@kolamikan.local",
+  "demo1@kolamikan.local",
+  "demo2@kolamikan.local",
+  "demo3@kolamikan.local",
+  "qa1@kolamikan.local",
+  "qa2@kolamikan.local",
+  "qa3@kolamikan.local",
+  "user1@kolamikan.local",
+  "user2@kolamikan.local",
+  "user3@kolamikan.local",
 ];
 
 const RESET_STATEMENTS = [
@@ -27,21 +36,18 @@ const RESET_STATEMENTS = [
 ];
 
 const TEST_ACCOUNTS = [
-  {
-    email: "test@kolamikan.local",
-    password: "KolamTest2026!",
-    name: "Test User",
-  },
-  {
-    email: "admin@kolamikan.local",
-    password: "KolamTest2026!",
-    name: "Admin User",
-  },
-  {
-    email: "new@kolamikan.local",
-    password: "KolamTest2026!",
-    name: "New User",
-  },
+  { email: "test@kolamikan.local", password: "KolamTest2026!", name: "Test User" },
+  { email: "admin@kolamikan.local", password: "KolamTest2026!", name: "Admin User" },
+  { email: "new@kolamikan.local", password: "KolamTest2026!", name: "New User" },
+  { email: "demo1@kolamikan.local", password: "KolamTest2026!", name: "Demo One" },
+  { email: "demo2@kolamikan.local", password: "KolamTest2026!", name: "Demo Two" },
+  { email: "demo3@kolamikan.local", password: "KolamTest2026!", name: "Demo Three" },
+  { email: "qa1@kolamikan.local", password: "KolamTest2026!", name: "QA One" },
+  { email: "qa2@kolamikan.local", password: "KolamTest2026!", name: "QA Two" },
+  { email: "qa3@kolamikan.local", password: "KolamTest2026!", name: "QA Three" },
+  { email: "user1@kolamikan.local", password: "KolamTest2026!", name: "User One" },
+  { email: "user2@kolamikan.local", password: "KolamTest2026!", name: "User Two" },
+  { email: "user3@kolamikan.local", password: "KolamTest2026!", name: "User Three" },
 ];
 
 async function globalSetup() {

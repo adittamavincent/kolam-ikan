@@ -94,8 +94,6 @@ export function CreateDomainModal({
     }
   };
 
-  const suggestions = ["Personal", "Work", "Study", "Projects", "Ideas"];
-
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -186,19 +184,7 @@ export function CreateDomainModal({
                       </div>
                     </div>
 
-                    {/* Suggestions */}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {suggestions.map((suggestion) => (
-                        <button
-                          key={suggestion}
-                          type="button"
-                          onClick={() => setName(suggestion)}
-                          className="px-3 py-1 text-xs font-medium text-text-subtle bg-surface-subtle hover:bg-border-default transition-colors"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
+                    
 
                     {error && (
                       <div className="mt-3 flex items-center gap-2 text-sm text-status-error-text animate-fade-in">

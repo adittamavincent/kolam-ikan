@@ -242,65 +242,70 @@ export function EditDomainModal({
                     )}
                   </div>
 
-                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={isMutating}
-                      className="inline-flex items-center justify-center gap-2 border border-status-error-text/40 px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg/30 focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50 sm:mr-auto"
-                    >
-                      {deleteDomain.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="h-4 w-4" />
-                          {confirmDelete ? "Confirm Delete" : "Delete Domain"}
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDuplicate}
-                      disabled={isMutating}
-                      className="inline-flex items-center justify-center gap-2 border border-border-default px-4 py-2 text-sm font-medium text-text-default transition-colors hover:bg-surface-subtle"
-                    >
-                      {duplicateDomain.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Duplicating...
-                        </>
-                      ) : (
-                        <>Duplicate Domain</>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex justify-center border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible:"
-                      onClick={onClose}
-                      disabled={isMutating}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!name.trim() || isMutating}
-                      className="inline-flex items-center justify-center gap-2 border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {updateDomain.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Save Changes
-                        </>
-                      )}
-                    </button>
+                  <div className="mt-6 flex flex-col gap-3">
+                    <div className="flex gap-3 items-center justify-end">
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isMutating}
+                        className="inline-flex items-center justify-center gap-2 border border-status-error-text/40 px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg/30 focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {deleteDomain.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="h-4 w-4" />
+                            {confirmDelete ? "Confirm Delete" : "Delete Domain"}
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDuplicate}
+                        disabled={isMutating}
+                        className="inline-flex items-center justify-center gap-2 border border-border-default px-4 py-2 text-sm font-medium text-text-default transition-colors hover:bg-surface-subtle"
+                      >
+                        {duplicateDomain.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Duplicating...
+                          </>
+                        ) : (
+                          <>Duplicate Domain</>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="flex gap-3 items-center justify-end">
+                      <button
+                        type="button"
+                        className="inline-flex justify-center border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible:"
+                        onClick={onClose}
+                        disabled={isMutating}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={!name.trim() || isMutating}
+                        className="inline-flex items-center justify-center gap-2 border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {updateDomain.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="h-4 w-4" />
+                            Save Changes
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </form>
               </Dialog.Panel>

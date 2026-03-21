@@ -877,14 +877,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   // ─── Amend handlers ────────────────────────────────────────────────────────
 
   const handleStartAmend = (entry: EntryWithSections) => {
-    const sections = Object.fromEntries(
-      (entry.sections ?? []).map((section) => [
-        section.id,
-        ((section.content_json as unknown as PartialBlock[]) ??
-          []) as PartialBlock[],
-      ]),
-    );
-    setAmendState({ entryId: entry.id, sections });
+    // Keep draft sections empty initially; each section draft is written only
+    // after the user edits it. This avoids overriding initial editor payload
+    // when toggling modes in read/edit flows.
+    setAmendState({ entryId: entry.id, sections: {} });
     setAmendError(null);
   };
 
@@ -1422,6 +1418,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     streamId={streamId}
                                     onPreviewAttachment={openAttachmentPreview}
                                     editable={isAmending}
+                                    currentEditedContent={isAmending ? amendState.sections[section.id] : undefined}
                                     onContentChange={(content) => {
                                       if (!isAmending) return;
                                       setAmendState((prev) => {

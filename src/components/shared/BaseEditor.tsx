@@ -41,9 +41,14 @@ export default function BaseEditor({
   onEditorReady,
   highlightTerm,
 }: BaseEditorProps) {
-  // Start with a deterministic default to avoid SSR/client hydration mismatches.
-  // Read the real mode on the client after mount.
-  const [stylainMode, setStylainMode] = useState<"A" | "B">("A");
+  const [stylainMode, setStylainMode] = useState<"A" | "B">(() => {
+    if (typeof window === "undefined") return "A";
+    try {
+      return getStylainMode();
+    } catch {
+      return "A";
+    }
+  });
   const [currentEditor, setCurrentEditor] = useState<BlockNoteEditor | null>(null);
   const [rawMarkdown, setRawMarkdown] = useState("");
 
@@ -494,10 +499,6 @@ export default function BaseEditor({
   }, [currentEditor, onEditorReady]);
 
   useEffect(() => {
-    // Ensure we read the actual mode only on the client after mount
-    try {
-      setStylainMode(getStylainMode());
-    } catch {}
     const unsub = onStylainChanged((e: CustomEvent<{ mode: "A" | "B" }>) => {
       setStylainMode(e.detail.mode);
     });
@@ -602,17 +603,24 @@ export default function BaseEditor({
     }
 
     if (text === prev) return;
-    rawEditedRef.current = true;
     if (!editable || !onChange || ignoreStylainChangeRef.current) return;
+    rawEditedRef.current = true;
     // When actively editing in B mode, we MUST preserve trailing newlines.
     // Otherwise, hitting Enter at the end of the file will create a newline
     // that immediately gets stripped by the round-trip through onChange blocks,
     // making it impossible to add new lines at the bottom.
     const blocks = parseMarkdownToBlocks(text, true);
+    // In Stylain B amend flow, apply immediately so clicking Save right after
+    // typing does not miss pending debounced updates.
+    if (stylainMode === "B") {
+      onChange(blocks);
+      return;
+    }
+
     if (debouncedOnChangeRef.current) {
-       debouncedOnChangeRef.current(blocks);
+      debouncedOnChangeRef.current(blocks);
     } else {
-       onChange(blocks);
+      onChange(blocks);
     }
   };
 

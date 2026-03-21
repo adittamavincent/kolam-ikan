@@ -21,6 +21,7 @@ interface LogSectionProps {
   streamId: string;
   highlightTerm?: string;
   editable?: boolean;
+  currentEditedContent?: PartialBlock[];
   onContentChange?: (content: PartialBlock[]) => void;
   onPreviewAttachment?: (
     attachment: NonNullable<
@@ -35,6 +36,7 @@ export function LogSection({
   streamId,
   highlightTerm,
   editable = false,
+  currentEditedContent,
   onContentChange,
   onPreviewAttachment,
 }: LogSectionProps) {
@@ -199,7 +201,7 @@ export function LogSection({
                   ? `editable-${section.id}`
                   : `readonly-${section.id}-${section.updated_at ?? "na"}`
               }
-              initialContent={editable ? editableContent : trimmedContent}
+              initialContent={editable ? (currentEditedContent ?? editableContent) : trimmedContent}
               editable={editable}
               onChange={editable ? onContentChange : undefined}
               highlightTerm={editable ? undefined : highlightTerm}

@@ -7,115 +7,11 @@ import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { Json } from "@/lib/types/database.types";
+import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
 import { CircleDot, GitCommitHorizontal, Loader2 } from "lucide-react";
 
 interface CanvasDraftCardProps {
   streamId: string;
-}
-
-type PlainRecord = Record<string, unknown>;
-
-function hasTextValue(value: unknown): boolean {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function hasMeaningfulPayload(value: unknown): boolean {
-  if (hasTextValue(value)) return true;
-
-  if (Array.isArray(value)) {
-    return value.some((item) => hasMeaningfulPayload(item));
-  }
-
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const record = value as PlainRecord;
-
-  if (
-    hasTextValue(record.text) ||
-    hasTextValue(record.url) ||
-    hasTextValue(record.src) ||
-    hasTextValue(record.href)
-  ) {
-    return true;
-  }
-
-  if (
-    hasMeaningfulPayload(record.content) ||
-    hasMeaningfulPayload(record.children)
-  ) {
-    return true;
-  }
-
-  const blockType = typeof record.type === "string" ? record.type : null;
-  if (blockType && blockType !== "paragraph") {
-    return true;
-  }
-
-  return false;
-}
-
-function stripVolatileFields(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    const normalized = value
-      .map((item) => stripVolatileFields(item))
-      .filter((item) => item !== undefined);
-    return normalized.length > 0 ? normalized : undefined;
-  }
-
-  if (!value || typeof value !== "object") {
-    return value;
-  }
-
-  const record = value as PlainRecord;
-  const blockType = typeof record.type === "string" ? record.type : null;
-  if (blockType) {
-    const normalizedBlock: PlainRecord = { type: blockType };
-    const normalizedContent = stripVolatileFields(record.content);
-    const normalizedProps = stripVolatileFields(record.props);
-    const normalizedChildren = stripVolatileFields(record.children);
-
-    if (normalizedContent !== undefined) {
-      normalizedBlock.content = normalizedContent;
-    }
-    if (
-      normalizedProps &&
-      typeof normalizedProps === "object" &&
-      Object.keys(normalizedProps as PlainRecord).length > 0
-    ) {
-      normalizedBlock.props = normalizedProps;
-    }
-    if (normalizedChildren !== undefined) {
-      normalizedBlock.children = normalizedChildren;
-    }
-
-    return normalizedBlock;
-  }
-
-  const next: PlainRecord = {};
-  for (const [key, child] of Object.entries(record)) {
-    if (key === "id") continue;
-    const normalized = stripVolatileFields(child);
-    if (normalized !== undefined) {
-      next[key] = normalized;
-    }
-  }
-
-  return Object.keys(next).length > 0 ? next : undefined;
-}
-
-function normalizeCanvasContent(value: unknown): string | null {
-  if (!value || !Array.isArray(value) || value.length === 0) {
-    return null;
-  }
-
-  const canonical = stripVolatileFields(value);
-  if (!hasMeaningfulPayload(canonical)) {
-    return null;
-  }
-
-  return JSON.stringify(canonical);
 }
 
 export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {

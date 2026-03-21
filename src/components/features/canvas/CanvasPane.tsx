@@ -14,6 +14,7 @@ import {
 import { Json } from "@/lib/types/database.types";
 import { createClient } from "@/lib/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { areCanvasContentsEquivalent } from "@/lib/utils/canvasContent";
 
 interface CanvasPaneProps {
   streamId: string;
@@ -62,42 +63,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     transition: "transform 400ms cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isEquivalentBlocks = useCallback((a: any, b: any): boolean => {
-    if (a === b) return true;
-    if (!a || !b) return false;
-    
-    // Normalize blocks for comparison to ignore IDs and empty children
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const normalize = (val: any): any => {
-      if (Array.isArray(val)) {
-        const filtered = val.map(normalize).filter(v => v !== undefined);
-        return filtered.length > 0 ? filtered : undefined;
-      }
-      if (typeof val === "object" && val !== null) {
-        // Essential fields for a BlockNote block
-        const { type, content, props, children } = val;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res: any = { type };
-        if (content) res.content = content;
-        // Only keep non-default props if possible, or just keep them all for now
-        if (props && Object.keys(props).length > 0) res.props = props;
-        if (children && Array.isArray(children) && children.length > 0) {
-          const normChildren = normalize(children);
-          if (normChildren) res.children = normChildren;
-        }
-        return res;
-      }
-      return val;
-    };
-
-    try {
-      return JSON.stringify(normalize(a)) === JSON.stringify(normalize(b));
-    } catch {
-      return false;
-    }
-  }, []);
-
   const debouncedUpdate = useMemo(
     () =>
       debounce(async (id: string, blocks: PartialBlock[]) => {
@@ -136,10 +101,9 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           return;
         }
         
-        // Use lenient comparison to ignore transient formatting/ID changes
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const prev = (liveContent || canvas.content_json) as any;
-        if (isEquivalentBlocks(prev, blocks)) {
+        // Compare canonicalized content and ignore only volatile IDs.
+        const prev = liveContent || canvas.content_json;
+        if (areCanvasContentsEquivalent(prev, blocks)) {
           return;
         }
 
@@ -148,7 +112,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         debouncedUpdate(canvas.id, blocks);
       }
     },
-    [canvas, liveContent, isEquivalentBlocks, setLiveContent, markDirty, streamId, debouncedUpdate],
+    [canvas, liveContent, setLiveContent, markDirty, streamId, debouncedUpdate],
   );
 
   // Reset first-change flag when canvas ID changes (but NOT on updated_at)
@@ -163,9 +127,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         setLiveContent(streamId, (canvas.content_json as PartialBlock[] | null) ?? null);
       } else {
         // If we HAVE local content but it's different from DB, start background sync
-        const dbContentJson = JSON.stringify(canvas.content_json);
-        const localContentJson = JSON.stringify(liveContent);
-        if (dbContentJson !== localContentJson) {
+        if (!areCanvasContentsEquivalent(canvas.content_json, liveContent)) {
            console.log(`[CanvasPane] detecting local change on mount, starting sync for ${streamId}`);
            debouncedUpdate(canvas.id, liveContent);
         }

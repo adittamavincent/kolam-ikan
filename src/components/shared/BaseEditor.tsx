@@ -9,18 +9,41 @@ import {
   useRef,
   useState,
 } from "react";
-import { getStylainMode, onStylainChanged } from "@/lib/theme/stylain";
+import {
+  getStylainMode,
+  onStylainChanged,
+  onStylainPreparing,
+} from "@/lib/theme/stylain";
 import bridge from "@/lib/blocknote-markdown-bridge";
 import Editor from "@monaco-editor/react";
 import { BlockNoteBlock } from "@/lib/types";
 import debounce from "lodash/debounce";
 
 type EditorLike = {
+  getSelection?: () =>
+    | {
+        startLineNumber: number;
+        startColumn: number;
+      }
+    | null;
   getDomNode?: () => HTMLElement | null;
   getLayoutInfo?: () => { width?: number } | undefined;
   getContentHeight?: () => number;
   getScrollHeight?: () => number;
+  getModel?: () => {
+    getOffsetAt?: (position: { lineNumber: number; column: number }) => number;
+    getPositionAt?: (offset: number) => { lineNumber: number; column: number };
+    getValueLength?: () => number;
+    getValue?: () => string;
+  } | null;
+  getPosition?: () => { lineNumber: number; column: number } | null;
+  hasTextFocus?: () => boolean;
+  setPosition?: (position: { lineNumber: number; column: number }) => void;
+  focus?: () => void;
   onDidContentSizeChange?: (cb: () => void) => { dispose?: () => void };
+  onDidFocusEditorText?: (cb: () => void) => { dispose?: () => void };
+  onDidBlurEditorText?: (cb: () => void) => { dispose?: () => void };
+  onDidChangeCursorPosition?: (cb: () => void) => { dispose?: () => void };
   layout?: (opts?: { width?: number; height?: number }) => void;
   __baseEditorCleanup?: () => void;
 };
@@ -33,6 +56,12 @@ export interface BaseEditorProps {
   onEditorReady?: (editor: BlockNoteEditor) => void;
   highlightTerm?: string;
 }
+
+type PendingSwitchSnapshot = {
+  targetMode: "A" | "B";
+  rawMarkdown: string;
+  offset: number | null;
+};
 
 export default function BaseEditor({
   initialContent,
@@ -60,12 +89,31 @@ export default function BaseEditor({
   const ignoreNextRawChangeRef = useRef<boolean>(false);
   const programmaticRawRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const monacoEditorRef = useRef<EditorLike | null>(null);
+  const caretOffsetRef = useRef<number | null>(null);
+  const shouldRestoreFocusRef = useRef<boolean>(false);
+  const pendingMonacoRestoreRef = useRef<boolean>(false);
+  const pendingBlockNoteRestoreRef = useRef<boolean>(false);
+  const lastMonacoFocusAtRef = useRef<number>(0);
+  const lastMonacoOffsetRef = useRef<number | null>(null);
+  const isMonacoFocusedRef = useRef<boolean>(false);
+  const lastBlockNoteFocusAtRef = useRef<number>(0);
+  const lastBlockNoteOffsetRef = useRef<number | null>(null);
+  // Persist last known editor height across remounts so switching
+  // stylain modes doesn't collapse the editor to a tiny height and
+  // cause a visual flicker.
+  const lastEditorHeightRef = useRef<number>(24);
+  const [editorHeight, setEditorHeightState] = useState<number>(24);
   const hasInitializedRef = useRef<boolean>(false);
   const previousStylainModeRef = useRef<"A" | "B">("A");
+  const pendingEditorReplacementRef = useRef<boolean>(false);
+  const pendingSwitchSnapshotRef = useRef<PendingSwitchSnapshot | null>(null);
   const lastBlocksRef = useRef<PartialBlock[] | null>(null);
   const onChangeRef = useRef(onChange);
   const reconcilingRef = useRef<boolean>(false);
   const ignoreStylainChangeRef = useRef(false);
+  const hasUserEditedRef = useRef<boolean>(false);
+  const lastInitialContentSignatureRef = useRef<string | null>(null);
 
   type EditorCreateOptions = Parameters<typeof BlockNoteEditor.create>[0];
 
@@ -223,6 +271,163 @@ export default function BaseEditor({
     return formatted.join('\n');
   }, []);
 
+  const captureCaretOffsetFromDom = useCallback((root: HTMLElement | null): number | null => {
+    if (!root || typeof window === "undefined") return null;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+    const range = selection.getRangeAt(0);
+    if (!root.contains(range.startContainer)) return null;
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(root);
+    preCaretRange.setEnd(range.startContainer, range.startOffset);
+    return preCaretRange.toString().length;
+  }, []);
+
+  const getBlockNoteEditableRoot = useCallback((): HTMLElement | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+    return container.querySelector(
+      ".ProseMirror, [contenteditable=\"true\"]",
+    ) as HTMLElement | null;
+  }, []);
+
+  const restoreCaretOffsetInDom = useCallback((root: HTMLElement | null, offset: number): boolean => {
+    if (!root || typeof window === "undefined") return false;
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const textNode = walker.currentNode as Text;
+      textNodes.push(textNode);
+    }
+
+    const safeOffset = Math.max(0, offset);
+    let remaining = safeOffset;
+    let targetNode: Text | null = null;
+    let targetOffset = 0;
+
+    if (textNodes.length === 0) return false;
+
+    for (const node of textNodes) {
+      const len = node.textContent?.length ?? 0;
+      if (remaining <= len) {
+        targetNode = node;
+        targetOffset = remaining;
+        break;
+      }
+      remaining -= len;
+    }
+
+    if (!targetNode) {
+      targetNode = textNodes[textNodes.length - 1];
+      targetOffset = targetNode.textContent?.length ?? 0;
+    }
+
+    const range = document.createRange();
+    range.setStart(targetNode, targetOffset);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    return true;
+  }, []);
+
+  const captureMonacoOffset = useCallback((): number | null => {
+    const editor = monacoEditorRef.current;
+    if (!editor) return null;
+    const model = editor.getModel?.();
+    const selection = editor.getSelection?.();
+    const position =
+      editor.getPosition?.() ??
+      (selection
+        ? {
+            lineNumber: selection.startLineNumber,
+            column: selection.startColumn,
+          }
+        : null);
+    if (!model || !position || !model.getOffsetAt) return lastMonacoOffsetRef.current;
+    const hasTextFocus = editor.hasTextFocus?.() === true;
+    if (
+      !hasTextFocus &&
+      position.lineNumber === 1 &&
+      position.column === 1 &&
+      lastMonacoOffsetRef.current !== null
+    ) {
+      return lastMonacoOffsetRef.current;
+    }
+    try {
+      const offset = model.getOffsetAt(position);
+      lastMonacoOffsetRef.current = offset;
+      return offset;
+    } catch {
+      return lastMonacoOffsetRef.current;
+    }
+  }, []);
+
+  const restoreMonacoOffset = useCallback((offset: number | null) => {
+    const editor = monacoEditorRef.current;
+    if (!editor || !editable) return;
+    const model = editor.getModel?.();
+    if (!model || !model.getPositionAt) return;
+    const max = model.getValueLength?.() ?? 0;
+    const safe = Math.max(0, Math.min(offset ?? 0, max));
+    try {
+      const position = model.getPositionAt(safe);
+      editor.setPosition?.(position);
+      editor.focus?.();
+    } catch {}
+  }, [editable]);
+
+  const setEditorHeight = useCallback((h: number) => {
+    lastEditorHeightRef.current = h;
+    setEditorHeightState(h);
+  }, []);
+
+  const captureMonacoSwitchSnapshot = useCallback((): PendingSwitchSnapshot | null => {
+    if (typeof window === "undefined" || stylainMode !== "B" || !editable) {
+      return null;
+    }
+
+    const container = containerRef.current;
+    const activeElement = document.activeElement;
+    const selection = window.getSelection();
+    const hasEditorFocus = !!(
+      container &&
+      (monacoEditorRef.current?.hasTextFocus?.() === true ||
+        isMonacoFocusedRef.current ||
+        container.contains(activeElement) ||
+        (selection?.anchorNode && container.contains(selection.anchorNode)))
+    );
+
+    if (!hasEditorFocus) {
+      return null;
+    }
+
+    const monacoModel = monacoEditorRef.current?.getModel?.();
+    const rawMarkdown = monacoModel?.getValue?.() ?? rawMarkdownRef.current;
+    const offset =
+      captureMonacoOffset() ??
+      lastMonacoOffsetRef.current ??
+      monacoModel?.getValueLength?.() ??
+      null;
+
+    return {
+      targetMode: "A",
+      rawMarkdown,
+      offset,
+    };
+  }, [captureMonacoOffset, editable, stylainMode]);
+
+  const applyProgrammaticRawMarkdown = useCallback((nextMarkdown: string) => {
+    programmaticRawRef.current = nextMarkdown;
+    ignoreNextRawChangeRef.current = true;
+    rawMarkdownRef.current = nextMarkdown;
+    queueMicrotask(() => {
+      setRawMarkdown((prev) => (prev === nextMarkdown ? prev : nextMarkdown));
+    });
+  }, []);
+
   const blocksToMarkdown = useCallback((blocks: PartialBlock[]): string => {
     try {
       const parserEditor = ensureParserEditor();
@@ -248,6 +453,7 @@ export default function BaseEditor({
 
   useEffect(() => {
     currentEditorRef.current = currentEditor;
+    pendingEditorReplacementRef.current = false;
   }, [currentEditor]);
 
   useEffect(() => {
@@ -284,6 +490,64 @@ export default function BaseEditor({
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const unsub = onStylainPreparing((e: CustomEvent<{ mode: "A" | "B" }>) => {
+      if (e.detail.mode !== "A") return;
+      const snapshot = captureMonacoSwitchSnapshot();
+      if (!snapshot) return;
+      pendingSwitchSnapshotRef.current = snapshot;
+      rawMarkdownRef.current = snapshot.rawMarkdown;
+      rawEditedRef.current = true;
+      if (snapshot.offset !== null) {
+        caretOffsetRef.current = snapshot.offset;
+      }
+    });
+
+    return unsub;
+  }, [captureMonacoSwitchSnapshot]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !editable) return;
+
+    const captureBlockNoteSnapshot = () => {
+      if (stylainMode !== "A") return;
+      const editableRoot = getBlockNoteEditableRoot();
+      if (!editableRoot) return;
+
+      const activeElement = document.activeElement;
+      const selection = window.getSelection();
+      const hasFocusInside = !!(
+        (activeElement && editableRoot.contains(activeElement)) ||
+        (selection?.anchorNode && editableRoot.contains(selection.anchorNode))
+      );
+      if (!hasFocusInside) return;
+
+      lastBlockNoteFocusAtRef.current = Date.now();
+      const offset = captureCaretOffsetFromDom(editableRoot);
+      if (offset !== null) {
+        lastBlockNoteOffsetRef.current = offset;
+      }
+    };
+
+    const captureSelectionSnapshot = () => {
+      window.requestAnimationFrame(captureBlockNoteSnapshot);
+    };
+
+    document.addEventListener("focusin", captureBlockNoteSnapshot);
+    document.addEventListener("keyup", captureBlockNoteSnapshot);
+    document.addEventListener("mouseup", captureSelectionSnapshot);
+    document.addEventListener("selectionchange", captureSelectionSnapshot);
+
+    return () => {
+      document.removeEventListener("focusin", captureBlockNoteSnapshot);
+      document.removeEventListener("keyup", captureBlockNoteSnapshot);
+      document.removeEventListener("mouseup", captureSelectionSnapshot);
+      document.removeEventListener("selectionchange", captureSelectionSnapshot);
+    };
+  }, [captureCaretOffsetFromDom, editable, getBlockNoteEditableRoot, stylainMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
     let initial: PartialBlock[] | undefined;
     
     // On first mount, use initialContent if available, ignoring empty rawMarkdown.
@@ -296,23 +560,23 @@ export default function BaseEditor({
       if (initial) {
         // Pre-fill rawMarkdown so switching to mode B works smoothly
         const nextMarkdown = blocksToMarkdown(initial);
-        programmaticRawRef.current = nextMarkdown;
-        ignoreNextRawChangeRef.current = true;
-        setRawMarkdown(nextMarkdown);
+        applyProgrammaticRawMarkdown(nextMarkdown);
       }
     } else if (stylainMode === "A") {
-      // Always parse the raw markdown when entering A so edits (including
-      // explicit deletions) made in B are reflected in the BlockNote doc.
-      if (previousStylainModeRef.current === "B" && !rawEditedRef.current && lastBlocksRef.current) {
-        initial = lastBlocksRef.current;
-      } else {
-        const parsed = parseMarkdownToBlocks(rawMarkdownRef.current ?? "");
-        initial = parsed.length > 0 ? parsed : undefined;
-        // Only push markdown -> blocks if there's actual text content.
-        const rawText = rawMarkdownRef.current ?? "";
-        if (onChangeRef.current && rawText.trim().length > 0) {
-          onChangeRef.current(parsed);
-        }
+      // Always parse the latest raw markdown when entering A so even
+      // very fast B-mode edits (typed right before switch) are preserved.
+      const snapshotMarkdown =
+        pendingSwitchSnapshotRef.current?.targetMode === "A"
+          ? pendingSwitchSnapshotRef.current.rawMarkdown
+          : null;
+      const nextRawMarkdown = snapshotMarkdown ?? rawMarkdownRef.current ?? "";
+      rawMarkdownRef.current = nextRawMarkdown;
+      const parsed = parseMarkdownToBlocks(nextRawMarkdown);
+      initial = parsed.length > 0 ? parsed : undefined;
+      // Only push markdown -> blocks if there's actual text content.
+      const rawText = nextRawMarkdown;
+      if (onChangeRef.current && rawText.trim().length > 0) {
+        onChangeRef.current(parsed);
       }
     } else {
       // Switching to B: first save current blocks if editor exists
@@ -343,8 +607,10 @@ export default function BaseEditor({
     }
 
     try {
+      pendingEditorReplacementRef.current = true;
       const newEditor = createEditor(initial);
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCurrentEditor((prev) => {
         try {
           if (prev && typeof prev.unmount === "function") prev.unmount();
@@ -368,6 +634,7 @@ export default function BaseEditor({
         setRawMarkdown(nextMarkdown);
       }
     } catch {
+      pendingEditorReplacementRef.current = false;
       console.error("Failed to (re)create BlockNote editor");
     }
 
@@ -375,7 +642,7 @@ export default function BaseEditor({
     previousStylainModeRef.current = stylainMode;
 
     return () => {};
-  }, [stylainMode, createEditor, parseMarkdownToBlocks, blocksToMarkdown, normalizeBlocks, formatMarkdown]);
+  }, [stylainMode, createEditor, parseMarkdownToBlocks, blocksToMarkdown, normalizeBlocks, formatMarkdown, applyProgrammaticRawMarkdown]);
 
   const isEquivalent = useCallback((a: PartialBlock[] | null | undefined, b: PartialBlock[] | null | undefined) => {
     if (a === b) return true;
@@ -398,6 +665,24 @@ export default function BaseEditor({
   useEffect(() => {
     if (reconcilingRef.current) return;
     if (!currentEditor || !initialContent || initialContent.length === 0) return;
+
+    let initialSignature: string;
+    try {
+      initialSignature = JSON.stringify(initialContent);
+    } catch {
+      initialSignature = "__unserializable__";
+    }
+    if (lastInitialContentSignatureRef.current === initialSignature) {
+      return;
+    }
+    lastInitialContentSignatureRef.current = initialSignature;
+
+    // Keep editable sessions source-of-truth from live typing.
+    // External prop churn (e.g. stale parent rerenders) must never replace
+    // user input unless the editor is remounted by an explicit user action.
+    if (editable && hasUserEditedRef.current) {
+      return;
+    }
     
     // In mode B, we prioritize the user's active keyboard buffer.
     // If they've edited raw markdown, we shouldn't let incoming initialContent
@@ -411,18 +696,13 @@ export default function BaseEditor({
       try {
         currentEditor.replaceBlocks(currentBlocks, initialContent);
         const nextMarkdown = blocksToMarkdown(initialContent);
-        programmaticRawRef.current = nextMarkdown;
-        ignoreNextRawChangeRef.current = true;
-        setRawMarkdown(nextMarkdown);
+        applyProgrammaticRawMarkdown(nextMarkdown);
         lastBlocksRef.current = initialContent;
       } catch (e) {
         console.error("Failed to update editor content", e);
       }
     }
-  }, [currentEditor, initialContent, blocksToMarkdown, isEquivalent, stylainMode]);
-
-  const savedSelectionRef = useRef<Range[] | null>(null);
-  const activeElementRef = useRef<Element | null>(null);
+  }, [currentEditor, initialContent, blocksToMarkdown, editable, isEquivalent, stylainMode, applyProgrammaticRawMarkdown]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -440,17 +720,77 @@ export default function BaseEditor({
           lastEditorHeightRef.current = freshHeight;
           setEditorHeightState(freshHeight);
         }
-        const sel = window.getSelection();
-        if (sel && sel.rangeCount > 0) {
-          const ranges: Range[] = [];
-          for (let i = 0; i < sel.rangeCount; i++) {
-            ranges.push(sel.getRangeAt(i).cloneRange());
+        const activeElement = document.activeElement;
+        const container = containerRef.current;
+        const hasEditorFocus = !!(
+          editable &&
+          container &&
+          (container.contains(activeElement) ||
+            (window.getSelection()?.anchorNode && container.contains(window.getSelection()!.anchorNode)))
+        );
+        if (stylainMode === "B") {
+          const monacoModel = monacoEditorRef.current?.getModel?.();
+          const snapshot =
+            pendingSwitchSnapshotRef.current?.targetMode === "A"
+              ? pendingSwitchSnapshotRef.current
+              : captureMonacoSwitchSnapshot();
+          const liveMarkdown = snapshot?.rawMarkdown ?? monacoModel?.getValue?.();
+          if (typeof liveMarkdown === "string") {
+            rawMarkdownRef.current = liveMarkdown;
+            rawEditedRef.current = true;
           }
-          savedSelectionRef.current = ranges;
+          const monacoHasTextFocus =
+            monacoEditorRef.current?.hasTextFocus?.() === true ||
+            isMonacoFocusedRef.current;
+          const monacoOffset =
+            snapshot?.offset ??
+            captureMonacoOffset() ??
+            lastMonacoOffsetRef.current;
+          const offsetForRestore =
+            monacoOffset ??
+            lastMonacoOffsetRef.current ??
+            monacoModel?.getValueLength?.() ??
+            null;
+          const wasMonacoRecentlyFocused =
+            Date.now() - lastMonacoFocusAtRef.current < 1500;
+          const canRestoreFromMonaco =
+            editable &&
+            offsetForRestore !== null &&
+            (monacoHasTextFocus ||
+              isMonacoFocusedRef.current ||
+              hasEditorFocus ||
+              wasMonacoRecentlyFocused);
+
+          shouldRestoreFocusRef.current = canRestoreFromMonaco;
+          if (canRestoreFromMonaco) {
+            caretOffsetRef.current = offsetForRestore;
+            pendingMonacoRestoreRef.current = false;
+            pendingBlockNoteRestoreRef.current = true;
+          } else {
+            pendingMonacoRestoreRef.current = false;
+            pendingBlockNoteRestoreRef.current = false;
+          }
         } else {
-          savedSelectionRef.current = null;
+          const blockNoteRoot = getBlockNoteEditableRoot();
+          const blockNoteOffset =
+            captureCaretOffsetFromDom(blockNoteRoot) ?? lastBlockNoteOffsetRef.current;
+          const wasBlockNoteRecentlyFocused =
+            Date.now() - lastBlockNoteFocusAtRef.current < 1500;
+          const canRestoreFromBlockNote =
+            editable &&
+            blockNoteOffset !== null &&
+            (hasEditorFocus || wasBlockNoteRecentlyFocused);
+
+          shouldRestoreFocusRef.current = canRestoreFromBlockNote;
+          if (canRestoreFromBlockNote) {
+            caretOffsetRef.current = blockNoteOffset;
+            pendingMonacoRestoreRef.current = true;
+            pendingBlockNoteRestoreRef.current = false;
+          } else {
+            pendingMonacoRestoreRef.current = false;
+            pendingBlockNoteRestoreRef.current = false;
+          }
         }
-        activeElementRef.current = document.activeElement;
       } catch {}
     };
 
@@ -458,29 +798,7 @@ export default function BaseEditor({
       try {
         // End reconciling after mode change settled
         reconcilingRef.current = false;
-      } catch {}
-      try {
-        const sel = window.getSelection();
-        if (sel) {
-          sel.removeAllRanges();
-          const ranges = savedSelectionRef.current;
-          if (ranges && ranges.length > 0) {
-            for (const r of ranges) {
-              try {
-                sel.addRange(r);
-              } catch {}
-            }
-          }
-        }
-        if (activeElementRef.current instanceof HTMLElement) {
-          try {
-            (activeElementRef.current as HTMLElement).focus();
-          } catch {}
-        }
       } catch {
-      } finally {
-        savedSelectionRef.current = null;
-        activeElementRef.current = null;
       }
     };
 
@@ -490,7 +808,78 @@ export default function BaseEditor({
       window.removeEventListener("stylain_mode_will_change", willHandler as EventListener);
       window.removeEventListener("stylain_mode_changed", didHandler as EventListener);
     };
-  }, [parseMarkdownToBlocks]);
+  }, [captureCaretOffsetFromDom, captureMonacoOffset, captureMonacoSwitchSnapshot, editable, getBlockNoteEditableRoot, stylainMode]);
+
+  useEffect(() => {
+    if (pendingEditorReplacementRef.current) {
+      return;
+    }
+    if (!editable || stylainMode !== "A" || !pendingBlockNoteRestoreRef.current || !shouldRestoreFocusRef.current) {
+      return;
+    }
+    pendingBlockNoteRestoreRef.current = false;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 40;
+
+    const restoreWithRetry = () => {
+      if (cancelled) return;
+      const root = containerRef.current;
+      if (!root) return;
+      const editableTarget = root.querySelector(
+        ".ProseMirror, [contenteditable=\"true\"]",
+      ) as HTMLElement | null;
+
+      if (!editableTarget) {
+        attempts += 1;
+        if (attempts < maxAttempts) {
+          window.setTimeout(restoreWithRetry, 16);
+        }
+        return;
+      }
+
+      try {
+        editableTarget.focus();
+      } catch {}
+
+      const restored = restoreCaretOffsetInDom(editableTarget, caretOffsetRef.current ?? 0);
+      if (restored) {
+        try {
+          currentEditor?.focus();
+        } catch {}
+        pendingSwitchSnapshotRef.current = null;
+        return;
+      }
+
+      attempts += 1;
+      if (attempts < maxAttempts) {
+        window.setTimeout(restoreWithRetry, 16);
+        return;
+      }
+
+      // Fallback: ensure focus/cursor is visible even when there are no text nodes
+      // yet (e.g. empty paragraph rendered as <br>).
+      try {
+        const firstBlockId = currentEditor?.document?.[0]?.id;
+        if (firstBlockId) {
+          currentEditor.setTextCursorPosition(firstBlockId, "end");
+          currentEditor.focus();
+        }
+      } catch {}
+      pendingSwitchSnapshotRef.current = null;
+    };
+
+    requestAnimationFrame(restoreWithRetry);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentEditor, editable, restoreCaretOffsetInDom, stylainMode]);
+
+  useEffect(() => {
+    if (stylainMode === "B") {
+      pendingSwitchSnapshotRef.current = null;
+    }
+  }, [stylainMode]);
 
   useEffect(() => {
     if (currentEditor && onEditorReady) {
@@ -552,6 +941,7 @@ export default function BaseEditor({
     if (currentEditor && onChange) {
       const unsubscribe = currentEditor.onChange(() => {
         if (stylainMode === "B" || ignoreStylainChangeRef.current) return;
+        hasUserEditedRef.current = true;
         // Update rawMarkdown to keep it in sync with BlockNote changes
         const markdown = blocksToMarkdown(currentEditor.document);
         setRawMarkdown(markdown.replace(/\n+$/, ""));
@@ -569,16 +959,6 @@ export default function BaseEditor({
         }
       } catch {}
     };
-  }, []);
-
-  // Persist last known editor height across remounts so switching
-  // stylain modes doesn't collapse the editor to a tiny height and
-  // cause a visual flicker.
-  const lastEditorHeightRef = useRef<number>(24);
-  const [editorHeight, setEditorHeightState] = useState<number>(lastEditorHeightRef.current);
-  const setEditorHeight = useCallback((h: number) => {
-    lastEditorHeightRef.current = h;
-    setEditorHeightState(h);
   }, []);
 
   const handleRawMarkdownChange = (nextMarkdown: string | undefined) => {
@@ -604,18 +984,13 @@ export default function BaseEditor({
 
     if (text === prev) return;
     if (!editable || !onChange || ignoreStylainChangeRef.current) return;
+    hasUserEditedRef.current = true;
     rawEditedRef.current = true;
     // When actively editing in B mode, we MUST preserve trailing newlines.
     // Otherwise, hitting Enter at the end of the file will create a newline
     // that immediately gets stripped by the round-trip through onChange blocks,
     // making it impossible to add new lines at the bottom.
     const blocks = parseMarkdownToBlocks(text, true);
-    // In Stylain B amend flow, apply immediately so clicking Save right after
-    // typing does not miss pending debounced updates.
-    if (stylainMode === "B") {
-      onChange(blocks);
-      return;
-    }
 
     if (debouncedOnChangeRef.current) {
       debouncedOnChangeRef.current(blocks);
@@ -631,16 +1006,39 @@ export default function BaseEditor({
     >
       {stylainMode === "B" ? (
         <div 
-          className="stylain-raw-editor relative flex w-full border border-border-default/40 bg-surface-subtle/40 overflow-hidden"
-              style={{ height: `${editorHeight}px` }}
+          className={`stylain-raw-editor relative flex w-full border border-border-default/40 bg-surface-subtle/40 overflow-hidden ${editable ? "" : "pointer-events-none select-none"}`}
+          style={{ height: `${editorHeight}px` }}
+          onBlur={() => {
+            // If focus leaves Monaco while a debounce is pending (e.g. Save/Commit click),
+            // cancel the delay and immediately commit the latest raw text.
+            if (stylainMode === "B" && onChangeRef.current) {
+              debouncedOnChangeRef.current?.cancel();
+              const model = monacoEditorRef.current?.getModel?.();
+              const textToSave = model && typeof model.getValue === "function"
+                ? model.getValue()
+                : rawMarkdownRef.current;
+              onChangeRef.current(parseMarkdownToBlocks(textToSave, true));
+            }
+          }}
         >
-              <Editor
+          {!editable && <div className="absolute inset-0 z-20" aria-hidden="true" />}
+          <Editor
                 height="100%"
                 width="100%"
                 defaultLanguage="markdown"
                 value={rawMarkdown}
                 onChange={handleRawMarkdownChange}
                 onMount={(editor) => {
+                  monacoEditorRef.current = editor as unknown as EditorLike;
+                  if (!editable) {
+                    try {
+                      const dom = (editor as unknown as EditorLike).getDomNode?.();
+                      if (dom) {
+                        dom.style.pointerEvents = "none";
+                        dom.style.userSelect = "none";
+                      }
+                    } catch {}
+                  }
                   const getContainerWidth = () => {
                     try {
                       const dom = (editor as unknown as EditorLike).getDomNode?.();
@@ -682,6 +1080,33 @@ export default function BaseEditor({
 
                       // adjust whenever content size changes
                       const disposable = (editor as unknown as EditorLike).onDidContentSizeChange?.(updateHeight);
+                      const focusDisposable = (editor as unknown as EditorLike).onDidFocusEditorText?.(() => {
+                        isMonacoFocusedRef.current = true;
+                        lastMonacoFocusAtRef.current = Date.now();
+                        const offset = captureMonacoOffset();
+                        if (offset !== null) {
+                          lastMonacoOffsetRef.current = offset;
+                        }
+                        if (!editable) {
+                          try {
+                            (editor as unknown as EditorLike).getDomNode?.()?.blur();
+                          } catch {}
+                        }
+                      });
+                      const blurDisposable = (editor as unknown as EditorLike).onDidBlurEditorText?.(() => {
+                        const offset = captureMonacoOffset();
+                        if (offset !== null) {
+                          lastMonacoOffsetRef.current = offset;
+                        }
+                        isMonacoFocusedRef.current = false;
+                      });
+                      const cursorDisposable = (editor as unknown as EditorLike).onDidChangeCursorPosition?.(() => {
+                        lastMonacoFocusAtRef.current = Date.now();
+                        const offset = captureMonacoOffset();
+                        if (offset !== null) {
+                          lastMonacoOffsetRef.current = offset;
+                        }
+                      });
                       // initial layout + follow-up reflows to cover font/load timing
                       updateHeight();
                       // sometimes layout changes immediately after mount (fonts/DOM), run a couple more times
@@ -702,6 +1127,10 @@ export default function BaseEditor({
                               }).catch(() => {});
                             }
                           } catch {}
+                      if (editable && pendingMonacoRestoreRef.current && shouldRestoreFocusRef.current) {
+                        pendingMonacoRestoreRef.current = false;
+                        requestAnimationFrame(() => restoreMonacoOffset(caretOffsetRef.current));
+                      }
                       // cleanup
                       const editorObj = editor as unknown as EditorLike;
                       editorObj.__baseEditorCleanup = () => {
@@ -709,8 +1138,20 @@ export default function BaseEditor({
                           disposable?.dispose?.();
                         } catch {}
                         try {
+                          focusDisposable?.dispose?.();
+                        } catch {}
+                        try {
+                          blurDisposable?.dispose?.();
+                        } catch {}
+                        try {
+                          cursorDisposable?.dispose?.();
+                        } catch {}
+                        try {
                           window.clearTimeout(timer);
                         } catch {}
+                        if (monacoEditorRef.current === editorObj) {
+                          monacoEditorRef.current = null;
+                        }
                       };
                 }}
                 theme="vs-dark"
@@ -720,6 +1161,11 @@ export default function BaseEditor({
               lineNumbersMinChars: 3,
               glyphMargin: false,
               readOnly: !editable,
+              domReadOnly: !editable,
+              selectionHighlight: editable,
+              occurrencesHighlight: editable ? "singleFile" : "off",
+              contextmenu: editable,
+              links: editable,
               fontFamily: "var(--font-fira-code), \"Fira Code\", \"Fira Code VF\", var(--stylain-font-mono), monospace",
               fontLigatures:
                 '"liga" on, "clig" on, "calt" on, "rlig" on, "zero" on, "onum" on, "tnum" on, "ss01" on, "ss02" on, "ss03" on, "ss04" on, "ss05" on, "ss06" on, "ss07" on, "ss08" on, "ss09" on, "ss10" on, "ss11" on, "ss12" on, "ss13" on, "ss14" on, "ss15" on, "ss16" on, "ss17" on, "ss18" on, "ss19" on, "ss20" on, "cv01" on, "cv02" on, "cv03" on, "cv04" on, "cv05" on, "cv06" on, "cv07" on, "cv08" on, "cv09" on, "cv10" on, "cv11" on, "cv12" on, "cv13" on, "cv14" on, "cv15" on, "cv16" on, "cv17" on, "cv18" on, "cv19" on, "cv20" on, "cv21" on, "cv22" on, "cv23" on, "cv24" on, "cv25" on, "cv26" on, "cv27" on, "cv28" on, "cv29" on, "cv30" on, "cv31" on',
@@ -736,6 +1182,7 @@ export default function BaseEditor({
                 vertical: "hidden",
                 horizontal: "hidden"
               },
+              tabIndex: editable ? 0 : -1,
             }}
           />
         </div>

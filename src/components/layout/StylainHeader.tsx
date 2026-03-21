@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import {
   getStylainMode,
+  prepareStylainModeChange,
   setStylainMode,
   type Mode,
 } from "@/lib/theme/stylain";
@@ -67,6 +68,11 @@ export default function StylainHeader() {
       <button
         aria-label={`Switch to ${mode === "A" ? "Raw Markdown (B)" : "Rich Block (A)"} mode`}
         title={mode === "A" ? "Switch to Raw Markdown (B)" : "Switch to Rich Block (A)"}
+        onMouseDown={(e) => {
+          prepareStylainModeChange(mode === "A" ? "B" : "A");
+          // Keep focus in the active editor while toggling modes via mouse.
+          e.preventDefault();
+        }}
         onClick={toggle}
         className={`inline-flex items-center gap-2 rounded-sm border border-border-default/40 bg-surface-subtle px-2 py-1 text-[11px] font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-action-primary-bg ${transitioning ? "opacity-70" : "hover:bg-surface-default"}`}
       >

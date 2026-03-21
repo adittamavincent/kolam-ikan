@@ -477,29 +477,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   const debouncedSave = useMemo(
     () =>
-      debounce(
-        (
-          instanceId: string,
-          personaId: string,
-          content: PartialBlock[],
-          personaName: string,
-        ) => {
-          setHeaderLocalStatus("saving");
-          saveDraft(instanceId, personaId, content, personaName);
-          setHeaderDirty(false);
-          setHeaderLocalStatus("saved");
-          setHeaderCloudStatus("syncing");
-          if (cloudSyncTimeoutRef.current) {
-            clearTimeout(cloudSyncTimeoutRef.current);
-          }
-          cloudSyncTimeoutRef.current = setTimeout(() => {
-            setHeaderCloudStatus("synced");
-            cloudSyncTimeoutRef.current = null;
-          }, 1200);
-        },
-        1000,
-      ),
-    [saveDraft],
+      debounce(() => {
+        setHeaderDirty(false);
+        setHeaderLocalStatus("saved");
+        setHeaderCloudStatus("syncing");
+        if (cloudSyncTimeoutRef.current) {
+          clearTimeout(cloudSyncTimeoutRef.current);
+        }
+        cloudSyncTimeoutRef.current = setTimeout(() => {
+          setHeaderCloudStatus("synced");
+          cloudSyncTimeoutRef.current = null;
+        }, 1200);
+      }, 1000),
+    [],
   );
 
   useEffect(() => {
@@ -1630,12 +1620,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     editorRefs.current[instanceId]?.isFocused?.() ?? false;
                                   const incomingText = blocksToPlainText(content);
                                   const existingText = blocksToPlainText(existingContent);
-                                  const textChanged = incomingText !== existingText;
+                                  const contentChanged =
+                                    JSON.stringify(content) !==
+                                    JSON.stringify(existingContent);
 
                                   if (
                                     editorFocused &&
                                     !withinHydrationWindow &&
-                                    textChanged
+                                    contentChanged
                                   ) {
                                     userEditedRef.current[instanceId] = true;
                                     setHeaderDirty(true);
@@ -1658,12 +1650,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     // swallow logging errors
                                   }
 
-                                  debouncedSave(
+                                  if (!contentChanged) return;
+                                  setHeaderLocalStatus("saving");
+                                  saveDraft(
                                     instanceId,
                                     section.personaId,
                                     content,
                                     persona?.name || "",
                                   );
+                                  debouncedSave();
                                 }}
                                 placeholder={`What would ${persona?.name || "they"} say?`}
                                 onEditorReady={(editor) => {

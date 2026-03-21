@@ -346,8 +346,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       personaName?: string,
       forceDelete = false,
     ) => {
-      setStatus("saving");
-
       if (forceDelete) {
         delete draftStateRef.current.sections[instanceId];
         draftStateRef.current.sectionOrder =
@@ -372,7 +370,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
         draftStateRef.current.sectionOrder.push(instanceId);
       }
-      setStatus("saved");
+      setStatus((prev) => (prev === "error" ? "error" : "saved"));
     },
     [],
   );
@@ -389,8 +387,6 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       },
       forceDelete = false,
     ) => {
-      setStatus("saving");
-
       if (forceDelete) {
         delete draftStateRef.current.sections[instanceId];
         draftStateRef.current.sectionOrder =
@@ -418,7 +414,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
         draftStateRef.current.sectionOrder.push(instanceId);
       }
-      setStatus("saved");
+      setStatus((prev) => (prev === "error" ? "error" : "saved"));
     },
     [],
   );

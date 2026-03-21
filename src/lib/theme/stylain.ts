@@ -1,6 +1,7 @@
 type Mode = "A" | "B";
 
 const STORAGE_KEY = "stylain:mode";
+const EVENT_PREPARE = "stylain_mode_prepare_change";
 const EVENT_WILL = "stylain_mode_will_change";
 const EVENT_DID = "stylain_mode_changed";
 
@@ -84,6 +85,16 @@ export function setStylainMode(mode: Mode) {
       console.error("Nested error while setting Stylain mode:", nestedError);
     }
   }
+}
+
+export function prepareStylainModeChange(mode: Mode) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(EVENT_PREPARE, { detail: { mode } }));
+}
+
+export function onStylainPreparing(fn: (e: CustomEvent<{ mode: Mode }>) => void) {
+  window.addEventListener(EVENT_PREPARE, fn as EventListener);
+  return () => window.removeEventListener(EVENT_PREPARE, fn as EventListener);
 }
 
 export function onStylainWillChange(fn: (e: CustomEvent<{ mode: Mode }>) => void) {

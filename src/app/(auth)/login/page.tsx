@@ -26,6 +26,7 @@ import Link from "next/link";
 
 import { loginAction } from "./actions";
 import { setDevSessionFlag } from "@/lib/utils/authStorage";
+import { buildAuthCallbackUrl } from "@/lib/utils/site-url";
 
 type AuthMode = "signin" | "signup";
 
@@ -342,6 +343,7 @@ function LoginForm() {
         email,
         password,
         options: {
+          emailRedirectTo: buildAuthCallbackUrl("/"),
           data: {
             full_name: fullName,
           },
@@ -436,7 +438,10 @@ function LoginForm() {
       const { error: authError } = await supabase.auth.signUp({
         email: acc.email,
         password: acc.pass,
-        options: { data: { full_name: acc.fullName || acc.label } },
+        options: {
+          emailRedirectTo: buildAuthCallbackUrl("/"),
+          data: { full_name: acc.fullName || acc.label },
+        },
       });
 
       if (authError) {

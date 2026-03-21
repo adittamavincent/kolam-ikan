@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { buildAuthCallbackUrl } from "@/lib/utils/site-url";
 import {
   Mail,
   ChevronLeft,
@@ -17,17 +18,28 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
-  const supabase = createClient();
-
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey =
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      setError("Supabase is not configured for this deployment.");
+      setLoading(false);
+      return;
+    }
+
+    const supabase = createClient();
+
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+        redirectTo: buildAuthCallbackUrl("/update-password"),
       },
     );
 

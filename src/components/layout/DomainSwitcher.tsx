@@ -182,7 +182,7 @@ export function DomainSwitcher({
       </div>
 
       {/* Domain List */}
-      <div className="flex-1 w-full flex flex-col items-center space-y-2 overflow-y-auto px-2 scrollbar-hide py-1">
+      <div className="flex-1 w-full flex flex-col items-center space-y-2 overflow-y-auto px-2 scrollbar-hide py-2">
         {!domains && (
           <div className="flex h-8 w-8 items-center justify-center">
             <RefreshCw className="h-3 w-3 animate-spin text-text-muted" />

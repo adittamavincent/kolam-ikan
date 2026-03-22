@@ -79,6 +79,10 @@ const generateFileId = (): string =>
 
 import JSZip from "jszip";
 import { calculateFileHash } from "@/lib/utils/hash";
+import {
+  DEFAULT_IMPORTED_PERSONA_TYPE,
+  getPersonaScopeLabel,
+} from "@/lib/personas";
 
 // ─── Inject payload (consumed by EntryCreator) ────────────────────────────────
 
@@ -159,7 +163,7 @@ function getSupabaseErrorMessage(error: unknown): string {
 
   // 42703: undefined_column (migration not applied yet)
   if (typed.code === "42703") {
-    return "Shadow persona columns are missing in database. Apply latest migration and try again.";
+    return "Local persona columns are missing in the database. Apply the latest migration and try again.";
   }
 
   return message;
@@ -706,6 +710,10 @@ export function WhatsAppImportModal({
     () => getStreamShadowPersonas(personas, streamId),
     [personas, streamId],
   );
+  const globalPersonas = useMemo(
+    () => (personas ?? []).filter((persona) => !isShadowPersona(persona)),
+    [personas],
+  );
 
   // Documents the user/stream already has — used for duplicate detection
   const { documents } = useDocuments(streamId);
@@ -714,13 +722,19 @@ export function WhatsAppImportModal({
     () => new Set(shadowPersonas.map((p) => p.id)),
     [shadowPersonas],
   );
+  const globalPersonaIds = useMemo(
+    () => new Set(globalPersonas.map((p) => p.id)),
+    [globalPersonas],
+  );
   const draftPersonaIds = useMemo(
     () => new Set(Object.keys(draftPersonas)),
     [draftPersonas],
   );
   const validMapping = Object.fromEntries(
     Object.entries(mapping).filter(([, id]) =>
-      shadowPersonaIds.has(id) || draftPersonaIds.has(id),
+      shadowPersonaIds.has(id) ||
+      globalPersonaIds.has(id) ||
+      draftPersonaIds.has(id),
     ),
   );
   const allMapped = mappableSenders.every((s) => !!validMapping[s]);
@@ -731,7 +745,9 @@ export function WhatsAppImportModal({
   const getValidMapping = (snapshot: Record<string, string>) =>
     Object.fromEntries(
       Object.entries(snapshot).filter(([, id]) =>
-        shadowPersonaIds.has(id) || draftPersonaIds.has(id),
+        shadowPersonaIds.has(id) ||
+        globalPersonaIds.has(id) ||
+        draftPersonaIds.has(id),
       ),
     );
 
@@ -741,17 +757,17 @@ export function WhatsAppImportModal({
     setPendingPersonaCreations((prev) =>
       prev.filter((sender) => {
         const mappedId = mapping[sender];
-        // keep sender pending if it is not mapped to a valid shadow persona id
-        return !mappedId || !shadowPersonaIds.has(mappedId);
+        // keep sender pending only while it is still pointing at a local draft
+        return !mappedId || draftPersonaIds.has(mappedId);
       }),
     );
-  }, [mapping, shadowPersonaIds, pendingPersonaCreations.length]);
+  }, [mapping, draftPersonaIds, pendingPersonaCreations.length]);
 
   type PersonaCreateRow = {
     name: string;
     color: string;
     icon: string;
-    type: "HUMAN";
+    type: string;
     user_id: string;
     is_system: false;
   };
@@ -957,7 +973,7 @@ export function WhatsAppImportModal({
         name: sender,
         color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
         icon: "user",
-        type: "HUMAN",
+        type: DEFAULT_IMPORTED_PERSONA_TYPE,
         user_id: user.id,
         is_system: false,
       }));
@@ -2050,10 +2066,10 @@ export function WhatsAppImportModal({
                     </p>
                     <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
                       <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
-                        Using existing (shadow): {existingShadowReuseCount}
+                        Using existing local personas: {existingShadowReuseCount}
                       </span>
                       <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
-                        Will create on import (shadow): {step === "map" ? pendingPersonaCreations.length : 0}
+                        Will create on import (local): {step === "map" ? pendingPersonaCreations.length : 0}
                       </span>
                     </div>
                   </div>
@@ -2119,9 +2135,7 @@ export function WhatsAppImportModal({
                                   : "border border-border-default bg-surface-subtle text-text-muted"
                               }`}
                             >
-                              {isShadowPersona(assignedPersona)
-                                ? "Shadow"
-                                : "Global"}
+                              {getPersonaScopeLabel(assignedPersona)}
                             </span>
                             <button
                               onClick={() =>
@@ -2153,11 +2167,20 @@ export function WhatsAppImportModal({
                             <option value="" disabled>
                               Select persona…
                             </option>
+                            {globalPersonas.length > 0 && (
+                              <optgroup label="Available Everywhere">
+                                {globalPersonas.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name} (Global)
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
                             {shadowPersonas.length > 0 && (
-                              <optgroup label="Shadow Personas (This Stream)">
+                              <optgroup label="Local Personas (This Stream)">
                                 {shadowPersonas.map((p) => (
                                   <option key={p.id} value={p.id}>
-                                    {p.name} (Shadow)
+                                    {p.name} (Local)
                                   </option>
                                 ))}
                               </optgroup>
@@ -2175,8 +2198,8 @@ export function WhatsAppImportModal({
                       <Info className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>
                         {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will be
-                        created as shadow persona{unmappedCount !== 1 ? "s" : ""}{" "}
-                        when you import.
+                        created as local persona{unmappedCount !== 1 ? "s" : ""}{" "}
+                        for this stream when you import.
                       </span>
                     </div>
                       <div className="shrink-0">
@@ -2230,7 +2253,7 @@ export function WhatsAppImportModal({
                         ) : (
                           <>
                             <UserPlus className="h-3.5 w-3.5" />
-                            Batch create {unmappedCount} missing persona{unmappedCount !== 1 ? "s" : ""}
+                            Create {unmappedCount} local persona{unmappedCount !== 1 ? "s" : ""}
                           </>
                         )}
                       </button>

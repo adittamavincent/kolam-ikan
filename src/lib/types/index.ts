@@ -98,7 +98,7 @@ export interface DocumentImportDispatchResult {
 }
 
 // Enums
-export type PersonaType = "HUMAN" | "AI";
+export type PersonaType = string;
 
 // BlockNote Types
 export interface BlockNoteBlock {

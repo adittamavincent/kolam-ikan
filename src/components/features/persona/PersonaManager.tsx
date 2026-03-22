@@ -15,6 +15,14 @@ import { Persona } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import {
+  DEFAULT_PERSONA_TYPE,
+  getPersonaScopeDescription,
+  getPersonaScopeLabel,
+  getPersonaTintStyle,
+  getPersonaTypeLabel,
+  sanitizePersonaTypeInput,
+} from "@/lib/personas";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -83,33 +91,68 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
 
   // Form state
   const [name, setName] = useState("");
+  const [type, setType] = useState(DEFAULT_PERSONA_TYPE);
   const [icon, setIcon] = useState("user");
   const [color, setColor] = useState("#0ea5e9");
   const [error, setError] = useState<string | null>(null);
 
+  const resetForm = () => {
+    setName("");
+    setType(DEFAULT_PERSONA_TYPE);
+    setIcon("user");
+    setColor("#0ea5e9");
+    setError(null);
+  };
+
+  const beginCreate = () => {
+    setEditingPersona(null);
+    setDeletingPersona(null);
+    resetForm();
+    setIsCreating(true);
+  };
+
+  const beginEdit = (persona: Persona) => {
+    setEditingPersona(persona);
+    setDeletingPersona(null);
+    setIsCreating(false);
+    setName(persona.name);
+    setType(getPersonaTypeLabel(persona.type));
+    setIcon(persona.icon);
+    setColor(persona.color);
+    setError(null);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError("Name is required");
+      setError("Title is required");
       return;
     }
+
+    if (!type.trim()) {
+      setError("Type is required");
+      return;
+    }
+
+    const normalizedType = sanitizePersonaTypeInput(type);
 
     try {
       if (editingPersona) {
         await updatePersona.mutateAsync({
           id: editingPersona.id,
-          updates: { name, icon, color },
+          updates: { name: name.trim(), type: normalizedType, icon, color },
         });
         setEditingPersona(null);
       } else {
         await createPersona.mutateAsync({
-          name,
+          name: name.trim(),
           icon,
           color,
-          type: "HUMAN",
+          type: normalizedType,
         });
         setIsCreating(false);
       }
+      resetForm();
     } catch (saveError) {
       setError(getErrorMessage(saveError));
     }
@@ -127,8 +170,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     (persona) =>
       !persona.deleted_at &&
       !persona.is_system &&
-      persona.user_id === user?.id &&
-      (persona.type === "HUMAN" || isShadowPersona(persona)),
+      persona.user_id === user?.id,
   );
 
   const allVisibleSelected =
@@ -295,6 +337,13 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
       setError(getErrorMessage(deleteError));
     }
   };
+
+  const previewScopeSource = editingPersona
+    ? editingPersona
+    : { is_shadow: false as const };
+  const previewTypeLabel = sanitizePersonaTypeInput(type, DEFAULT_PERSONA_TYPE);
+  const canEditPersona = (persona: Persona) =>
+    !persona.is_system && persona.user_id === user?.id;
 
   return (
     <>
@@ -485,52 +534,128 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   </div>
                 ) : isCreating || editingPersona ? (
                   <form onSubmit={handleSave} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-text-subtle mb-1">
-                        Name
-                      </label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
-                        placeholder="e.g., Creative Mode"
-                        autoFocus
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-text-subtle mb-1">
-                        Color
-                      </label>
-                      <div className="flex gap-2 flex-wrap">
-                        {PRESET_COLORS.map((c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => setColor(c)}
-                            className={`w-8 h-8  border-2 transition-transform hover:scale-110 ${color === c ? "border-text-default" : "border-transparent"}`}
-                            style={{ backgroundColor: c }}
+                    <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-text-subtle">
+                            Title
+                          </label>
+                          <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
+                            placeholder="e.g., Creative Mode"
+                            maxLength={60}
+                            autoFocus
                           />
-                        ))}
-                      </div>
-                    </div>
+                        </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-text-subtle mb-1">
-                        Icon
-                      </label>
-                      <div className="grid grid-cols-6 gap-2">
-                        {PRESET_ICONS.map((ic) => (
-                          <button
-                            key={ic}
-                            type="button"
-                            onClick={() => setIcon(ic)}
-                            className={`flex items-center justify-center p-2  border transition-colors ${icon === ic ? "bg-action-primary-bg/10 border-border-default text-action-primary-bg" : "border-border-default hover:bg-surface-subtle text-text-subtle"}`}
-                          >
-                            <DynamicIcon name={ic} className="h-5 w-5" />
-                          </button>
-                        ))}
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-text-subtle">
+                            Type
+                          </label>
+                          <input
+                            type="text"
+                            value={type}
+                            onChange={(e) => setType(e.target.value)}
+                            className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
+                            placeholder="e.g., Mentor, Critic, Strategist"
+                            maxLength={40}
+                          />
+                          <p className="mt-1 text-[11px] text-text-muted">
+                            A flexible label that helps you distinguish the role this persona plays.
+                          </p>
+                        </div>
+
+                        <div className="rounded-md border border-border-default bg-surface-subtle/40 p-3">
+                          <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                            Scope
+                          </div>
+                          <div className="text-sm text-text-default">
+                            {getPersonaScopeLabel(previewScopeSource)}
+                          </div>
+                          <div className="mt-1 text-[11px] text-text-muted">
+                            {getPersonaScopeDescription(previewScopeSource)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div
+                          className="rounded-md border p-3"
+                          style={getPersonaTintStyle(
+                            {
+                              color,
+                              is_shadow: previewScopeSource.is_shadow,
+                              type: previewTypeLabel,
+                            },
+                            {
+                              backgroundAlpha: previewScopeSource.is_shadow ? 0.14 : 0.08,
+                              borderAlpha: 0.24,
+                            },
+                          )}
+                        >
+                          <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                            Preview
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="flex h-10 w-10 items-center justify-center rounded-md"
+                              style={{ backgroundColor: `${color}20`, color }}
+                            >
+                              <DynamicIcon name={icon} className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium text-text-default">
+                                {name.trim() || "Untitled Persona"}
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                                <span className="border border-border-default bg-surface-default/70 px-1.5 py-0.5 text-text-muted">
+                                  {previewTypeLabel}
+                                </span>
+                                <span className="border border-border-default bg-surface-default/70 px-1.5 py-0.5 text-text-muted">
+                                  {getPersonaScopeLabel(previewScopeSource)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-text-subtle">
+                            Color
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {PRESET_COLORS.map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => setColor(c)}
+                                className={`h-8 w-8 border-2 transition-transform hover:scale-110 ${color === c ? "border-text-default" : "border-transparent"}`}
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1 block text-sm font-medium text-text-subtle">
+                            Icon
+                          </label>
+                          <div className="grid grid-cols-6 gap-2">
+                            {PRESET_ICONS.map((ic) => (
+                              <button
+                                key={ic}
+                                type="button"
+                                onClick={() => setIcon(ic)}
+                                className={`flex items-center justify-center border p-2 transition-colors ${icon === ic ? "bg-action-primary-bg/10 border-border-default text-action-primary-bg" : "border-border-default hover:bg-surface-subtle text-text-subtle"}`}
+                              >
+                                <DynamicIcon name={ic} className="h-5 w-5" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -547,6 +672,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         onClick={() => {
                           setIsCreating(false);
                           setEditingPersona(null);
+                          resetForm();
                         }}
                         className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle transition-colors"
                       >
@@ -571,13 +697,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   <>
                     <div className="flex items-center justify-between mb-3">
                       <button
-                        onClick={() => {
-                          setIsCreating(true);
-                          setName("");
-                          setIcon("user");
-                          setColor("#0ea5e9");
-                          setError(null);
-                        }}
+                        onClick={beginCreate}
                         className="flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
                       >
                         <Plus className="h-4 w-4" />
@@ -655,8 +775,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                             isBulkMode &&
                             !persona.deleted_at &&
                             !persona.is_system &&
-                            persona.user_id === user?.id &&
-                            (persona.type === "HUMAN" || isShadowPersona(persona));
+                            persona.user_id === user?.id;
 
                           return (
                             <div
@@ -669,7 +788,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   togglePersonaSelection(persona.id);
                                 }
                               }}
-                              className={`flex items-center justify-between p-2  border border-border-default bg-surface-default  transition-colors ${persona.deleted_at ? "opacity-60" : ""} ${isSelectable ? "cursor-pointer" : ""}`}
+                              className={`flex items-center justify-between border border-border-default bg-surface-default p-2 transition-colors ${persona.deleted_at ? "opacity-60" : ""} ${isSelectable ? "cursor-pointer" : ""}`}
                             >
                               <div className="flex items-center gap-2">
                                 {isSelectable && (
@@ -682,46 +801,49 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                     className="h-4 w-4 pointer-events-none border-border-default"
                                   />
                                 )}
-                              <div
-                                className={`h-8 w-8  flex items-center justify-center ${isShadowPersona(persona) ? ' ' : ''}`}
-                                style={{
-                                  backgroundColor: `${persona.color}20`,
-                                  color: persona.color,
-                                }}
-                              >
-                                <DynamicIcon
-                                  name={persona.icon}
-                                  className="h-4 w-4"
-                                />
+                                <div
+                                  className="flex h-8 w-8 items-center justify-center rounded-md"
+                                  style={{
+                                    backgroundColor: `${persona.color}20`,
+                                    color: persona.color,
+                                  }}
+                                >
+                                  <DynamicIcon
+                                    name={persona.icon}
+                                    className="h-4 w-4"
+                                  />
+                                </div>
+                                <div>
+                                  <h4 className="flex items-center gap-1.5 text-sm font-medium text-text-default">
+                                    {persona.name}
+                                    {persona.is_system && (
+                                      <span className="border border-border-default bg-surface-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-text-muted">
+                                        System
+                                      </span>
+                                    )}
+                                    {isShadowPersona(persona) && (
+                                      <span className="border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                                        Local
+                                      </span>
+                                    )}
+                                    {persona.deleted_at && (
+                                      <span className="border border-status-error-text/20 bg-status-error-bg/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-status-error-text">
+                                        Deleted
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                                    <span className="border border-border-default bg-surface-subtle px-1.5 py-0.5 text-text-muted">
+                                      {getPersonaTypeLabel(persona.type)}
+                                    </span>
+                                    <span className="text-text-muted">
+                                      {getPersonaScopeDescription(persona)}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <div>
-                                <h4 className="text-sm font-medium text-text-default flex items-center gap-1.5">
-                                  {persona.name}
-                                  {persona.is_system && (
-                                    <span className="text-[10px] bg-surface-subtle text-text-muted px-1.5 py-0.5 border border-border-default uppercase tracking-wider">
-                                      System
-                                    </span>
-                                  )}
-                                  {isShadowPersona(persona) && (
-                                    <span className="text-[10px] bg-amber-500/10 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 border border-border-default/30">
-                                      Shadow
-                                    </span>
-                                  )}
-                                  {persona.deleted_at && (
-                                    <span className="text-[10px] bg-status-error-bg/20 text-status-error-text px-1.5 py-0.5 border border-status-error-text/20 uppercase tracking-wider">
-                                      Deleted
-                                    </span>
-                                  )}
-                                </h4>
-                                <p className="text-[11px] text-text-muted capitalize">
-                                  {persona.type.toLowerCase()}
-                                </p>
-                              </div>
-                            </div>
 
-                            {!persona.is_system &&
-                              persona.user_id === user?.id &&
-                              (persona.type === "HUMAN" || isShadowPersona(persona)) && (
+                              {canEditPersona(persona) && (
                                 <div className="flex items-center gap-1">
                                   {persona.deleted_at ? (
                                     <>
@@ -758,14 +880,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   ) : (
                                     <>
                                       <button
-                                        onClick={() => {
-                                          setEditingPersona(persona);
-                                          setDeletingPersona(null);
-                                          setName(persona.name);
-                                          setIcon(persona.icon);
-                                          setColor(persona.color);
-                                          setError(null);
-                                        }}
+                                        onClick={() => beginEdit(persona)}
                                         className="p-2 text-text-muted hover:text-text-default hover:bg-surface-subtle transition-colors"
                                         title="Edit"
                                       >
@@ -792,7 +907,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   )}
                                 </div>
                               )}
-                          </div>
+                            </div>
                         );
                       })
                       )}

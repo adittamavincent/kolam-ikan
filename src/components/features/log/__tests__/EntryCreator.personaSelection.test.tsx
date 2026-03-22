@@ -16,6 +16,17 @@ import React from "react";
 const mockSupabase = {
   auth: {
     getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }),
+    getSession: vi.fn().mockResolvedValue({
+      data: { session: { user: { id: "user-1", email: "test@example.com" } } },
+      error: null,
+    }),
+    onAuthStateChange: vi.fn(() => ({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    })),
   },
   rpc: vi.fn(),
   from: vi.fn(),
@@ -36,6 +47,17 @@ vi.mock("@/lib/hooks/usePersonas", () => ({
     personas: mockPersonas,
     isLoading: false,
   }),
+}));
+
+vi.mock("@/lib/hooks/useDocuments", () => ({
+  useDocuments: () => ({
+    documents: [],
+    isLoading: false,
+  }),
+}));
+
+vi.mock("@/components/features/documents/DocumentImportModal", () => ({
+  DocumentImportModal: () => null,
 }));
 
 vi.mock("@/lib/hooks/useKeyboard", () => ({
@@ -117,7 +139,7 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
 
   const clickPersonaInOpenMenu = (personaName: string) => {
     const menu = screen.getByRole("menu");
-    fireEvent.click(within(menu).getByRole("menuitem", { name: personaName }));
+    fireEvent.click(within(menu).getByText(personaName));
   };
 
   const getSectionPersonaButton = (personaName: string) => {
@@ -329,7 +351,7 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     );
 
     // Commit
-    const commitButton = screen.getByText("Commit Entry");
+    const commitButton = screen.getByText("Commit");
     fireEvent.click(commitButton);
 
     // Verify commit action is still available after switching persona
@@ -466,7 +488,7 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     );
 
     // Try to commit without content
-    const commitButton = screen.getByText("Commit Entry");
+    const commitButton = screen.getByText("Commit");
 
     // Button should be disabled
     expect(commitButton).toHaveClass("cursor-not-allowed");

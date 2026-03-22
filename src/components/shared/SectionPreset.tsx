@@ -1,12 +1,9 @@
 import React from "react";
 import { Persona } from "@/lib/types";
+import { getPersonaTintStyle } from "@/lib/personas";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null } | null | undefined): boolean {
   return persona?.is_shadow === true;
-}
-
-function isAiPersona(persona: { type?: string | null } | null | undefined): boolean {
-  return persona?.type === "AI";
 }
 
 interface PersonaSectionBackgroundProps {
@@ -22,17 +19,15 @@ function PersonaSectionBackground({
   children,
   className = "",
 }: PersonaSectionBackgroundProps) {
-  const bgClass =
-    persona && isAiPersona(persona)
-      ? "bg-sky-500/5"
-      : persona && isShadowPersona(persona)
-      ? "bg-amber-500/5"
-      : isAttachment
-      ? "bg-surface-subtle/25"
-      : "";
+  const bgClass = !persona && isAttachment ? "bg-surface-subtle/25" : "";
+  const bgStyle = persona
+    ? getPersonaTintStyle(persona, {
+        backgroundAlpha: isShadowPersona(persona) ? 0.08 : 0.05,
+      })
+    : undefined;
 
   return (
-    <div className={`flex flex-col ${bgClass} ${className}`}>
+    <div className={`flex flex-col ${bgClass} ${className}`} style={bgStyle}>
       {children}
     </div>
   );
@@ -51,16 +46,20 @@ function PersonaSectionHeader({
   children,
   className = "",
 }: PersonaSectionHeaderProps) {
-  const headerBgClass =
-    persona && isAiPersona(persona)
-      ? "bg-sky-500/10 border-border-default/20"
-      : persona && isShadowPersona(persona)
-      ? "bg-amber-500/10 border-border-default/20"
-      : "bg-surface-subtle/50 border-border-default/70";
+  const headerBgClass = persona
+    ? ""
+    : "bg-surface-subtle/50 border-border-default/70";
+  const headerStyle = persona
+    ? getPersonaTintStyle(persona, {
+        backgroundAlpha: isShadowPersona(persona) ? 0.16 : 0.1,
+        borderAlpha: 0.22,
+      })
+    : undefined;
 
   return (
     <div
       className={`flex items-center justify-between px-4 ${isAttachment ? "py-1.5" : "py-1"} border-y ${headerBgClass} ${className}`}
+      style={headerStyle}
     >
       {children}
     </div>

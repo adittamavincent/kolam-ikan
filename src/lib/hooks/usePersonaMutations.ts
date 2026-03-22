@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { Persona, PersonaInsert } from "@/lib/types";
+import { DEFAULT_PERSONA_TYPE, sanitizePersonaTypeInput } from "@/lib/personas";
 
 export function usePersonaMutations() {
   const supabase = createClient();
@@ -24,7 +25,7 @@ export function usePersonaMutations() {
         ...newPersona,
         user_id: user.id,
         is_system: false,
-        type: newPersona.type ?? "HUMAN", // Default to HUMAN for user-created personas
+        type: sanitizePersonaTypeInput(newPersona.type, DEFAULT_PERSONA_TYPE),
       });
 
       if (error) throw error;

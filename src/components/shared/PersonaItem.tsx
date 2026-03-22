@@ -6,6 +6,10 @@ import { Menu, MenuButton, MenuItems, MenuItem, Transition } from "@headlessui/r
 import { ChevronDown, FileText } from "lucide-react";
 // PersonaIcon removed from this file (unused import)
 import { getPersonaHoverClass } from "./getPersonaHoverClass";
+import {
+  getPersonaScopeDescription,
+  getPersonaTypeLabel,
+} from "@/lib/personas";
 
 interface PersonaButtonDisplayProps {
   persona: Persona | null;
@@ -14,6 +18,7 @@ interface PersonaButtonDisplayProps {
   compact?: boolean;
   nameClass?: string;
   showChevron?: boolean;
+  showMeta?: boolean;
 }
 
 function PersonaButtonDisplay({
@@ -23,6 +28,7 @@ function PersonaButtonDisplay({
   compact = false,
   nameClass = "",
   showChevron = true,
+  showMeta = false,
 }: PersonaButtonDisplayProps) {
   if (!persona) {
     return (
@@ -45,7 +51,20 @@ function PersonaButtonDisplay({
         >
           <DynamicIcon name={persona.icon} className="h-2.5 w-2.5" />
         </div>
-        <span className={`${nameClass} ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}>{persona.name}</span>
+        {showMeta ? (
+          <div className="min-w-0">
+            <div
+              className={`${nameClass} truncate ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}
+            >
+              {persona.name}
+            </div>
+            <div className="truncate text-[10px] text-text-muted">
+              {getPersonaTypeLabel(persona.type)} • {getPersonaScopeDescription(persona)}
+            </div>
+          </div>
+        ) : (
+          <span className={`${nameClass} ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}>{persona.name}</span>
+        )}
       </div>
       {showChevron && <ChevronDown className="h-3 w-3 text-text-muted opacity-50 ml-2" />}
     </>
@@ -59,6 +78,7 @@ interface PersonaItemProps {
   onClick?: () => void;
   compact?: boolean;
   className?: string;
+  style?: React.CSSProperties;
   title?: string;
   // when provided, render as a selector control using these menu props
   menuProps?: {
@@ -79,6 +99,7 @@ export function PersonaItem({
   onClick,
   compact = false,
   className = "",
+  style,
   title,
   menuProps = null,
 }: PersonaItemProps) {
@@ -94,7 +115,7 @@ export function PersonaItem({
     // change persona unless the UI is in amend/edit mode.
     if (readOnly) {
       return (
-        <div className={containerClass} title={title}>
+        <div className={containerClass} style={style} title={title}>
           <PersonaButtonDisplay
             persona={currentPersona}
             isAttachment={isAttachment}
@@ -102,6 +123,7 @@ export function PersonaItem({
             compact={compact}
             nameClass={nameClass || "text-[10px] font-medium text-text-subtle  tracking-wider"}
             showChevron={false}
+            showMeta={false}
           />
         </div>
       );
@@ -119,6 +141,7 @@ export function PersonaItem({
             compact={false}
             nameClass="text-[10px] font-medium text-text-subtle tracking-wider"
             showChevron={!readOnly}
+            showMeta={false}
           />
         </MenuButton>
 
@@ -134,14 +157,14 @@ export function PersonaItem({
           >
             <MenuItems
               anchor={{ to: "bottom start", gap: 4 }}
-              className="z-9999 w-48 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl"
+              className="z-9999 w-64 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl"
             >
               <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                 Switch to...
               </div>
               {globalPersonas.length > 0 && (
                 <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
-                  Global Personas
+                  Available Everywhere
                 </div>
               )}
               {globalPersonas.map((p) => (
@@ -159,7 +182,7 @@ export function PersonaItem({
 
               {shadowPersonas.length > 0 && (
                 <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                  Shadow Personas
+                  Local To This Stream
                 </div>
               )}
               {shadowPersonas.map((p) => (
@@ -182,9 +205,19 @@ export function PersonaItem({
   }
 
   return (
-    <button onClick={onClick} className={containerClass} title={title}>
-      <PersonaButtonDisplay persona={persona} compact={compact} nameClass={nameClass} showChevron={false} />
+    <button
+      onClick={onClick}
+      className={containerClass}
+      style={style}
+      title={title}
+    >
+      <PersonaButtonDisplay
+        persona={persona}
+        compact={compact}
+        nameClass={nameClass}
+        showChevron={false}
+        showMeta={!compact}
+      />
     </button>
   );
 }
-

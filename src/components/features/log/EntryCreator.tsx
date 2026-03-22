@@ -54,6 +54,7 @@ import { PersonaManager } from "@/components/features/persona/PersonaManager";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { NavigationGuard } from "@/components/features/log/NavigationGuard";
 import { FileAttachmentPreviewDialog } from "./FileAttachmentPreviewDialog";
+import { getPersonaTintStyle } from "@/lib/personas";
 import {
   DndContext,
   closestCenter,
@@ -72,10 +73,6 @@ import { CSS } from "@dnd-kit/utilities";
 
 function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
-}
-
-function isAiPersona(persona: { type?: string | null }): boolean {
-  return persona.type === "AI";
 }
 
 function textToBlockContent(text: string) {
@@ -1381,13 +1378,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 persona={persona}
                 compact
                 title={`Quick add ${persona.name}`}
-                className={`${
-                  isAiPersona(persona)
-                    ? "border-border-default/30 bg-sky-500/10 hover:bg-sky-500/15"
-                    : isShadowPersona(persona)
-                    ? "border-border-default/30 bg-amber-500/10 hover:bg-amber-500/15"
-                    : "border-border-default/70 bg-surface-subtle/40 hover:bg-surface-subtle"
-                } text-text-default`}
+                className="border text-text-default hover:brightness-[0.98]"
+                style={getPersonaTintStyle(persona, {
+                  backgroundAlpha: isShadowPersona(persona) ? 0.16 : 0.1,
+                  borderAlpha: 0.24,
+                })}
                 onClick={() => addPersona(persona.id)}
               />
             ))}
@@ -1410,14 +1405,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <MenuItems
                   anchor={{ to: "bottom start", gap: 4 }}
                   portal
-                  className="z-9999 w-56 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
+                  className="z-9999 w-64 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
                 >
                   <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                     Add Author Section
                   </div>
                   {globalPersonas.length > 0 && (
                     <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
-                      Global Personas
+                      Available Everywhere
                     </div>
                   )}
                   {globalPersonas.map((persona) => (
@@ -1434,7 +1429,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   ))}
                   {shadowPersonas.length > 0 && (
                     <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                      Shadow Personas
+                      Local To This Stream
                     </div>
                   )}
                   {shadowPersonas.map((persona) => (

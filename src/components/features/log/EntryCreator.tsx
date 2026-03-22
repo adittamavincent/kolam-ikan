@@ -1395,7 +1395,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         >
           <div className="flex flex-col">
           {/* Persona picker */}
-          <div className="flex items-center gap-2 flex-wrap border-b border-border-default/35 bg-action-primary-bg/10 p-2">
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-border-default/35 bg-action-primary-bg/10 p-1">
             {quickPersonas.map((persona) => (
               <PersonaItem
                 key={`quick-persona-${persona.id}`}
@@ -1412,7 +1412,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             ))}
 
             <Menu as="div" className="relative z-30">
-              <MenuButton className="flex items-center gap-1.5 border border-border-default/35 px-2 py-1 text-xs font-medium transition-colors hover:bg-surface-subtle focus:">
+              <MenuButton className="flex items-center gap-1 border border-border-default/35 px-1.5 py-1 text-[11px] font-medium transition-colors hover:bg-surface-subtle focus:">
                 <Plus className="h-3 w-3 text-text-subtle" />
                 <span className="text-text-default">Add Persona</span>
               </MenuButton>
@@ -1502,7 +1502,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           </div>
 
           {sections.length === 0 && (
-            <div className="border-b border-border-default/35 bg-surface-default/55 px-3 py-5 text-center text-xs text-text-muted">
+            <div className="border-b border-border-default/35 bg-surface-default/55 px-2 py-4 text-center text-xs text-text-muted">
               Add a persona or attach a file to start building this entry.
             </div>
           )}
@@ -1517,7 +1517,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               items={sections.map((s) => s.instanceId)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="flex flex-col gap-3 px-3 py-3">
+              <div className="flex flex-col gap-2">
                 {sections.map((section, sectionIndex) => {
                   const { instanceId } = section;
                   const isAttachment = section.kind === "FILE_ATTACHMENT";
@@ -1585,11 +1585,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               >
                                 <GripVertical className="h-3 w-3" />
                               </button>
-                              <div className="inline-flex items-center gap-1.5 border border-border-default/55 bg-surface-default/80 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                              <div className="inline-flex items-center gap-1 border border-border-default/55 bg-surface-default/80 px-1 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
                                 <span className="text-text-default/80">
                                   S{sectionIndex + 1}
                                 </span>
-                                <span className="h-px w-2 bg-border-strong" />
+                                <span className="h-px w-1.5 bg-border-strong" />
                                 <span>{isAttachment ? "Attachment" : "Message"}</span>
                               </div>
                             </div>
@@ -1612,7 +1612,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               {persona && !isLocalPersona(persona) && (
                                 <button
                                   onClick={() => toggleSectionKind(instanceId)}
-                                  className="text-text-muted hover:text-text-default p-0.5 hover:bg-surface-subtle transition-colors mr-1"
+                                  className="mr-1 p-0.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
                                   title={
                                     isAttachment
                                       ? "Switch to Text Editor"
@@ -1629,19 +1629,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                               <button
                                 onClick={() => removeSection(instanceId)}
-                                className="text-text-muted hover:text-text-default p-0.5 hover:bg-surface-subtle transition-colors"
+                                className="p-0.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
                                 title="Remove this section"
                               >
                                 <X className="h-3 w-3" />
                               </button>
                             </>
                           }
-                          contentClassName="space-y-2 px-3 py-3"
+                          contentClassName="space-y-1"
                         >
                           {/* BODY CONTENT */}
                           {isPersona ? (
                             /* BLOCKNOTE EDITOR */
-                            <div className="border border-border-default/45 bg-surface-default/80 px-3 py-2">
+                            <div className="section-editor-surface">
                               <BlockNoteEditor
                                 initialContent={getDraftContent(instanceId)}
                                 onChange={(content) => {
@@ -1714,9 +1714,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </div>
                           ) : (
                             /* FILE ATTACHMENTS BLOCK */
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                               <div className="flex flex-wrap items-center gap-2">
-                                <label className="inline-flex cursor-pointer items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
+                                <label className="inline-flex cursor-pointer items-center gap-1.5 border border-border-default bg-surface-subtle px-2 py-1 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
                                   <Upload className="h-3 w-3" />
                                   Upload File
                                   <input
@@ -1766,7 +1766,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
                                 <button
                                   type="button"
-                                  className="inline-flex items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
+                                  className="inline-flex items-center gap-1.5 border border-border-default bg-surface-subtle px-2 py-1 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
                                   onClick={() => {
                                     setImportModalFiles([]);
                                     setFilePickerTargetInstanceId(instanceId);
@@ -1784,7 +1784,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                 )}
                               </div>
                               {effectiveAttachments.length === 0 ? (
-                                <div className="border border-dashed border-border-default bg-surface-subtle/30 px-3 py-4 text-center text-xs text-text-muted">
+                                <div className="border border-dashed border-border-default bg-surface-subtle/30 px-2 py-3 text-center text-xs text-text-muted">
                                   Drop or attach one or more files to start
                                   building this section.
                                 </div>
@@ -1889,7 +1889,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
           {/* Footer — commit action */}
           {sections.length > 0 && (
-            <div className="flex items-center justify-between border-t border-border-default/35 bg-action-primary-bg/10 px-3 py-2">
+            <div className="flex items-center justify-between border-t border-border-default/35 bg-action-primary-bg/10 px-2 py-1">
               <div className="text-[10px] text-text-muted">
                 <kbd className=" border border-border-default bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
                   ⌘+Enter

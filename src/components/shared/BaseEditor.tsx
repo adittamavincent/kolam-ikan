@@ -1002,11 +1002,11 @@ export default function BaseEditor({
   return (
     <div 
       ref={containerRef}
-      className={`${stylainMode === "B" ? "stylain-editor-shell" : "blocknote-editor"} w-full max-w-full overflow-hidden wrap-anywhere [word-break:break-word]`}
+      className={`section-editor-surface ${stylainMode === "B" ? "stylain-editor-shell overflow-visible" : "blocknote-editor overflow-hidden"} w-full max-w-full wrap-anywhere [word-break:break-word]`}
     >
       {stylainMode === "B" ? (
         <div 
-          className={`stylain-raw-editor relative flex w-full border border-border-default/40 bg-surface-subtle/40 overflow-hidden ${editable ? "" : "pointer-events-none select-none"}`}
+          className={`stylain-raw-editor relative z-10 flex w-full overflow-visible ${editable ? "" : "pointer-events-none select-none"}`}
           style={{ height: `${editorHeight}px` }}
           onBlur={() => {
             // If focus leaves Monaco while a debounce is pending (e.g. Save/Commit click),

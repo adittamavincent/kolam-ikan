@@ -268,10 +268,45 @@ body {
 /*  BLOCKNOTE DARK-MODE BACKGROUND FIX                                       */
 /* -------------------------------------------------------------------------- */
 
-/* Make BlockNote editor background transparent so it inherits the container */
-[data-color-scheme="dark"] .bn-container,
-[data-color-scheme="dark"] .bn-editor {
+/* Make BlockNote editor background transparent so it inherits the section frame */
+.blocknote-editor,
+.bn-container,
+.bn-editor,
+.bn-editor .ProseMirror {
   background-color: transparent !important;
+}
+
+.entry-creator .section-editor-surface,
+.log-pane .section-editor-surface {
+  padding: 0 !important;
+}
+
+.entry-creator .stylain-raw-editor,
+.entry-creator .stylain-raw-editor .monaco-editor,
+.entry-creator .stylain-raw-editor .overflow-guard,
+.entry-creator .stylain-raw-editor .monaco-editor-background,
+.entry-creator .stylain-raw-editor .margin,
+.entry-creator .stylain-raw-editor .margin-view-overlays,
+.log-pane .stylain-raw-editor,
+.log-pane .stylain-raw-editor .monaco-editor,
+.log-pane .stylain-raw-editor .overflow-guard,
+.log-pane .stylain-raw-editor .monaco-editor-background,
+.log-pane .stylain-raw-editor .margin,
+.log-pane .stylain-raw-editor .margin-view-overlays {
+  background: transparent !important;
+}
+
+.entry-creator .stylain-raw-editor,
+.entry-creator .stylain-raw-editor .monaco-editor,
+.log-pane .stylain-raw-editor,
+.log-pane .stylain-raw-editor .monaco-editor {
+  overflow: visible !important;
+}
+
+.monaco-editor .suggest-widget,
+.monaco-editor .parameter-hints-widget,
+.monaco-editor .monaco-hover {
+  z-index: 120 !important;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -557,4 +592,3 @@ body {
 .am-table th, .am-table td { border: 1px solid rgba(0,0,0,0.08); padding: 6px 8px; text-align: left; }
 .am-table thead th { background: #f6f9ff; }
 .am-root mark { padding: 0 4px; border-radius: 3px; background: #fff7b2; }
-

@@ -12,6 +12,7 @@ interface ThreadFrameProps {
   header?: React.ReactNode;
   footer?: React.ReactNode;
   children?: React.ReactNode;
+  hideBody?: boolean;
   nested?: boolean;
   className?: string;
   frameClassName?: string;
@@ -28,6 +29,7 @@ export function ThreadFrame({
   header,
   footer,
   children,
+  hideBody = false,
   nested = false,
   className = "",
   frameClassName = "",
@@ -40,11 +42,11 @@ export function ThreadFrame({
   footerStyle,
 }: ThreadFrameProps) {
   return (
-    <div className={`${nested ? "relative pl-6" : ""} ${className}`.trim()}>
+    <div className={`${nested ? "relative pl-5" : ""} ${className}`.trim()}>
       {nested && (
         <>
           <div className="pointer-events-none absolute bottom-0 left-2 top-0 w-px bg-border-default/35" />
-          <div className="pointer-events-none absolute left-2 top-[1.15rem] h-px w-3 bg-border-default/35" />
+          <div className="pointer-events-none absolute left-2 top-3.5 h-px w-2.5 bg-border-default/35" />
         </>
       )}
 
@@ -54,22 +56,22 @@ export function ThreadFrame({
       >
         {header && (
           <div
-            className={`border-b border-border-default/35 px-3 py-2 ${headerClassName}`.trim()}
+            className={`${hideBody ? "" : "border-b border-border-default/35"} px-0.75 ${headerClassName}`.trim()}
             style={headerStyle}
           >
             {header}
           </div>
         )}
 
-        {children && (
-          <div className={bodyClassName} style={bodyStyle}>
+        {children && !hideBody && (
+          <div className={`p-1 ${bodyClassName}`.trim()} style={bodyStyle}>
             {children}
           </div>
         )}
 
         {footer && (
           <div
-            className={`border-t border-border-default/35 ${footerClassName}`.trim()}
+            className={`border-t border-border-default/35 p-1 ${footerClassName}`.trim()}
             style={footerStyle}
           >
             {footer}
@@ -138,12 +140,14 @@ export function SectionPreset({
       headerStyle={headerStyle}
       bodyStyle={bodyStyle}
       header={
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            {leftHeader}
-            {centerHeader}
-          </div>
-          <div className="flex shrink-0 items-center gap-1">{rightHeader}</div>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {leftHeader && <div className="flex shrink-0 items-center">{leftHeader}</div>}
+          <div className="min-w-0 flex flex-1 items-center">{centerHeader}</div>
+          {rightHeader && (
+            <div className="ml-auto flex shrink-0 items-center gap-1">
+              {rightHeader}
+            </div>
+          )}
         </div>
       }
     >

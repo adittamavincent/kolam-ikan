@@ -1407,6 +1407,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           className={isStashed ? "opacity-50" : undefined}
                         >
                           <ThreadFrame
+                            hideBody={isCollapsed}
                             frameClassName={`group transition-colors ${
                               isCollapsed
                                 ? "border-border-default/70 bg-surface-default"
@@ -1417,7 +1418,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                 ? "bg-surface-subtle/75 hover:bg-surface-subtle"
                                 : "bg-action-primary-bg/10 hover:bg-action-primary-bg/15"
                             } ${isAmending ? "cursor-default" : "cursor-pointer"} transition-colors`}
-                            bodyClassName="bg-surface-default/55 px-3 pb-3 pt-2"
+                            bodyClassName="bg-surface-default/55"
                             header={
                               <div
                                 role="button"
@@ -1568,7 +1569,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                               </div>
                             )}
                             {!isCollapsed && (
-                              <div className="flex flex-col gap-3">
+                              <div className="flex flex-col gap-2">
                                 {entry.sections?.map(
                                   (
                                     section: EntryWithSections["sections"][number],

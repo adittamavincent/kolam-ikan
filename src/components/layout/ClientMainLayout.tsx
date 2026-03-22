@@ -17,7 +17,6 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useSidebar } from "@/lib/hooks/useSidebar";
 import { useLayout } from "@/lib/hooks/useLayout";
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/types/database.types";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import {
   Dialog,
@@ -32,8 +31,26 @@ interface ClientMainLayoutProps {
   userId: string;
 }
 
-type CanvasSearchResult =
-  Database["public"]["Functions"]["search_canvases"]["Returns"][number];
+type CanvasSearchResult = {
+  content_preview: string;
+  domain_icon: string;
+  domain_id: string;
+  domain_name: string;
+  id: string;
+  stream_id: string;
+  stream_name: string;
+  updated_at: string | null;
+};
+
+type CanvasSearchRpcClient = {
+  rpc: (
+    fn: "search_canvases",
+    args: { p_limit: number; p_query: string },
+  ) => Promise<{
+    data: CanvasSearchResult[] | null;
+    error: unknown;
+  }>;
+};
 
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 500;
@@ -297,8 +314,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           .ilike("search_text", `%${cleaned}%`)
           .limit(25);
 
-        const { data: canvasData, error: canvasSearchError } = await supabase
-          .rpc("search_canvases", {
+        const { data: canvasData, error: canvasSearchError } = await (
+          supabase as typeof supabase & CanvasSearchRpcClient
+        ).rpc("search_canvases", {
             p_limit: 15,
             p_query: cleaned,
           });

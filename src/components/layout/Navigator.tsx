@@ -1350,8 +1350,10 @@ export function Navigator({}: NavigatorProps) {
         cabinet_id: newStream.cabinet_id ?? null,
         domain_id: newStream.domain_id,
         sort_order: newStream.sort_order ?? 0,
+        description: null,
         stream_kind:
           (newStream.stream_kind as StreamKind) ?? STREAM_KIND.REGULAR,
+        is_system_global: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,

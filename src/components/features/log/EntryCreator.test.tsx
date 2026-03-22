@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+} from "@testing-library/react";
 import { EntryCreator } from "./EntryCreator";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
@@ -10,6 +16,9 @@ const mockMutateAsync = vi.fn();
 const mockSaveDraft = vi.fn();
 const mockCommitDraft = vi.fn();
 const mockDraftContents: Record<string, unknown[]> = {};
+const mockGetDraftContent = (instanceId: string) =>
+  mockDraftContents[instanceId] ?? [];
+const mockGetFileAttachmentDraft = () => undefined;
 
 vi.mock("@tanstack/react-query", async () => {
   const actual = await vi.importActual("@tanstack/react-query");
@@ -113,8 +122,8 @@ vi.mock("@/lib/hooks/useDraftSystem", () => ({
     saveFileAttachmentDraft: vi.fn(),
     commitDraft: mockCommitDraft,
     initialDrafts: {},
-    getDraftContent: (instanceId: string) => mockDraftContents[instanceId] ?? [],
-    getFileAttachmentDraft: () => undefined,
+    getDraftContent: mockGetDraftContent,
+    getFileAttachmentDraft: mockGetFileAttachmentDraft,
     isLoading: false,
     setActiveInstances: vi.fn(),
     flushPendingSaves: vi.fn(),
@@ -204,5 +213,27 @@ describe("EntryCreator", () => {
     fireEvent.click(commitBtn);
 
     expect(mockCommitDraft).toHaveBeenCalled();
+  });
+
+  it("enables the commit button after typing meaningful content", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    const commitBtn = await screen.findByRole("button", {
+      name: /commit entry/i,
+    });
+    expect(commitBtn).toBeDisabled();
+
+    const editor = await screen.findByTestId("mock-editor");
+    fireEvent.change(editor, { target: { value: "Test content" } });
+
+    await waitFor(() => {
+      expect(commitBtn).toBeEnabled();
+    });
   });
 });

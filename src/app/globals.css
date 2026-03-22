@@ -215,6 +215,16 @@ body {
 /* -------------------------------------------------------------------------- */
 
 /* Ensure BlockNote editor content wraps properly for long strings */
+:root {
+  --editor-body-font-size: 0.8125rem; /* 13px */
+  --editor-mono-line-height: 1.5rem; /* 24px */
+  --blocknote-line-height: 1.25rem; /* 20px */
+  --blocknote-block-padding-y: 0.125rem; /* 2px */
+  --blocknote-row-height: calc(
+    var(--blocknote-line-height) + (var(--blocknote-block-padding-y) * 2)
+  ); /* 24px */
+}
+
 .blocknote-editor,
 .blocknote-editor * {
   max-width: 100%;
@@ -222,12 +232,81 @@ body {
   word-break: break-word;
 }
 
-/* Base font-size reduction for the entire editor */
+/* Match BlockNote body typography to Monaco's 13px editor text. */
 .blocknote-editor {
-  font-size: 0.875rem !important; /* 14px */
+  font-size: var(--editor-body-font-size) !important;
 }
 
-/* Keep BlockNote typography geometry on defaults so side-menu alignment stays correct. */
+.blocknote-editor .bn-block-outer {
+  line-height: var(--blocknote-line-height) !important;
+}
+
+.blocknote-editor .bn-block-content {
+  min-height: var(--blocknote-row-height);
+  padding-block: var(--blocknote-block-padding-y) !important;
+}
+
+.blocknote-editor .bn-editor,
+.blocknote-editor .bn-editor .ProseMirror,
+.blocknote-editor .bn-block-content,
+.blocknote-editor .bn-inline-content,
+.blocknote-editor .ProseMirror p,
+.blocknote-editor .ProseMirror div,
+.blocknote-editor .ProseMirror li,
+.blocknote-editor .ProseMirror pre {
+  font-size: var(--editor-body-font-size) !important;
+  line-height: var(--blocknote-line-height) !important;
+}
+
+/* Keep the BlockNote side menu visually proportional to the smaller body text. */
+.blocknote-editor .bn-side-menu {
+  font-size: var(--editor-body-font-size) !important;
+  height: var(--blocknote-row-height) !important;
+}
+
+.blocknote-editor .bn-side-menu[data-block-type="heading"][data-level="1"] {
+  height: 3.875rem !important; /* 62px */
+}
+
+.blocknote-editor .bn-side-menu[data-block-type="heading"][data-level="2"] {
+  height: 2.6875rem !important; /* 43px */
+}
+
+.blocknote-editor .bn-side-menu[data-block-type="heading"][data-level="3"] {
+  height: 1.875rem !important; /* 30px */
+}
+
+.blocknote-editor .bn-side-menu[data-block-type="file"] {
+  height: 1.875rem !important;
+}
+
+.blocknote-editor .bn-side-menu[data-block-type="audio"] {
+  height: 3rem !important;
+}
+
+.blocknote-editor .bn-side-menu[data-url="false"] {
+  height: 2.6875rem !important;
+}
+
+.blocknote-editor .bn-side-menu button,
+.blocknote-editor .bn-side-menu .mantine-Menu-item,
+.blocknote-editor .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) {
+  min-width: 1.375rem;
+  min-height: 1.375rem;
+  height: 1.375rem !important;
+  padding: 0.125rem !important;
+  font-size: 0.75rem !important;
+}
+
+.blocknote-editor .bn-side-menu svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.blocknote-editor .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
 
 /* Scale down UI elements slightly (toolbar, menus) to feel more compact */
 .blocknote-editor .bn-toolbar,
@@ -235,8 +314,6 @@ body {
   transform: scale(0.9);
   transform-origin: top left;
 }
-
-/* Let BlockNote manage side-menu geometry natively. */
 
 /* Handle specific BlockNote elements that might contain long text */
 .bn-block-content,
@@ -408,7 +485,7 @@ body {
   font-family: var(--stylain-font-mono) !important;
   color: var(--stylain-code-fg) !important;
   caret-color: var(--stylain-code-fg) !important;
-  line-height: 1.5rem !important;
+  line-height: var(--editor-mono-line-height) !important;
   tab-size: 2;
   white-space: pre-wrap;
   word-break: break-word;
@@ -422,15 +499,15 @@ body {
 
 .stylain-ide .stylain-raw-measure {
   font-family: var(--stylain-font-mono) !important;
-  font-size: 13px;
-  line-height: 1.5rem;
+  font-size: var(--editor-body-font-size);
+  line-height: var(--editor-mono-line-height);
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
 }
 
 .stylain-ide .stylain-raw-measure-row {
-  min-height: 1.5rem;
+  min-height: var(--editor-mono-line-height);
 }
 
 .stylain-ide .bn-editor,
@@ -514,7 +591,7 @@ body {
   color: var(--stylain-code-fg);
   opacity: 0.65;
   font-family: var(--stylain-font-mono) !important;
-  font-size: 0.8125rem; /* 13px */
+  font-size: var(--editor-body-font-size);
   line-height: 1;
   padding-right: 0.5rem;
   user-select: none;

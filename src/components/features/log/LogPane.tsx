@@ -49,7 +49,6 @@ import { EntryWithSections, SectionFileAttachmentWithDocument } from "@/lib/type
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { PartialBlock } from "@blocknote/core";
-import { useParams } from "next/navigation";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
 
@@ -370,9 +369,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
     null,
   );
-  const params = useParams();
-  const domainId = (params?.domain as string | undefined) ?? "";
-
   useEffect(() => {
     setHasHydrated(true);
   }, []);
@@ -1319,7 +1315,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           <div className="flex-1 overflow-hidden">
             <CommitGraph
               currentStreamId={streamId}
-              domainId={domainId}
               tags={tags}
               latestEntryId={latestEntryId ?? null}
               onEntryClick={(_streamId, entryId) => {

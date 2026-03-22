@@ -472,22 +472,18 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     streamId,
   });
 
-  const hasCommitableContent = useMemo(
-    () =>
-      sections.some((section) => {
-        if (section.kind === "FILE_ATTACHMENT") {
-          const attachmentDraft = getFileAttachmentDraft(section.instanceId);
-          return (
-            section.attachments.length > 0 ||
-            (attachmentDraft?.attachments?.length ?? 0) > 0 ||
-            section.note.trim().length > 0
-          );
-        }
+  const hasCommitableContent = sections.some((section) => {
+    if (section.kind === "FILE_ATTACHMENT") {
+      const attachmentDraft = getFileAttachmentDraft(section.instanceId);
+      return (
+        section.attachments.length > 0 ||
+        (attachmentDraft?.attachments?.length ?? 0) > 0 ||
+        section.note.trim().length > 0
+      );
+    }
 
-        return hasMeaningfulDraftContent(getDraftContent(section.instanceId));
-      }),
-    [getDraftContent, getFileAttachmentDraft, sections],
-  );
+    return hasMeaningfulDraftContent(getDraftContent(section.instanceId));
+  });
 
   const isCommitDisabled =
     status === "saving" ||
@@ -1889,7 +1885,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
           {/* Footer — commit action */}
           {sections.length > 0 && (
-            <div className="flex items-center justify-between border-t border-border-default/35 bg-action-primary-bg/10 px-2 py-1">
+            <div className="flex items-center justify-between border-t border-border-default/35 bg-action-primary-bg/10 p-1">
               <div className="text-[10px] text-text-muted">
                 <kbd className=" border border-border-default bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
                   ⌘+Enter

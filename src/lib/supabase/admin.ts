@@ -7,13 +7,13 @@ export function createAdminClient() {
   if (adminClient) return adminClient;
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !secretKey) {
     throw new Error("Missing Supabase admin configuration");
   }
 
-  adminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
+  adminClient = createClient<Database>(supabaseUrl, secretKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

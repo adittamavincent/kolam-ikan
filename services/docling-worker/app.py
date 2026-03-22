@@ -393,8 +393,8 @@ def generate_and_upload_thumbnail(
         with open(temp_thumb_path, "rb") as f:
             file_data = f.read()
 
-        supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        supabase_url = os.getenv("DOC_IMPORT_SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_SECRET_KEY")
 
         if not supabase_url or not supabase_key:
             logger.error("Supabase credentials not configured for thumbnail upload")
@@ -567,8 +567,8 @@ async def create_thumbnail(request: ThumbnailRequest) -> dict[str, Any]:
             request.fileName,
         )
 
-        supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
-        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        supabase_url = os.getenv("DOC_IMPORT_SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_SECRET_KEY")
         if supabase_url and supabase_key:
             update_payload = {
                 "thumbnail_status": thumbnail_status,

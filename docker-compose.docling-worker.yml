@@ -8,9 +8,7 @@ services:
     environment:
       DOC_IMPORT_CALLBACK_BASE_URL: http://host.docker.internal:3000
       DOC_IMPORT_STORAGE_BASE_URL: http://host.docker.internal:54321
-      # Supabase admin credentials required for thumbnail uploads and other admin operations
-      SUPABASE_URL: ${SUPABASE_URL_DOCKER:-http://host.docker.internal:54321}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      DOC_IMPORT_SUPABASE_URL: ${DOC_IMPORT_SUPABASE_URL:-http://host.docker.internal:54321}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

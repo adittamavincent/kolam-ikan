@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kolam Ikan
 
-## Getting Started
+## Development
 
-First, run the development server:
+This project uses one canonical Supabase naming scheme:
+
+- `NEXT_PUBLIC_SUPABASE_URL`: Supabase URL used by the app
+- `NEXT_PUBLIC_SUPABASE_PUBLIC_KEY`: browser-safe public key
+- `SUPABASE_SECRET_KEY`: server-only secret key
+- `DOC_IMPORT_SUPABASE_URL`: optional Docling-only override for Docker/Railway networking
+
+The old duplicate names `SUPABASE_URL`, `SUPABASE_URL_DOCKER`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are no longer part of the project convention.
+
+## Env File Convention
+
+Use `.env.example` as the glossary, then copy one template into `.env.local`:
+
+- `.env.local.example`: local app + local Supabase + local Docling
+- `.env.local-cloud.example`: local app + cloud Supabase + local Docling
+- `.env.preview.example`: Vercel preview + Railway preview
+- `.env.production.example`: production deployment
+
+Example:
+
+```bash
+cp .env.local.example .env.local
+```
+
+## Local Workflow
+
+Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Start local Supabase:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+supabase start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Start the Docling worker:
 
-## Learn More
+```bash
+docker compose -f docker-compose.docling-worker.yml up --build
+```
 
-To learn more about Next.js, take a look at the following resources:
+Useful database commands:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run db:migrate
+npm run db:reset
+npm run db:types
+```

@@ -32,14 +32,11 @@ const TEST_ACCOUNTS = devTestAccounts.map((a) => ({
 async function globalSetup() {
   console.log("\n🧹 E2E Global Setup: Resetting database...\n");
 
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseKey) {
     throw new Error(
-      "Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and key are required for e2e setup",
+      "Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are required for e2e setup",
     );
   }
 

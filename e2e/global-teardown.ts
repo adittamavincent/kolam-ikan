@@ -26,14 +26,11 @@ const RESET_STATEMENTS = [
 async function globalTeardown() {
   console.log("\n🧹 E2E Global Teardown: Cleaning database...\n");
 
-  const supabaseKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SECRET_KEY;
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !supabaseKey) {
     throw new Error(
-      "Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and key are required for e2e teardown",
+      "Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are required for e2e teardown",
     );
   }
 

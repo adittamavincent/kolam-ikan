@@ -567,6 +567,11 @@ export function DocumentImportModal({
 
   const handleConfirmDocumentDeletion = async () => {
     if (!documentToDelete) return;
+    if ((documentToDelete.usageCount ?? 0) > 0) {
+      setSubmitError("This file is still attached to one or more sections and cannot be deleted.");
+      setDocumentToDelete(null);
+      return;
+    }
     const { id } = documentToDelete;
     setDocumentToDelete(null);
     await handleDeleteDocument(id);
@@ -881,6 +886,8 @@ export function DocumentImportModal({
                   {documents.map((document) => {
                     const latestJob = document.latestJob;
                     const status = latestJob?.status ?? document.import_status;
+                    const usageCount = document.usageCount ?? 0;
+                    const isInUse = usageCount > 0;
                     const progressPercent =
                       latestJob?.progress_percent ??
                       (status === "completed" ? 100 : 0);
@@ -888,6 +895,14 @@ export function DocumentImportModal({
                     const eta = formatEta(latestJob?.eta_seconds ?? null);
                     const isPending =
                       status === "queued" || status === "processing";
+                    const actionDisabled = isPending
+                      ? cancelImport.isPending ||
+                        cancelAllPendingImports.isPending ||
+                        deleteDocument.isPending
+                      : isInUse ||
+                        cancelImport.isPending ||
+                        cancelAllPendingImports.isPending ||
+                        deleteDocument.isPending;
                     const showProgress =
                       isPending ||
                       (progressPercent > 0 && status !== "completed");
@@ -904,20 +919,33 @@ export function DocumentImportModal({
                                   aria-label={
                                     isPending ? "Cancel import" : "Delete document"
                                   }
+                                  title={
+                                    isPending
+                                      ? "Cancel import"
+                                      : isInUse
+                                        ? `Cannot delete while used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
+                                        : "Delete document"
+                                  }
                                   onClick={() => {
                                     if (isPending) {
                                       void handleCancelDocument(document.id);
                                       return;
                                     }
+                                    if (isInUse) {
+                                      setSubmitError(
+                                        "This file is still attached to one or more sections and cannot be deleted.",
+                                      );
+                                      return;
+                                    }
                                     setDocumentToDelete(document);
                                   }}
-                                  disabled={
-                                    cancelImport.isPending ||
-                                    cancelAllPendingImports.isPending ||
-                                    deleteDocument.isPending
-                            }
-                            className="absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-transparent text-text-muted hover:bg-surface-hover hover:text-rose-600 focus: disabled:opacity-60"
-                          >
+                                  disabled={actionDisabled}
+                                  className={`absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-transparent focus: disabled:opacity-60 ${
+                                    isInUse && !isPending
+                                      ? "cursor-not-allowed text-text-muted"
+                                      : "text-text-muted hover:bg-surface-hover hover:text-rose-600"
+                                  }`}
+                                >
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
                               viewBox="0 0 20 20"
@@ -964,6 +992,11 @@ export function DocumentImportModal({
                                   <span className="shrink-0">
                                     {formatBytes(document.file_size_bytes)}
                                   </span>
+                                </div>
+                                <div className={`mt-1 text-[11px] ${isInUse ? "text-amber-600" : "text-text-muted"}`}>
+                                  {isInUse
+                                    ? `Used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
+                                    : "Not used anywhere yet"}
                                 </div>
                               </div>
                               {/* Status */}

@@ -200,7 +200,6 @@ export type Database = {
           content_json: Json
           created_at: string | null
           id: string
-          search_text: string | null
           stream_id: string
           updated_at: string | null
         }
@@ -208,7 +207,6 @@ export type Database = {
           content_json?: Json
           created_at?: string | null
           id?: string
-          search_text?: string | null
           stream_id: string
           updated_at?: string | null
         }
@@ -216,7 +214,6 @@ export type Database = {
           content_json?: Json
           created_at?: string | null
           id?: string
-          search_text?: string | null
           stream_id?: string
           updated_at?: string | null
         }
@@ -765,10 +762,8 @@ export type Database = {
           cabinet_id: string | null
           created_at: string | null
           deleted_at: string | null
-          description: string | null
           domain_id: string
           id: string
-          is_system_global: boolean
           name: string
           sort_order: number
           stream_kind: string
@@ -778,10 +773,8 @@ export type Database = {
           cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
-          description?: string | null
           domain_id: string
           id?: string
-          is_system_global?: boolean
           name: string
           sort_order?: number
           stream_kind?: string
@@ -791,10 +784,8 @@ export type Database = {
           cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
-          description?: string | null
           domain_id?: string
           id?: string
-          is_system_global?: boolean
           name?: string
           sort_order?: number
           stream_kind?: string
@@ -870,6 +861,19 @@ export type Database = {
       }
       jsonb_to_text: { Args: { jsonb_data: Json }; Returns: string }
       revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }
+      search_canvases: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          content_preview: string
+          domain_icon: string
+          domain_id: string
+          domain_name: string
+          id: string
+          stream_id: string
+          stream_name: string
+          updated_at: string
+        }[]
+      }
       user_can_access_stream: {
         Args: { p_stream_id: string }
         Returns: boolean

@@ -6,6 +6,8 @@ type DeletePayload = {
   documentId?: string;
 };
 
+const DOCUMENT_IN_USE_ERROR = "Cannot delete a document while it is still attached to one or more sections";
+
 export async function POST(request: Request) {
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -50,6 +52,24 @@ export async function POST(request: Request) {
     );
   }
 
+  const { count: usageCount, error: usageError } = await admin
+    .from("section_attachments")
+    .select("id", { count: "exact", head: true })
+    .eq("document_id", body.documentId);
+
+  if (usageError) {
+    return NextResponse.json({ error: usageError.message }, { status: 500 });
+  }
+
+  if ((usageCount ?? 0) > 0) {
+    return NextResponse.json(
+      {
+        error: `${DOCUMENT_IN_USE_ERROR} (${usageCount} reference${usageCount === 1 ? "" : "s"})`,
+      },
+      { status: 409 },
+    );
+  }
+
   const nowIso = new Date().toISOString();
 
   const { error: updateError } = await admin
@@ -60,6 +80,9 @@ export async function POST(request: Request) {
     .is("deleted_at", null);
 
   if (updateError) {
+    if (updateError.message.includes(DOCUMENT_IN_USE_ERROR)) {
+      return NextResponse.json({ error: updateError.message }, { status: 409 });
+    }
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 

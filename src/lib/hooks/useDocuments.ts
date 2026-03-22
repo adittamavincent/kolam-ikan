@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
@@ -26,6 +27,15 @@ function isMissingDocumentSchemaError(error: PostgrestError | null) {
   );
 }
 
+function isMissingAttachmentSchemaError(error: PostgrestError | null) {
+  const message = (error?.message ?? "").toLowerCase();
+  return (
+    message.includes("could not find the table 'public.section_attachments'") ||
+    message.includes("schema cache") ||
+    message.includes("does not exist")
+  );
+}
+
 interface CreateDocumentImportArgs {
   file: File;
   title?: string;
@@ -39,7 +49,8 @@ export function useDocuments(streamId: string) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const documentsQueryKey = ["documents", user?.id ?? "anonymous"];
+  const queryOwnerId = user?.id ?? "anonymous";
+  const documentsQueryKey = ["documents", queryOwnerId] as const;
 
   const documentsQuery = useQuery({
     queryKey: documentsQueryKey,
@@ -85,11 +96,34 @@ export function useDocuments(streamId: string) {
         }
       }
 
+      const documentIds = (documents ?? []).map((document) => document.id);
+      const usageCountByDocumentId = new Map<string, number>();
+
+      if (documentIds.length > 0) {
+        const { data: attachments, error: attachmentError } = await supabase
+          .from("section_attachments")
+          .select("document_id")
+          .in("document_id", documentIds);
+
+        if (attachmentError) {
+          if (!isMissingAttachmentSchemaError(attachmentError)) {
+            throw attachmentError;
+          }
+        } else {
+          for (const attachment of attachments ?? []) {
+            const nextCount =
+              (usageCountByDocumentId.get(attachment.document_id) ?? 0) + 1;
+            usageCountByDocumentId.set(attachment.document_id, nextCount);
+          }
+        }
+      }
+
       return (documents ?? []).map((document) => ({
         ...document,
         latestJob: latestJobByDocumentId.get(document.id) ?? null,
         fileUrl: getDocumentFileUrl(document),
         thumbnailUrl: getDocumentThumbnailUrl(document),
+        usageCount: usageCountByDocumentId.get(document.id) ?? 0,
       })) as DocumentWithLatestJob[];
     },
     enabled: !!user?.id,
@@ -105,6 +139,76 @@ export function useDocuments(streamId: string) {
     },
     refetchIntervalInBackground: true,
   });
+
+  useEffect(() => {
+    if (queryOwnerId === "anonymous") {
+      return;
+    }
+
+    const channel = supabase
+      .channel(`documents:${queryOwnerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "documents",
+          filter: `created_by=eq.${queryOwnerId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["documents", queryOwnerId],
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "document_import_jobs",
+          filter: `created_by=eq.${queryOwnerId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({
+            queryKey: ["documents", queryOwnerId],
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "section_attachments",
+        },
+        (payload) => {
+          const changedDocumentId =
+            (payload.new as { document_id?: string } | null)?.document_id ??
+            (payload.old as { document_id?: string } | null)?.document_id;
+          const documents =
+            queryClient.getQueryData<DocumentWithLatestJob[]>([
+              "documents",
+              queryOwnerId,
+            ]) ?? [];
+          if (
+            changedDocumentId &&
+            !documents.some((document) => document.id === changedDocumentId)
+          ) {
+            return;
+          }
+
+          queryClient.invalidateQueries({
+            queryKey: ["documents", queryOwnerId],
+          });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, queryOwnerId, supabase]);
 
   type CreateImportResponse = {
     error?: string;

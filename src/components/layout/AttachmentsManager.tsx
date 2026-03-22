@@ -16,10 +16,24 @@ interface AttachmentsManagerProps {
 export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManagerProps) {
   const { documents, isLoading, deleteDocument } = useDocuments(userId);
   const [docImportOpen, setDocImportOpen] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const attachments = documents ?? [];
 
-  const handleRemove = (id: string) => {
-    deleteDocument.mutate({ documentId: id });
+  const handleRemove = async (id: string, usageCount: number) => {
+    if (usageCount > 0) {
+      setRemoveError("This file is still in use and cannot be deleted.");
+      return;
+    }
+
+    setRemoveError(null);
+
+    try {
+      await deleteDocument.mutateAsync({ documentId: id });
+    } catch (error) {
+      setRemoveError(
+        error instanceof Error ? error.message : "Failed to delete document.",
+      );
+    }
   };
 
   const handleDownload = (url: string | null, filename: string) => {
@@ -74,7 +88,10 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => setDocImportOpen(true)}
+                      onClick={() => {
+                        setRemoveError(null);
+                        setDocImportOpen(true);
+                      }}
                       className="inline-flex items-center gap-2 rounded-md border border-border-default px-3 py-1 text-sm bg-surface-subtle hover:bg-surface-hover"
                     >
                       <span className="text-xs">Go to import</span>
@@ -83,6 +100,12 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                       Upload on the Document Import modal.
                     </p>
                   </div>
+
+                  {removeError && (
+                    <div className="rounded border border-status-error-border bg-status-error-bg px-3 py-2 text-xs text-status-error-text">
+                      {removeError}
+                    </div>
+                  )}
 
                   <div className="max-h-64 overflow-y-auto border border-border-default p-2 bg-surface-default">
                     {isLoading && (
@@ -95,6 +118,8 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                     <ul className="space-y-2">
                       {attachments.map((att) => {
                         const name = att.title || att.original_filename || "Document";
+                        const usageCount = att.usageCount ?? 0;
+                        const isInUse = usageCount > 0;
                         return (
                         <li key={att.id} className="flex items-center justify-between gap-2 rounded p-2 hover:bg-surface-subtle">
                           <div className="flex items-center gap-3">
@@ -114,6 +139,11 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                                 {" • "}
                                 {att.content_type || "—"}
                               </div>
+                              <div className={`text-[10px] ${isInUse ? "text-amber-600" : "text-text-muted"}`}>
+                                {isInUse
+                                  ? `Used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
+                                  : "Not used anywhere"}
+                              </div>
                             </div>
                           </div>
 
@@ -125,8 +155,20 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                               <Download className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => handleRemove(att.id)}
-                              className="text-status-error-text hover:opacity-80"
+                              onClick={() => {
+                                void handleRemove(att.id, usageCount);
+                              }}
+                              disabled={deleteDocument.isPending || isInUse}
+                              title={
+                                isInUse
+                                  ? `Cannot delete while used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
+                                  : "Delete attachment"
+                              }
+                              className={`${
+                                isInUse
+                                  ? "cursor-not-allowed text-text-muted"
+                                  : "text-status-error-text hover:opacity-80"
+                              } disabled:opacity-70`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -138,7 +180,13 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                 </div>
 
                 <div className="mt-4 flex justify-end">
-                  <button onClick={onClose} className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90">
+                  <button
+                    onClick={() => {
+                      setRemoveError(null);
+                      onClose();
+                    }}
+                    className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90"
+                  >
                     Close
                   </button>
                 </div>

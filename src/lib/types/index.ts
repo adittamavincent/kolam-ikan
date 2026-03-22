@@ -89,6 +89,7 @@ export interface DocumentWithLatestJob extends Document {
   latestJob?: DocumentImportJob | null;
   fileUrl?: string | null;
   thumbnailUrl?: string | null;
+  usageCount?: number;
 }
 
 export interface DocumentImportDispatchResult {

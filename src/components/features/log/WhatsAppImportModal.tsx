@@ -173,16 +173,16 @@ function normalizePersonaNameKey(name: string): string {
   return name.trim().toLowerCase();
 }
 
-function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
 }
 
-function getStreamShadowPersonas<
+function getStreamLocalPersonas<
   T extends { is_shadow?: boolean | null; shadow_stream_id?: string | null },
 >(personas: T[] | undefined, streamId?: string): T[] {
   return (personas ?? []).filter(
     (persona) =>
-      isShadowPersona(persona) &&
+      isLocalPersona(persona) &&
       (streamId ? persona.shadow_stream_id === streamId : false),
   );
 }
@@ -529,15 +529,15 @@ function buildAutoMap(
 ): Record<string, string> {
   const autoMap: Record<string, string> = {};
   for (const sender of senders) {
-    // Only use existing shadow personas for this stream
-    const shadowMatch = personas?.find(
+    // Only use existing local personas for this stream
+    const localMatch = personas?.find(
       (p) =>
         p.is_shadow &&
         p.shadow_stream_id === streamId &&
         p.name.toLowerCase() === sender.toLowerCase(),
     );
-    if (shadowMatch) {
-      autoMap[sender] = shadowMatch.id;
+    if (localMatch) {
+      autoMap[sender] = localMatch.id;
       continue;
     }
   }
@@ -570,7 +570,7 @@ export function WhatsAppImportModal({
   onClose,
   streamId,
 }: WhatsAppImportModalProps) {
-  const { personas } = usePersonas({ streamId, includeShadow: true });
+  const { personas } = usePersonas({ streamId, includeLocal: true });
   const queryClient = useQueryClient();
   const supabase = createClient();
 
@@ -593,7 +593,7 @@ export function WhatsAppImportModal({
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
   const [allPdfsExistDialogOpen, setAllPdfsExistDialogOpen] = useState(false);
-  const [existingShadowReuseCount, setExistingShadowReuseCount] = useState(0);
+  const [existingLocalReuseCount, setExistingLocalReuseCount] = useState(0);
   const [pendingPersonaCreations, setPendingPersonaCreations] = useState<string[]>([]);
   const [draftPersonas, setDraftPersonas] = useState<Record<string, {
     id: string;
@@ -706,21 +706,21 @@ export function WhatsAppImportModal({
   const rangeImportableCount = selectedTurns.filter(
     (t) => t.type !== "media",
   ).length;
-  const shadowPersonas = useMemo(
-    () => getStreamShadowPersonas(personas, streamId),
+  const localPersonas = useMemo(
+    () => getStreamLocalPersonas(personas, streamId),
     [personas, streamId],
   );
   const globalPersonas = useMemo(
-    () => (personas ?? []).filter((persona) => !isShadowPersona(persona)),
+    () => (personas ?? []).filter((persona) => !isLocalPersona(persona)),
     [personas],
   );
 
   // Documents the user/stream already has — used for duplicate detection
   const { documents } = useDocuments(streamId);
 
-  const shadowPersonaIds = useMemo(
-    () => new Set(shadowPersonas.map((p) => p.id)),
-    [shadowPersonas],
+  const localPersonaIds = useMemo(
+    () => new Set(localPersonas.map((p) => p.id)),
+    [localPersonas],
   );
   const globalPersonaIds = useMemo(
     () => new Set(globalPersonas.map((p) => p.id)),
@@ -732,7 +732,7 @@ export function WhatsAppImportModal({
   );
   const validMapping = Object.fromEntries(
     Object.entries(mapping).filter(([, id]) =>
-      shadowPersonaIds.has(id) ||
+      localPersonaIds.has(id) ||
       globalPersonaIds.has(id) ||
       draftPersonaIds.has(id),
     ),
@@ -745,7 +745,7 @@ export function WhatsAppImportModal({
   const getValidMapping = (snapshot: Record<string, string>) =>
     Object.fromEntries(
       Object.entries(snapshot).filter(([, id]) =>
-        shadowPersonaIds.has(id) ||
+        localPersonaIds.has(id) ||
         globalPersonaIds.has(id) ||
         draftPersonaIds.has(id),
       ),
@@ -774,7 +774,7 @@ export function WhatsAppImportModal({
 
   const insertMissingPersonas = async (
     rows: PersonaCreateRow[],
-    shadowStreamId: string,
+    localStreamId: string,
   ) => {
     if (rows.length === 0) {
       return {
@@ -800,7 +800,7 @@ export function WhatsAppImportModal({
       .eq("user_id", userId)
       .is("deleted_at", null)
       .eq("is_shadow", true)
-      .eq("shadow_stream_id", shadowStreamId)
+      .eq("shadow_stream_id", localStreamId)
       .in("name", requestedNames);
 
     if (existingResult.error) {
@@ -826,15 +826,15 @@ export function WhatsAppImportModal({
       };
     }
 
-    const shadowRows = rowsToInsert.map((row) => ({
+    const localRows = rowsToInsert.map((row) => ({
       ...row,
       is_shadow: true,
-      shadow_stream_id: shadowStreamId,
+      shadow_stream_id: localStreamId,
     }));
 
     const insertResult = await supabase
       .from("personas")
-      .insert(shadowRows)
+      .insert(localRows)
       .select("id, name");
 
     if (insertResult.error) {
@@ -845,7 +845,7 @@ export function WhatsAppImportModal({
           .eq("user_id", userId)
           .is("deleted_at", null)
           .eq("is_shadow", true)
-          .eq("shadow_stream_id", shadowStreamId)
+          .eq("shadow_stream_id", localStreamId)
           .in("name", requestedNames);
 
         if (!retryExistingResult.error && retryExistingResult.data) {
@@ -885,7 +885,7 @@ export function WhatsAppImportModal({
     setMapError(null);
     setMapNotice(null);
     setZipAutoUploadRan(false);
-    setExistingShadowReuseCount(0);
+    setExistingLocalReuseCount(0);
     setPendingPersonaCreations([]);
     setStep("range");
   };
@@ -913,7 +913,7 @@ export function WhatsAppImportModal({
       setMapError(null);
       setMapNotice(null);
       setZipAutoUploadRan(false);
-      setExistingShadowReuseCount(0);
+      setExistingLocalReuseCount(0);
       setPendingPersonaCreations([]);
       setStep("range");
     } catch (error) {
@@ -930,12 +930,12 @@ export function WhatsAppImportModal({
     const senders = getMappableSenders(selectedTurns);
     setMappableSenders(senders);
 
-    const existingShadowsBySender = senders.filter((s) =>
-      shadowPersonas.some(
+    const existingLocalsBySender = senders.filter((s) =>
+      localPersonas.some(
         (p) => p.name.toLowerCase() === s.toLowerCase(),
       ),
     );
-    setExistingShadowReuseCount(existingShadowsBySender.length);
+    setExistingLocalReuseCount(existingLocalsBySender.length);
 
     const auto = buildAutoMap(senders, personas, streamId);
     setMapping(auto);
@@ -1631,7 +1631,7 @@ export function WhatsAppImportModal({
     setMapNotice(null);
     setZipLoading(false);
     setZipAutoUploadRan(false);
-    setExistingShadowReuseCount(0);
+    setExistingLocalReuseCount(0);
     setPendingPersonaCreations([]);
     setDraftPersonas({});
 
@@ -2066,7 +2066,7 @@ export function WhatsAppImportModal({
                     </p>
                     <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
                       <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
-                        Using existing local personas: {existingShadowReuseCount}
+                        Using existing local personas: {existingLocalReuseCount}
                       </span>
                       <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
                         Will create on import (local): {step === "map" ? pendingPersonaCreations.length : 0}
@@ -2130,7 +2130,7 @@ export function WhatsAppImportModal({
                             </span>
                             <span
                               className={` px-1.5 py-0.5 text-[10px] font-medium ${
-                                isShadowPersona(assignedPersona)
+                                isLocalPersona(assignedPersona)
                                   ? "border border-border-default/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
                                   : "border border-border-default bg-surface-subtle text-text-muted"
                               }`}
@@ -2176,9 +2176,9 @@ export function WhatsAppImportModal({
                                 ))}
                               </optgroup>
                             )}
-                            {shadowPersonas.length > 0 && (
+                            {localPersonas.length > 0 && (
                               <optgroup label="Local Personas (This Stream)">
-                                {shadowPersonas.map((p) => (
+                                {localPersonas.map((p) => (
                                   <option key={p.id} value={p.id}>
                                     {p.name} (Local)
                                   </option>

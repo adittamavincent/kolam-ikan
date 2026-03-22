@@ -14,6 +14,7 @@ import {
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { PartialBlock } from "@blocknote/core";
+import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import {
   blocksToPlainText,
   CANVAS_PREVIEW_OPEN_EVENT,
@@ -185,31 +186,7 @@ export function CanvasSnapshotCard({
             </div>
 
             <div className="overflow-y-auto flex-1 font-mono text-[11px]">
-              {diffs.length === 0 ? (
-                <div className="px-4 py-6 text-center text-text-muted text-xs">
-                  No differences.
-                </div>
-              ) : (
-                diffs.map((line, index) => (
-                  <div
-                    key={`${line.type}-${index}`}
-                    className={`flex gap-3 px-4 py-0.5 leading-5 ${
-                      line.type === "add"
-                        ? "bg-emerald-500/8 text-emerald-600 dark:text-emerald-400"
-                        : line.type === "del"
-                          ? "bg-rose-500/8 text-rose-600 dark:text-rose-400 line-through opacity-70"
-                          : "text-text-subtle"
-                    }`}
-                  >
-                    <span className="select-none w-3 shrink-0 text-text-muted opacity-60">
-                      {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
-                    </span>
-                    <span className="whitespace-pre-wrap wrap-break-word">
-                      {line.text || " "}
-                    </span>
-                  </div>
-                ))
-              )}
+              <CanvasDiffLines lines={diffs} />
             </div>
 
             <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border-default">

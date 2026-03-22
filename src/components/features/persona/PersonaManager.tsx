@@ -24,7 +24,7 @@ import {
   sanitizePersonaTypeInput,
 } from "@/lib/personas";
 
-function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
 }
 
@@ -72,7 +72,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const supabase = createClient();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { personas, isLoading } = usePersonas({ includeDeleted: true, includeShadow: true });
+  const { personas, isLoading } = usePersonas({ includeDeleted: true, includeLocal: true });
   const { createPersona, updatePersona, deletePersona, hardDeletePersona } =
     usePersonaMutations();
 
@@ -821,7 +821,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                         System
                                       </span>
                                     )}
-                                    {isShadowPersona(persona) && (
+                                    {isLocalPersona(persona) && (
                                       <span className="border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
                                         Local
                                       </span>

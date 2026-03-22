@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { PartialBlock } from "@blocknote/core";
+import { areCanvasContentsEquivalent } from "@/lib/utils/canvasContent";
 
 interface CanvasDraftState {
   dirtyStreams: Set<string>;
@@ -33,9 +34,6 @@ interface CanvasDraftState {
 
 interface PersistedCanvasState {
   liveContentByStream: Record<string, PartialBlock[] | null>;
-  dbSyncStatusByStream: Record<string, "idle" | "syncing" | "synced" | "error">;
-  localSaveStatusByStream: Record<string, "idle" | "saving" | "saved" | "error">;
-  _dirtyStreamsArr: string[];
 }
 
 export const useCanvasDraft = create<CanvasDraftState>()(
@@ -83,20 +81,32 @@ export const useCanvasDraft = create<CanvasDraftState>()(
       },
       clearLiveContent: (streamId: string) => {
         set((state) => {
-          if (!(streamId in state.liveContentByStream)) return state;
+          const hasLiveContent = streamId in state.liveContentByStream;
+          const hasDirty = state.dirtyStreams.has(streamId);
+          const hasBaseline = streamId in state.starterBaselineByStream;
+          if (!hasLiveContent && !hasDirty && !hasBaseline) return state;
+
           const next = { ...state.liveContentByStream };
           delete next[streamId];
-          
+
           const nextLocal = { ...state.localSaveStatusByStream };
           delete nextLocal[streamId];
-          
+
           const nextDb = { ...state.dbSyncStatusByStream };
           delete nextDb[streamId];
 
-          return { 
-            liveContentByStream: next, 
+          const nextDirty = new Set(state.dirtyStreams);
+          nextDirty.delete(streamId);
+
+          const nextBaseline = { ...state.starterBaselineByStream };
+          delete nextBaseline[streamId];
+
+          return {
+            dirtyStreams: nextDirty,
+            liveContentByStream: next,
+            starterBaselineByStream: nextBaseline,
             localSaveStatusByStream: nextLocal,
-            dbSyncStatusByStream: nextDb 
+            dbSyncStatusByStream: nextDb,
           };
         });
       },
@@ -107,18 +117,28 @@ export const useCanvasDraft = create<CanvasDraftState>()(
       ) => {
         set((state) => {
           const current = state.starterBaselineByStream[streamId];
-          if (current?.canvasId === canvasId) {
+          if (
+            current?.canvasId === canvasId &&
+            areCanvasContentsEquivalent(current.content, content)
+          ) {
             return state;
           }
 
+          const starterBaselineByStream = {
+            ...state.starterBaselineByStream,
+          };
+
+          if (!canvasId) {
+            delete starterBaselineByStream[streamId];
+          } else {
+            starterBaselineByStream[streamId] = {
+              canvasId,
+              content,
+            };
+          }
+
           return {
-            starterBaselineByStream: {
-              ...state.starterBaselineByStream,
-              [streamId]: {
-                canvasId,
-                content,
-              },
-            },
+            starterBaselineByStream,
           };
         });
       },
@@ -149,16 +169,12 @@ export const useCanvasDraft = create<CanvasDraftState>()(
       name: "kolam-canvas-drafts",
       partialize: (state) => ({
         liveContentByStream: state.liveContentByStream,
-        dbSyncStatusByStream: state.dbSyncStatusByStream,
-        localSaveStatusByStream: state.localSaveStatusByStream,
-        _dirtyStreamsArr: Array.from(state.dirtyStreams),
       }),
       merge: (persistedState, currentState) => {
         const persisted = persistedState as PersistedCanvasState;
         return {
           ...currentState,
           ...persisted,
-          dirtyStreams: new Set(persisted?._dirtyStreamsArr || []),
         };
       }
     }

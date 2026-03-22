@@ -352,7 +352,7 @@ function entryToMarkdown(entry: EntryWithSections): string {
   entry.sections.forEach((section) => {
     const personaName =
       section.persona_name_snapshot || section.persona?.name || "User";
-    const isShadow = section.persona?.is_shadow ? "true" : "false";
+    const isLocal = section.persona?.is_shadow ? "true" : "false";
     const sectionType = section.section_type || "text";
 
     let content = canvasToMarkdown(
@@ -375,7 +375,7 @@ function entryToMarkdown(entry: EntryWithSections): string {
       }
     }
 
-    result += `<section persona="${personaName}" shadow="${isShadow}" type="${sectionType}">\n${content}\n</section>\n`;
+    result += `<section persona="${personaName}" local="${isLocal}" type="${sectionType}">\n${content}\n</section>\n`;
   });
 
   result += `</sections>\n</entry>`;

@@ -8,7 +8,9 @@ import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { Json } from "@/lib/types/database.types";
 import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
-import { CircleDot, GitCommitHorizontal, Loader2 } from "lucide-react";
+import { blocksToPlainText, lineDiff } from "@/lib/utils/canvasPreview";
+import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
+import { CircleDot, GitCommitHorizontal, GitCompare, Loader2, X } from "lucide-react";
 
 interface CanvasDraftCardProps {
   streamId: string;
@@ -19,13 +21,10 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const queryClient = useQueryClient();
   const { canvas } = useCanvas(streamId);
   const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId] ?? null);
-  const starterBaselineContent = useCanvasDraft(
-    (s) => s.starterBaselineByStream[streamId]?.content ?? null,
-  );
-  const setStarterBaseline = useCanvasDraft((s) => s.setStarterBaseline);
   const markClean = useCanvasDraft((s) => s.markClean);
   const [snapshotName, setSnapshotName] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isCompareOpen, setIsCompareOpen] = useState(false);
   // Local override that represents the most-recently committed snapshot
   // This helps the UI immediately compare against the newly created
   // snapshot before the server-side `latestCanvasVersion` has refetched.
@@ -51,28 +50,34 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       enabled: !!streamId,
     });
 
-  const hasDraftDiff = useMemo(() => {
-    // Prefer the locally committed baseline override if present. This ensures
-    // the UI flips to "committed" immediately after a successful commit.
-    const baselineSource =
-      committedBaseline !== undefined
-        ? committedBaseline
-        : latestCanvasVersion
-        ? latestCanvasVersion.content_json
-        : starterBaselineContent;
+  const baselineContent =
+    committedBaseline !== undefined
+      ? committedBaseline
+      : latestCanvasVersion
+      ? ((latestCanvasVersion.content_json ?? null) as PartialBlock[] | null)
+      : null;
+  const currentContent = (liveContent ?? canvas?.content_json ?? null) as
+    | PartialBlock[]
+    | null;
+  const compareLabel = latestCanvasVersion ? "Latest Snapshot" : "Start Fresh";
 
-    const baselineNormalized = normalizeCanvasContent(baselineSource);
-    const currentNormalized = normalizeCanvasContent(
-      liveContent ?? canvas?.content_json,
-    );
+  const hasDraftDiff = useMemo(() => {
+    const baselineNormalized = normalizeCanvasContent(baselineContent);
+    const currentNormalized = normalizeCanvasContent(currentContent);
     return baselineNormalized !== currentNormalized;
   }, [
-    committedBaseline,
-    latestCanvasVersion,
-    starterBaselineContent,
-    liveContent,
-    canvas?.content_json,
+    baselineContent,
+    currentContent,
   ]);
+
+  const diffs = useMemo(() => {
+    const oldText = blocksToPlainText(baselineContent);
+    const newText = blocksToPlainText(currentContent);
+    return lineDiff(oldText, newText);
+  }, [baselineContent, currentContent]);
+
+  const additions = diffs.filter((d) => d.type === "add").length;
+  const deletions = diffs.filter((d) => d.type === "del").length;
 
   // Clear the local committedBaseline override once the server's latest
   // snapshot matches the local committed content — avoids stale override.
@@ -112,8 +117,6 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       setSnapshotName("");
       setIsExpanded(false);
 
-      // Ensure the draft checker uses the latest committed snapshot immediately.
-      setStarterBaseline(streamId, canvas?.id ?? null, committedContent);
       // Local override so UI compares against the just-committed content
       setCommittedBaseline(committedContent);
       markClean(streamId);
@@ -141,7 +144,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
               Canvas Draft
             </span>
             <span className="text-[10px] text-text-muted">
-              — unsaved changes
+              — changes since {compareLabel.toLowerCase()}
             </span>
           </div>
         </div>
@@ -151,6 +154,13 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       <div className="px-2.5 py-2">
         {isExpanded ? (
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setIsCompareOpen(true)}
+              className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-xs text-text-subtle hover:bg-surface-subtle"
+            >
+              <GitCompare className="h-3 w-3" />
+              Compare
+            </button>
             <input
               value={snapshotName}
               onChange={(e) => setSnapshotName(e.target.value)}
@@ -182,15 +192,73 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="inline-flex items-center gap-1.5 border border-border-default/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
-          >
-            <GitCommitHorizontal className="h-3 w-3" />
-            Commit Snapshot
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setIsCompareOpen(true)}
+              className="inline-flex items-center gap-1.5 border border-border-default/30 px-2.5 py-1 text-[11px] font-semibold text-text-subtle hover:bg-surface-subtle transition-colors"
+              title={`Compare against ${compareLabel.toLowerCase()}`}
+            >
+              <GitCompare className="h-3 w-3" />
+              Compare
+            </button>
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="inline-flex items-center gap-1.5 border border-border-default/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+            >
+              <GitCommitHorizontal className="h-3 w-3" />
+              Commit Snapshot
+            </button>
+          </div>
         )}
       </div>
+
+      {isCompareOpen && (
+        <div
+          className="fixed inset-0 z-200 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setIsCompareOpen(false)}
+        >
+          <div
+            className="relative flex max-h-[80vh] w-full max-w-3xl flex-col border border-border-default bg-surface-default shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-border-default px-4 py-3">
+              <div className="flex items-center gap-2">
+                <GitCompare className="h-4 w-4 text-text-muted" />
+                <span className="text-sm font-semibold text-text-default">
+                  Compare {compareLabel} vs Current Draft
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-mono text-emerald-500">
+                  +{additions}
+                </span>
+                <span className="text-[11px] font-mono text-rose-500">
+                  -{deletions}
+                </span>
+                <button
+                  onClick={() => setIsCompareOpen(false)}
+                  className="p-1 text-text-muted hover:bg-surface-subtle"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto font-mono text-[11px]">
+              <CanvasDiffLines lines={diffs} />
+            </div>
+
+            <div className="flex items-center justify-end border-t border-border-default px-4 py-3">
+              <button
+                onClick={() => setIsCompareOpen(false)}
+                className="border border-border-default px-3 py-1.5 text-xs font-medium text-text-subtle hover:bg-surface-subtle"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

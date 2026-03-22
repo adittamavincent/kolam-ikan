@@ -71,7 +71,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
 }
 
@@ -276,7 +276,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const queryClient = useQueryClient();
   const { personas } = usePersonas({
     streamId,
-    includeShadow: true,
+    includeLocal: true,
   });
   const personaUsageStorageKey = `entry-creator:persona-usage:${streamId}`;
 
@@ -547,8 +547,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       .slice(0, 3);
   })();
 
-  const globalPersonas = (personas ?? []).filter((p) => !isShadowPersona(p));
-  const shadowPersonas = (personas ?? []).filter((p) => isShadowPersona(p));
+  const globalPersonas = (personas ?? []).filter((p) => !isLocalPersona(p));
+  const localPersonas = (personas ?? []).filter((p) => isLocalPersona(p));
 
   const trackPersonaUsage = (personaId: string) => {
     setPersonaUsageCounts((prev) => ({
@@ -1380,7 +1380,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 title={`Quick add ${persona.name}`}
                 className="border text-text-default hover:brightness-[0.98]"
                 style={getPersonaTintStyle(persona, {
-                  backgroundAlpha: isShadowPersona(persona) ? 0.16 : 0.1,
+                  backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
                   borderAlpha: 0.24,
                 })}
                 onClick={() => addPersona(persona.id)}
@@ -1427,17 +1427,17 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                       )}
                     </MenuItem>
                   ))}
-                  {shadowPersonas.length > 0 && (
+                  {localPersonas.length > 0 && (
                     <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
                       Local To This Stream
                     </div>
                   )}
-                  {shadowPersonas.map((persona) => (
+                  {localPersonas.map((persona) => (
                     <MenuItem key={persona.id}>
                       {({ active }) => (
                         <PersonaItem
                           persona={persona}
-                          role="shadow"
+                          role="local"
                           focus={active}
                           onClick={() => addPersona(persona.id)}
                         />
@@ -1561,14 +1561,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                 isAttachment: isAttachment,
                                 filePersonaName: attachmentSection?.personaName ?? undefined,
                                 globalPersonas: globalPersonas,
-                                shadowPersonas: shadowPersonas,
+                                localPersonas: localPersonas,
                                 onSelect: (pId: string) => changePersona(instanceId, pId),
                               }}
                             />
                           }
                           rightHeader={
                             <>
-                              {persona && !isShadowPersona(persona) && (
+                              {persona && !isLocalPersona(persona) && (
                                 <button
                                   onClick={() => toggleSectionKind(instanceId)}
                                   className="text-text-muted hover:text-text-default p-0.5 hover:bg-surface-subtle transition-colors mr-1"

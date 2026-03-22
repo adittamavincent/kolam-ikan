@@ -6,13 +6,17 @@ import { useAuth } from "@/lib/hooks/useAuth";
 export function usePersonas({
   includeDeleted = false,
   streamId,
-  includeShadow = false,
-}: { includeDeleted?: boolean; streamId?: string; includeShadow?: boolean } = {}) {
+  includeLocal = false,
+}: {
+  includeDeleted?: boolean;
+  streamId?: string;
+  includeLocal?: boolean;
+} = {}) {
   const supabase = createClient();
   const { user } = useAuth();
 
   const query = useQuery({
-    queryKey: ["personas", user?.id, includeDeleted, includeShadow, streamId],
+    queryKey: ["personas", user?.id, includeDeleted, includeLocal, streamId],
     queryFn: async ({ signal }) => {
       let query = supabase
         .from("personas")
@@ -30,26 +34,26 @@ export function usePersonas({
       if (error) throw error;
 
       // Keep backward compatibility for databases that have not applied
-      // shadow persona columns yet while still honoring new scoping rules.
+      // local persona columns yet while still honoring new scoping rules.
       const rows = (data ?? []) as Persona[];
 
       return rows.filter((persona) => {
-        const isShadow =
+        const isLocalPersona =
           "is_shadow" in persona &&
           typeof persona.is_shadow === "boolean" &&
           persona.is_shadow;
 
-        if (!isShadow) return true;
-        if (!includeShadow) return false;
+        if (!isLocalPersona) return true;
+        if (!includeLocal) return false;
 
         if (!streamId) return true;
 
-        const hasShadowStreamId =
+        const hasLocalStreamId =
           "shadow_stream_id" in persona &&
           typeof persona.shadow_stream_id === "string" &&
           persona.shadow_stream_id.length > 0;
 
-        if (hasShadowStreamId) {
+        if (hasLocalStreamId) {
           return persona.shadow_stream_id === streamId;
         }
 

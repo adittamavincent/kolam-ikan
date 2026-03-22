@@ -73,7 +73,7 @@ function PersonaButtonDisplay({
 
 interface PersonaItemProps {
   persona: Persona | null;
-  role?: "global" | "shadow" | "default";
+  role?: "global" | "local" | "default";
   focus?: boolean;
   onClick?: () => void;
   compact?: boolean;
@@ -86,7 +86,7 @@ interface PersonaItemProps {
     isAttachment: boolean;
     filePersonaName?: string;
     globalPersonas: Persona[];
-    shadowPersonas: Persona[];
+    localPersonas: Persona[];
     onSelect: (personaId: string) => void;
     readOnly?: boolean;
   } | null;
@@ -105,11 +105,11 @@ export function PersonaItem({
 }: PersonaItemProps) {
   const sharedClass = `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 px-2 py-1.5 text-xs transition-colors`;
   const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} ${className}`;
-  const nameClass = role === "shadow" ? "text-amber-700 dark:text-amber-400" : "";
+  const nameClass = role === "local" ? "text-amber-700 dark:text-amber-400" : "";
 
   // If menuProps provided, render as a selector control (Menu + MenuButton + MenuItems)
   if (menuProps) {
-    const { currentPersona, isAttachment, filePersonaName, globalPersonas, shadowPersonas, onSelect, readOnly = false } = menuProps;
+    const { currentPersona, isAttachment, filePersonaName, globalPersonas, localPersonas, onSelect, readOnly = false } = menuProps;
     // If readOnly is true, render a simple, non-interactive persona display
     // instead of the interactive Menu. This ensures committed entries cannot
     // change persona unless the UI is in amend/edit mode.
@@ -180,17 +180,17 @@ export function PersonaItem({
                 </MenuItem>
               ))}
 
-              {shadowPersonas.length > 0 && (
+              {localPersonas.length > 0 && (
                 <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
                   Local To This Stream
                 </div>
               )}
-              {shadowPersonas.map((p) => (
+              {localPersonas.map((p) => (
                 <MenuItem key={p.id}>
                   {({ focus }) => (
                     <PersonaItem
                       persona={p}
-                      role="shadow"
+                      role="local"
                       focus={focus}
                       onClick={() => onSelect(p.id)}
                     />

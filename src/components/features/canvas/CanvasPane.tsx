@@ -5,6 +5,7 @@ import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasScroll } from "@/lib/hooks/useCanvasScroll";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
+import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import debounce from "lodash/debounce";
 import {
@@ -119,6 +120,17 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     [updateCanvas, setSyncStatus, setLocalStatus, streamId, markClean],
   );
 
+  const syncDirtyAgainstDb = useCallback(
+    (nextContent: PartialBlock[] | null) => {
+      if (areCanvasContentsEquivalent(nextContent, canvas?.content_json)) {
+        markClean(streamId);
+      } else {
+        markDirty(streamId);
+      }
+    },
+    [canvas?.content_json, markClean, markDirty, streamId],
+  );
+
   const handleContentChange = useCallback(
     (blocks: PartialBlock[]) => {
       if (canvas) {
@@ -131,11 +143,12 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         // Compare canonicalized content and ignore only volatile IDs.
         const prev = liveContent || canvas.content_json;
         if (areCanvasContentsEquivalent(prev, blocks)) {
+          syncDirtyAgainstDb(blocks);
           return;
         }
 
         setLiveContent(streamId, blocks);
-        markDirty(streamId);
+        syncDirtyAgainstDb(blocks);
         if (isPreviewing) {
           setLocalStatus(streamId, "saved");
           return;
@@ -147,11 +160,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       canvas,
       liveContent,
       setLiveContent,
-      markDirty,
       streamId,
       debouncedUpdate,
       isPreviewing,
       setLocalStatus,
+      syncDirtyAgainstDb,
     ],
   );
 
@@ -166,13 +179,19 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     if (canvas?.content_json) {
       if (!liveContent) {
         setLiveContent(streamId, (canvas.content_json as PartialBlock[] | null) ?? null);
+        syncDirtyAgainstDb((canvas.content_json as PartialBlock[] | null) ?? null);
       } else {
         // If we HAVE local content but it's different from DB, start background sync
         if (!areCanvasContentsEquivalent(canvas.content_json, liveContent)) {
+           syncDirtyAgainstDb(liveContent);
            console.log(`[CanvasPane] detecting local change on mount, starting sync for ${streamId}`);
            debouncedUpdate(canvas.id, liveContent);
+        } else {
+           syncDirtyAgainstDb(liveContent);
         }
       }
+    } else {
+      syncDirtyAgainstDb(liveContent ?? null);
     }
   }, [
     canvas?.id,
@@ -182,6 +201,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     streamId,
     debouncedUpdate,
     isPreviewing,
+    syncDirtyAgainstDb,
   ]);
 
   useEffect(() => {
@@ -338,17 +358,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     };
   }, [handleSaveSnapshot]);
 
-  const syncDirtyAgainstDb = useCallback(
-    (nextContent: PartialBlock[] | null) => {
-      if (areCanvasContentsEquivalent(nextContent, canvas?.content_json)) {
-        markClean(streamId);
-      } else {
-        markDirty(streamId);
-      }
-    },
-    [canvas?.content_json, markClean, markDirty, streamId],
-  );
-
   const restorePreviousDraft = useCallback(() => {
     if (!previewSession) return;
     debouncedUpdate.cancel();
@@ -432,7 +441,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       setLiveContent(streamId, detail.content ?? []);
       setLocalStatus(streamId, "saved");
       setSyncStatus(streamId, "idle");
-      markDirty(streamId);
+      syncDirtyAgainstDb(detail.content ?? []);
       hasReceivedFirstChange.current = false;
       setEditorSeed((seed) => seed + 1);
     };
@@ -452,7 +461,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     setLiveContent,
     setLocalStatus,
     setSyncStatus,
-    markDirty,
+    syncDirtyAgainstDb,
   ]);
 
   const isCanvasDirty = useCanvasDraft((s) => s.dirtyStreams.has(streamId));
@@ -571,31 +580,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
               </div>
             </div>
             <div className="overflow-y-auto flex-1 font-mono text-[11px]">
-              {previewDiffs.length === 0 ? (
-                <div className="px-4 py-6 text-center text-text-muted text-xs">
-                  No differences.
-                </div>
-              ) : (
-                previewDiffs.map((line, index) => (
-                  <div
-                    key={`${line.type}-${index}`}
-                    className={`flex gap-3 px-4 py-0.5 leading-5 ${
-                      line.type === "add"
-                        ? "bg-emerald-500/8 text-emerald-600 dark:text-emerald-400"
-                        : line.type === "del"
-                          ? "bg-rose-500/8 text-rose-600 dark:text-rose-400 line-through opacity-70"
-                          : "text-text-subtle"
-                    }`}
-                  >
-                    <span className="select-none w-3 shrink-0 text-text-muted opacity-60">
-                      {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
-                    </span>
-                    <span className="whitespace-pre-wrap wrap-break-word">
-                      {line.text || " "}
-                    </span>
-                  </div>
-                ))
-              )}
+              <CanvasDiffLines lines={previewDiffs} />
             </div>
           </div>
         </div>

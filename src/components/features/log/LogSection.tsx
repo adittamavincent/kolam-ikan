@@ -8,7 +8,7 @@ import { SectionPreset } from "@/components/shared/SectionPreset";
 import { PersonaItem } from "../../shared/PersonaItem";
 import { FileAttachmentItem } from "./FileAttachmentItem";
 
-function isShadowPersona(persona: { is_shadow?: boolean | null }): boolean {
+function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
 }
 
@@ -40,7 +40,7 @@ export function LogSection({
   onContentChange,
   onPreviewAttachment,
 }: LogSectionProps) {
-  const { personas } = usePersonas({ streamId, includeShadow: true });
+  const { personas } = usePersonas({ streamId, includeLocal: true });
   const { updateSectionPersona } = usePersonaMutations();
 
   // Prefer the resolved persona from global list; if missing, fall back to
@@ -144,12 +144,12 @@ export function LogSection({
   }, [section.content_json]);
 
   const globalPersonas = useMemo(
-    () => (personas ?? []).filter((persona) => !isShadowPersona(persona)),
+    () => (personas ?? []).filter((persona) => !isLocalPersona(persona)),
     [personas],
   );
 
-  const shadowPersonas = useMemo(
-    () => (personas ?? []).filter((persona) => isShadowPersona(persona)),
+  const localPersonas = useMemo(
+    () => (personas ?? []).filter((persona) => isLocalPersona(persona)),
     [personas],
   );
   const attachments = section.section_attachments ?? [];
@@ -172,7 +172,7 @@ export function LogSection({
             isAttachment: section.section_type === "FILE_ATTACHMENT",
             filePersonaName: section.persona_name_snapshot ?? undefined,
             globalPersonas: globalPersonas,
-            shadowPersonas: shadowPersonas,
+            localPersonas: localPersonas,
             onSelect: handlePersonaSelect,
             readOnly: !editable,
           }}

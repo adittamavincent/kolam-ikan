@@ -120,8 +120,8 @@ export interface StreamWithCanvas extends Stream {
 }
 
 export interface StreamWithCabinetAndDomain extends Stream {
+  domain?: Domain;
   cabinet?: Cabinet & {
-    domain?: Domain;
   };
 }
 

@@ -112,34 +112,13 @@ const getBorderCenterRem = (depth: number) =>
 const LEGACY_GLOBAL_STREAM_SORT_ORDER = -100;
 
 const getStreamKind = (stream: Stream): StreamKind =>
-  (stream.stream_kind as StreamKind) === STREAM_KIND.GLOBAL ||
-  // Backward compatibility: before migration, the default global row is identified by reserved root sort order.
-  (stream.cabinet_id === null &&
-    stream.sort_order === LEGACY_GLOBAL_STREAM_SORT_ORDER)
+  (stream.stream_kind as StreamKind) === STREAM_KIND.GLOBAL
     ? STREAM_KIND.GLOBAL
     : STREAM_KIND.REGULAR;
 
 const isGlobalStream = (stream: Stream) =>
   getStreamKind(stream) === STREAM_KIND.GLOBAL;
-const isSystemGlobalStream = (stream: Stream) =>
-  isGlobalStream(stream) && stream.is_system_global;
-
-const canDeleteStream = (stream: Stream, allStreams: Stream[] | undefined) => {
-  if (!isGlobalStream(stream)) return true;
-  const globalCount = (allStreams ?? []).filter((candidate) =>
-    isGlobalStream(candidate),
-  ).length;
-  return globalCount > 1;
-};
-
-const isMissingGlobalStreamColumnsError = (
-  error: { message?: string } | null,
-) => {
-  const message = error?.message ?? "";
-  return (
-    message.includes("stream_kind") || message.includes("is_system_global")
-  );
-};
+const canDeleteStream = (stream: Stream) => !isGlobalStream(stream);
 
 interface CreationInputProps {
   type: "cabinet" | "stream";
@@ -1059,28 +1038,13 @@ export function Navigator({}: NavigatorProps) {
 
     ensuredGlobalRef.current = domainId;
     void (async () => {
-      let { error } = await supabase.from("streams").insert({
+      const { error } = await supabase.from("streams").insert({
         domain_id: domainId,
         cabinet_id: null,
         name: "Global User Entry",
-        description:
-          "Core storyline and foundational user context for this domain.",
         sort_order: LEGACY_GLOBAL_STREAM_SORT_ORDER,
         stream_kind: STREAM_KIND.GLOBAL,
-        is_system_global: true,
       });
-
-      if (error && isMissingGlobalStreamColumnsError(error)) {
-        const fallback = await supabase.from("streams").insert({
-          domain_id: domainId,
-          cabinet_id: null,
-          name: "Global User Entry",
-          description:
-            "Core storyline and foundational user context for this domain.",
-          sort_order: LEGACY_GLOBAL_STREAM_SORT_ORDER,
-        });
-        error = fallback.error;
-      }
 
       if (!error) {
         queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
@@ -1364,30 +1328,11 @@ export function Navigator({}: NavigatorProps) {
 
   const createStreamMutation = useMutation({
     mutationFn: async (stream: StreamInsert) => {
-      let { data, error } = await supabase
+      const { data, error } = await supabase
         .from("streams")
         .insert(stream)
         .select()
         .single();
-
-      if (error && isMissingGlobalStreamColumnsError(error)) {
-        const legacyStream: StreamInsert = {
-          cabinet_id: stream.cabinet_id,
-          domain_id: stream.domain_id,
-          name: stream.name,
-          description: stream.description,
-          sort_order: stream.sort_order,
-        };
-
-        const fallback = await supabase
-          .from("streams")
-          .insert(legacyStream)
-          .select()
-          .single();
-
-        data = fallback.data;
-        error = fallback.error;
-      }
 
       if (error) throw error;
       return data as Stream;
@@ -1405,10 +1350,8 @@ export function Navigator({}: NavigatorProps) {
         cabinet_id: newStream.cabinet_id ?? null,
         domain_id: newStream.domain_id,
         sort_order: newStream.sort_order ?? 0,
-        description: newStream.description ?? null,
         stream_kind:
           (newStream.stream_kind as StreamKind) ?? STREAM_KIND.REGULAR,
-        is_system_global: newStream.is_system_global ?? false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,
@@ -1802,10 +1745,7 @@ export function Navigator({}: NavigatorProps) {
       deleteCabinetMutation.mutate(deleteTarget.id);
     } else {
       const stream = getStreamById(deleteTarget.id);
-      if (
-        stream &&
-        (!canDeleteStream(stream, streams) || isSystemGlobalStream(stream))
-      ) {
+      if (stream && !canDeleteStream(stream)) {
         setDeleteTarget(null);
         return;
       }
@@ -1873,7 +1813,6 @@ export function Navigator({}: NavigatorProps) {
         cabinet_id: stream.cabinet_id,
         domain_id: domainId,
         name: stream.name,
-        description: stream.description,
         sort_order: sortOrder,
       });
     }
@@ -1885,22 +1824,17 @@ export function Navigator({}: NavigatorProps) {
     if (!contextMenu) return;
     const { id, type } = contextMenu;
     const stream = type === "stream" ? getStreamById(id) : null;
-    const blockedForSystemGlobal = stream
-      ? isSystemGlobalStream(stream)
-      : false;
-    const blockedDeleteForMinimumGlobal = stream
-      ? !canDeleteStream(stream, streams)
-      : false;
+    const blockedGlobalActions = stream ? isGlobalStream(stream) : false;
     setContextMenu(null);
     if (action === "rename") {
       openRename(id, type);
     } else if (action === "delete") {
-      if (blockedForSystemGlobal || blockedDeleteForMinimumGlobal) return;
+      if (blockedGlobalActions) return;
       setDeleteTarget({ id, type });
     } else if (action === "duplicate") {
       handleDuplicate(id, type);
     } else if (action === "move") {
-      if (blockedForSystemGlobal) return;
+      if (blockedGlobalActions) return;
       const item = getItemById(id, type);
       const destination =
         type === "cabinet"
@@ -1957,11 +1891,8 @@ export function Navigator({}: NavigatorProps) {
     : null;
   const contextMenuStream =
     contextMenu?.type === "stream" ? getStreamById(contextMenu.id) : null;
-  const contextMenuIsSystemGlobal = contextMenuStream
-    ? isSystemGlobalStream(contextMenuStream)
-    : false;
-  const contextMenuDeleteBlockedByMinimumGlobal = contextMenuStream
-    ? !canDeleteStream(contextMenuStream, streams)
+  const contextMenuIsGlobal = contextMenuStream
+    ? isGlobalStream(contextMenuStream)
     : false;
   const moveExcluded =
     moveTarget?.type === "cabinet"
@@ -2250,7 +2181,7 @@ export function Navigator({}: NavigatorProps) {
               </button>
               <button
                 onClick={() => handleContextAction("move")}
-                disabled={contextMenuIsSystemGlobal}
+                disabled={contextMenuIsGlobal}
                 className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
               >
                 <Move className="h-4 w-4 text-text-muted" />
@@ -2266,10 +2197,7 @@ export function Navigator({}: NavigatorProps) {
               <div className="my-1 h-px bg-border-subtle" />
               <button
                 onClick={() => handleContextAction("delete")}
-                disabled={
-                  contextMenuIsSystemGlobal ||
-                  contextMenuDeleteBlockedByMinimumGlobal
-                }
+                disabled={contextMenuIsGlobal}
                 className="flex w-full items-center justify-between px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-rose-500/10"
               >
                 <span className="flex items-center gap-2">
@@ -2391,7 +2319,7 @@ export function Navigator({}: NavigatorProps) {
                     disabled={
                       moveTarget?.type === "stream"
                         ? ((moveItem as Stream | undefined)
-                            ? isSystemGlobalStream(moveItem as Stream)
+                            ? isGlobalStream(moveItem as Stream)
                             : false) ||
                           (isCabinetOnly &&
                             (moveDestination ?? null) === null) ||

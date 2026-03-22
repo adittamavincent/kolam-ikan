@@ -1,22 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PostgrestError } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { 
-  Domain, 
-  DomainInsert, 
-  DomainUpdate, 
-  Cabinet, 
+import {
+  Domain,
+  DomainInsert,
+  DomainUpdate,
+  Cabinet,
   CabinetInsert,
-  Stream, 
-  StreamInsert, 
-  Entry, 
-  EntryInsert, 
-  Section, 
-  SectionInsert, 
+  Stream,
+  StreamInsert,
+  Entry,
+  EntryInsert,
+  Section,
+  SectionInsert,
   SectionFileAttachmentInsert,
   DocumentEntryLinkInsert,
   Canvas,
   CanvasInsert,
+  STREAM_KIND,
 } from "@/lib/types";
 
 function isMissingDuplicateDomainRpcError(error: unknown) {
@@ -162,16 +163,12 @@ export function useDomains(userId: string) {
 
     const { data: oldStreams } = await supabase
       .from("streams")
-      .select(
-        "id, cabinet_id, name, description, sort_order, stream_kind, is_system_global",
-      )
+      .select("id, cabinet_id, name, sort_order, stream_kind")
       .eq("domain_id", oldDomainId)
       .is("deleted_at", null);
     const { data: newStreams } = await supabase
       .from("streams")
-      .select(
-        "id, cabinet_id, name, description, sort_order, stream_kind, is_system_global",
-      )
+      .select("id, cabinet_id, name, sort_order, stream_kind")
       .eq("domain_id", newDomainId)
       .is("deleted_at", null);
 
@@ -181,20 +178,19 @@ export function useDomains(userId: string) {
     const streamSignature = (stream: {
       cabinet_id: string | null;
       name: string;
-      description: string | null;
       sort_order: number;
       stream_kind: string;
-      is_system_global: boolean;
     }) => {
       const cabinetPath = stream.cabinet_id
-        ? "__cab__" + (newCabinetPaths.get(stream.cabinet_id) ?? oldCabinetPaths.get(stream.cabinet_id) ?? "__missing__")
+        ? "__cab__" +
+          (newCabinetPaths.get(stream.cabinet_id) ??
+            oldCabinetPaths.get(stream.cabinet_id) ??
+            "__missing__")
         : "__root_stream__";
       return [
         stream.stream_kind,
-        stream.is_system_global ? "1" : "0",
         cabinetPath,
         stream.name,
-        stream.description ?? "",
         String(stream.sort_order),
       ].join("|");
     };
@@ -222,9 +218,11 @@ export function useDomains(userId: string) {
     for (const oldStream of originalStreams) {
       const signature = streamSignature(oldStream);
       let mappedNewId = shiftMappedId(signature);
-      if (!mappedNewId && oldStream.is_system_global) {
+      if (!mappedNewId && oldStream.stream_kind === STREAM_KIND.GLOBAL) {
         mappedNewId =
-          duplicatedStreams.find((stream) => stream.is_system_global)?.id ??
+          duplicatedStreams.find(
+            (stream) => stream.stream_kind === STREAM_KIND.GLOBAL,
+          )?.id ??
           null;
       }
       if (mappedNewId) {
@@ -518,16 +516,14 @@ export function useDomains(userId: string) {
         // 2) Streams: insert mapped to new cabinets
         const { data: streams } = await supabase
           .from("streams")
-          .select(
-            "id, cabinet_id, name, description, sort_order, stream_kind, is_system_global",
-          )
+          .select("id, cabinet_id, name, sort_order, stream_kind")
           .eq("domain_id", id)
           .is("deleted_at", null);
         const sourceStreams = streams ?? [];
 
         if (sourceStreams.length) {
           const sourceGlobalStream = sourceStreams.find(
-            (stream) => stream.is_system_global,
+            (stream) => stream.stream_kind === STREAM_KIND.GLOBAL,
           );
           if (sourceGlobalStream) {
             const { data: targetGlobalStream, error: targetGlobalStreamErr } =
@@ -535,7 +531,7 @@ export function useDomains(userId: string) {
                 .from("streams")
                 .select("id")
                 .eq("domain_id", newDomainId)
-                .eq("is_system_global", true)
+                .eq("stream_kind", STREAM_KIND.GLOBAL)
                 .is("deleted_at", null)
                 .single();
 
@@ -547,7 +543,6 @@ export function useDomains(userId: string) {
               .from("streams")
               .update({
                 name: sourceGlobalStream.name,
-                description: sourceGlobalStream.description,
                 sort_order: sourceGlobalStream.sort_order,
               })
               .eq("id", targetGlobalStream.id);
@@ -558,19 +553,19 @@ export function useDomains(userId: string) {
           }
 
           for (const s of sourceStreams) {
-            if (s.is_system_global) continue;
+            if (s.stream_kind === STREAM_KIND.GLOBAL) continue;
 
-            const newCabId = s.cabinet_id ? (cabMap.get(s.cabinet_id) ?? null) : null;
+            const newCabId = s.cabinet_id
+              ? (cabMap.get(s.cabinet_id) ?? null)
+              : null;
             const { data: newStream, error: newStreamErr } = await supabase
               .from("streams")
               .insert({
                 cabinet_id: newCabId,
                 name: s.name,
-                description: s.description,
                 sort_order: s.sort_order,
                 domain_id: newDomainId,
                 stream_kind: s.stream_kind,
-                is_system_global: false,
               } as StreamInsert)
               .select()
               .single();
@@ -691,7 +686,7 @@ export function useDomains(userId: string) {
           const origStreamIds = Array.from(streamMap.keys());
           const { data: canvases } = await supabase
             .from("canvases")
-            .select("id, stream_id, content_json, search_text")
+            .select("id, stream_id, content_json")
             .in("stream_id", origStreamIds);
 
           if (canvases && canvases.length) {

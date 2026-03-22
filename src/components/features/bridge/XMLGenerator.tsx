@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   BlockNoteBlock,
   EntryWithSections,
+  STREAM_KIND,
 } from "@/lib/types";
 
 interface XMLGeneratorProps {
@@ -136,9 +137,7 @@ export function XMLGenerator({
 
   const currentXML = useMemo(() => {
     const domainName = stream?.domain?.name || "";
-    const isGlobal =
-      stream?.stream_kind === "GLOBAL" ||
-      (stream?.cabinet_id === null && stream?.sort_order === -100);
+    const isGlobal = stream?.stream_kind === STREAM_KIND.GLOBAL;
     const streamNameById = new Map(
       (globalStreamsMeta ?? []).map((globalStream) => [
         globalStream.id,

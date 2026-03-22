@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useSidebar } from "@/lib/hooks/useSidebar";
 import { useLayout } from "@/lib/hooks/useLayout";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/lib/types/database.types";
 import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import {
   Dialog,
@@ -30,6 +31,9 @@ interface ClientMainLayoutProps {
   children: React.ReactNode;
   userId: string;
 }
+
+type CanvasSearchResult =
+  Database["public"]["Functions"]["search_canvases"]["Returns"][number];
 
 const SIDEBAR_MIN_WIDTH = 200;
 const SIDEBAR_MAX_WIDTH = 500;
@@ -288,18 +292,18 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         const { data: sectionData } = await supabase
           .from("sections")
           .select(
-            `id, search_text, created_at, entry:entries(id, stream_id, created_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon))) ), persona:personas(name)`,
+            `id, search_text, created_at, entry:entries(id, stream_id, created_at, stream:streams(id, name, domain:domains(id, name, icon))), persona:personas(name)`,
           )
           .ilike("search_text", `%${cleaned}%`)
           .limit(25);
 
-        const { data: canvasData } = await supabase
-          .from("canvases")
-          .select(
-            `id, search_text, updated_at, stream:streams(id, name, cabinet:cabinets(id, domain:domains(id, name, icon)))`,
-          )
-          .ilike("search_text", `%${cleaned}%`)
-          .limit(15);
+        const { data: canvasData, error: canvasSearchError } = await supabase
+          .rpc("search_canvases", {
+            p_limit: 15,
+            p_query: cleaned,
+          });
+
+        if (canvasSearchError) throw canvasSearchError;
 
         const results: {
           type: "section" | "canvas";
@@ -338,7 +342,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
         sectionData?.forEach((section) => {
           const stream = section.entry?.stream;
-          const domain = stream?.cabinet?.domain;
+          const domain = stream?.domain;
           const preview = section.search_text?.slice(0, 120) ?? "";
           results.push({
             type: "section",
@@ -356,18 +360,16 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           });
         });
 
-        canvasData?.forEach((canvas) => {
-          const stream = canvas.stream;
-          const domain = stream?.cabinet?.domain;
-          const preview = canvas.search_text?.slice(0, 140) ?? "";
+        (canvasData as CanvasSearchResult[] | null)?.forEach((canvas) => {
+          const preview = canvas.content_preview?.slice(0, 140) ?? "";
           results.push({
             type: "canvas",
             id: canvas.id,
-            streamId: stream?.id ?? "",
-            streamName: stream?.name ?? "Untitled Stream",
-            domainId: domain?.id ?? null,
-            domainName: domain?.name ?? null,
-            domainIcon: domain?.icon ?? null,
+            streamId: canvas.stream_id ?? "",
+            streamName: canvas.stream_name ?? "Untitled Stream",
+            domainId: canvas.domain_id ?? null,
+            domainName: canvas.domain_name ?? null,
+            domainIcon: canvas.domain_icon ?? null,
             contentPreview: preview,
             createdAt: canvas.updated_at ?? null,
             score: similarity(preview),

@@ -14,7 +14,7 @@ export function useStream(streamId: string) {
     queryFn: async ({ signal }) => {
       const { data, error } = await supabase
         .from("streams")
-        .select("*, cabinet:cabinets(*, domain:domains(*))")
+        .select("*, domain:domains(*), cabinet:cabinets(*)")
         .eq("id", streamId)
         .abortSignal(signal)
         .single();

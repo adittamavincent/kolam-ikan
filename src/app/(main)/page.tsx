@@ -27,15 +27,13 @@ import { DynamicIcon } from "@/components/shared/DynamicIcon";
 interface RecentStream {
   id: string;
   name: string;
-  description: string | null;
   updated_at: string | null;
   created_at: string | null;
-  cabinet_id: string;
+  cabinet_id: string | null;
+  domain: { id: string; name: string; icon: string } | null;
   cabinet: {
     id: string;
     name: string;
-    domain_id: string;
-    domain: { id: string; name: string; icon: string } | null;
   } | null;
 }
 
@@ -46,9 +44,7 @@ interface RecentEntry {
   stream: {
     id: string;
     name: string;
-    cabinet: {
-      domain: { id: string; name: string; icon: string } | null;
-    } | null;
+    domain: { id: string; name: string; icon: string } | null;
   } | null;
   sections: {
     id: string;
@@ -386,11 +382,9 @@ export default function HomePage() {
         .from("streams")
         .select(
           `
-          id, name, description, updated_at, created_at, cabinet_id,
-          cabinet:cabinets (
-            id, name, domain_id,
-            domain:domains (id, name, icon)
-          )
+          id, name, updated_at, created_at, cabinet_id,
+          domain:domains (id, name, icon),
+          cabinet:cabinets (id, name)
         `,
         )
         .is("deleted_at", null)
@@ -420,9 +414,7 @@ export default function HomePage() {
           id, created_at, updated_at,
           stream:streams (
             id, name,
-            cabinet:cabinets (
-              domain:domains (id, name, icon)
-            )
+            domain:domains (id, name, icon)
           ),
           sections (id, persona_name_snapshot, search_text)
         `,
@@ -634,15 +626,19 @@ export default function HomePage() {
               <div className="space-y-2">
                 {/* Recent streams */}
                 {recentStreams?.slice(0, 3).map((stream) => {
-                  const domainIcon = stream.cabinet?.domain?.icon ?? "📁";
-                  const domainName = stream.cabinet?.domain?.name ?? "Unknown";
-                  const domainId = stream.cabinet?.domain_id;
+                  const domainIcon = stream.domain?.icon ?? "📁";
+                  const domainName = stream.domain?.name ?? "Unknown";
+                  const domainId = stream.domain?.id;
                   return (
                     <RecentActivityItem
                       key={`stream-${stream.id}`}
                       icon={<DynamicIcon name={domainIcon} />}
                       title={stream.name}
-                      subtitle={`${domainName} — ${stream.cabinet?.name ?? ""}`}
+                      subtitle={
+                        stream.cabinet?.name
+                          ? `${domainName} — ${stream.cabinet.name}`
+                          : domainName
+                      }
                       time={timeAgo(stream.updated_at)}
                       onClick={() => {
                         if (domainId) router.push(`/${domainId}/${stream.id}`);
@@ -665,10 +661,9 @@ export default function HomePage() {
 
                 {/* Recent entries */}
                 {recentEntries?.slice(0, 4).map((entry) => {
-                  const domainIcon =
-                    entry.stream?.cabinet?.domain?.icon ?? "📄";
+                  const domainIcon = entry.stream?.domain?.icon ?? "📄";
                   const streamName = entry.stream?.name ?? "Unknown stream";
-                  const domainId = entry.stream?.cabinet?.domain?.id;
+                  const domainId = entry.stream?.domain?.id;
                   const streamId = entry.stream?.id;
                   return (
                     <RecentActivityItem

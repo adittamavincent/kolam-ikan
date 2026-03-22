@@ -17,6 +17,7 @@ import { ContextBag } from "./ContextBag";
 import { XMLGenerator } from "./XMLGenerator";
 import { ResponseParser, type ResponseParserHandle } from "./ResponseParser";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { STREAM_KIND } from "@/lib/types";
 
 interface BridgeModalProps {
   isOpen: boolean;
@@ -79,13 +80,8 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
       enabled: !!streamMeta?.domain_id,
     });
 
-  const isGlobal = (s: {
-    stream_kind: string;
-    cabinet_id: string | null;
-    sort_order: number;
-  }) =>
-    s.stream_kind === "GLOBAL" ||
-    (s.cabinet_id === null && s.sort_order === -100);
+  const isGlobal = (s: { stream_kind: string }) =>
+    s.stream_kind === STREAM_KIND.GLOBAL;
 
   const currentStreamIsGlobal = streamMeta ? isGlobal(streamMeta) : false;
   const allDomainStreams = domainGlobalStreamsData ?? [];

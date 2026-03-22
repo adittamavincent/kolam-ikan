@@ -16,7 +16,7 @@ export default async function StreamPage({ params }: StreamPageProps) {
   // Verify stream exists and user has access
   const { data: stream, error } = await supabase
     .from("streams")
-    .select("*, cabinet:cabinets(*, domain:domains(*))")
+    .select("*, domain:domains(*), cabinet:cabinets(*)")
     .eq("id", resolvedParams.stream)
     .single();
 

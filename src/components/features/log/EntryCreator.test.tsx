@@ -7,6 +7,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // Mocks
 const mockMutate = vi.fn();
 const mockMutateAsync = vi.fn();
+const mockSaveDraft = vi.fn();
+const mockCommitDraft = vi.fn();
+const mockDraftContents: Record<string, unknown[]> = {};
 
 vi.mock("@tanstack/react-query", async () => {
   const actual = await vi.importActual("@tanstack/react-query");
@@ -58,6 +61,17 @@ vi.mock("@tanstack/react-query", async () => {
 const mockSupabase = {
   auth: {
     getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-1" } } }),
+    getSession: vi.fn().mockResolvedValue({
+      data: { session: { user: { id: "user-1", email: "test@example.com" } } },
+      error: null,
+    }),
+    onAuthStateChange: vi.fn(() => ({
+      data: {
+        subscription: {
+          unsubscribe: vi.fn(),
+        },
+      },
+    })),
   },
   rpc: vi.fn(),
   from: vi.fn(() => ({
@@ -73,12 +87,39 @@ vi.mock("@/lib/supabase/client", () => ({
 
 vi.mock("@/lib/hooks/usePersonas", () => ({
   usePersonas: () => ({
-    personas: [{ id: "p1", name: "Myself" }],
+    personas: [{ id: "p1", name: "Myself", icon: "User", color: "#0ea5e9" }],
   }),
+}));
+
+vi.mock("@/lib/hooks/useDocuments", () => ({
+  useDocuments: () => ({
+    documents: [],
+    isLoading: false,
+  }),
+}));
+
+vi.mock("@/components/features/documents/DocumentImportModal", () => ({
+  DocumentImportModal: () => null,
 }));
 
 vi.mock("@/lib/hooks/useKeyboard", () => ({
   useKeyboard: vi.fn(),
+}));
+
+vi.mock("@/lib/hooks/useDraftSystem", () => ({
+  useDraftSystem: () => ({
+    status: "idle",
+    saveDraft: mockSaveDraft,
+    saveFileAttachmentDraft: vi.fn(),
+    commitDraft: mockCommitDraft,
+    initialDrafts: {},
+    getDraftContent: (instanceId: string) => mockDraftContents[instanceId] ?? [],
+    getFileAttachmentDraft: () => undefined,
+    isLoading: false,
+    setActiveInstances: vi.fn(),
+    flushPendingSaves: vi.fn(),
+    clearDraft: vi.fn(),
+  }),
 }));
 
 vi.mock("@/components/shared/BlockNoteEditor", () => ({
@@ -110,6 +151,13 @@ describe("EntryCreator", () => {
   beforeEach(() => {
     queryClient = new QueryClient();
     vi.clearAllMocks();
+    Object.keys(mockDraftContents).forEach((key) => delete mockDraftContents[key]);
+    mockSaveDraft.mockImplementation(
+      (instanceId: string, _personaId: string, content: unknown[]) => {
+        mockDraftContents[instanceId] = content;
+      },
+    );
+    mockCommitDraft.mockResolvedValue("entry-1");
   });
 
   afterEach(() => {
@@ -122,7 +170,7 @@ describe("EntryCreator", () => {
         <EntryCreator streamId="stream-1" />
       </QueryClientProvider>,
     );
-    expect(screen.getByTestId("mock-editor")).toBeDefined();
+    expect(screen.getByText("Add Persona")).toBeInTheDocument();
   });
 
   it("calls save mutation with isDraft: true on content change", async () => {
@@ -132,15 +180,12 @@ describe("EntryCreator", () => {
       </QueryClientProvider>,
     );
 
-    const editor = screen.getByTestId("mock-editor");
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    const editor = await screen.findByTestId("mock-editor");
     fireEvent.change(editor, { target: { value: "Test content" } });
 
-    // Since debounce is mocked to run immediately
-    expect(mockMutate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isDraft: true,
-      }),
-    );
+    expect(mockSaveDraft).toHaveBeenCalled();
   });
 
   it("calls save mutation with isDraft: false on commit", async () => {
@@ -150,20 +195,14 @@ describe("EntryCreator", () => {
       </QueryClientProvider>,
     );
 
-    const editor = screen.getByTestId("mock-editor");
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    const editor = await screen.findByTestId("mock-editor");
     fireEvent.change(editor, { target: { value: "Test content" } });
 
-    // Trigger commit (we need to find the button, which appears only if ghostId is set)
-    // The mock editor change sets ghostId via handleContentChange
-
-    // Find commit button
-    const commitBtn = await screen.findByText(/Commit/);
+    const commitBtn = await screen.findByText(/Commit Entry/);
     fireEvent.click(commitBtn);
 
-    expect(mockMutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isDraft: false,
-      }),
-    );
+    expect(mockCommitDraft).toHaveBeenCalled();
   });
 });

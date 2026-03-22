@@ -40,6 +40,8 @@ import {
   EyeOff,
   Tag,
   GitBranch,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
@@ -49,6 +51,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PartialBlock } from "@blocknote/core";
 import { useParams } from "next/navigation";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ThreadFrame } from "@/components/shared/SectionPreset";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -338,6 +341,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   } | null>(null);
   const [tagTarget, setTagTarget] = useState<EntryWithSections | null>(null);
   const [stashedIds, setStashedIds] = useState<Set<string>>(new Set());
+  const [collapsedEntryIds, setCollapsedEntryIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [showStash, setShowStash] = useState(false);
   const [tags, setTags] = useState<Record<string, string>>({}); // entryId → tag label
   const [currentBranch, setCurrentBranch] = useState("main");
@@ -880,6 +886,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     // Keep draft sections empty initially; each section draft is written only
     // after the user edits it. This avoids overriding initial editor payload
     // when toggling modes in read/edit flows.
+    setCollapsedEntryIds((prev) => {
+      if (!prev.has(entry.id)) return prev;
+      const next = new Set(prev);
+      next.delete(entry.id);
+      return next;
+    });
     setAmendState({ entryId: entry.id, sections: {} });
     setAmendError(null);
   };
@@ -982,6 +994,57 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const visibleEntries = showStash
     ? branchEntries
     : branchEntries.filter((e) => !stashedIds.has(e.id));
+  const visibleEntryIds = useMemo(
+    () => visibleEntries.map((entry) => entry.id),
+    [visibleEntries],
+  );
+
+  const setEntriesCollapsed = useCallback(
+    (entryIds: string[], collapsed: boolean) => {
+      if (!entryIds.length) return;
+
+      setCollapsedEntryIds((prev) => {
+        const next = new Set(prev);
+        let changed = false;
+
+        for (const entryId of entryIds) {
+          if (collapsed) {
+            if (!next.has(entryId)) {
+              next.add(entryId);
+              changed = true;
+            }
+          } else if (next.delete(entryId)) {
+            changed = true;
+          }
+        }
+
+        return changed ? next : prev;
+      });
+    },
+    [],
+  );
+
+  const toggleEntryCollapsed = useCallback(
+    (entryId: string) => {
+      if (amendState?.entryId === entryId) return;
+
+      setCollapsedEntryIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(entryId)) next.delete(entryId);
+        else next.add(entryId);
+        return next;
+      });
+    },
+    [amendState?.entryId],
+  );
+
+  const setVisibleEntriesCollapsed = useCallback(
+    (collapsed: boolean) => {
+      const targetIds = visibleEntryIds.filter((id) => id !== amendState?.entryId);
+      setEntriesCollapsed(targetIds, collapsed);
+    },
+    [amendState?.entryId, setEntriesCollapsed, visibleEntryIds],
+  );
 
   const stashCount = stashedIds.size;
   const showLoadingState =
@@ -1029,6 +1092,33 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     return [...new Set(names)];
   }, [branches]);
 
+  const collapsedVisibleCount = useMemo(
+    () =>
+      visibleEntryIds.reduce(
+        (count, entryId) => count + (collapsedEntryIds.has(entryId) ? 1 : 0),
+        0,
+      ),
+    [collapsedEntryIds, visibleEntryIds],
+  );
+  const allVisibleCollapsed =
+    visibleEntryIds.length > 0 && collapsedVisibleCount === visibleEntryIds.length;
+
+  useEffect(() => {
+    const branchEntryIds = new Set(branchEntries.map((entry) => entry.id));
+
+    setCollapsedEntryIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+
+      for (const entryId of prev) {
+        if (branchEntryIds.has(entryId)) next.add(entryId);
+        else changed = true;
+      }
+
+      return changed ? next : prev;
+    });
+  }, [branchEntries]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -1046,6 +1136,15 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
     const onToggleSort = () => {
       setSortOrder((prev) => (prev === "newest" ? "oldest" : "newest"));
+    };
+
+    const onToggleCompactAll = (event: Event) => {
+      const detail = (event as CustomEvent<{ collapsed?: boolean }>).detail;
+      const nextCollapsed =
+        typeof detail?.collapsed === "boolean"
+          ? detail.collapsed
+          : !allVisibleCollapsed;
+      setVisibleEntriesCollapsed(nextCollapsed);
     };
 
     const onSetBranch = (event: Event) => {
@@ -1118,6 +1217,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     window.addEventListener("kolam_header_log_toggle_stash", onToggleStash);
     window.addEventListener("kolam_header_log_toggle_sort", onToggleSort);
     window.addEventListener(
+      "kolam_header_log_toggle_compact_all",
+      onToggleCompactAll as EventListener,
+    );
+    window.addEventListener(
       "kolam_header_log_set_branch",
       onSetBranch as EventListener,
     );
@@ -1142,6 +1245,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       );
       window.removeEventListener("kolam_header_log_toggle_sort", onToggleSort);
       window.removeEventListener(
+        "kolam_header_log_toggle_compact_all",
+        onToggleCompactAll as EventListener,
+      );
+      window.removeEventListener(
         "kolam_header_log_set_branch",
         onSetBranch as EventListener,
       );
@@ -1163,6 +1270,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     streamId,
     refetchBranches,
     refetchCommitBranches,
+    allVisibleCollapsed,
+    setVisibleEntriesCollapsed,
   ]);
 
   useEffect(() => {
@@ -1173,6 +1282,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           streamId,
           currentBranch,
           commitCount: visibleEntries.length,
+          collapsedEntryCount: collapsedVisibleCount,
+          allEntriesCollapsed: allVisibleCollapsed,
           showStash,
           stashCount,
           graphView,
@@ -1186,6 +1297,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     streamId,
     currentBranch,
     visibleEntries.length,
+    collapsedVisibleCount,
+    allVisibleCollapsed,
     showStash,
     stashCount,
     graphView,
@@ -1269,10 +1382,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       const isLatestEntry = headEntryId === entry.id;
                       const isAmending = amendState?.entryId === entry.id;
                       const isStashed = stashedIds.has(entry.id);
+                      const isCollapsed = collapsedEntryIds.has(entry.id);
                       const tag = tags[entry.id];
                       const hash = shortHash(entry.id);
                       const entryBranches =
                         branchesByEntryId.get(entry.id) ?? [];
+                      const sectionCount = entry.sections?.length ?? 0;
                       const createdAtText = new Date(
                         entry.created_at || "",
                       ).toLocaleString(undefined, {
@@ -1291,23 +1406,51 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           onContextMenu={(e) => handleContextMenu(e, entry)}
                           className={isStashed ? "opacity-50" : undefined}
                         >
-                          <div
-                            className={`relative group  border bg-surface-default transition-all ${isAmending ? "border-border-default/50  " : "border-border-default/50 "}`}
-                          >
-                            {/* Commit header — mimics git log --oneline */}
-                            <div
-                              className={`flex items-center px-2.5 py-0.5 bg-action-primary-bg/10 ${
-                                (entry.sections?.length ?? 0) > 0
-                                  ? "border-t border-l border-r border-border-default/30"
-                                  : "border border-border-default/30"
-                              }`}
-                            >
-                              <div className="flex w-full items-center justify-between gap-2">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <GitCommitHorizontal className="h-3 w-3 text-text-muted shrink-0" />
-                                  {/* Short hash */}
+                          <ThreadFrame
+                            frameClassName={`group transition-colors ${
+                              isCollapsed
+                                ? "border-border-default/70 bg-surface-default"
+                                : "border-border-default/55 bg-surface-default"
+                            } ${isAmending ? "ring-1 ring-action-primary-bg/20" : ""}`}
+                            headerClassName={`${
+                              isCollapsed
+                                ? "bg-surface-subtle/75 hover:bg-surface-subtle"
+                                : "bg-action-primary-bg/10 hover:bg-action-primary-bg/15"
+                            } ${isAmending ? "cursor-default" : "cursor-pointer"} transition-colors`}
+                            bodyClassName="bg-surface-default/55 px-3 pb-3 pt-2"
+                            header={
+                              <div
+                                role="button"
+                                tabIndex={isAmending ? -1 : 0}
+                                aria-expanded={!isCollapsed}
+                                onClick={() => toggleEntryCollapsed(entry.id)}
+                                onKeyDown={(event) => {
+                                  if (isAmending) return;
+                                  if (event.key === "Enter" || event.key === " ") {
+                                    event.preventDefault();
+                                    toggleEntryCollapsed(entry.id);
+                                  }
+                                }}
+                                className="flex items-center justify-between gap-2"
+                              >
+                                <div className="flex min-w-0 items-center gap-1.5">
+                                  <span
+                                    className={`inline-flex h-5 w-5 shrink-0 items-center justify-center border ${
+                                      isCollapsed
+                                        ? "border-border-default/60 bg-surface-default text-text-muted"
+                                        : "border-action-primary-bg/25 bg-surface-default/80 text-action-primary-bg"
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    {isCollapsed ? (
+                                      <ChevronRight className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <ChevronDown className="h-3.5 w-3.5" />
+                                    )}
+                                  </span>
+                                  <GitCommitHorizontal className="h-3 w-3 shrink-0 text-text-muted" />
                                   <span className="relative shrink-0 group/hash">
-                                    <code className="text-[10px] font-mono text-action-primary-bg/80 cursor-help">
+                                    <code className="cursor-help text-[10px] font-mono text-action-primary-bg/80">
                                       {hash}
                                     </code>
                                     <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 border border-border-default bg-surface-elevated p-2 text-[10px] font-mono text-text-default shadow-xl group-hover/hash:block">
@@ -1319,13 +1462,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                         id: {entry.id}
                                       </div>
                                       <div>time: {createdAtText}</div>
-                                      <div>
-                                        sections: {entry.sections?.length ?? 0}
-                                      </div>
+                                      <div>sections: {entry.sections?.length ?? 0}</div>
                                       <div>tag: {tag || "-"}</div>
-                                      <div>
-                                        stashed: {isStashed ? "yes" : "no"}
-                                      </div>
+                                      <div>stashed: {isStashed ? "yes" : "no"}</div>
                                       <div>
                                         latest: {isLatestEntry ? "HEAD" : "no"}
                                       </div>
@@ -1338,19 +1477,32 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     </div>
                                   </span>
                                   <span className="text-border-default">·</span>
-                                  <Calendar className="h-3 w-3 text-text-muted shrink-0" />
-                                  <span className="text-[10px] font-medium text-text-subtle font-mono truncate">
+                                  <Calendar className="h-3 w-3 shrink-0 text-text-muted" />
+                                  <span className="truncate font-mono text-[10px] font-medium text-text-subtle">
                                     {createdAtText}
                                   </span>
-                                  {/* Tag badge */}
+                                  <span
+                                    className={`shrink-0 border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                      isCollapsed
+                                        ? "border-border-default/50 bg-surface-default text-text-muted"
+                                        : "border-border-default/35 bg-surface-default/80 text-text-subtle"
+                                    }`}
+                                  >
+                                    {sectionCount} section{sectionCount === 1 ? "" : "s"}
+                                  </span>
+                                  {isCollapsed && (
+                                    <span className="shrink-0 border border-action-primary-bg/25 bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-action-primary-bg">
+                                      compact
+                                    </span>
+                                  )}
                                   {tag && (
-                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-default/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-default/35 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
                                       <Tag className="h-2.5 w-2.5" />
                                       {tag}
                                     </span>
                                   )}
                                   {isLatestEntry && (
-                                    <span className="shrink-0 inline-flex items-center border border-border-default/30 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                                    <span className="shrink-0 inline-flex items-center border border-border-default/35 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                                       HEAD
                                     </span>
                                   )}
@@ -1362,12 +1514,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   )}
                                 </div>
 
-                                {/* Action buttons on latest / amending */}
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex shrink-0 items-center gap-1">
                                   {isAmending ? (
                                     <>
                                       <button
-                                        onClick={() => handleSaveAmend(entry)}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleSaveAmend(entry);
+                                        }}
                                         disabled={amendEntry.isPending}
                                         className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
                                       >
@@ -1379,7 +1533,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                         Save
                                       </button>
                                       <button
-                                        onClick={handleCancelAmend}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          handleCancelAmend();
+                                        }}
                                         disabled={amendEntry.isPending}
                                         className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
                                       >
@@ -1389,7 +1546,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     </>
                                   ) : isLatestEntry ? (
                                     <button
-                                      onClick={() => handleStartAmend(entry)}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        handleStartAmend(entry);
+                                      }}
                                       className="inline-flex items-center gap-1 border border-border-default px-1 py-px text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
                                       title="git commit --amend"
                                     >
@@ -1399,50 +1559,54 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   ) : null}
                                 </div>
                               </div>
-                            </div>
-
+                            }
+                          >
+                            {/* Commit header — mimics git log --oneline */}
                             {isAmending && amendError && (
-                              <div className="px-2.5 py-1 text-[11px] text-danger-text bg-danger-bg/15 border-b border-danger-border/30">
+                              <div className="border border-danger-border/30 bg-danger-bg/15 px-2.5 py-1 text-[11px] text-danger-text">
                                 {amendError}
                               </div>
                             )}
-                            {/* Commit content sections */}
-                            <div className="flex flex-col divide-y divide-border-subtle/30">
-                              {entry.sections?.map(
-                                (
-                                  section: EntryWithSections["sections"][number],
-                                ) => (
-                                  <LogSection
-                                    key={section.id}
-                                    section={section}
-                                    streamId={streamId}
-                                    onPreviewAttachment={openAttachmentPreview}
-                                    editable={isAmending}
-                                    currentEditedContent={isAmending ? amendState.sections[section.id] : undefined}
-                                    onContentChange={(content) => {
-                                      if (!isAmending) return;
-                                      setAmendState((prev) => {
-                                        if (!prev || prev.entryId !== entry.id)
-                                          return prev;
-                                        return {
-                                          ...prev,
-                                          sections: {
-                                            ...prev.sections,
-                                            [section.id]: content,
-                                          },
-                                        };
-                                      });
-                                    }}
-                                    highlightTerm={
-                                      entry.id === highlightEntryId
-                                        ? (highlightTerm ?? undefined)
-                                        : undefined
-                                    }
-                                  />
-                                ),
-                              )}
-                            </div>
-                          </div>
+                            {!isCollapsed && (
+                              <div className="flex flex-col gap-3">
+                                {entry.sections?.map(
+                                  (
+                                    section: EntryWithSections["sections"][number],
+                                    sectionIndex,
+                                  ) => (
+                                    <LogSection
+                                      key={section.id}
+                                      section={section}
+                                      streamId={streamId}
+                                      sectionIndex={sectionIndex}
+                                      onPreviewAttachment={openAttachmentPreview}
+                                      editable={isAmending}
+                                      currentEditedContent={isAmending ? amendState.sections[section.id] : undefined}
+                                      onContentChange={(content) => {
+                                        if (!isAmending) return;
+                                        setAmendState((prev) => {
+                                          if (!prev || prev.entryId !== entry.id)
+                                            return prev;
+                                          return {
+                                            ...prev,
+                                            sections: {
+                                              ...prev.sections,
+                                              [section.id]: content,
+                                            },
+                                          };
+                                        });
+                                      }}
+                                      highlightTerm={
+                                        entry.id === highlightEntryId
+                                          ? (highlightTerm ?? undefined)
+                                          : undefined
+                                      }
+                                    />
+                                  ),
+                                )}
+                              </div>
+                            )}
+                          </ThreadFrame>
                         </div>
                       );
                     })}

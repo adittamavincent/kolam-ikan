@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import { SectionPreset } from "@/components/shared/SectionPreset";
 import { PersonaItem } from "../../shared/PersonaItem";
 import { FileAttachmentItem } from "./FileAttachmentItem";
+import { FileText, Paperclip } from "lucide-react";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -19,6 +20,7 @@ function isParsedReadyStatus(status?: string | null): boolean {
 interface LogSectionProps {
   section: SectionWithPersona;
   streamId: string;
+  sectionIndex?: number;
   highlightTerm?: string;
   editable?: boolean;
   currentEditedContent?: PartialBlock[];
@@ -34,6 +36,7 @@ interface LogSectionProps {
 export function LogSection({
   section,
   streamId,
+  sectionIndex = 0,
   highlightTerm,
   editable = false,
   currentEditedContent,
@@ -158,18 +161,23 @@ export function LogSection({
     section.section_type !== "FILE_ATTACHMENT" || editableContent.length > 0;
   const showEmptyAttachmentsNotice =
     section.section_type === "FILE_ATTACHMENT" && !hasAttachments;
+  const isAttachmentSection = section.section_type === "FILE_ATTACHMENT";
+  const sectionLabel = isAttachmentSection ? "Attachment" : "Message";
+  const SectionIcon = isAttachmentSection ? Paperclip : FileText;
 
   return (
     <SectionPreset
       persona={currentPersona || null}
-      isAttachment={section.section_type === "FILE_ATTACHMENT"}
-      className="flex flex-col group relative transition-all"
+      isAttachment={isAttachmentSection}
+      className="flex flex-col"
+      headerClassName="bg-surface-subtle/55"
+      bodyClassName="bg-surface-default/55"
       centerHeader={
         <PersonaItem
           persona={currentPersona ?? null}
           menuProps={{
             currentPersona: currentPersona || null,
-            isAttachment: section.section_type === "FILE_ATTACHMENT",
+            isAttachment: isAttachmentSection,
             filePersonaName: section.persona_name_snapshot ?? undefined,
             globalPersonas: globalPersonas,
             localPersonas: localPersonas,
@@ -178,8 +186,16 @@ export function LogSection({
           }}
         />
       }
+      leftHeader={
+        <div className="inline-flex items-center gap-1.5 border border-border-default/55 bg-surface-default/80 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+          <span className="text-text-default/80">S{sectionIndex + 1}</span>
+          <span className="h-px w-2 bg-border-strong" />
+          <SectionIcon className="h-3 w-3" />
+          <span>{sectionLabel}</span>
+        </div>
+      }
       rightHeader={
-        <span className="text-[10px] text-text-muted">
+        <span className="border border-border-default/45 bg-surface-default/75 px-2 py-0.5 text-[10px] text-text-muted">
           {section.updated_at
             ? new Date(section.updated_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -188,12 +204,12 @@ export function LogSection({
             : ""}
         </span>
       }
-      contentClassName="px-4"
+      contentClassName="space-y-2 px-3 py-3"
     >
-      <div className="min-w-0 flex-1 py-1">
+      <div className="min-w-0 flex-1 space-y-2">
         {shouldShowEditor && (
           <div
-            className={`${editable ? "blocknote-editable" : "blocknote-readonly"} prose prose-sm dark:prose-invert max-w-none`}
+            className={`${editable ? "blocknote-editable" : "blocknote-readonly"} border border-border-default/45 bg-surface-default/80 px-3 py-2 prose prose-sm max-w-none dark:prose-invert`}
           >
             <BlockNoteEditor
               key={
@@ -210,7 +226,7 @@ export function LogSection({
         )}
 
         {hasAttachments && (
-          <div className="space-y-1">
+          <div className="space-y-2">
             {attachments.map((attachment) => {
               const importStatus =
                 attachment.document?.import_status ??
@@ -257,7 +273,7 @@ export function LogSection({
         )}
 
         {showEmptyAttachmentsNotice && (
-          <div className="text-[11px] text-text-muted">
+          <div className="border border-dashed border-border-default/55 bg-surface-default/60 px-3 py-2 text-[11px] text-text-muted">
             No file attachments in this section.
           </div>
         )}

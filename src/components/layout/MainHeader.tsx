@@ -27,6 +27,7 @@ import {
   GitCommitHorizontal,
   Check,
   ChevronDown,
+  ChevronRight,
   Plus,
   CloudOff,
   RefreshCw,
@@ -44,6 +45,8 @@ type LogHeaderState = {
   sortOrder: "newest" | "oldest";
   searchTerm: string;
   branchNames: string[];
+  collapsedEntryCount?: number;
+  allEntriesCollapsed?: boolean;
   status?: "idle" | "saving" | "saved" | "error";
   syncStatus?: "idle" | "syncing" | "synced" | "error";
   localStatus?: "idle" | "saving" | "saved" | "error";
@@ -168,6 +171,9 @@ export function MainHeader() {
 
   const cloudStatus = getCloudSyncStatus();
   const localStatus = getLocalSyncStatus();
+  const collapsedEntryCount = logState?.collapsedEntryCount ?? 0;
+  const hasEntries = (logState?.commitCount ?? 0) > 0;
+  const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-default px-3">
@@ -242,6 +248,41 @@ export function MainHeader() {
           <StylainHeader />
           {logState && (
             <>
+              <button
+                onClick={() =>
+                  emit("kolam_header_log_toggle_compact_all", {
+                    collapsed: !collapseAllActive,
+                  })
+                }
+                disabled={!hasEntries}
+                className={`inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  collapseAllActive
+                    ? "border-action-primary-bg/30 bg-action-primary-bg/10 text-action-primary-bg"
+                    : collapsedEntryCount > 0
+                      ? "border-border-default/60 bg-surface-subtle text-text-default"
+                      : "border-border-default bg-surface-subtle text-text-muted hover:bg-surface-subtle/80 hover:text-text-default"
+                }`}
+                title={
+                  collapseAllActive
+                    ? "Expand all commits"
+                    : "Compact all commits"
+                }
+              >
+                {collapseAllActive ? (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden lg:inline">
+                  {collapseAllActive ? "Expand all" : "Compact all"}
+                </span>
+                {collapsedEntryCount > 0 && (
+                  <span className="inline-flex min-w-4 items-center justify-center bg-surface-default px-1 text-[9px] font-bold text-text-muted">
+                    {collapsedEntryCount}
+                  </span>
+                )}
+              </button>
+
               <button
                 onClick={() => setIsSearchOpen((prev) => !prev)}
                 className={` p-1.5 transition-all duration-200 focus-visible: focus-visible: focus-visible: ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}

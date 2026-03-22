@@ -39,7 +39,7 @@ import {
 } from "@headlessui/react";
 // DynamicIcon removed from this file (unused import)
 import { PersonaItem } from "../../shared/PersonaItem";
-import { SectionPreset } from "@/components/shared/SectionPreset";
+import { SectionPreset, ThreadFrame } from "@/components/shared/SectionPreset";
 import { getPersonaHoverClass } from "@/components/shared/getPersonaHoverClass";
 
 import { FileAttachmentItem } from "./FileAttachmentItem";
@@ -472,6 +472,28 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     streamId,
   });
 
+  const hasCommitableContent = useMemo(
+    () =>
+      sections.some((section) => {
+        if (section.kind === "FILE_ATTACHMENT") {
+          const attachmentDraft = getFileAttachmentDraft(section.instanceId);
+          return (
+            section.attachments.length > 0 ||
+            (attachmentDraft?.attachments?.length ?? 0) > 0 ||
+            section.note.trim().length > 0
+          );
+        }
+
+        return hasMeaningfulDraftContent(getDraftContent(section.instanceId));
+      }),
+    [getDraftContent, getFileAttachmentDraft, sections],
+  );
+
+  const isCommitDisabled =
+    status === "saving" ||
+    commitBlockedByFileAttachmentStatus ||
+    !hasCommitableContent;
+
   const debouncedSave = useMemo(
     () =>
       debounce(() => {
@@ -879,6 +901,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       console.warn(
         "Commit blocked: one or more attached documents are still queued/processing or failed.",
       );
+      return;
+    }
+
+    if (!hasCommitableContent) {
+      console.warn("Commit skipped: no meaningful content to persist.");
       return;
     }
 
@@ -1358,20 +1385,17 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   return (
     <>
-      <div className="entry-creator relative border border-border-default/50 bg-surface-default group ">
+      <div className="entry-creator relative group">
         {(status === "saving" || status === "error") && (
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
-        {/* Status Indicator */}
-        <div className="flex flex-col">
+        <ThreadFrame
+          frameClassName="border-border-default/55 bg-surface-default"
+          bodyClassName="bg-surface-default/55"
+        >
+          <div className="flex flex-col">
           {/* Persona picker */}
-          <div
-            className={`flex items-center gap-2 flex-wrap p-1 bg-action-primary-bg/10 ${
-              sections.length > 0
-                ? "border-t border-l border-r border-border-default/30"
-                : "border border-border-default/30"
-            }`}
-          >
+          <div className="flex items-center gap-2 flex-wrap border-b border-border-default/35 bg-action-primary-bg/10 p-2">
             {quickPersonas.map((persona) => (
               <PersonaItem
                 key={`quick-persona-${persona.id}`}
@@ -1388,7 +1412,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             ))}
 
             <Menu as="div" className="relative z-30">
-              <MenuButton className="flex items-center gap-1.5 py-1 px-2 text-xs font-medium transition-colors hover:bg-surface-subtle border border-transparent focus:">
+              <MenuButton className="flex items-center gap-1.5 border border-border-default/35 px-2 py-1 text-xs font-medium transition-colors hover:bg-surface-subtle focus:">
                 <Plus className="h-3 w-3 text-text-subtle" />
                 <span className="text-text-default">Add Persona</span>
               </MenuButton>
@@ -1396,11 +1420,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               <Transition
                 as={Fragment}
                 enter="transition ease-out duration-100"
-                enterFrom="transform opacity-0 scale-95"
-                enterTo="transform opacity-100 scale-100"
+                enterFrom="opacity-0"
+                enterTo="opacity-100"
                 leave="transition ease-in duration-75"
-                leaveFrom="transform opacity-100 scale-100"
-                leaveTo="transform opacity-0 scale-95"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
               >
                 <MenuItems
                   anchor={{ to: "bottom start", gap: 4 }}
@@ -1469,13 +1493,19 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             {sections.length > 0 && (
               <button
                 onClick={requestClearSections}
-                className="ml-auto p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                className="ml-auto border border-border-default/35 p-1 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
                 title="Delete all sections"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
+
+          {sections.length === 0 && (
+            <div className="border-b border-border-default/35 bg-surface-default/55 px-3 py-5 text-center text-xs text-text-muted">
+              Add a persona or attach a file to start building this entry.
+            </div>
+          )}
 
           {/* Editor sections */}
           <DndContext
@@ -1487,8 +1517,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               items={sections.map((s) => s.instanceId)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="flex flex-col divide-y divide-border-subtle/30">
-                {sections.map((section) => {
+              <div className="flex flex-col gap-3 px-3 py-3">
+                {sections.map((section, sectionIndex) => {
                   const { instanceId } = section;
                   const isAttachment = section.kind === "FILE_ATTACHMENT";
                   const isPersona = section.kind === "PERSONA";
@@ -1544,14 +1574,25 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           persona={persona || null}
                           isAttachment={isAttachment}
                           className="flex flex-col"
+                          headerClassName="bg-surface-subtle/50"
+                          bodyClassName="bg-surface-default/55"
                           leftHeader={
-                            <button
-                              className={`cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
-                              aria-label="Drag to reorder"
-                              {...dragHandleProps}
-                            >
-                              <GripVertical className="h-3 w-3" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <button
+                                className={`cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
+                                aria-label="Drag to reorder"
+                                {...dragHandleProps}
+                              >
+                                <GripVertical className="h-3 w-3" />
+                              </button>
+                              <div className="inline-flex items-center gap-1.5 border border-border-default/55 bg-surface-default/80 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                                <span className="text-text-default/80">
+                                  S{sectionIndex + 1}
+                                </span>
+                                <span className="h-px w-2 bg-border-strong" />
+                                <span>{isAttachment ? "Attachment" : "Message"}</span>
+                              </div>
+                            </div>
                           }
                           centerHeader={
                             <PersonaItem
@@ -1595,11 +1636,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               </button>
                             </>
                           }
+                          contentClassName="space-y-2 px-3 py-3"
                         >
                           {/* BODY CONTENT */}
                           {isPersona ? (
                             /* BLOCKNOTE EDITOR */
-                            <div className="px-4">
+                            <div className="border border-border-default/45 bg-surface-default/80 px-3 py-2">
                               <BlockNoteEditor
                                 initialContent={getDraftContent(instanceId)}
                                 onChange={(content) => {
@@ -1672,7 +1714,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             </div>
                           ) : (
                             /* FILE ATTACHMENTS BLOCK */
-                            <div className="p-4 space-y-3">
+                            <div className="space-y-3">
                               <div className="flex flex-wrap items-center gap-2">
                                 <label className="inline-flex cursor-pointer items-center gap-2 border border-border-default bg-surface-subtle px-3 py-1.5 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
                                   <Upload className="h-3 w-3" />
@@ -1847,7 +1889,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
           {/* Footer — commit action */}
           {sections.length > 0 && (
-            <div className="flex items-center justify-between px-3 py-2 bg-action-primary-bg/10">
+            <div className="flex items-center justify-between border-t border-border-default/35 bg-action-primary-bg/10 px-3 py-2">
               <div className="text-[10px] text-text-muted">
                 <kbd className=" border border-border-default bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
                   ⌘+Enter
@@ -1880,19 +1922,20 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               )}
               <button
                 onClick={handleCommit}
-                disabled={status === "saving" || commitBlockedByFileAttachmentStatus}
-                className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-medium transition-all ${
-                  status !== "saving" && !commitBlockedByFileAttachmentStatus
+                disabled={isCommitDisabled}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                  !isCommitDisabled
                     ? "bg-action-primary-bg text-white hover:bg-action-primary-hover"
                     : "bg-surface-subtle text-text-muted cursor-not-allowed"
                 }`}
               >
                 <Send className="h-3 w-3" />
-                Commit
+                Commit Entry
               </button>
             </div>
           )}
-        </div>
+          </div>
+        </ThreadFrame>
 
         <DocumentImportModal
           isOpen={!!filePickerTargetInstanceId}

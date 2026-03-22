@@ -294,7 +294,7 @@ body {
 @layer base {
   button, 
   [role="button"] {
-    @apply transition-all duration-200 active:scale-[0.98] active:translate-y-[0.5px];
+    @apply transition-colors duration-200;
   }
 }
 
@@ -557,5 +557,4 @@ body {
 .am-table th, .am-table td { border: 1px solid rgba(0,0,0,0.08); padding: 6px 8px; text-align: left; }
 .am-table thead th { background: #f6f9ff; }
 .am-root mark { padding: 0 4px; border-radius: 3px; background: #fff7b2; }
-
 

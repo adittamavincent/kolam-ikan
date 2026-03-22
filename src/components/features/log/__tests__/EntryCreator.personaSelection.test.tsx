@@ -351,7 +351,7 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     );
 
     // Commit
-    const commitButton = screen.getByText("Commit");
+    const commitButton = screen.getByText("Commit Entry");
     fireEvent.click(commitButton);
 
     // Verify commit action is still available after switching persona
@@ -488,7 +488,7 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     );
 
     // Try to commit without content
-    const commitButton = screen.getByText("Commit");
+    const commitButton = screen.getByText("Commit Entry");
 
     // Button should be disabled
     expect(commitButton).toHaveClass("cursor-not-allowed");

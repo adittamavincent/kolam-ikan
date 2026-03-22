@@ -2,66 +2,80 @@ import React from "react";
 import { Persona } from "@/lib/types";
 import { getPersonaTintStyle } from "@/lib/personas";
 
-function isLocalPersona(persona: { is_shadow?: boolean | null } | null | undefined): boolean {
+function isLocalPersona(
+  persona: { is_shadow?: boolean | null } | null | undefined,
+): boolean {
   return persona?.is_shadow === true;
 }
 
-interface PersonaSectionBackgroundProps {
-  persona: Persona | null;
-  isAttachment?: boolean;
-  children: React.ReactNode;
+interface ThreadFrameProps {
+  header?: React.ReactNode;
+  footer?: React.ReactNode;
+  children?: React.ReactNode;
+  nested?: boolean;
   className?: string;
+  frameClassName?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
+  footerClassName?: string;
+  frameStyle?: React.CSSProperties;
+  headerStyle?: React.CSSProperties;
+  bodyStyle?: React.CSSProperties;
+  footerStyle?: React.CSSProperties;
 }
 
-function PersonaSectionBackground({
-  persona,
-  isAttachment = false,
+export function ThreadFrame({
+  header,
+  footer,
   children,
+  nested = false,
   className = "",
-}: PersonaSectionBackgroundProps) {
-  const bgClass = !persona && isAttachment ? "bg-surface-subtle/25" : "";
-  const bgStyle = persona
-    ? getPersonaTintStyle(persona, {
-        backgroundAlpha: isLocalPersona(persona) ? 0.08 : 0.05,
-      })
-    : undefined;
-
+  frameClassName = "",
+  headerClassName = "",
+  bodyClassName = "",
+  footerClassName = "",
+  frameStyle,
+  headerStyle,
+  bodyStyle,
+  footerStyle,
+}: ThreadFrameProps) {
   return (
-    <div className={`flex flex-col ${bgClass} ${className}`} style={bgStyle}>
-      {children}
-    </div>
-  );
-}
+    <div className={`${nested ? "relative pl-6" : ""} ${className}`.trim()}>
+      {nested && (
+        <>
+          <div className="pointer-events-none absolute bottom-0 left-2 top-0 w-px bg-border-default/35" />
+          <div className="pointer-events-none absolute left-2 top-[1.15rem] h-px w-3 bg-border-default/35" />
+        </>
+      )}
 
-interface PersonaSectionHeaderProps {
-  persona: Persona | null;
-  isAttachment?: boolean;
-  children: React.ReactNode;
-  className?: string;
-}
+      <div
+        className={`relative border border-border-default/50 bg-surface-default ${frameClassName}`.trim()}
+        style={frameStyle}
+      >
+        {header && (
+          <div
+            className={`border-b border-border-default/35 px-3 py-2 ${headerClassName}`.trim()}
+            style={headerStyle}
+          >
+            {header}
+          </div>
+        )}
 
-function PersonaSectionHeader({
-  persona,
-  isAttachment = false,
-  children,
-  className = "",
-}: PersonaSectionHeaderProps) {
-  const headerBgClass = persona
-    ? ""
-    : "bg-surface-subtle/50 border-border-default/70";
-  const headerStyle = persona
-    ? getPersonaTintStyle(persona, {
-        backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
-        borderAlpha: 0.22,
-      })
-    : undefined;
+        {children && (
+          <div className={bodyClassName} style={bodyStyle}>
+            {children}
+          </div>
+        )}
 
-  return (
-    <div
-      className={`flex items-center justify-between px-4 ${isAttachment ? "py-1.5" : "py-1"} border-y ${headerBgClass} ${className}`}
-      style={headerStyle}
-    >
-      {children}
+        {footer && (
+          <div
+            className={`border-t border-border-default/35 ${footerClassName}`.trim()}
+            style={footerStyle}
+          >
+            {footer}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -75,6 +89,9 @@ interface SectionPresetProps {
   children: React.ReactNode;
   contentClassName?: string;
   className?: string;
+  headerClassName?: string;
+  bodyClassName?: string;
+  variant?: "default" | "bubble";
 }
 
 export function SectionPreset({
@@ -85,22 +102,52 @@ export function SectionPreset({
   rightHeader,
   children,
   contentClassName = "",
-  className = "flex flex-col",
+  className = "",
+  headerClassName = "",
+  bodyClassName = "",
 }: SectionPresetProps) {
+  const frameStyle = persona
+    ? getPersonaTintStyle(persona, {
+        backgroundAlpha: isLocalPersona(persona) ? 0.08 : 0.04,
+        borderAlpha: 0.18,
+      })
+    : undefined;
+
+  const headerStyle = persona
+    ? getPersonaTintStyle(persona, {
+        backgroundAlpha: isLocalPersona(persona) ? 0.18 : 0.1,
+        borderAlpha: 0.24,
+      })
+    : undefined;
+
+  const bodyStyle = persona
+    ? getPersonaTintStyle(persona, {
+        backgroundAlpha: isLocalPersona(persona) ? 0.06 : 0.03,
+        borderAlpha: 0.16,
+      })
+    : undefined;
+
   return (
-    <PersonaSectionBackground persona={persona} isAttachment={isAttachment} className={`flex flex-col ${className}`}>
-      <PersonaSectionHeader persona={persona} isAttachment={isAttachment}>
-        <div className="flex items-center gap-2">
-          {leftHeader}
-          {centerHeader}
+    <ThreadFrame
+      nested
+      className={`group ${className}`.trim()}
+      frameClassName={isAttachment ? "bg-surface-subtle/25" : ""}
+      headerClassName={headerClassName}
+      bodyClassName={bodyClassName}
+      frameStyle={frameStyle}
+      headerStyle={headerStyle}
+      bodyStyle={bodyStyle}
+      header={
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            {leftHeader}
+            {centerHeader}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">{rightHeader}</div>
         </div>
-        <div className="flex items-center gap-1">
-          {rightHeader}
-        </div>
-      </PersonaSectionHeader>
-      <div className={contentClassName}>
-        {children}
-      </div>
-    </PersonaSectionBackground>
+      }
+    >
+      <div className={contentClassName}>{children}</div>
+    </ThreadFrame>
   );
 }

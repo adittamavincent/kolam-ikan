@@ -149,11 +149,11 @@ export function PersonaItem({
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
-            enterFrom="transform opacity-0"
-            enterTo="transform opacity-100 scale-100"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
             leave="transition ease-in duration-75"
-            leaveFrom="transform opacity-100 scale-100"
-            leaveTo="transform opacity-0"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
             <MenuItems
               anchor={{ to: "bottom start", gap: 4 }}

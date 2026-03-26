@@ -33,6 +33,7 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
+  Blocks,
 } from "lucide-react";
 
 type LogHeaderState = {
@@ -74,7 +75,6 @@ export function MainHeader() {
   const { stream } = useStream(streamId || "");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [snapshotName, setSnapshotName] = useState("");
   const [logState, setLogState] = useState<LogHeaderState | null>(null);
   const [canvasState, setCanvasState] = useState<CanvasHeaderState | null>(
     null,
@@ -174,6 +174,8 @@ export function MainHeader() {
   const collapsedEntryCount = logState?.collapsedEntryCount ?? 0;
   const hasEntries = (logState?.commitCount ?? 0) > 0;
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
+  const headerButtonClass =
+    "inline-flex h-8 w-8 items-center justify-center border border-border-default/60 bg-surface-subtle text-text-muted shadow-sm transition-all duration-200 hover:border-border-default hover:bg-surface-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-default px-3">
@@ -216,7 +218,7 @@ export function MainHeader() {
                 ) : cloudStatus === "saved" ? (
                   <Check className="h-2.5 w-2.5 text-emerald-500/80" />
                 ) : (
-                  <div className="h-2.5 w-2.5 rounded-full border border-border-default/50" />
+                  <div className="h-2.5 w-2.5 border border-border-default/50" />
                 )}
                 <span className={`text-[8px] font-bold uppercase tracking-widest ${cloudStatus === 'error' ? 'text-red-500' : 'text-text-muted/50'}`}>
                   {cloudStatus === 'saving' ? 'Syncing' : cloudStatus === 'error' ? 'Cloud Error' : 'Database'}
@@ -244,10 +246,10 @@ export function MainHeader() {
       </div>
 
       {streamId && (
-        <div className="flex items-center gap-1.5">
-          <StylainHeader />
+        <div className="flex items-center gap-2">
           {logState && (
-            <>
+            <div className="flex items-center gap-1 border border-border-default/60 bg-surface-subtle/60 p-1">
+              <StylainHeader compact />
               <button
                 onClick={() =>
                   emit("kolam_header_log_toggle_compact_all", {
@@ -255,12 +257,12 @@ export function MainHeader() {
                   })
                 }
                 disabled={!hasEntries}
-                className={`inline-flex items-center gap-1.5 border px-2 py-1 text-[10px] font-semibold transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`${headerButtonClass} relative ${
                   collapseAllActive
-                    ? "border-action-primary-bg/30 bg-action-primary-bg/10 text-action-primary-bg"
+                    ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg"
                     : collapsedEntryCount > 0
-                      ? "border-border-default/60 bg-surface-subtle text-text-default"
-                      : "border-border-default bg-surface-subtle text-text-muted hover:bg-surface-subtle/80 hover:text-text-default"
+                      ? "text-text-default"
+                      : ""
                 }`}
                 title={
                   collapseAllActive
@@ -273,11 +275,8 @@ export function MainHeader() {
                 ) : (
                   <ChevronDown className="h-3.5 w-3.5" />
                 )}
-                <span className="hidden lg:inline">
-                  {collapseAllActive ? "Expand all" : "Compact all"}
-                </span>
                 {collapsedEntryCount > 0 && (
-                  <span className="inline-flex min-w-4 items-center justify-center bg-surface-default px-1 text-[9px] font-bold text-text-muted">
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
                     {collapsedEntryCount}
                   </span>
                 )}
@@ -285,7 +284,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => setIsSearchOpen((prev) => !prev)}
-                className={` p-1.5 transition-all duration-200 focus-visible: focus-visible: focus-visible: ${isSearchOpen ? "bg-surface-subtle text-text-default" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={`${headerButtonClass} ${isSearchOpen ? "border-action-primary-bg/35 bg-action-primary-bg/10 text-action-primary-bg" : ""}`}
                 title={isSearchOpen ? "Hide search" : "Show search"}
               >
                 <Search className="h-4 w-4" />
@@ -310,7 +309,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_whatsapp_import")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className={headerButtonClass}
                 title="Import WhatsApp Chat"
               >
                 <MessageSquare className="h-4 w-4" />
@@ -318,7 +317,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_documents_import")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className={headerButtonClass}
                 title="Import PDF"
               >
                 <FileUp className="h-4 w-4" />
@@ -326,7 +325,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_export")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className={headerButtonClass}
                 title="Export to Markdown"
               >
                 <Download className="h-4 w-4" />
@@ -334,7 +333,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_stash")}
-                className={` p-1.5 transition-all duration-200 focus-visible: focus-visible: focus-visible: ${logState.showStash ? "bg-amber-500/15 text-amber-500" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={`${headerButtonClass} ${logState.showStash ? "border-amber-500/40 bg-amber-500/12 text-amber-500" : ""}`}
                 title={
                   logState.showStash
                     ? "Hide stashed entries"
@@ -346,7 +345,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_sort")}
-                className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
+                className={headerButtonClass}
                 title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
               >
                 <ArrowUpDown
@@ -356,7 +355,7 @@ export function MainHeader() {
 
               <button
                 onClick={() => emit("kolam_header_log_toggle_graph")}
-                className={` p-1.5 transition-all duration-200 focus-visible: focus-visible: focus-visible: ${logState.graphView ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted hover:bg-surface-subtle hover:text-text-default"}`}
+                className={`${headerButtonClass} ${logState.graphView ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg" : ""}`}
                 title={
                   logState.graphView ? "Back to commit list" : "Show commit graph"
                 }
@@ -365,7 +364,7 @@ export function MainHeader() {
               </button>
 
               <Menu as="div" className="relative hidden md:block">
-                <MenuButton className="inline-flex items-center gap-1.5 bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted hover:bg-surface-subtle/80 focus: focus-visible: focus-visible:">
+                <MenuButton className="inline-flex h-8 items-center gap-1.5 border border-border-default/60 bg-surface-default px-2.5 text-[10px] font-mono text-text-muted shadow-sm transition-all duration-200 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
                   <GitBranch className="h-3 w-3" />
                   {logState.currentBranch ?? "main"}
                   <ChevronDown className="h-3 w-3" />
@@ -431,39 +430,22 @@ export function MainHeader() {
                 </Transition>
               </Menu>
 
-              <span className="hidden items-center gap-1 bg-surface-subtle px-2 py-0.5 text-[10px] font-mono text-text-muted md:inline-flex">
+              <span className="hidden h-8 items-center gap-1 border border-border-default/60 bg-surface-default px-2.5 text-[10px] font-mono text-text-muted shadow-sm md:inline-flex">
                 <GitCommitHorizontal className="h-3 w-3" />
                 {logState.commitCount ?? 0}
               </span>
-            </>
+            </div>
           )}
 
-          {canvasState?.hasCanvas && (
-            <div className="ml-1 flex items-center gap-1.5 border-l border-border-default pl-2">
-              <input
-                type="text"
-                value={snapshotName}
-                onChange={(event) => {
-                  const name = event.target.value;
-                  setSnapshotName(name);
-                  emit("kolam_header_canvas_snapshot_name", { name });
-                }}
-                placeholder="Snapshot name..."
-                className="w-36 border border-border-default bg-surface-subtle px-2 py-1 text-xs text-text-default focus:border-border-default focus: focus: focus:"
-              />
-              <button
-                onClick={() =>
-                  emit("kolam_header_canvas_save_snapshot", {
-                    name: snapshotName,
-                  })
-                }
-                disabled={canvasState.isSavingSnapshot}
-                className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:opacity-60"
-                title="Save Snapshot"
+          {canvasState?.hasCanvas && !logState && (
+            <div className="flex items-center gap-1 border border-border-default/60 bg-surface-subtle/60 p-1">
+              <StylainHeader compact />
+              <span
+                className="inline-flex h-8 w-8 items-center justify-center border border-border-default/60 bg-surface-default text-text-muted shadow-sm"
+                title="Canvas active"
               >
-                <Save className="h-3.5 w-3.5" />
-                {canvasState.isSavingSnapshot ? "Saving..." : "Snapshot"}
-              </button>
+                <Blocks className="h-4 w-4" />
+              </span>
             </div>
           )}
         </div>

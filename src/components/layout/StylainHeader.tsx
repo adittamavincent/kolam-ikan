@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { Blocks, SquareCode } from "lucide-react";
 import {
   getStylainMode,
   prepareStylainModeChange,
@@ -8,7 +9,13 @@ import {
   type Mode,
 } from "@/lib/theme/stylain";
 
-export default function StylainHeader() {
+type StylainHeaderProps = {
+  compact?: boolean;
+};
+
+export default function StylainHeader({
+  compact = false,
+}: StylainHeaderProps) {
   // Use a deterministic default to avoid SSR hydration mismatches.
   const [mode, setMode] = useState<Mode>("A");
   const [transitioning, setTransitioning] = useState(false);
@@ -63,25 +70,60 @@ export default function StylainHeader() {
     }
   };
 
-  return (
-    <div className="flex items-center">
+  const nextMode = mode === "A" ? "B" : "A";
+  const title =
+    mode === "A" ? "Switch to Raw Markdown (B)" : "Switch to Rich Block (A)";
+  const CurrentIcon = mode === "A" ? Blocks : SquareCode;
+
+  if (compact) {
+    return (
       <button
-        aria-label={`Switch to ${mode === "A" ? "Raw Markdown (B)" : "Rich Block (A)"} mode`}
-        title={mode === "A" ? "Switch to Raw Markdown (B)" : "Switch to Rich Block (A)"}
+        aria-label={title}
+        title={title}
         onMouseDown={(e) => {
-          prepareStylainModeChange(mode === "A" ? "B" : "A");
+          prepareStylainModeChange(nextMode);
           // Keep focus in the active editor while toggling modes via mouse.
           e.preventDefault();
         }}
         onClick={toggle}
-        className={`inline-flex items-center gap-2 rounded-sm border border-border-default/40 bg-surface-subtle px-2 py-1 text-[11px] font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-action-primary-bg ${transitioning ? "opacity-70" : "hover:bg-surface-default"}`}
+        className={`relative inline-flex h-8 w-8 items-center justify-center border border-border-default/60 bg-surface-subtle text-text-muted shadow-sm transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 ${
+          mode === "A"
+            ? "hover:border-action-primary-bg/30 hover:bg-action-primary-bg/10 hover:text-action-primary-bg"
+            : "hover:border-border-default hover:bg-surface-default hover:text-text-default"
+        } ${transitioning ? "opacity-70" : ""}`}
       >
         <span className="sr-only">Writing mode toggle</span>
-        <span className={`rounded-sm px-1.5 py-0.5 font-mono ${mode === "A" ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted"}`}>
+        <CurrentIcon className="h-3.5 w-3.5" />
+        <span
+          className={`absolute -bottom-1 -right-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[8px] font-black leading-none ${
+            mode === "A" ? "text-action-primary-bg" : "text-text-muted"
+          }`}
+        >
+          {mode}
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center">
+      <button
+        aria-label={title}
+        title={title}
+        onMouseDown={(e) => {
+          prepareStylainModeChange(nextMode);
+          // Keep focus in the active editor while toggling modes via mouse.
+          e.preventDefault();
+        }}
+        onClick={toggle}
+        className={`inline-flex items-center gap-2 border border-border-default/40 bg-surface-subtle px-2 py-1 text-[11px] font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-action-primary-bg ${transitioning ? "opacity-70" : "hover:bg-surface-default"}`}
+      >
+        <span className="sr-only">Writing mode toggle</span>
+        <span className={`px-1.5 py-0.5 font-mono ${mode === "A" ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted"}`}>
           A
         </span>
         <span className="text-text-muted">/</span>
-        <span className={`rounded-sm px-1.5 py-0.5 font-mono ${mode === "B" ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted"}`}>
+        <span className={`px-1.5 py-0.5 font-mono ${mode === "B" ? "bg-action-primary-bg/15 text-action-primary-bg" : "text-text-muted"}`}>
           B
         </span>
         <span className="font-mono text-[10px] text-text-muted">

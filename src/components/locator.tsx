@@ -4,7 +4,10 @@ import { useEffect } from "react";
 
 export default function Locator() {
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
+    if (
+      process.env.NODE_ENV === "development" &&
+      process.env.NEXT_PUBLIC_LOCATORJS !== "0"
+    ) {
       import("@locator/runtime").then((locator) => {
         locator.default();
 

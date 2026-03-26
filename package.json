@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:fast": "NEXT_PUBLIC_LOCATORJS=0 next dev",
     "docker:logs": "docker logs -f kolam_docling_worker",
     "fetch:pdf-worker": "node scripts/fetch-pdf-worker.js",
     "build": "next build",
@@ -15,8 +16,7 @@
     "db:migrate": "supabase migration up",
     "prepare": "husky",
     "e2e": "playwright test",
-    "e2e:headed": "playwright test --headed"
-    ,
+    "e2e:headed": "playwright test --headed",
     "format:md:fix": "node scripts/fix-md-lists.js",
     "format:md": "prettier --write \"**/*.md\" && npm run format:md:fix"
   },
@@ -54,8 +54,8 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@locator/babel-jsx": "^0.5.1",
     "@locator/runtime": "^0.5.1",
+    "@locator/webpack-loader": "^0.5.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.2.1",
     "@testing-library/dom": "^10.4.1",
@@ -72,12 +72,12 @@
     "husky": "^9.1.7",
     "jsdom": "^28.1.0",
     "lint-staged": "^16.3.1",
-    "tailwindcss": "^4.2.1",
-    "typescript": "^5",
-    "vitest": "^4.0.18",
     "prettier": "^3.8.0",
     "remark": "^14.0.2",
-    "remark-cli": "^10.0.1"
+    "remark-cli": "^10.0.1",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

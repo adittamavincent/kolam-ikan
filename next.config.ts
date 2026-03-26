@@ -1,9 +1,30 @@
 import type { NextConfig } from "next";
 
+const enableLocator =
+  process.env.NODE_ENV === "development" &&
+  process.env.NEXT_PUBLIC_LOCATORJS !== "0";
+const turbopack = enableLocator
+  ? {
+      rules: {
+        "**/*.{tsx,jsx}": {
+          loaders: [
+            {
+              loader: "@locator/webpack-loader",
+              options: {
+                env: "development",
+              },
+            },
+          ],
+        },
+      },
+    }
+  : undefined;
+
 const nextConfig: NextConfig = {
   experimental: {
     proxyClientMaxBodySize: 60 * 1024 * 1024,
   },
+  turbopack,
   images: {
     remotePatterns: [
       {

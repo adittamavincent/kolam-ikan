@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Fira_Code } from "next/font/google";
 import "./globals.css";
+import Locator from "@/components/locator";
 import { Providers } from "@/components/providers";
 import { DevAuthGuard } from "@/components/shared/DevAuthGuard";
-import Locator from "@/components/locator";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({

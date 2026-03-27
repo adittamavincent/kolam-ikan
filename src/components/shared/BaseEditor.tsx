@@ -273,7 +273,7 @@ function intersectsSelection(
 }
 
 function decorateDelimitedToken(
-  builder: RangeSetBuilder<Decoration>,
+  builder: { add: (from: number, to: number, value: Decoration) => void },
   from: number,
   to: number,
   leftWidth: number,
@@ -289,7 +289,7 @@ function decorateDelimitedToken(
 }
 
 function decorateHeading(
-  builder: RangeSetBuilder<Decoration>,
+  builder: { add: (from: number, to: number, value: Decoration) => void },
   view: EditorView,
   from: number,
   level: number,
@@ -311,7 +311,7 @@ function decorateHeading(
 }
 
 function decorateLink(
-  builder: RangeSetBuilder<Decoration>,
+  builder: { add: (from: number, to: number, value: Decoration) => void },
   view: EditorView,
   from: number,
   to: number,

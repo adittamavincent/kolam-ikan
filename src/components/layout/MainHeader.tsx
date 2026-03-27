@@ -49,7 +49,7 @@ type LogHeaderState = {
   allEntriesCollapsed?: boolean;
   status?: "idle" | "saving" | "saved" | "error";
   syncStatus?: "idle" | "syncing" | "synced" | "error";
-  localStatus?: "idle" | "saving" | "saved" | "error";
+  localStatus?: "idle" | "saving" | "saved" | "error" | "dirty";
   isDirty?: boolean;
 };
 
@@ -59,7 +59,7 @@ type CanvasHeaderState = {
   snapshotName: string;
   isSavingSnapshot: boolean;
   syncStatus?: "idle" | "syncing" | "synced" | "error";
-  localStatus?: "idle" | "saving" | "saved" | "error";
+  localStatus?: "idle" | "saving" | "saved" | "error" | "dirty";
   isDirty?: boolean;
 };
 
@@ -159,9 +159,14 @@ export function MainHeader() {
       logState?.localStatus === "error" ||
       logState?.status === "error" ||
       canvasState?.localStatus === "error";
+    const isDirty =
+      logState?.localStatus === "dirty" ||
+      canvasState?.localStatus === "dirty" ||
+      Boolean(logState?.isDirty || canvasState?.isDirty);
     
     if (isSaving) return "saving";
     if (isError) return "error";
+    if (isDirty) return "dirty";
     return "saved";
   };
 

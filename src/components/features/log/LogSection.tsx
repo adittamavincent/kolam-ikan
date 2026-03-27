@@ -42,6 +42,7 @@ export function LogSection({
   highlightTerm,
   editable = false,
   currentEditedContent,
+  currentEditedMarkdown,
   onContentChange,
   onPreviewAttachment,
 }: LogSectionProps) {

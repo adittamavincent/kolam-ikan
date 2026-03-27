@@ -7,11 +7,12 @@ import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
-import { blocksToPlainText, lineDiff } from "@/lib/utils/canvasPreview";
+import { contentToDiffText, lineDiff } from "@/lib/utils/canvasPreview";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import { CircleDot, GitCommitHorizontal, GitCompare, Loader2, X } from "lucide-react";
 import {
   buildStoredContentPayload,
+  storedContentToMarkdown,
   storedContentToBlocks,
 } from "@/lib/content-protocol";
 
@@ -24,6 +25,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const queryClient = useQueryClient();
   const { canvas } = useCanvas(streamId);
   const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId] ?? null);
+  const liveMarkdown = useCanvasDraft((s) => s.liveMarkdownByStream[streamId] ?? "");
   const markClean = useCanvasDraft((s) => s.markClean);
   const [snapshotName, setSnapshotName] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -32,10 +34,18 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   // This helps the UI immediately compare against the newly created
   // snapshot before the server-side `latestCanvasVersion` has refetched.
   const [committedBaseline, setCommittedBaseline] = useState<
-    PartialBlock[] | null | undefined
+    | {
+        blocks: PartialBlock[] | null;
+        markdown: string;
+      }
+    | undefined
   >(undefined);
   const canvasBlocks = useMemo(
     () => storedContentToBlocks(canvas ?? {}),
+    [canvas],
+  );
+  const canvasMarkdown = useMemo(
+    () => storedContentToMarkdown(canvas ?? {}),
     [canvas],
   );
 
@@ -59,11 +69,18 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
 
   const baselineContent =
     committedBaseline !== undefined
-      ? committedBaseline
+      ? committedBaseline.blocks
       : latestCanvasVersion
       ? storedContentToBlocks(latestCanvasVersion)
       : null;
+  const baselineMarkdown =
+    committedBaseline !== undefined
+      ? committedBaseline.markdown
+      : latestCanvasVersion
+        ? storedContentToMarkdown(latestCanvasVersion)
+        : "";
   const currentContent = (liveContent ?? canvasBlocks ?? null) as PartialBlock[] | null;
+  const currentMarkdown = liveMarkdown || canvasMarkdown;
   const compareLabel = latestCanvasVersion ? "Latest Snapshot" : "Start Fresh";
 
   const hasDraftDiff = useMemo(() => {
@@ -76,10 +93,10 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   ]);
 
   const diffs = useMemo(() => {
-    const oldText = blocksToPlainText(baselineContent);
-    const newText = blocksToPlainText(currentContent);
+    const oldText = contentToDiffText(baselineContent, baselineMarkdown);
+    const newText = contentToDiffText(currentContent, currentMarkdown);
     return lineDiff(oldText, newText);
-  }, [baselineContent, currentContent]);
+  }, [baselineContent, baselineMarkdown, currentContent, currentMarkdown]);
 
   const additions = diffs.filter((d) => d.type === "add").length;
   const deletions = diffs.filter((d) => d.type === "del").length;
@@ -91,7 +108,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     const latestNormalized = normalizeCanvasContent(
       storedContentToBlocks(latestCanvasVersion ?? {}),
     );
-    const committedNormalized = normalizeCanvasContent(committedBaseline);
+    const committedNormalized = normalizeCanvasContent(committedBaseline.blocks);
     if (latestNormalized !== null && latestNormalized === committedNormalized) {
       // Defer clearing to avoid synchronous setState inside the effect body.
       // This prevents the lint rule complaining about cascading renders.
@@ -108,7 +125,10 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
-        ...buildStoredContentPayload(liveContent ?? canvasBlocks),
+        ...buildStoredContentPayload(
+          liveContent ?? canvasBlocks,
+          liveMarkdown || canvasMarkdown,
+        ),
         name,
         created_by: userData.user?.id ?? null,
       });
@@ -116,12 +136,16 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     },
     onSuccess: () => {
       const committedContent = liveContent ?? canvasBlocks;
+      const committedMarkdown = liveMarkdown || canvasMarkdown;
 
       setSnapshotName("");
       setIsExpanded(false);
 
       // Local override so UI compares against the just-committed content
-      setCommittedBaseline(committedContent);
+      setCommittedBaseline({
+        blocks: committedContent,
+        markdown: committedMarkdown,
+      });
       markClean(streamId);
 
       queryClient.invalidateQueries({

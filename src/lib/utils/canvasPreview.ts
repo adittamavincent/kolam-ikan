@@ -1,4 +1,5 @@
 import type { PartialBlock } from "@/lib/types/editor";
+import { blocksToStoredMarkdown } from "@/lib/content-protocol";
 
 export const CANVAS_PREVIEW_OPEN_EVENT = "kolam_canvas_preview_open";
 
@@ -8,6 +9,7 @@ export interface CanvasPreviewOpenDetail {
   versionName: string;
   versionCreatedAt: string | null;
   content: PartialBlock[] | null;
+  markdown?: string | null;
 }
 
 export interface CanvasPreviewStashRecord {
@@ -69,6 +71,17 @@ export function blocksToPlainText(blocks: PartialBlock[] | null | undefined): st
     })
     .filter((line) => line.trim().length > 0)
     .join("\n");
+}
+
+export function contentToDiffText(
+  blocks: PartialBlock[] | null | undefined,
+  markdown?: string | null,
+): string {
+  if (typeof markdown === "string") {
+    return markdown.replace(/\r\n?/g, "\n");
+  }
+
+  return blocksToStoredMarkdown(blocks ?? []);
 }
 
 export type DiffSegment = { text: string; changed: boolean };

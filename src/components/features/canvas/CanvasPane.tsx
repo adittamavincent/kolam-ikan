@@ -16,9 +16,9 @@ import { createClient } from "@/lib/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { areCanvasContentsEquivalent } from "@/lib/utils/canvasContent";
 import {
-  blocksToPlainText,
   CANVAS_PREVIEW_OPEN_EVENT,
   CanvasPreviewOpenDetail,
+  contentToDiffText,
   lineDiff,
   saveCanvasPreviewStash,
 } from "@/lib/utils/canvasPreview";
@@ -79,10 +79,13 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const isPreviewing = previewSession !== null;
   const previewDiffs = useMemo(() => {
     if (!previewSession) return [];
-    const before = blocksToPlainText(previewSession.previousDraftContent);
-    const after = blocksToPlainText(liveContent ?? canvasBlocks);
+    const before = contentToDiffText(
+      previewSession.previousDraftContent,
+      previewSession.previousDraftMarkdown,
+    );
+    const after = contentToDiffText(liveContent ?? canvasBlocks, liveMarkdown || canvasMarkdown);
     return lineDiff(before, after);
-  }, [previewSession, liveContent, canvasBlocks]);
+  }, [previewSession, liveContent, liveMarkdown, canvasBlocks, canvasMarkdown]);
   const previewAdditions = previewDiffs.filter((line) => line.type === "add").length;
   const previewDeletions = previewDiffs.filter((line) => line.type === "del").length;
 
@@ -444,13 +447,13 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       setLiveContent(streamId, detail.content ?? []);
       setLiveMarkdown(
         streamId,
-        blocksToStoredMarkdown(detail.content ?? []),
+        detail.markdown ?? blocksToStoredMarkdown(detail.content ?? []),
       );
       setLocalStatus(streamId, "saved");
       setSyncStatus(streamId, "idle");
       syncDirtyAgainstDb(
         detail.content ?? [],
-        blocksToStoredMarkdown(detail.content ?? []),
+        detail.markdown ?? blocksToStoredMarkdown(detail.content ?? []),
       );
       hasReceivedFirstChange.current = false;
       setEditorSeed((seed) => seed + 1);

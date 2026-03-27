@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeMarkdownListContinuation,
+  shouldIgnoreOrderedListExtraSpace,
   shouldAutoInsertOrderedListSpace,
 } from "@/components/shared/BaseEditor";
 
@@ -59,5 +60,19 @@ describe("shouldAutoInsertOrderedListSpace", () => {
     expect(shouldAutoInsertOrderedListSpace("version 2", "version 2".length)).toBe(
       false,
     );
+  });
+});
+
+describe("shouldIgnoreOrderedListExtraSpace", () => {
+  it("ignores a manual space right after an auto-inserted ordered marker", () => {
+    expect(shouldIgnoreOrderedListExtraSpace("1. ", "1. ".length)).toBe(true);
+  });
+
+  it("supports indented ordered markers", () => {
+    expect(shouldIgnoreOrderedListExtraSpace("  3. ", "  3. ".length)).toBe(true);
+  });
+
+  it("does not block spaces once list content has started", () => {
+    expect(shouldIgnoreOrderedListExtraSpace("1. hello", 3)).toBe(false);
   });
 });

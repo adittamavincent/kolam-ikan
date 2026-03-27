@@ -701,6 +701,16 @@ export function shouldAutoInsertOrderedListSpace(
   return afterCursor.length === 0 || /^\s*$/.test(afterCursor);
 }
 
+export function shouldIgnoreOrderedListExtraSpace(
+  lineText: string,
+  cursorOffset: number,
+): boolean {
+  const beforeCursor = lineText.slice(0, cursorOffset);
+  const afterCursor = lineText.slice(cursorOffset);
+
+  return /^\s*\d+[.)]\s$/.test(beforeCursor) && afterCursor.length === 0;
+}
+
 export function computeMarkdownListContinuation(
   lineText: string,
   cursorOffset: number,
@@ -821,27 +831,35 @@ function continueMarkdownList(): StateCommand {
 
 function orderedListInputHandler() {
   return EditorView.inputHandler.of((view, from, to, text) => {
-    if (text !== ".") return false;
     if (!view.state.selection.main.empty || from !== to) return false;
 
     const line = view.state.doc.lineAt(from);
     const cursorOffset = from - line.from;
-    if (!shouldAutoInsertOrderedListSpace(line.text, cursorOffset)) {
-      return false;
+
+    if (text === ".") {
+      if (!shouldAutoInsertOrderedListSpace(line.text, cursorOffset)) {
+        return false;
+      }
+
+      view.dispatch({
+        changes: {
+          from,
+          to,
+          insert: ". ",
+        },
+        selection: EditorSelection.cursor(from + 2),
+        scrollIntoView: true,
+        userEvent: "input",
+      });
+
+      return true;
     }
 
-    view.dispatch({
-      changes: {
-        from,
-        to,
-        insert: ". ",
-      },
-      selection: EditorSelection.cursor(from + 2),
-      scrollIntoView: true,
-      userEvent: "input",
-    });
+    if (text === " " && shouldIgnoreOrderedListExtraSpace(line.text, cursorOffset)) {
+      return true;
+    }
 
-    return true;
+    return false;
   });
 }
 

@@ -16,11 +16,11 @@ import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import type { PartialBlock } from "@/lib/types/editor";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import {
-  blocksToPlainText,
   CANVAS_PREVIEW_OPEN_EVENT,
+  contentToDiffText,
   lineDiff,
 } from "@/lib/utils/canvasPreview";
-import { storedContentToBlocks } from "@/lib/content-protocol";
+import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-protocol";
 
 interface CanvasSnapshotCardProps {
   version: CanvasVersion;
@@ -35,20 +35,27 @@ export function CanvasSnapshotCard({
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const { canvas } = useCanvas(streamId);
   const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId] ?? null);
+  const liveMarkdown = useCanvasDraft((s) => s.liveMarkdownByStream[streamId] ?? "");
   const canvasBlocks = useMemo(
     () => storedContentToBlocks(canvas ?? {}),
+    [canvas],
+  );
+  const canvasMarkdown = useMemo(
+    () => storedContentToMarkdown(canvas ?? {}),
     [canvas],
   );
 
   const isAIGenerated = version.name?.startsWith("AI Bridge") ?? false;
   const currentContent = (liveContent ?? canvasBlocks ?? null) as PartialBlock[] | null;
+  const currentMarkdown = liveMarkdown || canvasMarkdown;
   const snapshotContent = storedContentToBlocks(version);
+  const snapshotMarkdown = storedContentToMarkdown(version);
 
   const diffs = useMemo(() => {
-    const oldText = blocksToPlainText(currentContent);
-    const newText = blocksToPlainText(snapshotContent);
+    const oldText = contentToDiffText(currentContent, currentMarkdown);
+    const newText = contentToDiffText(snapshotContent, snapshotMarkdown);
     return lineDiff(oldText, newText);
-  }, [currentContent, snapshotContent]);
+  }, [currentContent, currentMarkdown, snapshotContent, snapshotMarkdown]);
 
   const additions = diffs.filter((d) => d.type === "add").length;
   const deletions = diffs.filter((d) => d.type === "del").length;
@@ -63,6 +70,7 @@ export function CanvasSnapshotCard({
           versionName: version.name || "Untitled Snapshot",
           versionCreatedAt: version.created_at,
           content: snapshotContent,
+          markdown: snapshotMarkdown,
         },
       }),
     );

@@ -257,6 +257,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     {
       key: "b",
       metaKey: true,
+      shiftKey: true,
       handler: () => {
         if (!isHomeRoute) {
           setSidebarVisible(!sidebarVisible);
@@ -267,6 +268,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     {
       key: "b",
       ctrlKey: true,
+      shiftKey: true,
       handler: () => {
         if (!isHomeRoute) {
           setSidebarVisible(!sidebarVisible);

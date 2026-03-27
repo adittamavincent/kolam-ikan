@@ -453,6 +453,33 @@ function formatSelection(
       const afterTo = Math.min(state.doc.length, range.to + close.length);
       const before = state.doc.sliceString(beforeFrom, range.from);
       const after = state.doc.sliceString(range.to, afterTo);
+
+      if (range.empty) {
+        if (before === open && after === close) {
+          return {
+            changes: [],
+            range: EditorSelection.cursor(afterTo),
+          };
+        }
+
+        const line = state.doc.lineAt(range.from);
+        const lineText = state.doc.sliceString(line.from, line.to);
+        const cursorOffset = range.from - line.from;
+
+        if (
+          lineText.slice(cursorOffset, cursorOffset + close.length) === close
+        ) {
+          const beforeCursor = lineText.slice(0, cursorOffset);
+          const openOffset = beforeCursor.lastIndexOf(open);
+
+          if (openOffset >= 0 && openOffset + open.length <= cursorOffset) {
+            return {
+              changes: [],
+              range: EditorSelection.cursor(afterTo),
+            };
+          }
+        }
+      }
       const isWrapped = before === open && after === close;
 
       if (isWrapped) {

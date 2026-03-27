@@ -1,18 +1,20 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import {
-  BlockNoteEditor as BlockNoteEditorType,
-  PartialBlock,
-} from "@blocknote/core";
 import { Loader2 } from "lucide-react";
+import type { PartialBlock } from "@/lib/types/editor";
+
+export interface MarkdownEditorHandle {
+  focus: () => void;
+  isFocused?: () => boolean;
+}
 
 export interface BlockNoteEditorProps {
   initialContent?: PartialBlock[];
-  onChange?: (blocks: PartialBlock[]) => void;
+  onChange?: (blocks: PartialBlock[], markdown: string) => void;
   editable?: boolean;
   placeholder?: string;
-  onEditorReady?: (editor: BlockNoteEditorType) => void;
+  onEditorReady?: (editor: MarkdownEditorHandle) => void;
   highlightTerm?: string;
 }
 

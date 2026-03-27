@@ -1,4 +1,4 @@
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 
 export const CANVAS_PREVIEW_OPEN_EVENT = "kolam_canvas_preview_open";
 

@@ -13,6 +13,7 @@ import { BlockNoteBlock, BlockNoteContent } from "@/lib/types";
 import { z } from "zod";
 import { BlockSchema } from "@/lib/validation/entry";
 import { Json } from "@/lib/types/database.types";
+import { buildStoredContentPayload } from "@/lib/content-protocol";
 
 interface ResponseParserProps {
   streamId?: string;
@@ -655,23 +656,27 @@ export const ResponseParser = forwardRef<
             console.warn("Error ensuring AI persona:", err);
           }
 
-          type CreateEntryRpc = {
-            p_content_json: Json;
-            p_stream_id: string;
-            p_persona_id?: string;
-            p_persona_name_snapshot?: string;
-            p_is_draft?: boolean;
-          };
+          const { data: createdEntry, error: entryError } = await supabase
+            .from("entries")
+            .insert({
+              stream_id: streamId,
+              is_draft: false,
+            })
+            .select("id")
+            .single();
+          if (entryError || !createdEntry) throw entryError;
 
-          const rpcPayload: CreateEntryRpc = {
-            p_stream_id: streamId,
-            p_content_json: blocks as unknown as Json,
-            p_persona_name_snapshot: "AI",
-            p_is_draft: false,
-          };
-          if (aiPersonaId) rpcPayload.p_persona_id = aiPersonaId;
+          const { error: sectionError } = await supabase
+            .from("sections")
+            .insert({
+              entry_id: createdEntry.id,
+              persona_id: aiPersonaId ?? null,
+              persona_name_snapshot: "AI",
+              ...buildStoredContentPayload(blocks),
+              sort_order: 0,
+            });
+          if (sectionError) throw sectionError;
 
-          await supabase.rpc("create_entry_with_section", rpcPayload);
           await supabase.from("audit_logs").insert({
             action: "bridge_log_create",
             target_table: "entries",
@@ -702,7 +707,7 @@ export const ResponseParser = forwardRef<
           if (canvas?.id) {
             const { error: updateError } = await supabase
               .from("canvases")
-              .update({ content_json: mergedBlocks as unknown as Json })
+              .update(buildStoredContentPayload(mergedBlocks))
               .eq("id", canvas.id);
             if (updateError) throw updateError;
             await supabase.from("audit_logs").insert({
@@ -729,7 +734,7 @@ export const ResponseParser = forwardRef<
             await supabase.from("canvas_versions").insert({
               canvas_id: canvas.id,
               stream_id: streamId,
-              content_json: mergedBlocks as unknown as Json,
+              ...buildStoredContentPayload(mergedBlocks),
               name: "AI Bridge Update",
               summary: summaryText,
               created_by: userData.user?.id ?? null,

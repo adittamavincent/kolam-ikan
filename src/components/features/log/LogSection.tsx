@@ -2,12 +2,13 @@ import { SectionWithPersona } from "@/lib/types";
 import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 import { useMemo } from "react";
 import { SectionPreset } from "@/components/shared/SectionPreset";
 import { PersonaItem } from "../../shared/PersonaItem";
 import { FileAttachmentItem } from "./FileAttachmentItem";
 import { FileText, Paperclip } from "lucide-react";
+import { storedContentToBlocks } from "@/lib/content-protocol";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -82,7 +83,7 @@ export function LogSection({
   };
 
   const trimmedContent = useMemo(() => {
-    const blocks = (section.content_json as unknown as PartialBlock[]) ?? [];
+    const blocks = storedContentToBlocks(section);
     if (!Array.isArray(blocks) || blocks.length === 0) return [];
 
     const trimmableTypes = new Set([
@@ -139,12 +140,12 @@ export function LogSection({
 
     if (start > end) return [];
     return blocks.slice(start, end + 1);
-  }, [section.content_json]);
+  }, [section]);
 
   const editableContent = useMemo(() => {
-    const blocks = (section.content_json as unknown as PartialBlock[]) ?? [];
+    const blocks = storedContentToBlocks(section);
     return Array.isArray(blocks) ? blocks : [];
-  }, [section.content_json]);
+  }, [section]);
 
   const globalPersonas = useMemo(
     () => (personas ?? []).filter((persona) => !isLocalPersona(persona)),

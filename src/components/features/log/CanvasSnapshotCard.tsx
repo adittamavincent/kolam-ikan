@@ -13,13 +13,14 @@ import {
 } from "lucide-react";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import {
   blocksToPlainText,
   CANVAS_PREVIEW_OPEN_EVENT,
   lineDiff,
 } from "@/lib/utils/canvasPreview";
+import { storedContentToBlocks } from "@/lib/content-protocol";
 
 interface CanvasSnapshotCardProps {
   version: CanvasVersion;
@@ -34,12 +35,14 @@ export function CanvasSnapshotCard({
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const { canvas } = useCanvas(streamId);
   const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId] ?? null);
+  const canvasBlocks = useMemo(
+    () => storedContentToBlocks(canvas ?? {}),
+    [canvas],
+  );
 
   const isAIGenerated = version.name?.startsWith("AI Bridge") ?? false;
-  const currentContent = (liveContent ?? canvas?.content_json ?? null) as
-    | PartialBlock[]
-    | null;
-  const snapshotContent = (version.content_json ?? null) as PartialBlock[] | null;
+  const currentContent = (liveContent ?? canvasBlocks ?? null) as PartialBlock[] | null;
+  const snapshotContent = storedContentToBlocks(version);
 
   const diffs = useMemo(() => {
     const oldText = blocksToPlainText(currentContent);

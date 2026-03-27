@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 import { areCanvasContentsEquivalent } from "@/lib/utils/canvasContent";
 
 interface CanvasDraftState {

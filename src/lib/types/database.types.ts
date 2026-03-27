@@ -150,31 +150,37 @@ export type Database = {
       canvas_versions: {
         Row: {
           canvas_id: string
+          content_format: string
           content_json: Json
           created_at: string | null
           created_by: string | null
           id: string
           name: string | null
+          raw_markdown: string
           stream_id: string
           summary: string | null
         }
         Insert: {
           canvas_id: string
+          content_format?: string
           content_json?: Json
           created_at?: string | null
           created_by?: string | null
           id?: string
           name?: string | null
+          raw_markdown?: string
           stream_id: string
           summary?: string | null
         }
         Update: {
           canvas_id?: string
+          content_format?: string
           content_json?: Json
           created_at?: string | null
           created_by?: string | null
           id?: string
           name?: string | null
+          raw_markdown?: string
           stream_id?: string
           summary?: string | null
         }
@@ -197,23 +203,29 @@ export type Database = {
       }
       canvases: {
         Row: {
+          content_format: string
           content_json: Json
           created_at: string | null
           id: string
+          raw_markdown: string
           stream_id: string
           updated_at: string | null
         }
         Insert: {
+          content_format?: string
           content_json?: Json
           created_at?: string | null
           id?: string
+          raw_markdown?: string
           stream_id: string
           updated_at?: string | null
         }
         Update: {
+          content_format?: string
           content_json?: Json
           created_at?: string | null
           id?: string
+          raw_markdown?: string
           stream_id?: string
           updated_at?: string | null
         }
@@ -702,6 +714,7 @@ export type Database = {
       }
       sections: {
         Row: {
+          content_format: string
           content_json: Json
           created_at: string | null
           entry_id: string
@@ -709,12 +722,14 @@ export type Database = {
           id: string
           persona_id: string | null
           persona_name_snapshot: string | null
+          raw_markdown: string
           search_text: string | null
           section_type: string
           sort_order: number
           updated_at: string | null
         }
         Insert: {
+          content_format?: string
           content_json?: Json
           created_at?: string | null
           entry_id: string
@@ -722,12 +737,14 @@ export type Database = {
           id?: string
           persona_id?: string | null
           persona_name_snapshot?: string | null
+          raw_markdown?: string
           search_text?: string | null
           section_type?: string
           sort_order?: number
           updated_at?: string | null
         }
         Update: {
+          content_format?: string
           content_json?: Json
           created_at?: string | null
           entry_id?: string
@@ -735,6 +752,7 @@ export type Database = {
           id?: string
           persona_id?: string | null
           persona_name_snapshot?: string | null
+          raw_markdown?: string
           search_text?: string | null
           section_type?: string
           sort_order?: number
@@ -860,6 +878,7 @@ export type Database = {
         }[]
       }
       jsonb_to_text: { Args: { jsonb_data: Json }; Returns: string }
+      markdown_to_search_text: { Args: { markdown: string }; Returns: string }
       revert_bridge_action: { Args: { audit_id: string }; Returns: undefined }
       search_canvases: {
         Args: { p_limit?: number; p_query: string }

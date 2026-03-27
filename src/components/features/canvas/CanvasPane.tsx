@@ -4,15 +4,14 @@ import { useLayout } from "@/lib/hooks/useLayout";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasScroll } from "@/lib/hooks/useCanvasScroll";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
-import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
+import {
+  BlockNoteEditor,
+  type MarkdownEditorHandle,
+} from "@/components/shared/BlockNoteEditor";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import debounce from "lodash/debounce";
-import {
-  PartialBlock,
-  BlockNoteEditor as BlockNoteEditorType,
-} from "@blocknote/core";
-import { Json } from "@/lib/types/database.types";
+import type { PartialBlock } from "@/lib/types/editor";
 import { createClient } from "@/lib/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { areCanvasContentsEquivalent } from "@/lib/utils/canvasContent";
@@ -24,6 +23,10 @@ import {
   saveCanvasPreviewStash,
 } from "@/lib/utils/canvasPreview";
 import { Eye, GitCompare, RotateCcw, Save, X } from "lucide-react";
+import {
+  buildStoredContentPayload,
+  storedContentToBlocks,
+} from "@/lib/content-protocol";
 
 interface CanvasPaneProps {
   streamId: string;
@@ -40,7 +43,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const { canvasWidth } = useLayout();
   const { canvas, updateCanvas, isLoading } = useCanvas(streamId);
   const { targetBlockId, setTargetBlockId } = useCanvasScroll();
-  const [editor, setEditor] = useState<BlockNoteEditorType | null>(null);
+  const [editor, setEditor] = useState<MarkdownEditorHandle | null>(null);
   const [highlightTerm] = useState<string | null>(null);
   const [snapshotName, setSnapshotName] = useState("");
   const markClean = useCanvasDraft((s) => s.markClean);
@@ -53,21 +56,23 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const syncStatus = useCanvasDraft((s) => s.dbSyncStatusByStream[streamId]) || "idle";
   const localStatus = useCanvasDraft((s) => s.localSaveStatusByStream[streamId]) || "idle";
   const hasReceivedFirstChange = useRef(false);
-  const ignoreStylainChangeRef = useRef(false);
-  const [isModeChanging, setIsModeChanging] = useState(false);
   const [previewSession, setPreviewSession] = useState<PreviewSession | null>(null);
   const [editorSeed, setEditorSeed] = useState(0);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const supabase = createClient();
   const queryClient = useQueryClient();
   const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId]);
+  const canvasBlocks = useMemo(
+    () => storedContentToBlocks(canvas ?? {}),
+    [canvas],
+  );
   const isPreviewing = previewSession !== null;
   const previewDiffs = useMemo(() => {
     if (!previewSession) return [];
     const before = blocksToPlainText(previewSession.previousDraftContent);
-    const after = blocksToPlainText((liveContent ?? canvas?.content_json ?? null) as PartialBlock[] | null);
+    const after = blocksToPlainText(liveContent ?? canvasBlocks);
     return lineDiff(before, after);
-  }, [previewSession, liveContent, canvas?.content_json]);
+  }, [previewSession, liveContent, canvasBlocks]);
   const previewAdditions = previewDiffs.filter((line) => line.type === "add").length;
   const previewDeletions = previewDiffs.filter((line) => line.type === "del").length;
 
@@ -101,7 +106,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         try {
           await updateCanvas.mutateAsync({
             id,
-            updates: { content_json: blocks as unknown as Json },
+            updates: buildStoredContentPayload(blocks),
           });
           setSyncStatus(streamId, "synced");
           setLocalStatus(streamId, "saved");
@@ -122,13 +127,13 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
   const syncDirtyAgainstDb = useCallback(
     (nextContent: PartialBlock[] | null) => {
-      if (areCanvasContentsEquivalent(nextContent, canvas?.content_json)) {
+      if (areCanvasContentsEquivalent(nextContent, canvasBlocks)) {
         markClean(streamId);
       } else {
         markDirty(streamId);
       }
     },
-    [canvas?.content_json, markClean, markDirty, streamId],
+    [canvasBlocks, markClean, markDirty, streamId],
   );
 
   const handleContentChange = useCallback(
@@ -141,7 +146,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         }
         
         // Compare canonicalized content and ignore only volatile IDs.
-        const prev = liveContent || canvas.content_json;
+        const prev = liveContent || canvasBlocks;
         if (areCanvasContentsEquivalent(prev, blocks)) {
           syncDirtyAgainstDb(blocks);
           return;
@@ -158,6 +163,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     },
     [
       canvas,
+      canvasBlocks,
       liveContent,
       setLiveContent,
       streamId,
@@ -176,13 +182,13 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   // Sync initial content once if DB canvas is loaded but no local cache yet
   useEffect(() => {
     if (isPreviewing) return;
-    if (canvas?.content_json) {
+    if (canvas) {
       if (!liveContent) {
-        setLiveContent(streamId, (canvas.content_json as PartialBlock[] | null) ?? null);
-        syncDirtyAgainstDb((canvas.content_json as PartialBlock[] | null) ?? null);
+        setLiveContent(streamId, canvasBlocks);
+        syncDirtyAgainstDb(canvasBlocks);
       } else {
         // If we HAVE local content but it's different from DB, start background sync
-        if (!areCanvasContentsEquivalent(canvas.content_json, liveContent)) {
+        if (!areCanvasContentsEquivalent(canvasBlocks, liveContent)) {
            syncDirtyAgainstDb(liveContent);
            console.log(`[CanvasPane] detecting local change on mount, starting sync for ${streamId}`);
            debouncedUpdate(canvas.id, liveContent);
@@ -194,8 +200,9 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       syncDirtyAgainstDb(liveContent ?? null);
     }
   }, [
+    canvas,
     canvas?.id,
-    canvas?.content_json,
+    canvasBlocks,
     liveContent,
     setLiveContent,
     streamId,
@@ -208,9 +215,9 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     setStarterBaseline(
       streamId,
       canvas?.id ?? null,
-      (canvas?.content_json as PartialBlock[] | null) ?? null,
+      canvasBlocks,
     );
-  }, [canvas?.id, canvas?.content_json, setStarterBaseline, streamId]);
+  }, [canvas?.id, canvasBlocks, setStarterBaseline, streamId]);
 
   useEffect(() => {
     return () => {
@@ -229,7 +236,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
-        content_json: canvas.content_json as unknown as Json,
+        ...buildStoredContentPayload(liveContent ?? canvasBlocks),
         name,
         created_by: userData.user?.id ?? null,
       });
@@ -257,70 +264,14 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   // Handle auto-scroll to target block
   useEffect(() => {
     if (targetBlockId && editor && canvas) {
-      // Small timeout to ensure content is rendered
       const timer = setTimeout(() => {
-        // Try to find the block in the document
-        const block = editor.document.find((b) => b.id === targetBlockId);
-
-        if (block) {
-          // Set selection to the block
-          editor.setTextCursorPosition(targetBlockId, "end");
-
-          // Clear the target
-          setTargetBlockId(null);
-        }
+        editor.focus();
+        setTargetBlockId(null);
       }, 100);
 
       return () => clearTimeout(timer);
     }
   }, [targetBlockId, editor, canvas, setTargetBlockId]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const cancelCurrentWriteSession = () => {
-      debouncedUpdate.cancel();
-    };
-
-    const will = () => {
-      try {
-        cancelCurrentWriteSession();
-        ignoreStylainChangeRef.current = true;
-        setIsModeChanging(true);
-        // Clear after a short period in case no did event fires
-        window.setTimeout(() => {
-          try {
-            ignoreStylainChangeRef.current = false;
-            setIsModeChanging(false);
-          } catch {}
-        }, 300);
-      } catch {}
-    };
-
-    const handleStylainModeChange = () => {
-      try {
-        cancelCurrentWriteSession();
-        // Allow a small settling time before re-enabling
-        window.setTimeout(() => {
-          try {
-            setIsModeChanging(false);
-          } catch {}
-        }, 50);
-      } catch (error) {
-        console.error("Error handling Stylain mode change:", error);
-        setIsModeChanging(false);
-      }
-    };
-
-    window.addEventListener("stylain_mode_will_change", will as EventListener);
-    window.addEventListener("stylain_mode_changed", handleStylainModeChange as EventListener);
-
-    return () => {
-      cancelCurrentWriteSession();
-      window.removeEventListener("stylain_mode_will_change", will as EventListener);
-      window.removeEventListener("stylain_mode_changed", handleStylainModeChange as EventListener);
-    };
-  }, [debouncedUpdate]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -383,13 +334,13 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     if (!canvas || !previewSession) return;
     const nextContent =
       (useCanvasDraft.getState().liveContentByStream[streamId] ??
-        canvas.content_json ??
+        canvasBlocks ??
         []) as PartialBlock[] | null;
     try {
       setSyncStatus(streamId, "syncing");
       await updateCanvas.mutateAsync({
         id: canvas.id,
-        updates: { content_json: (nextContent ?? []) as unknown as Json },
+        updates: buildStoredContentPayload(nextContent ?? []),
       });
       setSyncStatus(streamId, "synced");
       setLocalStatus(streamId, "saved");
@@ -402,6 +353,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     }
   }, [
     canvas,
+    canvasBlocks,
     previewSession,
     streamId,
     updateCanvas,
@@ -419,7 +371,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
       debouncedUpdate.cancel();
 
-      const currentDraft = (liveContent ?? canvas.content_json ?? null) as
+      const currentDraft = (liveContent ?? canvasBlocks ?? null) as
         | PartialBlock[]
         | null;
 
@@ -456,6 +408,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   }, [
     streamId,
     canvas,
+    canvasBlocks,
     liveContent,
     debouncedUpdate,
     setLiveContent,
@@ -535,7 +488,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           {canvas ? (
             <BlockNoteEditor
               key={`canvas-${canvas.id}-${editorSeed}`}
-              initialContent={(liveContent || canvas.content_json) as unknown as PartialBlock[]}
+              initialContent={liveContent || canvasBlocks}
               onChange={handleContentChange}
               onEditorReady={setEditor}
               placeholder="Start writing on the canvas..."
@@ -543,7 +496,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
             />
           ) : (
             <div className="flex h-full items-center justify-center text-text-muted text-sm">
-              {isLoading && !isModeChanging ? "Loading canvas..." : "No canvas found"}
+              {isLoading ? "Loading canvas..." : "No canvas found"}
             </div>
           )}
         </div>

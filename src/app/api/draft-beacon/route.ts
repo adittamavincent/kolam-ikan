@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { buildStoredContentPayload } from "@/lib/content-protocol";
+import type { PartialBlock } from "@/lib/types/editor";
 import { Json } from "@/lib/types/database.types";
 
 type DraftBeaconPayload = {
@@ -39,18 +41,39 @@ export async function POST(request: Request) {
 
   if (!entryId) {
     const first = payload.sections[0];
-    const { data, error } = await supabase.rpc("create_entry_with_section", {
-      p_stream_id: payload.streamId,
-      p_content_json: first.content as Json,
-      p_persona_id: first.personaId ?? undefined,
-      p_persona_name_snapshot: undefined,
-      p_is_draft: true,
-    });
-    if (error || !data) {
+    const { data: entryData, error: entryError } = await supabase
+      .from("entries")
+      .insert({
+        stream_id: payload.streamId,
+        is_draft: true,
+      })
+      .select("id")
+      .single();
+
+    if (entryError || !entryData) {
       return NextResponse.json({ ok: false }, { status: 500 });
     }
-    const created = data as Record<string, unknown>;
-    entryId = (created.id as string) ?? null;
+
+    const { data: sectionData, error: sectionError } = await supabase
+      .from("sections")
+      .insert({
+        entry_id: entryData.id,
+        persona_id: first.personaId,
+        ...buildStoredContentPayload(first.content as PartialBlock[]),
+        sort_order: 0,
+      })
+      .select("id")
+      .single();
+
+    if (sectionError || !sectionData) {
+      return NextResponse.json({ ok: false }, { status: 500 });
+    }
+
+    entryId = entryData.id;
+    payload.sections[0] = {
+      ...first,
+      sectionId: sectionData.id,
+    };
     if (!entryId) {
       return NextResponse.json({ ok: false }, { status: 500 });
     }
@@ -70,7 +93,7 @@ export async function POST(request: Request) {
       await supabase
         .from("sections")
         .update({
-          content_json: section.content as Json,
+          ...buildStoredContentPayload(section.content as PartialBlock[]),
           persona_id: section.personaId,
           updated_at: new Date().toISOString(),
         })
@@ -82,7 +105,7 @@ export async function POST(request: Request) {
         .insert({
           entry_id: entryId,
           persona_id: section.personaId,
-          content_json: section.content as Json,
+          ...buildStoredContentPayload(section.content as PartialBlock[]),
           sort_order: 0,
         })
         .select("id")

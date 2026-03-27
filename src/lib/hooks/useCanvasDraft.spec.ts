@@ -1,4 +1,4 @@
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useCanvasDraft } from "./useCanvasDraft";
 

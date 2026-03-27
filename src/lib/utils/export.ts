@@ -1,5 +1,6 @@
 import { EntryWithSections, BlockNoteBlock } from "@/lib/types";
 import bridge from "@/lib/blocknote-markdown-bridge";
+import { storedContentToMarkdown } from "@/lib/content-protocol";
 
 export function exportEntriesToMarkdown(entries: EntryWithSections[]): string {
   return entries.map(entryToMarkdown).join("\n\n---\n\n");
@@ -13,9 +14,9 @@ function entryToMarkdown(entry: EntryWithSections): string {
   const sections = entry.sections
     .map((section) => {
       const author = section.persona?.name || "Unknown Author";
-      const content = blocksToMarkdown(
-        section.content_json as unknown as BlockNoteBlock[],
-      );
+      const content =
+        storedContentToMarkdown(section) ||
+        blocksToMarkdown(section.content_json as unknown as BlockNoteBlock[]);
       return `### ${author}\n\n${content}`;
     })
     .join("\n\n");

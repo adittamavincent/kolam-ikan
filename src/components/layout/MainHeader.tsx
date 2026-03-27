@@ -11,7 +11,6 @@ import {
   MenuItems,
   Transition,
 } from "@headlessui/react";
-import StylainHeader from "./StylainHeader";
 import {
   PanelLeft,
   Globe,
@@ -249,7 +248,6 @@ export function MainHeader() {
         <div className="flex items-center gap-2">
           {logState && (
             <div className="flex items-center gap-1 border border-border-default/60 bg-surface-subtle/60 p-1">
-              <StylainHeader compact />
               <button
                 onClick={() =>
                   emit("kolam_header_log_toggle_compact_all", {
@@ -439,7 +437,6 @@ export function MainHeader() {
 
           {canvasState?.hasCanvas && !logState && (
             <div className="flex items-center gap-1 border border-border-default/60 bg-surface-subtle/60 p-1">
-              <StylainHeader compact />
               <span
                 className="inline-flex h-8 w-8 items-center justify-center border border-border-default/60 bg-surface-default text-text-muted shadow-sm"
                 title="Canvas active"

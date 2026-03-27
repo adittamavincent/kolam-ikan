@@ -19,6 +19,7 @@ import {
   CanvasInsert,
   STREAM_KIND,
 } from "@/lib/types";
+import { cloneStoredContentFields } from "@/lib/content-protocol";
 
 function isMissingDuplicateDomainRpcError(error: unknown) {
   const rpcError = error as Partial<PostgrestError> | null;
@@ -606,7 +607,7 @@ export function useDomains(userId: string) {
           const origEntryIds = Array.from(entryMap.keys());
           const { data: sections } = await supabase
             .from("sections")
-            .select("id, entry_id, persona_id, persona_name_snapshot, content_json, sort_order, section_type, file_display_mode")
+            .select("id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format, sort_order, section_type, file_display_mode")
             .in("entry_id", origEntryIds);
 
           if (sections && sections.length) {
@@ -619,7 +620,7 @@ export function useDomains(userId: string) {
                   entry_id: newEntryId,
                   persona_id: sec.persona_id,
                   persona_name_snapshot: sec.persona_name_snapshot,
-                  content_json: sec.content_json,
+                  ...cloneStoredContentFields(sec),
                   sort_order: sec.sort_order,
                   section_type: sec.section_type,
                   file_display_mode: sec.file_display_mode,
@@ -686,7 +687,7 @@ export function useDomains(userId: string) {
           const origStreamIds = Array.from(streamMap.keys());
           const { data: canvases } = await supabase
             .from("canvases")
-            .select("id, stream_id, content_json")
+            .select("id, stream_id, content_json, raw_markdown, content_format")
             .in("stream_id", origStreamIds);
 
           if (canvases && canvases.length) {
@@ -696,7 +697,7 @@ export function useDomains(userId: string) {
 
               const canvasPayload: CanvasInsert = {
                 stream_id: newStreamId,
-                content_json: c.content_json,
+                ...cloneStoredContentFields(c),
               };
 
               const { error: upsertCanvasErr } = await supabase
@@ -725,7 +726,7 @@ export function useDomains(userId: string) {
           const { data: versions } = await supabase
             .from("canvas_versions")
             .select(
-              "stream_id, content_json, name, summary, created_by, created_at",
+              "stream_id, content_json, raw_markdown, content_format, name, summary, created_by, created_at",
             )
             .in("stream_id", origStreamIds)
             .order("created_at", { ascending: true });
@@ -742,7 +743,7 @@ export function useDomains(userId: string) {
                 .insert({
                   canvas_id: newCanvasId,
                   stream_id: newStreamId,
-                  content_json: version.content_json,
+                  ...cloneStoredContentFields(version),
                   name: version.name,
                   summary: version.summary,
                   created_by: version.created_by,

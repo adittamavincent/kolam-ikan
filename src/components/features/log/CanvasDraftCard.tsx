@@ -1,16 +1,19 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
-import { Json } from "@/lib/types/database.types";
 import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
 import { blocksToPlainText, lineDiff } from "@/lib/utils/canvasPreview";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import { CircleDot, GitCommitHorizontal, GitCompare, Loader2, X } from "lucide-react";
+import {
+  buildStoredContentPayload,
+  storedContentToBlocks,
+} from "@/lib/content-protocol";
 
 interface CanvasDraftCardProps {
   streamId: string;
@@ -31,6 +34,10 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const [committedBaseline, setCommittedBaseline] = useState<
     PartialBlock[] | null | undefined
   >(undefined);
+  const canvasBlocks = useMemo(
+    () => storedContentToBlocks(canvas ?? {}),
+    [canvas],
+  );
 
   const { data: latestCanvasVersion, isLoading: isLatestVersionLoading } =
     useQuery({
@@ -38,7 +45,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       queryFn: async () => {
         const { data, error } = await supabase
           .from("canvas_versions")
-          .select("id, content_json, created_at")
+          .select("id, content_json, raw_markdown, created_at")
           .eq("stream_id", streamId)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -54,11 +61,9 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     committedBaseline !== undefined
       ? committedBaseline
       : latestCanvasVersion
-      ? ((latestCanvasVersion.content_json ?? null) as PartialBlock[] | null)
+      ? storedContentToBlocks(latestCanvasVersion)
       : null;
-  const currentContent = (liveContent ?? canvas?.content_json ?? null) as
-    | PartialBlock[]
-    | null;
+  const currentContent = (liveContent ?? canvasBlocks ?? null) as PartialBlock[] | null;
   const compareLabel = latestCanvasVersion ? "Latest Snapshot" : "Start Fresh";
 
   const hasDraftDiff = useMemo(() => {
@@ -84,7 +89,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   useEffect(() => {
     if (committedBaseline === undefined) return;
     const latestNormalized = normalizeCanvasContent(
-      latestCanvasVersion?.content_json,
+      storedContentToBlocks(latestCanvasVersion ?? {}),
     );
     const committedNormalized = normalizeCanvasContent(committedBaseline);
     if (latestNormalized !== null && latestNormalized === committedNormalized) {
@@ -92,7 +97,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       // This prevents the lint rule complaining about cascading renders.
       setTimeout(() => setCommittedBaseline(undefined), 0);
     }
-  }, [latestCanvasVersion?.content_json, committedBaseline]);
+  }, [latestCanvasVersion, committedBaseline]);
 
   const commitMutation = useMutation({
     mutationFn: async () => {
@@ -103,16 +108,14 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
-        content_json:
-          (liveContent ?? canvas.content_json) as unknown as Json,
+        ...buildStoredContentPayload(liveContent ?? canvasBlocks),
         name,
         created_by: userData.user?.id ?? null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      const committedContent =
-        liveContent ?? (canvas?.content_json as unknown as PartialBlock[] | null);
+      const committedContent = liveContent ?? canvasBlocks;
 
       setSnapshotName("");
       setIsExpanded(false);

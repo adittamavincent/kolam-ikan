@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { PartialBlock } from "@blocknote/core";
-import { Json } from "@/lib/types/database.types";
+import type { PartialBlock } from "@/lib/types/editor";
 import { SectionFileAttachmentInsert } from "@/lib/types";
+import { buildStoredContentPayload } from "@/lib/content-protocol";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -519,7 +519,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
             entry_id: newEntryId,
             persona_id: draft.personaId,
             persona_name_snapshot: draft.personaName ?? null,
-            content_json: draft.content as Json,
+            ...buildStoredContentPayload(draft.content),
             sort_order: index,
             section_type: draft.sectionType,
             file_display_mode: draft.fileDisplayMode ?? "inline",
@@ -549,7 +549,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                 entry_id: newEntryId,
                 persona_id: draft.personaId,
                 persona_name_snapshot: draft.personaName,
-                content_json: draft.content as Json,
+                ...buildStoredContentPayload(draft.content),
                 sort_order: index,
               })
               .select("id")

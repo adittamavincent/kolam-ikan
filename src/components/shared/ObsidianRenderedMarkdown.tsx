@@ -1,0 +1,466 @@
+"use client";
+
+import React from "react";
+
+export type FrontmatterProperty = {
+  key: string;
+  value: string | string[] | boolean;
+};
+
+const DEPRECATED_FRONTMATTER_KEYS: Record<string, string> = {
+  tag: "tags",
+  alias: "aliases",
+  cssClass: "cssclasses",
+};
+
+export function normalizeFrontmatterKey(key: string) {
+  return DEPRECATED_FRONTMATTER_KEYS[key] ?? key;
+}
+
+export function extractFrontmatter(source: string): {
+  body: string;
+  frontmatter: string | null;
+  properties: FrontmatterProperty[];
+  rangeEnd: number;
+} {
+  const match = source.match(/^---\n([\s\S]*?)\n---\n?/);
+  if (!match) {
+    return {
+      body: source,
+      frontmatter: null,
+      properties: [],
+      rangeEnd: 0,
+    };
+  }
+
+  const frontmatter = match[1];
+  const properties: FrontmatterProperty[] = [];
+  const lines = frontmatter.split("\n");
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const keyMatch = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!keyMatch) continue;
+
+    const key = normalizeFrontmatterKey(keyMatch[1]);
+    const inlineValue = keyMatch[2].trim();
+    const listValues: string[] = [];
+    let nextIndex = i + 1;
+
+    while (nextIndex < lines.length) {
+      const nextLine = lines[nextIndex];
+      const listMatch = nextLine.match(/^\s*-\s+(.+)$/);
+      if (!listMatch) break;
+      listValues.push(listMatch[1].trim());
+      nextIndex += 1;
+    }
+
+    if (listValues.length > 0) {
+      properties.push({ key, value: listValues });
+      i = nextIndex - 1;
+      continue;
+    }
+
+    if (inlineValue === "true" || inlineValue === "false") {
+      properties.push({ key, value: inlineValue === "true" });
+    } else {
+      properties.push({ key, value: inlineValue });
+    }
+  }
+
+  return {
+    body: source.slice(match[0].length),
+    frontmatter,
+    properties,
+    rangeEnd: match[0].length,
+  };
+}
+
+function getCalloutType(rawType: string | undefined): string {
+  const normalized = (rawType ?? "note").toLowerCase();
+  const aliases: Record<string, string> = {
+    summary: "abstract",
+    tldr: "abstract",
+    hint: "tip",
+    important: "tip",
+    check: "success",
+    done: "success",
+    help: "question",
+    faq: "question",
+    caution: "warning",
+    attention: "warning",
+    fail: "failure",
+    missing: "failure",
+    error: "danger",
+    cite: "quote",
+  };
+  const resolved = aliases[normalized] ?? normalized;
+  const allowed = new Set([
+    "note",
+    "abstract",
+    "info",
+    "todo",
+    "tip",
+    "success",
+    "question",
+    "warning",
+    "failure",
+    "danger",
+    "bug",
+    "example",
+    "quote",
+  ]);
+  return allowed.has(resolved) ? resolved : "note";
+}
+
+function formatCalloutTitle(type: string) {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function renderInline(text: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  const pattern =
+    /(\[\[([^[\]]+)\]\]|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|==([^=]+)==|~~([^~]+)~~|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|%%([\s\S]*?)%%)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    if (match[13]) {
+      lastIndex = pattern.lastIndex;
+      continue;
+    }
+
+    if (match[2]) {
+      nodes.push(
+        <span className="obsidian-inline-link" key={nodes.length}>
+          {match[2]}
+        </span>,
+      );
+    } else if (match[3] && match[4]) {
+      nodes.push(
+        <a
+          className="obsidian-inline-link"
+          href={match[4]}
+          key={nodes.length}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {match[3]}
+        </a>,
+      );
+    } else if (match[5]) {
+      nodes.push(
+        <code className="obsidian-inline-code" key={nodes.length}>
+          {match[5]}
+        </code>,
+      );
+    } else if (match[6]) {
+      nodes.push(<mark key={nodes.length}>{match[6]}</mark>);
+    } else if (match[7]) {
+      nodes.push(<del key={nodes.length}>{match[7]}</del>);
+    } else if (match[8]) {
+      nodes.push(
+        <strong key={nodes.length}>
+          <em>{match[8]}</em>
+        </strong>,
+      );
+    } else if (match[9] || match[10]) {
+      nodes.push(<strong key={nodes.length}>{match[9] ?? match[10]}</strong>);
+    } else if (match[11] || match[12]) {
+      nodes.push(<em key={nodes.length}>{match[11] ?? match[12]}</em>);
+    } else {
+      nodes.push(match[0]);
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
+function renderHeading(level: number, text: string, key: string) {
+  const content = renderInline(text);
+
+  switch (level) {
+    case 1:
+      return (
+        <h1 className="obsidian-heading obsidian-heading-1" key={key}>
+          {content}
+        </h1>
+      );
+    case 2:
+      return (
+        <h2 className="obsidian-heading obsidian-heading-2" key={key}>
+          {content}
+        </h2>
+      );
+    case 3:
+      return (
+        <h3 className="obsidian-heading obsidian-heading-3" key={key}>
+          {content}
+        </h3>
+      );
+    case 4:
+      return (
+        <h4 className="obsidian-heading obsidian-heading-4" key={key}>
+          {content}
+        </h4>
+      );
+    case 5:
+      return (
+        <h5 className="obsidian-heading obsidian-heading-5" key={key}>
+          {content}
+        </h5>
+      );
+    default:
+      return (
+        <h6 className="obsidian-heading obsidian-heading-6" key={key}>
+          {content}
+        </h6>
+      );
+  }
+}
+
+type RendererProps = {
+  source: string;
+  onToggleTask?: (lineNumber: number, nextChecked: boolean) => void;
+};
+
+function renderMarkdownBody(
+  source: string,
+  onToggleTask?: (lineNumber: number, nextChecked: boolean) => void,
+): React.ReactNode[] {
+  const lines = source.replace(/\r\n?/g, "\n").split("\n");
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (!line.trim()) {
+      i += 1;
+      continue;
+    }
+
+    const fenceMatch = line.match(/^(```|~~~)\s*(\S+)?/);
+    if (fenceMatch) {
+      const fence = fenceMatch[1];
+      const language = fenceMatch[2] ?? "";
+      const start = i;
+      i += 1;
+      const codeLines: string[] = [];
+      while (i < lines.length && !lines[i].startsWith(fence)) {
+        codeLines.push(lines[i]);
+        i += 1;
+      }
+      i += 1;
+      nodes.push(
+        <pre className="obsidian-code-block" key={`code-${start}`}>
+          <div className="obsidian-code-header">
+            <span>{language || "plain text"}</span>
+          </div>
+          <code>{codeLines.join("\n")}</code>
+        </pre>,
+      );
+      continue;
+    }
+
+    const calloutMatch = line.match(/^>\s*\[!([^\]\+\-]+)\]([+-])?\s*(.*)$/i);
+    if (calloutMatch) {
+      const start = i;
+      const rawType = calloutMatch[1];
+      const foldState = calloutMatch[2];
+      const title = calloutMatch[3].trim() || formatCalloutTitle(getCalloutType(rawType));
+      const innerLines: string[] = [];
+      i += 1;
+      while (i < lines.length && /^\s*>/.test(lines[i])) {
+        innerLines.push(lines[i].replace(/^\s*>\s?/, ""));
+        i += 1;
+      }
+      nodes.push(
+        <details
+          className={`obsidian-callout obsidian-callout-${getCalloutType(rawType)}`}
+          key={`callout-${start}`}
+          open={foldState !== "-"}
+        >
+          <summary>{renderInline(title)}</summary>
+          <div className="obsidian-callout-body">
+            {renderMarkdownBody(innerLines.join("\n"), onToggleTask)}
+          </div>
+        </details>,
+      );
+      continue;
+    }
+
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      const level = Math.min(6, headingMatch[1].length);
+      nodes.push(renderHeading(level, headingMatch[2], `heading-${i}`));
+      i += 1;
+      continue;
+    }
+
+    if (/^\s*(?:---+|\*\*\*+|___+)\s*$/.test(line)) {
+      nodes.push(<hr className="obsidian-rule" key={`rule-${i}`} />);
+      i += 1;
+      continue;
+    }
+
+    if (
+      line.includes("|") &&
+      i + 1 < lines.length &&
+      /^\s*\|?[\s:-]+\|[\s|:-]*$/.test(lines[i + 1])
+    ) {
+      const start = i;
+      const header = line
+        .split("|")
+        .map((cell) => cell.trim())
+        .filter(Boolean);
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].includes("|")) {
+        rows.push(
+          lines[i]
+            .split("|")
+            .map((cell) => cell.trim())
+            .filter(Boolean),
+        );
+        i += 1;
+      }
+      nodes.push(
+        <table className="obsidian-table" key={`table-${start}`}>
+          <thead>
+            <tr>
+              {header.map((cell, index) => (
+                <th key={index}>{renderInline(cell)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex}>{renderInline(cell)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>,
+      );
+      continue;
+    }
+
+    const listMatch = line.match(/^(\s*)([-+*]|\d+\.)\s+(.*)$/);
+    const taskMatch = line.match(/^(\s*)[-+*]\s+\[( |x|X)\]\s+(.*)$/);
+    if (taskMatch || listMatch) {
+      const start = i;
+      const items: React.ReactNode[] = [];
+      const ordered = !!(listMatch && /\d+\./.test(listMatch[2]));
+
+      while (i < lines.length) {
+        const currentTask = lines[i].match(/^(\s*)[-+*]\s+\[( |x|X)\]\s+(.*)$/);
+        const currentList = lines[i].match(/^(\s*)([-+*]|\d+\.)\s+(.*)$/);
+        if (!currentTask && !currentList) break;
+
+        const indent = (currentTask?.[1] ?? currentList?.[1] ?? "").length;
+        const checked = (currentTask?.[2] ?? "").toLowerCase() === "x";
+        const text = currentTask?.[3] ?? currentList?.[3] ?? "";
+        const lineNumber = i;
+
+        items.push(
+          <li
+            className={currentTask ? "obsidian-task-item" : undefined}
+            key={`item-${start}-${lineNumber}`}
+            style={{ marginInlineStart: `${indent * 0.75}rem` }}
+          >
+            {currentTask ? (
+              <label className="obsidian-task-label">
+                <input
+                  checked={checked}
+                  disabled={!onToggleTask}
+                  onChange={() => onToggleTask?.(lineNumber, !checked)}
+                  type="checkbox"
+                />
+                <span>{renderInline(text)}</span>
+              </label>
+            ) : (
+              renderInline(text)
+            )}
+          </li>,
+        );
+
+        i += 1;
+      }
+
+      const ListTag = ordered ? "ol" : "ul";
+      nodes.push(
+        <ListTag className="obsidian-list" key={`list-${start}`}>
+          {items}
+        </ListTag>,
+      );
+      continue;
+    }
+
+    const quoteMatch = line.match(/^>\s?(.*)$/);
+    if (quoteMatch) {
+      const start = i;
+      const quoteLines: string[] = [];
+      while (i < lines.length) {
+        const current = lines[i].match(/^>\s?(.*)$/);
+        if (!current) break;
+        quoteLines.push(current[1]);
+        i += 1;
+      }
+      nodes.push(
+        <blockquote className="obsidian-blockquote" key={`quote-${start}`}>
+          {renderMarkdownBody(quoteLines.join("\n"), onToggleTask)}
+        </blockquote>,
+      );
+      continue;
+    }
+
+    const paragraphLines: string[] = [];
+    const start = i;
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !/^(#{1,6})\s+/.test(lines[i]) &&
+      !/^(```|~~~)/.test(lines[i]) &&
+      !/^>\s*\[!/.test(lines[i]) &&
+      !/^>\s?/.test(lines[i]) &&
+      !/^(\s*)([-+*]|\d+\.)\s+/.test(lines[i]) &&
+      !/^(\s*)[-+*]\s+\[( |x|X)\]\s+/.test(lines[i]) &&
+      !/^\s*(?:---+|\*\*\*+|___+)\s*$/.test(lines[i])
+    ) {
+      paragraphLines.push(lines[i]);
+      i += 1;
+    }
+
+    nodes.push(
+      <p className="obsidian-paragraph" key={`paragraph-${start}`}>
+        {renderInline(paragraphLines.join(" "))}
+      </p>,
+    );
+  }
+
+  return nodes;
+}
+
+export default function ObsidianRenderedMarkdown({
+  source,
+  onToggleTask,
+}: RendererProps) {
+  return (
+    <div className="obsidian-rendered-markdown">
+      {renderMarkdownBody(source, onToggleTask)}
+    </div>
+  );
+}

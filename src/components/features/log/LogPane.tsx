@@ -48,7 +48,7 @@ import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
 import { EntryWithSections, SectionFileAttachmentWithDocument } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
 

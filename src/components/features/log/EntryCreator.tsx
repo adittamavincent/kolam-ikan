@@ -10,12 +10,12 @@ import React, {
 } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
-
 import {
-  BlockNoteEditor as BlockNoteEditorType,
-  PartialBlock,
-} from "@blocknote/core";
+  BlockNoteEditor,
+  type MarkdownEditorHandle,
+} from "@/components/shared/BlockNoteEditor";
+
+import type { PartialBlock } from "@/lib/types/editor";
 import type { WhatsAppInjectPayload } from "./WhatsAppImportModal";
 import {
   Loader2,
@@ -429,7 +429,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   });
 
   // Refs for editors to clear them
-  const editorRefs = useRef<Record<string, BlockNoteEditorType>>({});
+  const editorRefs = useRef<Record<string, MarkdownEditorHandle>>({});
   const pendingFocusInstanceIdRef = useRef<string | null>(null);
   const editorReadyAtRef = useRef<Record<string, number>>({});
   const userEditedRef = useRef<Record<string, boolean>>({});

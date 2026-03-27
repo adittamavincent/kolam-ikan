@@ -7,9 +7,12 @@ import {
 import { useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { EntryWithSections } from "@/lib/types";
-import { Json } from "@/lib/types/database.types";
-import { PartialBlock } from "@blocknote/core";
+import type { PartialBlock } from "@/lib/types/editor";
 import { SectionFileAttachmentInsert } from "@/lib/types";
+import {
+  buildStoredContentPayload,
+  cloneStoredContentFields,
+} from "@/lib/content-protocol";
 
 interface UseEntriesOptions {
   search?: string;
@@ -28,7 +31,7 @@ interface AmendEntryInput {
 const ENTRIES_SELECT_FULL = `
  id, stream_id, is_draft, created_at, updated_at, deleted_at,
  sections!inner (
- id, entry_id, persona_id, persona_name_snapshot, content_json,
+ id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format,
  section_type, file_display_mode, sort_order, updated_at,
  persona:personas (id, name, icon, color, is_shadow, shadow_stream_id, shadow_document_id),
  section_attachments (
@@ -43,7 +46,7 @@ const ENTRIES_SELECT_FULL = `
 const ENTRIES_SELECT_LEGACY=`
  id, stream_id, is_draft, created_at, updated_at, deleted_at,
  sections!inner (
- id, entry_id, persona_id, persona_name_snapshot, content_json,
+ id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format,
  sort_order, updated_at,
  persona:personas (id, name, icon, color, is_shadow, shadow_stream_id, shadow_document_id)
  )
@@ -60,7 +63,9 @@ function isMissingColumnError(
       msg.includes("does not exist")) &&
     (msg.includes("section_type") ||
       msg.includes("file_display_mode") ||
-      msg.includes("section_attachments"))
+      msg.includes("section_attachments") ||
+      msg.includes("raw_markdown") ||
+      msg.includes("content_format"))
   );
 }
 
@@ -257,7 +262,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
                 return {
                   ...section,
-                  content_json: nextContent as unknown as Json,
+                  ...buildStoredContentPayload(nextContent),
                   updated_at: nextUpdatedAt,
                 };
               });
@@ -286,7 +291,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         supabase
           .from("sections")
           .update({
-            content_json: content as unknown as Json,
+            ...buildStoredContentPayload(content),
             updated_at: nowIso,
           })
           .eq("id", sectionId),
@@ -395,7 +400,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       if (entry.sections?.length) {
         const sectionsToInsert = entry.sections.map((section, index) => ({
           entry_id: newEntry.id,
-          content_json: section.content_json,
+          ...cloneStoredContentFields(section),
           persona_id: section.persona_id,
           persona_name_snapshot: section.persona_name_snapshot,
           section_type: section.section_type,
@@ -466,7 +471,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
           : entry.id.slice(0, 7);
         const sectionsToInsert = entry.sections.map((section, index) => ({
           entry_id: newEntry.id,
-          content_json: section.content_json,
+          ...cloneStoredContentFields(section),
           persona_id: section.persona_id,
           persona_name_snapshot: `↩ Revert of ${section.persona_name_snapshot || "Unknown"} (${revertDate})`,
           section_type: section.section_type,

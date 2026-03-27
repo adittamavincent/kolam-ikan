@@ -136,14 +136,14 @@ function renderInline(text: string): React.ReactNode[] {
 
     if (match[2]) {
       nodes.push(
-        <span className="obsidian-inline-link" key={nodes.length}>
+        <span className="kolam-inline-link" key={nodes.length}>
           {match[2]}
         </span>,
       );
     } else if (match[3] && match[4]) {
       nodes.push(
         <a
-          className="obsidian-inline-link"
+          className="kolam-inline-link"
           href={match[4]}
           key={nodes.length}
           rel="noreferrer"
@@ -154,7 +154,7 @@ function renderInline(text: string): React.ReactNode[] {
       );
     } else if (match[5]) {
       nodes.push(
-        <code className="obsidian-inline-code" key={nodes.length}>
+        <code className="kolam-inline-code" key={nodes.length}>
           {match[5]}
         </code>,
       );
@@ -192,37 +192,37 @@ function renderHeading(level: number, text: string, key: string) {
   switch (level) {
     case 1:
       return (
-        <h1 className="obsidian-heading obsidian-heading-1" key={key}>
+        <h1 className="kolam-heading kolam-heading-1" key={key}>
           {content}
         </h1>
       );
     case 2:
       return (
-        <h2 className="obsidian-heading obsidian-heading-2" key={key}>
+        <h2 className="kolam-heading kolam-heading-2" key={key}>
           {content}
         </h2>
       );
     case 3:
       return (
-        <h3 className="obsidian-heading obsidian-heading-3" key={key}>
+        <h3 className="kolam-heading kolam-heading-3" key={key}>
           {content}
         </h3>
       );
     case 4:
       return (
-        <h4 className="obsidian-heading obsidian-heading-4" key={key}>
+        <h4 className="kolam-heading kolam-heading-4" key={key}>
           {content}
         </h4>
       );
     case 5:
       return (
-        <h5 className="obsidian-heading obsidian-heading-5" key={key}>
+        <h5 className="kolam-heading kolam-heading-5" key={key}>
           {content}
         </h5>
       );
     default:
       return (
-        <h6 className="obsidian-heading obsidian-heading-6" key={key}>
+        <h6 className="kolam-heading kolam-heading-6" key={key}>
           {content}
         </h6>
       );
@@ -263,8 +263,8 @@ function renderMarkdownBody(
       }
       i += 1;
       nodes.push(
-        <pre className="obsidian-code-block" key={`code-${start}`}>
-          <div className="obsidian-code-header">
+        <pre className="kolam-code-block" key={`code-${start}`}>
+          <div className="kolam-code-header">
             <span>{language || "plain text"}</span>
           </div>
           <code>{codeLines.join("\n")}</code>
@@ -287,12 +287,12 @@ function renderMarkdownBody(
       }
       nodes.push(
         <details
-          className={`obsidian-callout obsidian-callout-${getCalloutType(rawType)}`}
+          className={`kolam-callout kolam-callout-${getCalloutType(rawType)}`}
           key={`callout-${start}`}
           open={foldState !== "-"}
         >
           <summary>{renderInline(title)}</summary>
-          <div className="obsidian-callout-body">
+          <div className="kolam-callout-body">
             {renderMarkdownBody(innerLines.join("\n"), onToggleTask)}
           </div>
         </details>,
@@ -309,7 +309,7 @@ function renderMarkdownBody(
     }
 
     if (/^\s*(?:---+|\*\*\*+|___+)\s*$/.test(line)) {
-      nodes.push(<hr className="obsidian-rule" key={`rule-${i}`} />);
+      nodes.push(<hr className="kolam-rule" key={`rule-${i}`} />);
       i += 1;
       continue;
     }
@@ -336,7 +336,7 @@ function renderMarkdownBody(
         i += 1;
       }
       nodes.push(
-        <table className="obsidian-table" key={`table-${start}`}>
+        <table className="kolam-table" key={`table-${start}`}>
           <thead>
             <tr>
               {header.map((cell, index) => (
@@ -377,12 +377,12 @@ function renderMarkdownBody(
 
         items.push(
           <li
-            className={currentTask ? "obsidian-task-item" : undefined}
+            className={currentTask ? "kolam-task-item" : undefined}
             key={`item-${start}-${lineNumber}`}
             style={{ marginInlineStart: `${indent * 0.75}rem` }}
           >
             {currentTask ? (
-              <label className="obsidian-task-label">
+              <label className="kolam-task-label">
                 <input
                   checked={checked}
                   disabled={!onToggleTask}
@@ -402,7 +402,7 @@ function renderMarkdownBody(
 
       const ListTag = ordered ? "ol" : "ul";
       nodes.push(
-        <ListTag className="obsidian-list" key={`list-${start}`}>
+        <ListTag className="kolam-list" key={`list-${start}`}>
           {items}
         </ListTag>,
       );
@@ -420,7 +420,7 @@ function renderMarkdownBody(
         i += 1;
       }
       nodes.push(
-        <blockquote className="obsidian-blockquote" key={`quote-${start}`}>
+        <blockquote className="kolam-blockquote" key={`quote-${start}`}>
           {renderMarkdownBody(quoteLines.join("\n"), onToggleTask)}
         </blockquote>,
       );
@@ -445,7 +445,7 @@ function renderMarkdownBody(
     }
 
     nodes.push(
-      <p className="obsidian-paragraph" key={`paragraph-${start}`}>
+      <p className="kolam-paragraph" key={`paragraph-${start}`}>
         {renderInline(paragraphLines.join(" "))}
       </p>,
     );
@@ -454,12 +454,12 @@ function renderMarkdownBody(
   return nodes;
 }
 
-export default function ObsidianRenderedMarkdown({
+export default function KolamRenderedMarkdown({
   source,
   onToggleTask,
 }: RendererProps) {
   return (
-    <div className="obsidian-rendered-markdown">
+    <div className="kolam-rendered-markdown">
       {renderMarkdownBody(source, onToggleTask)}
     </div>
   );

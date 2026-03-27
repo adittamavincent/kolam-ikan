@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Fira_Code } from "next/font/google";
 import "./globals.css";
-import Locator from "@/components/locator";
+import DevelopmentLocatorOverlay from "@/components/DevelopmentLocatorOverlay";
 import { Providers } from "@/components/providers";
-import { DevAuthGuard } from "@/components/shared/DevAuthGuard";
+import { DevelopmentSessionGuard } from "@/components/shared/DevelopmentSessionGuard";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const jetbrainsMono = JetBrains_Mono({
@@ -29,9 +29,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${firaCode.variable}`} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <Locator />
+        <DevelopmentLocatorOverlay />
         <Providers>
-          <DevAuthGuard />
+          <DevelopmentSessionGuard />
           {children}
         </Providers>
       </body>

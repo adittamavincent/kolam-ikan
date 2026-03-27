@@ -93,7 +93,6 @@ interface SectionPresetProps {
   className?: string;
   headerClassName?: string;
   bodyClassName?: string;
-  variant?: "default" | "bubble";
 }
 
 export function SectionPreset({

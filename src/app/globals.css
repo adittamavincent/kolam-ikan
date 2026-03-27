@@ -410,43 +410,43 @@ body {
 .am-root mark { padding: 0 4px; border-radius: 3px; background: #fff7b2; }
 
 /* -------------------------------------------------------------------------- */
-/*  Obsidian-like editor                                                       */
+/*  Kolam editor                                                               */
 /* -------------------------------------------------------------------------- */
-.obsidian-editor-shell {
+.kolam-editor-shell {
   width: 100%;
 }
 
-.obsidian-codemirror-frame {
+.kolam-codemirror-frame {
   background: var(--background-primary);
   color: var(--text-normal);
   font-family: var(--font-text);
 }
 
-.obsidian-codemirror-root .cm-editor {
+.kolam-codemirror-root .cm-editor {
   background: var(--background-primary);
   color: var(--text-normal);
   font-family: var(--font-text);
   min-height: 8rem;
 }
 
-.obsidian-codemirror-root .cm-scroller {
+.kolam-codemirror-root .cm-scroller {
   overflow: auto;
 }
 
-.obsidian-codemirror-root .cm-content {
+.kolam-codemirror-root .cm-content {
   color: var(--text-normal);
   font-family: var(--font-text);
   padding: 0;
   line-height: 1.65;
 }
 
-.obsidian-codemirror-root .cm-line {
+.kolam-codemirror-root .cm-line {
   color: var(--text-normal);
   padding: 0;
 }
 
-.obsidian-codemirror-root .cm-activeLine,
-.obsidian-codemirror-root .cm-activeLineGutter {
+.kolam-codemirror-root .cm-activeLine,
+.kolam-codemirror-root .cm-activeLineGutter {
   background: color-mix(
     in srgb,
     var(--text-selection) 28%,
@@ -454,70 +454,70 @@ body {
   ) !important;
 }
 
-.obsidian-codemirror-root .cm-cursor,
-.obsidian-codemirror-root .cm-dropCursor {
+.kolam-codemirror-root .cm-cursor,
+.kolam-codemirror-root .cm-dropCursor {
   border-left-color: var(--caret-color);
 }
 
-.obsidian-codemirror-root .cm-gutters {
+.kolam-codemirror-root .cm-gutters {
   background: var(--background-primary);
   border-right: none;
   color: var(--text-faint);
   font-family: var(--font-monospace);
 }
 
-.obsidian-codemirror-root .cm-selectionBackground {
+.kolam-codemirror-root .cm-selectionBackground {
   background: var(--text-selection) !important;
 }
 
-.obsidian-codemirror-root .cm-focused
+.kolam-codemirror-root .cm-focused
   > .cm-scroller
   > .cm-selectionLayer
   .cm-selectionBackground {
   background: var(--text-selection);
 }
 
-.obsidian-codemirror-root .cm-placeholder {
+.kolam-codemirror-root .cm-placeholder {
   color: var(--text-faint);
 }
 
-.obsidian-codemirror-root .cm-obsidian-heading {
+.kolam-codemirror-root .cm-kolam-heading {
   color: var(--text-normal);
   font-weight: 700;
   line-height: 1.2;
 }
 
-.obsidian-codemirror-root .cm-obsidian-heading-1 {
+.kolam-codemirror-root .cm-kolam-heading-1 {
   font-size: 1.95rem;
 }
 
-.obsidian-codemirror-root .cm-obsidian-heading-2 {
+.kolam-codemirror-root .cm-kolam-heading-2 {
   font-size: 1.6rem;
 }
 
-.obsidian-codemirror-root .cm-obsidian-heading-3,
-.obsidian-codemirror-root .cm-obsidian-heading-4,
-.obsidian-codemirror-root .cm-obsidian-heading-5,
-.obsidian-codemirror-root .cm-obsidian-heading-6 {
+.kolam-codemirror-root .cm-kolam-heading-3,
+.kolam-codemirror-root .cm-kolam-heading-4,
+.kolam-codemirror-root .cm-kolam-heading-5,
+.kolam-codemirror-root .cm-kolam-heading-6 {
   font-size: 1.25rem;
 }
 
-.obsidian-codemirror-root .cm-obsidian-strong {
+.kolam-codemirror-root .cm-kolam-strong {
   color: var(--text-normal);
   font-weight: 700;
 }
 
-.obsidian-codemirror-root .cm-obsidian-emphasis {
+.kolam-codemirror-root .cm-kolam-emphasis {
   color: var(--text-normal);
   font-style: italic;
 }
 
-.obsidian-codemirror-root .cm-obsidian-strikethrough {
+.kolam-codemirror-root .cm-kolam-strikethrough {
   color: var(--text-normal);
   text-decoration: line-through;
 }
 
-.obsidian-codemirror-root .cm-obsidian-inline-code {
+.kolam-codemirror-root .cm-kolam-inline-code {
   border-radius: 4px;
   background: color-mix(in srgb, var(--background-primary) 65%, black);
   color: var(--text-normal);
@@ -525,23 +525,23 @@ body {
   padding: 0 0.25rem;
 }
 
-.obsidian-codemirror-root .cm-obsidian-link {
+.kolam-codemirror-root .cm-kolam-link {
   color: var(--text-normal);
   text-decoration: underline;
 }
 
-.obsidian-codemirror-root .cm-obsidian-highlight {
+.kolam-codemirror-root .cm-kolam-highlight {
   background: color-mix(in srgb, #facc15 42%, transparent);
   border-radius: 3px;
 }
 
-.obsidian-codemirror-root .cm-obsidian-blockquote {
+.kolam-codemirror-root .cm-kolam-blockquote {
   border-left: 2px solid color-mix(in srgb, var(--text-faint) 55%, transparent);
   color: color-mix(in srgb, var(--text-normal) 86%, var(--text-faint));
   padding-left: 0.9rem;
 }
 
-.obsidian-codemirror-root .cm-obsidian-callout-title {
+.kolam-codemirror-root .cm-kolam-callout-title {
   border-radius: 6px;
   background: color-mix(in srgb, var(--text-selection) 22%, transparent);
   color: var(--text-normal);
@@ -549,33 +549,13 @@ body {
   padding: 0.15rem 0.45rem;
 }
 
-.obsidian-live-rule {
-  margin: 0.5rem 0;
-  border-top: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 80%, transparent);
-}
-
-.obsidian-live-checkbox {
-  display: inline-block;
-  width: 0.9rem;
-  height: 0.9rem;
-  margin-right: 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 80%, transparent);
-  border-radius: 0.2rem;
-  vertical-align: middle;
-}
-
-.obsidian-live-checkbox.is-checked {
-  border-color: #16a34a;
-  background: #22c55e;
-}
-
-.obsidian-properties-panel {
+.kolam-properties-panel {
   margin-bottom: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 70%, transparent);
   background: color-mix(in srgb, var(--color-surface-subtle, #f8fafc) 88%, transparent);
 }
 
-.obsidian-properties-header {
+.kolam-properties-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -587,7 +567,7 @@ body {
   text-transform: uppercase;
 }
 
-.obsidian-property-action {
+.kolam-property-action {
   border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 75%, transparent);
   background: color-mix(in srgb, var(--color-surface-default, #fff) 92%, transparent);
   padding: 0.2rem 0.45rem;
@@ -597,7 +577,7 @@ body {
   text-transform: none;
 }
 
-.obsidian-properties-grid {
+.kolam-properties-grid {
   display: grid;
   grid-template-columns: minmax(8rem, 11rem) 1fr;
   gap: 0.4rem 0.75rem;
@@ -605,18 +585,18 @@ body {
   font-size: 0.875rem;
 }
 
-.obsidian-property-key {
+.kolam-property-key {
   color: color-mix(in srgb, var(--color-text-muted, #6b7280) 92%, transparent);
   font-weight: 600;
 }
 
-.obsidian-property-value {
+.kolam-property-value {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
 }
 
-.obsidian-property-input {
+.kolam-property-input {
   width: 100%;
   border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 75%, transparent);
   background: color-mix(in srgb, var(--color-surface-default, #fff) 96%, transparent);
@@ -624,98 +604,92 @@ body {
   font-size: 0.8125rem;
 }
 
-.obsidian-property-toggle {
+.kolam-property-toggle {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
   font-size: 0.8125rem;
 }
 
-.obsidian-property-pill {
+.kolam-property-pill {
   border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 75%, transparent);
   background: color-mix(in srgb, var(--color-surface-default, #fff) 90%, transparent);
   padding: 0.1rem 0.45rem;
   font-size: 0.75rem;
 }
 
-.obsidian-reading-view {
-  border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 70%, transparent);
-  background: color-mix(in srgb, var(--color-surface-default, #fff) 96%, transparent);
-  padding: 1rem;
-}
-
-.obsidian-rendered-markdown {
+.kolam-rendered-markdown {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.obsidian-heading {
+.kolam-heading {
   margin: 0;
   font-weight: 700;
   line-height: 1.25;
 }
 
-.obsidian-heading-1 {
+.kolam-heading-1 {
   font-size: 2rem;
 }
 
-.obsidian-heading-2 {
+.kolam-heading-2 {
   font-size: 1.6rem;
 }
 
-.obsidian-heading-3 {
+.kolam-heading-3 {
   font-size: 1.3rem;
 }
 
-.obsidian-inline-code {
+.kolam-inline-code {
   border-radius: 4px;
   background: color-mix(in srgb, var(--color-surface-subtle, #f5f5f5) 92%, transparent);
   padding: 0 0.25rem;
 }
 
-.obsidian-inline-link {
+.kolam-inline-link {
   color: #2563eb;
   text-decoration: underline;
 }
 
-.obsidian-blockquote {
+.kolam-blockquote {
   margin: 0;
   border-left: 3px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 90%, transparent);
   padding-left: 0.75rem;
 }
 
-.obsidian-list {
+.kolam-list {
   margin: 0;
   padding-left: 1.35rem;
 }
 
-.obsidian-task-label {
+.kolam-task-label {
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
 }
 
-.obsidian-table {
+.kolam-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-.obsidian-table th,
-.obsidian-table td {
+.kolam-table th,
+.kolam-table td {
   border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 80%, transparent);
   padding: 0.4rem 0.55rem;
   text-align: left;
 }
 
-.obsidian-code-block {
+.kolam-code-block {
   margin: 0;
   overflow-x: auto;
   background: #0f1720;
   color: #d6deeb;
 }
 
-.obsidian-code-header {
+.kolam-code-header {
   display: flex;
   justify-content: space-between;
   border-bottom: 1px solid #1f2933;
@@ -724,39 +698,39 @@ body {
   text-transform: uppercase;
 }
 
-.obsidian-code-block code {
+.kolam-code-block code {
   display: block;
   padding: 0.85rem;
   white-space: pre;
 }
 
-.obsidian-callout {
+.kolam-callout {
   border-left: 4px solid #60a5fa;
   background: color-mix(in srgb, #dbeafe 60%, transparent);
   padding: 0.75rem;
 }
 
-.obsidian-callout summary {
+.kolam-callout summary {
   cursor: pointer;
   font-weight: 700;
 }
 
-.obsidian-callout-body {
+.kolam-callout-body {
   margin-top: 0.75rem;
 }
 
-.obsidian-callout-warning {
+.kolam-callout-warning {
   border-left-color: #f59e0b;
   background: color-mix(in srgb, #fef3c7 70%, transparent);
 }
 
-.obsidian-callout-danger,
-.obsidian-callout-failure {
+.kolam-callout-danger,
+.kolam-callout-failure {
   border-left-color: #ef4444;
   background: color-mix(in srgb, #fee2e2 68%, transparent);
 }
 
-.obsidian-callout-success {
+.kolam-callout-success {
   border-left-color: #22c55e;
   background: color-mix(in srgb, #dcfce7 68%, transparent);
 }

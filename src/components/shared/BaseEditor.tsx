@@ -39,7 +39,7 @@ import { blocksToStoredMarkdown, storedContentToBlocks } from "@/lib/content-pro
 import {
   extractFrontmatter,
   normalizeFrontmatterKey,
-} from "@/components/shared/ObsidianRenderedMarkdown";
+} from "@/components/shared/KolamRenderedMarkdown";
 import type {
   BlockNoteEditorProps,
   MarkdownEditorHandle,
@@ -49,7 +49,7 @@ export type BaseEditorProps = BlockNoteEditorProps;
 
 const hiddenSyntax = Decoration.replace({});
 
-const obsidianTheme = EditorView.theme({
+const kolamEditorTheme = EditorView.theme({
   "&": {
     backgroundColor: "var(--background-primary)",
     color: "var(--text-normal)",
@@ -95,7 +95,7 @@ const obsidianTheme = EditorView.theme({
   },
 });
 
-const obsidianHighlightStyle = HighlightStyle.define([
+const kolamHighlightStyle = HighlightStyle.define([
   {
     tag: [
       tags.heading1,
@@ -214,7 +214,7 @@ function decorateHeading(
     builder,
     contentFrom,
     line.to,
-    `cm-obsidian-heading cm-obsidian-heading-${level}`,
+    `cm-kolam-heading cm-kolam-heading-${level}`,
   );
 }
 
@@ -233,7 +233,7 @@ function decorateLink(
   const labelTo = labelFrom + label.length;
 
   addHiddenDecoration(builder, from, labelFrom);
-  addMarkDecoration(builder, labelFrom, labelTo, "cm-obsidian-link");
+  addMarkDecoration(builder, labelFrom, labelTo, "cm-kolam-link");
   addHiddenDecoration(builder, labelTo, to);
 }
 
@@ -310,7 +310,7 @@ function createLivePreviewExtension() {
                     node.to,
                     2,
                     2,
-                    "cm-obsidian-strong",
+                    "cm-kolam-strong",
                   );
                 }
                 return false;
@@ -322,7 +322,7 @@ function createLivePreviewExtension() {
                     node.to,
                     1,
                     1,
-                    "cm-obsidian-emphasis",
+                    "cm-kolam-emphasis",
                   );
                 }
                 return false;
@@ -334,7 +334,7 @@ function createLivePreviewExtension() {
                     node.to,
                     2,
                     2,
-                    "cm-obsidian-strikethrough",
+                    "cm-kolam-strikethrough",
                   );
                 }
                 return false;
@@ -346,7 +346,7 @@ function createLivePreviewExtension() {
                     node.to,
                     1,
                     1,
-                    "cm-obsidian-inline-code",
+                    "cm-kolam-inline-code",
                   );
                 }
                 return false;
@@ -361,7 +361,7 @@ function createLivePreviewExtension() {
                     builder,
                     node.from,
                     node.to,
-                    "cm-obsidian-blockquote",
+                    "cm-kolam-blockquote",
                   );
                 }
                 return;
@@ -391,20 +391,20 @@ function createLivePreviewExtension() {
                 builder,
                 contentFrom,
                 line.to,
-                "cm-obsidian-callout-title",
+                "cm-kolam-callout-title",
               );
             }
           }
 
           const regexTokens = [
             {
-              className: "cm-obsidian-link",
+              className: "cm-kolam-link",
               leftWidth: 2,
               regex: /\[\[([^[\]]+)\]\]/g,
               rightWidth: 2,
             },
             {
-              className: "cm-obsidian-highlight",
+              className: "cm-kolam-highlight",
               leftWidth: 2,
               regex: /==([^=]+)==/g,
               rightWidth: 2,
@@ -495,7 +495,7 @@ function formatSelection(
   };
 }
 
-const obsidianKeymap = [
+const kolamEditorKeymap = [
   { key: "Mod-b", run: formatSelection("**") },
   { key: "Mod-i", run: formatSelection("*") },
 ];
@@ -554,12 +554,12 @@ function PropertiesPanel({
   if (properties.length === 0) return null;
 
   return (
-    <div className="obsidian-properties-panel">
-      <div className="obsidian-properties-header">
+    <div className="kolam-properties-panel">
+      <div className="kolam-properties-header">
         <span>Properties</span>
         {editable ? (
           <button
-            className="obsidian-property-action"
+            className="kolam-property-action"
             onClick={() => {
               onChange?.(replaceFrontmatterProperty(markdown, "property", ""));
             }}
@@ -569,15 +569,15 @@ function PropertiesPanel({
           </button>
         ) : null}
       </div>
-      <div className="obsidian-properties-grid">
+      <div className="kolam-properties-grid">
         {properties.map((property) => (
           <React.Fragment key={property.key}>
-            <div className="obsidian-property-key">{property.key}</div>
-            <div className="obsidian-property-value">
+            <div className="kolam-property-key">{property.key}</div>
+            <div className="kolam-property-value">
               {editable ? (
                 Array.isArray(property.value) ? (
                   <input
-                    className="obsidian-property-input"
+                    className="kolam-property-input"
                     onChange={(event) => {
                       const nextValue = event.target.value
                         .split(",")
@@ -591,7 +591,7 @@ function PropertiesPanel({
                     value={property.value.join(", ")}
                   />
                 ) : typeof property.value === "boolean" ? (
-                  <label className="obsidian-property-toggle">
+                  <label className="kolam-property-toggle">
                     <input
                       checked={property.value}
                       onChange={(event) => {
@@ -609,7 +609,7 @@ function PropertiesPanel({
                   </label>
                 ) : (
                   <input
-                    className="obsidian-property-input"
+                    className="kolam-property-input"
                     onChange={(event) => {
                       onChange?.(
                         replaceFrontmatterProperty(
@@ -625,12 +625,12 @@ function PropertiesPanel({
                 )
               ) : Array.isArray(property.value) ? (
                 property.value.map((value) => (
-                  <span className="obsidian-property-pill" key={value}>
+                  <span className="kolam-property-pill" key={value}>
                     {value}
                   </span>
                 ))
               ) : typeof property.value === "boolean" ? (
-                <span className="obsidian-property-pill">
+                <span className="kolam-property-pill">
                   {property.value ? "True" : "False"}
                 </span>
               ) : (
@@ -684,8 +684,8 @@ export default function BaseEditor({
     if (!containerRef.current || viewRef.current) return;
 
     const extensions: Extension[] = [
-      obsidianTheme,
-      syntaxHighlighting(obsidianHighlightStyle),
+      kolamEditorTheme,
+      syntaxHighlighting(kolamHighlightStyle),
       EditorView.lineWrapping,
       drawSelection(),
       highlightActiveLine(),
@@ -694,7 +694,7 @@ export default function BaseEditor({
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       createLivePreviewExtension(),
       keymap.of([
-        ...obsidianKeymap,
+        ...kolamEditorKeymap,
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,
@@ -828,7 +828,7 @@ export default function BaseEditor({
   };
 
   return (
-    <div className="obsidian-editor-shell">
+    <div className="kolam-editor-shell">
       {frontmatter.properties.length > 0 ? (
         <PropertiesPanel
           editable={editable}
@@ -838,9 +838,9 @@ export default function BaseEditor({
       ) : null}
 
       <div
-        className={`obsidian-codemirror-frame ${editable ? "is-editable" : "is-readonly"}`}
+        className={`kolam-codemirror-frame ${editable ? "is-editable" : "is-readonly"}`}
       >
-        <div className="obsidian-codemirror-root" ref={containerRef} />
+        <div className="kolam-codemirror-root" ref={containerRef} />
       </div>
     </div>
   );

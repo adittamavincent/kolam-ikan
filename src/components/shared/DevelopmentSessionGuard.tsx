@@ -10,7 +10,7 @@ import {
   getRememberMe,
 } from "@/lib/utils/authStorage";
 
-export function DevAuthGuard() {
+export function DevelopmentSessionGuard() {
   useEffect(() => {
     if (!isDevelopmentHost()) {
       return;

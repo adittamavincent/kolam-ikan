@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { scanMarkdownTableBlock } from "@/lib/markdownTables";
 
 export type FrontmatterProperty = {
   key: string;
@@ -314,41 +315,35 @@ function renderMarkdownBody(
       continue;
     }
 
-    if (
-      line.includes("|") &&
-      i + 1 < lines.length &&
-      /^\s*\|?[\s:-]+\|[\s|:-]*$/.test(lines[i + 1])
-    ) {
+    const tableBlock = scanMarkdownTableBlock(lines, i);
+    if (tableBlock) {
       const start = i;
-      const header = line
-        .split("|")
-        .map((cell) => cell.trim())
-        .filter(Boolean);
-      i += 2;
-      const rows: string[][] = [];
-      while (i < lines.length && lines[i].includes("|")) {
-        rows.push(
-          lines[i]
-            .split("|")
-            .map((cell) => cell.trim())
-            .filter(Boolean),
-        );
-        i += 1;
-      }
+      const [headerRow, , ...bodyRows] = tableBlock.model.rows;
+      i = tableBlock.end;
       nodes.push(
         <table className="kolam-table" key={`table-${start}`}>
           <thead>
             <tr>
-              {header.map((cell, index) => (
-                <th key={index}>{renderInline(cell)}</th>
+              {headerRow.cells.map((cell, index) => (
+                <th
+                  key={index}
+                  style={{ textAlign: tableBlock.model.alignments[index] }}
+                >
+                  {renderInline(cell.content)}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, rowIndex) => (
+            {bodyRows.map((row, rowIndex) => (
               <tr key={rowIndex}>
-                {row.map((cell, cellIndex) => (
-                  <td key={cellIndex}>{renderInline(cell)}</td>
+                {row.cells.map((cell, cellIndex) => (
+                  <td
+                    key={cellIndex}
+                    style={{ textAlign: tableBlock.model.alignments[cellIndex] }}
+                  >
+                    {renderInline(cell.content)}
+                  </td>
                 ))}
               </tr>
             ))}

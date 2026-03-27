@@ -35,8 +35,20 @@ import {
   type DecorationSet,
   type ViewUpdate,
 } from "@codemirror/view";
+import {
+  Point as MarkdownPoint,
+  Range as MarkdownRange,
+  TableEditor,
+} from "@tgrosinger/md-advanced-tables";
 import { tags } from "@lezer/highlight";
 import { blocksToStoredMarkdown, storedContentToBlocks } from "@/lib/content-protocol";
+import {
+  MARKDOWN_TABLE_OPTIONS,
+  findMarkdownTableBlocks,
+  type MarkdownTableCellModel,
+  type MarkdownTableAlignment,
+  type MarkdownTableRowModel,
+} from "@/lib/markdownTables";
 import {
   extractFrontmatter,
   normalizeFrontmatterKey,
@@ -93,6 +105,272 @@ class TaskMarkerWidget extends WidgetType {
 
     wrapper.appendChild(checkbox);
     return wrapper;
+  }
+}
+
+function appendInlineMarkdown(target: HTMLElement, text: string) {
+  const pattern =
+    /(\[\[([^[\]]+)\]\]|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|==([^=]+)==|~~([^~]+)~~|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|%%([\s\S]*?)%%)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  const offsetMap: number[] = [];
+
+  const appendSegment = (
+    visibleText: string,
+    sourceStart: number,
+    sourceLength: number,
+    render: (text: string) => void,
+  ) => {
+    if (visibleText.length === 0) return;
+    render(visibleText);
+
+    if (offsetMap.length === 0) {
+      offsetMap.push(sourceStart);
+    }
+
+    for (let index = 0; index < visibleText.length; index += 1) {
+      offsetMap.push(sourceStart + index + 1);
+    }
+
+    offsetMap[offsetMap.length - 1] = sourceStart + sourceLength;
+  };
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      const plainText = text.slice(lastIndex, match.index);
+      appendSegment(plainText, lastIndex, plainText.length, (value) => {
+        target.append(document.createTextNode(value));
+      });
+    }
+
+    if (match[13]) {
+      lastIndex = pattern.lastIndex;
+      continue;
+    }
+
+    if (match[2]) {
+      const mention = document.createElement("span");
+      mention.className = "cm-kolam-table-inline-link";
+      appendSegment(match[2], match.index + 2, match[2].length, (value) => {
+        mention.textContent = value;
+        target.appendChild(mention);
+      });
+    } else if (match[3] && match[4]) {
+      const link = document.createElement("a");
+      link.className = "cm-kolam-table-inline-link";
+      link.href = match[4];
+      link.rel = "noreferrer";
+      link.target = "_blank";
+      appendSegment(match[3], match.index + 1, match[3].length, (value) => {
+        link.textContent = value;
+        target.appendChild(link);
+      });
+    } else if (match[5]) {
+      const code = document.createElement("code");
+      code.className = "cm-kolam-table-inline-code";
+      appendSegment(match[5], match.index + 1, match[5].length, (value) => {
+        code.textContent = value;
+        target.appendChild(code);
+      });
+    } else if (match[6]) {
+      const mark = document.createElement("mark");
+      appendSegment(match[6], match.index + 2, match[6].length, (value) => {
+        mark.textContent = value;
+        target.appendChild(mark);
+      });
+    } else if (match[7]) {
+      const del = document.createElement("del");
+      appendSegment(match[7], match.index + 2, match[7].length, (value) => {
+        del.textContent = value;
+        target.appendChild(del);
+      });
+    } else if (match[8]) {
+      const strong = document.createElement("strong");
+      const em = document.createElement("em");
+      appendSegment(match[8], match.index + 3, match[8].length, (value) => {
+        em.textContent = value;
+        strong.appendChild(em);
+        target.appendChild(strong);
+      });
+    } else if (match[9] || match[10]) {
+      const strong = document.createElement("strong");
+      const content = match[9] ?? match[10] ?? "";
+      appendSegment(content, match.index + 2, content.length, (value) => {
+        strong.textContent = value;
+        target.appendChild(strong);
+      });
+    } else if (match[11] || match[12]) {
+      const em = document.createElement("em");
+      const content = match[11] ?? match[12] ?? "";
+      appendSegment(content, match.index + 1, content.length, (value) => {
+        em.textContent = value;
+        target.appendChild(em);
+      });
+    } else {
+      appendSegment(match[0], match.index, match[0].length, (value) => {
+        target.append(document.createTextNode(value));
+      });
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    const plainText = text.slice(lastIndex);
+    appendSegment(plainText, lastIndex, plainText.length, (value) => {
+      target.append(document.createTextNode(value));
+    });
+  }
+
+  return offsetMap.length > 0 ? offsetMap : [0];
+}
+
+function getVisibleOffsetFromPoint(root: HTMLElement, event: MouseEvent) {
+  const doc = root.ownerDocument;
+  const anyDoc = doc as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offset: number; offsetNode: Node } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+
+  let node: Node | null = null;
+  let offset = 0;
+
+  const caretPosition = anyDoc.caretPositionFromPoint?.(event.clientX, event.clientY);
+  if (caretPosition) {
+    node = caretPosition.offsetNode;
+    offset = caretPosition.offset;
+  } else {
+    const range = anyDoc.caretRangeFromPoint?.(event.clientX, event.clientY) ?? null;
+    if (range) {
+      node = range.startContainer;
+      offset = range.startOffset;
+    }
+  }
+
+  if (!node || !root.contains(node)) {
+    return root.textContent?.length ?? 0;
+  }
+
+  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let visibleOffset = 0;
+
+  while (walker.nextNode()) {
+    const current = walker.currentNode;
+    const length = current.textContent?.length ?? 0;
+
+    if (current === node) {
+      return visibleOffset + Math.min(offset, length);
+    }
+
+    visibleOffset += length;
+  }
+
+  return visibleOffset;
+}
+
+function attachTableCellSelection(
+  root: HTMLElement,
+  cellElement: HTMLElement,
+  cell: MarkdownTableCellModel,
+  lineNumber: number,
+) {
+  const offsetMap = appendInlineMarkdown(cellElement, cell.content);
+
+  cellElement.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+
+    const view = EditorView.findFromDOM(root);
+    if (!view) return;
+
+    const line = view.state.doc.line(lineNumber);
+    const visibleOffset = Math.max(
+      0,
+      Math.min(getVisibleOffsetFromPoint(cellElement, event), offsetMap.length - 1),
+    );
+    const sourceOffset = offsetMap[visibleOffset] ?? cell.content.length;
+    const anchor = line.from + cell.rawStart + cell.paddingLeft + sourceOffset;
+
+    view.dispatch({
+      selection: EditorSelection.cursor(
+        Math.max(line.from, Math.min(anchor, line.to)),
+      ),
+      scrollIntoView: true,
+    });
+    view.focus();
+  });
+}
+
+class TableBlockWidget extends WidgetType {
+  constructor(
+    private readonly rows: MarkdownTableRowModel[],
+    private readonly alignments: MarkdownTableAlignment[],
+    private readonly startLineNumber: number,
+  ) {
+    super();
+  }
+
+  eq(other: TableBlockWidget) {
+    return (
+      other.alignments.join(",") === this.alignments.join(",") &&
+      other.startLineNumber === this.startLineNumber &&
+      other.rows
+        .map(
+          (row) =>
+            `${row.isDelimiter ? 1 : 0}:${row.cells
+              .map((cell) => cell.rawContent)
+              .join("\u0000")}`,
+        )
+        .join("\u0001") ===
+        this.rows
+          .map(
+            (row) =>
+              `${row.isDelimiter ? 1 : 0}:${row.cells
+                .map((cell) => cell.rawContent)
+                .join("\u0000")}`,
+          )
+          .join("\u0001")
+    );
+  }
+
+  ignoreEvent() {
+    return false;
+  }
+
+  toDOM() {
+    const table = document.createElement("table");
+    table.className = "kolam-table cm-kolam-table-preview-block";
+
+    const thead = document.createElement("thead");
+    const tbody = document.createElement("tbody");
+    let hasBodyRows = false;
+
+    this.rows.forEach((row, rowIndex) => {
+      if (row.isDelimiter) return;
+
+      const lineNumber = this.startLineNumber + rowIndex;
+      const tr = document.createElement("tr");
+      const parent = rowIndex === 0 ? thead : tbody;
+      const cellTag = rowIndex === 0 ? "th" : "td";
+      if (rowIndex > 0) {
+        hasBodyRows = true;
+      }
+
+      row.cells.forEach((cell, index) => {
+        const cellElement = document.createElement(cellTag);
+        cellElement.style.textAlign = this.alignments[index] ?? "left";
+        attachTableCellSelection(table, cellElement, cell, lineNumber);
+        tr.appendChild(cellElement);
+      });
+
+      parent.appendChild(tr);
+    });
+
+    table.appendChild(thead);
+    if (hasBodyRows) {
+      table.appendChild(tbody);
+    }
+
+    return table;
   }
 }
 
@@ -329,6 +607,159 @@ function decorateLink(
   addHiddenDecoration(builder, labelTo, to);
 }
 
+function getDocumentLines(doc: EditorState["doc"]) {
+  const lines: string[] = [];
+  for (let index = 1; index <= doc.lines; index += 1) {
+    lines.push(doc.line(index).text);
+  }
+  return lines;
+}
+
+function offsetFromLineColumn(lines: string[], row: number, column: number) {
+  let offset = 0;
+  for (let index = 0; index < row; index += 1) {
+    offset += lines[index]?.length ?? 0;
+    if (index < lines.length - 1) offset += 1;
+  }
+  return offset + Math.max(0, Math.min(column, lines[row]?.length ?? 0));
+}
+
+function lineColumnFromOffset(lines: string[], offset: number) {
+  let remaining = Math.max(0, offset);
+
+  for (let row = 0; row < lines.length; row += 1) {
+    const lineLength = lines[row].length;
+    if (remaining <= lineLength) {
+      return { column: remaining, row };
+    }
+
+    remaining -= lineLength;
+    if (row < lines.length - 1) {
+      if (remaining === 0) {
+        return { column: lineLength, row };
+      }
+      remaining -= 1;
+    }
+  }
+
+  return {
+    column: lines.at(-1)?.length ?? 0,
+    row: Math.max(0, lines.length - 1),
+  };
+}
+
+function isRowInsideFence(lines: string[], row: number) {
+  let inFence = false;
+
+  for (let index = 0; index <= row && index < lines.length; index += 1) {
+    if (/^(```|~~~)/.test(lines[index].trim())) {
+      inFence = !inFence;
+    }
+  }
+
+  return inFence;
+}
+
+class CodeMirrorTableEditorAdapter {
+  private lines: string[];
+
+  private nextSelection:
+    | { anchor: number; head: number }
+    | null;
+
+  constructor(private readonly view: EditorView) {
+    this.lines = getDocumentLines(view.state.doc);
+    this.nextSelection = {
+      anchor: view.state.selection.main.from,
+      head: view.state.selection.main.to,
+    };
+  }
+
+  private replaceDocument() {
+    const nextDoc = this.lines.join("\n");
+    const anchor = this.nextSelection?.anchor ?? 0;
+    const head = this.nextSelection?.head ?? anchor;
+    this.view.dispatch({
+      changes: {
+        from: 0,
+        insert: nextDoc,
+        to: this.view.state.doc.length,
+      },
+      selection: EditorSelection.range(anchor, head),
+      userEvent: "input",
+    });
+  }
+
+  getCursorPosition() {
+    const head = this.nextSelection?.head ?? this.view.state.selection.main.head;
+    const position = lineColumnFromOffset(this.lines, head);
+    return new MarkdownPoint(position.row, position.column);
+  }
+
+  setCursorPosition(pos: MarkdownPoint) {
+    const offset = offsetFromLineColumn(this.lines, pos.row, pos.column);
+    this.nextSelection = { anchor: offset, head: offset };
+  }
+
+  setSelectionRange(range: MarkdownRange) {
+    this.nextSelection = {
+      anchor: offsetFromLineColumn(
+        this.lines,
+        range.start.row,
+        range.start.column,
+      ),
+      head: offsetFromLineColumn(this.lines, range.end.row, range.end.column),
+    };
+  }
+
+  getLastRow() {
+    return Math.max(0, this.lines.length - 1);
+  }
+
+  acceptsTableEdit(row: number) {
+    return !isRowInsideFence(this.lines, row);
+  }
+
+  getLine(row: number) {
+    return this.lines[row] ?? "";
+  }
+
+  insertLine(row: number, line: string) {
+    this.lines.splice(row, 0, line);
+  }
+
+  deleteLine(row: number) {
+    this.lines.splice(row, 1);
+    if (this.lines.length === 0) {
+      this.lines = [""];
+    }
+  }
+
+  replaceLines(startRow: number, endRow: number, lines: string[]) {
+    this.lines.splice(startRow, endRow - startRow, ...lines);
+  }
+
+  transact(func: () => void) {
+    func();
+    this.replaceDocument();
+  }
+}
+
+function runTableEditorCommand(
+  view: EditorView,
+  action: (editor: TableEditor) => void,
+) {
+  if (!view.state.selection.main.empty) return false;
+
+  const editor = new TableEditor(new CodeMirrorTableEditorAdapter(view));
+  if (!editor.cursorIsInTable(MARKDOWN_TABLE_OPTIONS)) {
+    return false;
+  }
+
+  action(editor);
+  return true;
+}
+
 function createLivePreviewExtension() {
   return ViewPlugin.fromClass(
     class {
@@ -347,8 +778,10 @@ function createLivePreviewExtension() {
       buildDecorations(view: EditorView) {
         const builder = new BufferedDecorationBuilder();
         const source = view.state.doc.toString();
+        const lines = source.split("\n");
         const frontmatter = extractFrontmatter(source);
         const orderedListPattern = /^(\s*)(\d+[.)])\s+/;
+        const tableLineNumbers = new Set<number>();
 
         if (
           frontmatter.rangeEnd > 0 &&
@@ -469,8 +902,66 @@ function createLivePreviewExtension() {
           },
         });
 
+        findMarkdownTableBlocks(lines).forEach((block) => {
+          let intersectsTable = false;
+
+          block.model.rows.forEach((_, rowOffset) => {
+            const lineNumber = block.start + rowOffset + 1;
+            tableLineNumbers.add(lineNumber);
+
+            const line = view.state.doc.line(lineNumber);
+            if (intersectsSelection(view, line.from, line.to, true)) {
+              intersectsTable = true;
+            }
+          });
+
+          if (intersectsTable) {
+            return;
+          }
+
+          const firstLine = view.state.doc.line(block.start + 1);
+          const widget = new TableBlockWidget(
+            block.model.rows,
+            block.model.alignments,
+            block.start + 1,
+          );
+
+          addDecoration(
+            builder,
+            firstLine.from,
+            firstLine.to,
+            Decoration.replace({ widget }),
+          );
+          addDecoration(
+            builder,
+            firstLine.from,
+            firstLine.from,
+            Decoration.line({
+              class: "cm-kolam-table-preview-line",
+            }),
+          );
+
+          for (let rowOffset = 1; rowOffset < block.model.rows.length; rowOffset += 1) {
+            const lineNumber = block.start + rowOffset + 1;
+            const line = view.state.doc.line(lineNumber);
+
+            addDecoration(builder, line.from, line.to, Decoration.replace({}));
+            addDecoration(
+              builder,
+              line.from,
+              line.from,
+              Decoration.line({
+                class: "cm-kolam-table-hidden-line",
+              }),
+            );
+          }
+        });
+
         for (let lineNumber = 1; lineNumber <= view.state.doc.lines; lineNumber += 1) {
           const line = view.state.doc.line(lineNumber);
+          if (tableLineNumbers.has(lineNumber)) {
+            continue;
+          }
           const isActiveLine = intersectsSelection(view, line.from, line.to, true);
           const orderedMatch = line.text.match(orderedListPattern);
 
@@ -864,7 +1355,26 @@ function orderedListInputHandler() {
 }
 
 const kolamEditorKeymap = [
-  { key: "Enter", run: continueMarkdownList() },
+  {
+    key: "Tab",
+    run: (target: EditorView) =>
+      runTableEditorCommand(target, (editor) =>
+        editor.nextCell(MARKDOWN_TABLE_OPTIONS),
+      ),
+  },
+  {
+    key: "Shift-Tab",
+    run: (target: EditorView) =>
+      runTableEditorCommand(target, (editor) =>
+        editor.previousCell(MARKDOWN_TABLE_OPTIONS),
+      ),
+  },
+  {
+    key: "Enter",
+    run: (target: EditorView) =>
+      runTableEditorCommand(target, (editor) => editor.nextRow(MARKDOWN_TABLE_OPTIONS)) ||
+      continueMarkdownList()(target),
+  },
   { key: "Mod-b", run: formatSelection("**") },
   { key: "Mod-i", run: formatSelection("*") },
 ];

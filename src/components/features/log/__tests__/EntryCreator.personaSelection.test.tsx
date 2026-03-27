@@ -64,21 +64,21 @@ vi.mock("@/lib/hooks/useKeyboard", () => ({
   useKeyboard: vi.fn(),
 }));
 
-// Mock BlockNoteEditor
+// Mock MarkdownEditor
 const mockEditors: Record<
   string,
-  { content: unknown[]; onChange: (c: unknown[]) => void }
+  { content: unknown[]; onChange: (c: unknown[], markdown: string) => void }
 > = {};
 
-vi.mock("@/components/shared/BlockNoteEditor", () => ({
-  BlockNoteEditor: ({
+vi.mock("@/components/shared/MarkdownEditor", () => ({
+  MarkdownEditor: ({
     initialContent,
     onChange,
     onEditorReady,
     placeholder,
   }: {
     initialContent?: unknown[];
-    onChange: (content: unknown[]) => void;
+    onChange: (content: unknown[], markdown: string) => void;
     onEditorReady?: (editor: unknown) => void;
     placeholder?: string;
   }) => {
@@ -110,7 +110,7 @@ vi.mock("@/components/shared/BlockNoteEditor", () => ({
         "data-testid": "editor-input",
         onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => {
           const content = [{ type: "paragraph", content: e.target.value }];
-          onChange(content);
+          onChange(content, e.target.value);
         },
         placeholder,
       }),

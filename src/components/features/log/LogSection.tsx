@@ -1,5 +1,5 @@
 import { SectionWithPersona } from "@/lib/types";
-import { BlockNoteEditor } from "@/components/shared/BlockNoteEditor";
+import { MarkdownEditor } from "@/components/shared/MarkdownEditor";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
 import type { PartialBlock } from "@/lib/types/editor";
@@ -8,7 +8,7 @@ import { SectionPreset } from "@/components/shared/SectionPreset";
 import { PersonaItem } from "../../shared/PersonaItem";
 import { FileAttachmentItem } from "./FileAttachmentItem";
 import { FileText, Paperclip } from "lucide-react";
-import { storedContentToBlocks } from "@/lib/content-protocol";
+import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-protocol";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -25,7 +25,8 @@ interface LogSectionProps {
   highlightTerm?: string;
   editable?: boolean;
   currentEditedContent?: PartialBlock[];
-  onContentChange?: (content: PartialBlock[]) => void;
+  currentEditedMarkdown?: string;
+  onContentChange?: (content: PartialBlock[], markdown: string) => void;
   onPreviewAttachment?: (
     attachment: NonNullable<
       SectionWithPersona["section_attachments"]
@@ -210,15 +211,20 @@ export function LogSection({
       <div className="min-w-0 flex-1 space-y-1">
         {shouldShowEditor && (
           <div
-            className={`section-editor-surface ${editable ? "blocknote-editable" : "blocknote-readonly"} prose prose-sm max-w-none dark:prose-invert`}
+            className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose prose-sm max-w-none dark:prose-invert`}
           >
-            <BlockNoteEditor
+            <MarkdownEditor
               key={
                 editable
                   ? `editable-${section.id}`
                   : `readonly-${section.id}-${section.updated_at ?? "na"}`
               }
               initialContent={editable ? (currentEditedContent ?? editableContent) : trimmedContent}
+              initialMarkdown={
+                editable
+                  ? currentEditedMarkdown
+                  : storedContentToMarkdown(section)
+              }
               editable={editable}
               onChange={editable ? onContentChange : undefined}
               highlightTerm={editable ? undefined : highlightTerm}

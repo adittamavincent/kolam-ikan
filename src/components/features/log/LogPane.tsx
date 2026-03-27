@@ -51,10 +51,11 @@ import { createClient } from "@/lib/supabase/client";
 import type { PartialBlock } from "@/lib/types/editor";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
+import { storedContentToMarkdown } from "@/lib/content-protocol";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/** Extract plain text from BlockNote content_json for diffing / copying */
+/** Extract plain text from stored markdown content for diffing / copying. */
 function extractText(entry: EntryWithSections): string {
   return (entry.sections ?? [])
     .map((s) => {
@@ -307,7 +308,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
 
 interface AmendState {
   entryId: string;
-  sections: Record<string, PartialBlock[]>;
+  sections: Record<string, { content: PartialBlock[]; markdown: string }>;
 }
 
 interface LogPaneProps {
@@ -900,14 +901,20 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const handleSaveAmend = async (entry: EntryWithSections) => {
     if (!amendState || amendState.entryId !== entry.id) return;
     const changedSections = (entry.sections ?? []).flatMap((section) => {
-      const draftBlocks = amendState.sections[section.id];
-      if (!draftBlocks) return [];
+      const draft = amendState.sections[section.id];
+      if (!draft) return [];
+      const draftBlocks = draft.content;
+      const originalMarkdown = storedContentToMarkdown(section);
       const original = JSON.stringify(
         (section.content_json as unknown as PartialBlock[]) ?? [],
       );
       const updated = JSON.stringify(draftBlocks);
-      if (original === updated) return [];
-      return [{ sectionId: section.id, content: draftBlocks }];
+      if (original === updated && draft.markdown === originalMarkdown) return [];
+      return [{
+        sectionId: section.id,
+        content: draftBlocks,
+        rawMarkdown: draft.markdown,
+      }];
     });
     if (!changedSections.length) {
       handleCancelAmend();
@@ -1577,8 +1584,17 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                       sectionIndex={sectionIndex}
                                       onPreviewAttachment={openAttachmentPreview}
                                       editable={isAmending}
-                                      currentEditedContent={isAmending ? amendState.sections[section.id] : undefined}
-                                      onContentChange={(content) => {
+                                      currentEditedContent={
+                                        isAmending
+                                          ? amendState.sections[section.id]?.content
+                                          : undefined
+                                      }
+                                      currentEditedMarkdown={
+                                        isAmending
+                                          ? amendState.sections[section.id]?.markdown
+                                          : undefined
+                                      }
+                                      onContentChange={(content, markdown) => {
                                         if (!isAmending) return;
                                         setAmendState((prev) => {
                                           if (!prev || prev.entryId !== entry.id)
@@ -1587,7 +1603,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                             ...prev,
                                             sections: {
                                               ...prev.sections,
-                                              [section.id]: content,
+                                              [section.id]: { content, markdown },
                                             },
                                           };
                                         });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { areCanvasContentsEquivalent, normalizeCanvasContent } from "./canvasContent";
 
 describe("canvasContent", () => {
-  it("ignores BlockNote ids, empty styles, and trailing empty paragraphs", () => {
+  it("ignores markdown block ids, empty styles, and trailing empty paragraphs", () => {
     const canonical = [
       {
         id: "block-a",

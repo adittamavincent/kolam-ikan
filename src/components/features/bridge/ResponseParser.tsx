@@ -9,7 +9,7 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { BlockNoteBlock, BlockNoteContent } from "@/lib/types";
+import { MarkdownBlock, MarkdownInlineContent } from "@/lib/types";
 import { z } from "zod";
 import { BlockSchema } from "@/lib/validation/entry";
 import { Json } from "@/lib/types/database.types";
@@ -39,20 +39,20 @@ type ChangeDecision = "accept" | "reject" | "both";
 interface BlockChange {
   id: string;
   type: "add" | "modify";
-  incoming: BlockNoteBlock;
-  current?: BlockNoteBlock;
+  incoming: MarkdownBlock;
+  current?: MarkdownBlock;
   decision: ChangeDecision;
   originalId?: string;
 }
 
 const BlockArraySchema = z.array(BlockSchema);
 
-function extractBlockText(block: BlockNoteBlock): string {
+function extractBlockText(block: MarkdownBlock): string {
   return block.content?.map((c) => c.text).join("") || "";
 }
 
-function parseInlineMarkdown(text: string): BlockNoteContent[] {
-  const tokens: BlockNoteContent[] = [];
+function parseInlineMarkdown(text: string): MarkdownInlineContent[] {
+  const tokens: MarkdownInlineContent[] = [];
   const pattern = /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(`[^`]+`)/g;
   let lastIndex = 0;
 
@@ -100,7 +100,7 @@ function parseInlineMarkdown(text: string): BlockNoteContent[] {
   return tokens.length > 0 ? tokens : [{ type: "text", text }];
 }
 
-function toParagraphBlocks(text: string): BlockNoteBlock[] {
+function toParagraphBlocks(text: string): MarkdownBlock[] {
   const normalized = text.replace(/\r\n/g, "\n").trim();
   if (!normalized) {
     return [
@@ -114,7 +114,7 @@ function toParagraphBlocks(text: string): BlockNoteBlock[] {
 
   const lines = normalized.split("\n").map((line) => line.trimEnd());
 
-  const blocks: BlockNoteBlock[] = [];
+  const blocks: MarkdownBlock[] = [];
   let paragraphBuffer: string[] = [];
 
   const flushParagraph = () => {
@@ -202,7 +202,7 @@ function toParagraphBlocks(text: string): BlockNoteBlock[] {
 }
 
 function resolveIncomingBlocks(raw: string): {
-  blocks: BlockNoteBlock[];
+  blocks: MarkdownBlock[];
   error?: string;
 } {
   const trimmed = raw.trim();
@@ -210,10 +210,10 @@ function resolveIncomingBlocks(raw: string): {
     return { blocks: [] };
   }
   try {
-    const parsed = JSON.parse(trimmed) as BlockNoteBlock[];
+    const parsed = JSON.parse(trimmed) as MarkdownBlock[];
     const validated = BlockArraySchema.safeParse(parsed);
     if (!validated.success) {
-      return { blocks: [], error: "Invalid BlockNote JSON" };
+      return { blocks: [], error: "Invalid markdown block JSON" };
     }
     return { blocks: validated.data };
   } catch {
@@ -222,9 +222,9 @@ function resolveIncomingBlocks(raw: string): {
 }
 
 function applyDiffToBlocks(
-  currentBlocks: BlockNoteBlock[],
+  currentBlocks: MarkdownBlock[],
   diffText: string,
-): BlockNoteBlock[] {
+): MarkdownBlock[] {
   const lines = diffText.split("\n");
   const result = [...currentBlocks];
   let additionsBuffer: string[] = [];
@@ -265,9 +265,9 @@ function applyDiffToBlocks(
 
 function resolveCanvasBlocks(
   raw: string,
-  currentBlocks: BlockNoteBlock[] = [],
+  currentBlocks: MarkdownBlock[] = [],
 ): {
-  blocks: BlockNoteBlock[];
+  blocks: MarkdownBlock[];
   format: "json" | "markdown" | "diff";
   error?: string;
 } {
@@ -350,7 +350,7 @@ export const ResponseParser = forwardRef<
     const [ignoredTags, setIgnoredTags] = useState<string[]>([]);
     const [thoughtLog, setThoughtLog] = useState<string | null>(null);
     const [incomingBlocks, setIncomingBlocks] = useState<
-      BlockNoteBlock[] | null
+      MarkdownBlock[] | null
     >(null);
     const [changes, setChanges] = useState<BlockChange[]>([]);
     const [conflictWarning, setConflictWarning] = useState<string | null>(null);
@@ -398,7 +398,7 @@ export const ResponseParser = forwardRef<
       const current = queryClient.getQueryData<{ content_json: Json }>([
         "canvas",
         streamId,
-      ])?.content_json as unknown as BlockNoteBlock[] | undefined;
+      ])?.content_json as unknown as MarkdownBlock[] | undefined;
       const currentBlocks = Array.isArray(current) ? current : [];
       if (previewMode === "current") return currentBlocks;
       if (previewMode === "incoming") return incomingBlocks;
@@ -499,7 +499,7 @@ export const ResponseParser = forwardRef<
           );
         }
 
-        let resolvedBlocks: BlockNoteBlock[] | null = null;
+        let resolvedBlocks: MarkdownBlock[] | null = null;
         if (canvasContent && canProcessCanvas) {
           // Fetch current blocks for diff resolution
           const currentData = queryClient.getQueryData<{ content_json: Json }>([
@@ -507,7 +507,7 @@ export const ResponseParser = forwardRef<
             streamId,
           ]);
           const currentBlocks =
-            (currentData?.content_json as unknown as BlockNoteBlock[]) || [];
+            (currentData?.content_json as unknown as MarkdownBlock[]) || [];
 
           const result = (() => {
             if (canvasJsonContent) {
@@ -571,7 +571,7 @@ export const ResponseParser = forwardRef<
             queryClient.setQueryData(["canvas", streamId], currentCanvas.data);
           }
           const currentBlocks =
-            (currentCanvas.data?.content_json as unknown as BlockNoteBlock[]) ||
+            (currentCanvas.data?.content_json as unknown as MarkdownBlock[]) ||
             [];
           const currentMap = new Map(
             currentBlocks.map((block) => [block.id, block]),

@@ -5,9 +5,9 @@ import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasScroll } from "@/lib/hooks/useCanvasScroll";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import {
-  BlockNoteEditor,
+  MarkdownEditor,
   type MarkdownEditorHandle,
-} from "@/components/shared/BlockNoteEditor";
+} from "@/components/shared/MarkdownEditor";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import debounce from "lodash/debounce";
@@ -24,7 +24,9 @@ import {
 } from "@/lib/utils/canvasPreview";
 import { Eye, GitCompare, RotateCcw, Save, X } from "lucide-react";
 import {
+  blocksToStoredMarkdown,
   buildStoredContentPayload,
+  storedContentToMarkdown,
   storedContentToBlocks,
 } from "@/lib/content-protocol";
 
@@ -37,6 +39,7 @@ interface PreviewSession {
   versionName: string;
   versionCreatedAt: string | null;
   previousDraftContent: PartialBlock[] | null;
+  previousDraftMarkdown: string;
 }
 
 export function CanvasPane({ streamId }: CanvasPaneProps) {
@@ -48,8 +51,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const [snapshotName, setSnapshotName] = useState("");
   const markClean = useCanvasDraft((s) => s.markClean);
   const setLiveContent = useCanvasDraft((s) => s.setLiveContent);
-  const clearLiveContent = useCanvasDraft((s) => s.clearLiveContent);
-  const setStarterBaseline = useCanvasDraft((s) => s.setStarterBaseline);
+  const setLiveMarkdown = useCanvasDraft((s) => s.setLiveMarkdown);
   const setSyncStatus = useCanvasDraft((s) => s.setSyncStatus);
   const markDirty = useCanvasDraft((s) => s.markDirty);
   const setLocalStatus = useCanvasDraft((s) => s.setLocalStatus);
@@ -61,9 +63,17 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const debouncedUpdateRef = useRef<
+    ReturnType<typeof debounce<(id: string, blocks: PartialBlock[], markdown: string) => void>> | null
+  >(null);
   const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId]);
+  const liveMarkdown = useCanvasDraft((s) => s.liveMarkdownByStream[streamId]) || "";
   const canvasBlocks = useMemo(
     () => storedContentToBlocks(canvas ?? {}),
+    [canvas],
+  );
+  const canvasMarkdown = useMemo(
+    () => storedContentToMarkdown(canvas ?? {}),
     [canvas],
   );
   const isPreviewing = previewSession !== null;
@@ -96,20 +106,17 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     transition: "transform 400ms cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
-  const debouncedUpdate = useMemo(
-    () =>
-      debounce(async (id: string, blocks: PartialBlock[]) => {
-        // Double check against latest DB version if needed, but for now 
-        // rely on the caller sending only real changes.
+  useEffect(() => {
+    const debounced = debounce(
+      async (id: string, blocks: PartialBlock[], markdown: string) => {
+        // Local persistence happens in the draft store; this status tracks DB sync only.
         setSyncStatus(streamId, "syncing");
-        setLocalStatus(streamId, "saving");
         try {
           await updateCanvas.mutateAsync({
             id,
-            updates: buildStoredContentPayload(blocks),
+            updates: buildStoredContentPayload(blocks, markdown),
           });
           setSyncStatus(streamId, "synced");
-          setLocalStatus(streamId, "saved");
           markClean(streamId);
           // After a short delay, move back to idle if no more changes
           setTimeout(() => {
@@ -119,55 +126,74 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           }, 2000);
         } catch {
           setSyncStatus(streamId, "error");
-          setLocalStatus(streamId, "error");
         }
-      }, 2000),
-    [updateCanvas, setSyncStatus, setLocalStatus, streamId, markClean],
-  );
+      },
+      1000,
+    );
+
+    debouncedUpdateRef.current = debounced;
+
+    return () => {
+      debounced.cancel();
+      if (debouncedUpdateRef.current === debounced) {
+        debouncedUpdateRef.current = null;
+      }
+    };
+  }, [markClean, setSyncStatus, streamId, updateCanvas]);
 
   const syncDirtyAgainstDb = useCallback(
-    (nextContent: PartialBlock[] | null) => {
-      if (areCanvasContentsEquivalent(nextContent, canvasBlocks)) {
+    (nextContent: PartialBlock[] | null, nextMarkdown?: string) => {
+      const markdownToCompare =
+        typeof nextMarkdown === "string" ? nextMarkdown : liveMarkdown;
+      const matchesBlocks = areCanvasContentsEquivalent(nextContent, canvasBlocks);
+      const matchesMarkdown = markdownToCompare === canvasMarkdown;
+
+      if (matchesBlocks && matchesMarkdown) {
         markClean(streamId);
       } else {
         markDirty(streamId);
       }
     },
-    [canvasBlocks, markClean, markDirty, streamId],
+    [canvasBlocks, canvasMarkdown, liveMarkdown, markClean, markDirty, streamId],
   );
 
   const handleContentChange = useCallback(
-    (blocks: PartialBlock[]) => {
+    (blocks: PartialBlock[], markdown: string) => {
       if (canvas) {
-        // Skip the first change event (BlockNote fires on mount)
+        // Skip the first change event triggered on mount.
         if (!hasReceivedFirstChange.current) {
           hasReceivedFirstChange.current = true;
           return;
         }
-        
+
+        const previousMarkdown = liveMarkdown || canvasMarkdown;
+        const markdownChanged = markdown !== previousMarkdown;
         // Compare canonicalized content and ignore only volatile IDs.
         const prev = liveContent || canvasBlocks;
-        if (areCanvasContentsEquivalent(prev, blocks)) {
-          syncDirtyAgainstDb(blocks);
+        if (areCanvasContentsEquivalent(prev, blocks) && !markdownChanged) {
+          syncDirtyAgainstDb(blocks, markdown);
           return;
         }
 
         setLiveContent(streamId, blocks);
-        syncDirtyAgainstDb(blocks);
+        setLiveMarkdown(streamId, markdown);
+        syncDirtyAgainstDb(blocks, markdown);
         if (isPreviewing) {
           setLocalStatus(streamId, "saved");
           return;
         }
-        debouncedUpdate(canvas.id, blocks);
+        debouncedUpdateRef.current?.(canvas.id, blocks, markdown);
       }
     },
     [
       canvas,
       canvasBlocks,
+      canvasMarkdown,
       liveContent,
+      liveMarkdown,
       setLiveContent,
+      setLiveMarkdown,
       streamId,
-      debouncedUpdate,
       isPreviewing,
       setLocalStatus,
       syncDirtyAgainstDb,
@@ -185,46 +211,58 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     if (canvas) {
       if (!liveContent) {
         setLiveContent(streamId, canvasBlocks);
-        syncDirtyAgainstDb(canvasBlocks);
+        syncDirtyAgainstDb(canvasBlocks, canvasMarkdown);
       } else {
         // If we HAVE local content but it's different from DB, start background sync
         if (!areCanvasContentsEquivalent(canvasBlocks, liveContent)) {
-           syncDirtyAgainstDb(liveContent);
+           syncDirtyAgainstDb(liveContent, liveMarkdown || canvasMarkdown);
            console.log(`[CanvasPane] detecting local change on mount, starting sync for ${streamId}`);
-           debouncedUpdate(canvas.id, liveContent);
+           debouncedUpdateRef.current?.(
+             canvas.id,
+             liveContent,
+             liveMarkdown || canvasMarkdown,
+           );
         } else {
-           syncDirtyAgainstDb(liveContent);
+           syncDirtyAgainstDb(liveContent, liveMarkdown || canvasMarkdown);
         }
       }
     } else {
-      syncDirtyAgainstDb(liveContent ?? null);
+      syncDirtyAgainstDb(liveContent ?? null, "");
     }
   }, [
     canvas,
     canvas?.id,
     canvasBlocks,
+    canvasMarkdown,
     liveContent,
+    liveMarkdown,
     setLiveContent,
     streamId,
-    debouncedUpdate,
     isPreviewing,
     syncDirtyAgainstDb,
   ]);
 
   useEffect(() => {
-    setStarterBaseline(
-      streamId,
-      canvas?.id ?? null,
-      canvasBlocks,
-    );
-  }, [canvas?.id, canvasBlocks, setStarterBaseline, streamId]);
+    return () => {
+      debouncedUpdateRef.current?.flush();
+    };
+  }, []);
 
   useEffect(() => {
-    return () => {
-      clearLiveContent(streamId);
-      setStarterBaseline(streamId, null, null);
+    if (typeof window === "undefined") return;
+
+    const flushPendingCanvasSave = () => {
+      debouncedUpdateRef.current?.flush();
     };
-  }, [clearLiveContent, setStarterBaseline, streamId]);
+
+    window.addEventListener("beforeunload", flushPendingCanvasSave);
+    window.addEventListener("pagehide", flushPendingCanvasSave);
+
+    return () => {
+      window.removeEventListener("beforeunload", flushPendingCanvasSave);
+      window.removeEventListener("pagehide", flushPendingCanvasSave);
+    };
+  }, []);
 
   const saveSnapshotMutation = useMutation({
     mutationFn: async (nameOverride?: string) => {
@@ -236,7 +274,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
-        ...buildStoredContentPayload(liveContent ?? canvasBlocks),
+        ...buildStoredContentPayload(
+          liveContent ?? canvasBlocks,
+          liveMarkdown || canvasMarkdown,
+        ),
         name,
         created_by: userData.user?.id ?? null,
       });
@@ -311,19 +352,23 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
   const restorePreviousDraft = useCallback(() => {
     if (!previewSession) return;
-    debouncedUpdate.cancel();
+    debouncedUpdateRef.current?.cancel();
     setLiveContent(streamId, previewSession.previousDraftContent);
+    setLiveMarkdown(streamId, previewSession.previousDraftMarkdown);
     setLocalStatus(streamId, "saved");
     setSyncStatus(streamId, "idle");
-    syncDirtyAgainstDb(previewSession.previousDraftContent);
+    syncDirtyAgainstDb(
+      previewSession.previousDraftContent,
+      previewSession.previousDraftMarkdown,
+    );
     hasReceivedFirstChange.current = false;
     setEditorSeed((seed) => seed + 1);
     setPreviewSession(null);
     setIsCompareOpen(false);
   }, [
     previewSession,
-    debouncedUpdate,
     setLiveContent,
+    setLiveMarkdown,
     streamId,
     setLocalStatus,
     setSyncStatus,
@@ -340,7 +385,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       setSyncStatus(streamId, "syncing");
       await updateCanvas.mutateAsync({
         id: canvas.id,
-        updates: buildStoredContentPayload(nextContent ?? []),
+        updates: buildStoredContentPayload(
+          nextContent ?? [],
+          liveMarkdown || canvasMarkdown,
+        ),
       });
       setSyncStatus(streamId, "synced");
       setLocalStatus(streamId, "saved");
@@ -354,9 +402,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   }, [
     canvas,
     canvasBlocks,
+    canvasMarkdown,
     previewSession,
     streamId,
     updateCanvas,
+    liveMarkdown,
     setSyncStatus,
     setLocalStatus,
     markClean,
@@ -369,7 +419,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       const detail = (event as CustomEvent<CanvasPreviewOpenDetail>).detail;
       if (!detail || detail.streamId !== streamId || !canvas) return;
 
-      debouncedUpdate.cancel();
+      debouncedUpdateRef.current?.cancel();
 
       const currentDraft = (liveContent ?? canvasBlocks ?? null) as
         | PartialBlock[]
@@ -389,11 +439,19 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         versionName: detail.versionName,
         versionCreatedAt: detail.versionCreatedAt ?? null,
         previousDraftContent: currentDraft,
+        previousDraftMarkdown: liveMarkdown || canvasMarkdown,
       });
       setLiveContent(streamId, detail.content ?? []);
+      setLiveMarkdown(
+        streamId,
+        blocksToStoredMarkdown(detail.content ?? []),
+      );
       setLocalStatus(streamId, "saved");
       setSyncStatus(streamId, "idle");
-      syncDirtyAgainstDb(detail.content ?? []);
+      syncDirtyAgainstDb(
+        detail.content ?? [],
+        blocksToStoredMarkdown(detail.content ?? []),
+      );
       hasReceivedFirstChange.current = false;
       setEditorSeed((seed) => seed + 1);
     };
@@ -409,9 +467,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     streamId,
     canvas,
     canvasBlocks,
+    canvasMarkdown,
     liveContent,
-    debouncedUpdate,
+    liveMarkdown,
     setLiveContent,
+    setLiveMarkdown,
     setLocalStatus,
     setSyncStatus,
     syncDirtyAgainstDb,
@@ -486,9 +546,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         {/* Editor area */}
         <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-24">
           {canvas ? (
-            <BlockNoteEditor
+            <MarkdownEditor
               key={`canvas-${canvas.id}-${editorSeed}`}
               initialContent={liveContent || canvasBlocks}
+              initialMarkdown={liveMarkdown || canvasMarkdown}
               onChange={handleContentChange}
               onEditorReady={setEditor}
               placeholder="Start writing on the canvas..."

@@ -27,6 +27,7 @@ import {
   Decoration,
   EditorView,
   ViewPlugin,
+  WidgetType,
   drawSelection,
   highlightActiveLine,
   keymap,
@@ -41,13 +42,59 @@ import {
   normalizeFrontmatterKey,
 } from "@/components/shared/KolamRenderedMarkdown";
 import type {
-  BlockNoteEditorProps,
+  MarkdownEditorProps,
   MarkdownEditorHandle,
-} from "@/components/shared/BlockNoteEditor";
+} from "@/components/shared/MarkdownEditor";
 
-export type BaseEditorProps = BlockNoteEditorProps;
+export type BaseEditorProps = MarkdownEditorProps;
 
 const hiddenSyntax = Decoration.replace({});
+
+class ListMarkerWidget extends WidgetType {
+  constructor(
+    private readonly label: string,
+    private readonly className: string,
+    private readonly widthCh?: number,
+  ) {
+    super();
+  }
+
+  toDOM() {
+    const marker = document.createElement("span");
+    marker.className = this.className;
+    marker.textContent = this.label;
+    if (
+      this.className.includes("cm-kolam-ordered-marker") &&
+      typeof this.widthCh === "number"
+    ) {
+      marker.style.setProperty(
+        "--kolam-list-marker-width",
+        `${this.widthCh}ch`,
+      );
+    }
+    return marker;
+  }
+}
+
+class TaskMarkerWidget extends WidgetType {
+  constructor(private readonly checked: boolean) {
+    super();
+  }
+
+  toDOM() {
+    const wrapper = document.createElement("span");
+    wrapper.className = "cm-kolam-task-marker";
+
+    const checkbox = document.createElement("input");
+    checkbox.checked = this.checked;
+    checkbox.disabled = true;
+    checkbox.tabIndex = -1;
+    checkbox.type = "checkbox";
+
+    wrapper.appendChild(checkbox);
+    return wrapper;
+  }
+}
 
 const kolamEditorTheme = EditorView.theme({
   "&": {
@@ -135,7 +182,7 @@ const kolamHighlightStyle = HighlightStyle.define([
 ]);
 
 function addDecoration(
-  builder: RangeSetBuilder<Decoration>,
+  builder: { add: (from: number, to: number, value: Decoration) => void },
   from: number,
   to: number,
   decoration: Decoration,
@@ -146,7 +193,7 @@ function addDecoration(
 }
 
 function addHiddenDecoration(
-  builder: RangeSetBuilder<Decoration>,
+  builder: { add: (from: number, to: number, value: Decoration) => void },
   from: number,
   to: number,
 ) {
@@ -154,12 +201,57 @@ function addHiddenDecoration(
 }
 
 function addMarkDecoration(
-  builder: RangeSetBuilder<Decoration>,
+  builder: { add: (from: number, to: number, value: Decoration) => void },
   from: number,
   to: number,
   className: string,
 ) {
   addDecoration(builder, from, to, Decoration.mark({ class: className }));
+}
+
+function addWidgetDecoration(
+  builder: { add: (from: number, to: number, value: Decoration) => void },
+  from: number,
+  to: number,
+  widget: WidgetType,
+) {
+  addDecoration(builder, from, to, Decoration.replace({ widget }));
+}
+
+class BufferedDecorationBuilder {
+  private readonly entries: Array<{
+    from: number;
+    to: number;
+    value: Decoration;
+  }> = [];
+
+  add(from: number, to: number, value: Decoration) {
+    this.entries.push({ from, to, value });
+  }
+
+  finish() {
+    const builder = new RangeSetBuilder<Decoration>();
+    this.entries
+      .sort((left, right) => {
+        if (left.from !== right.from) return left.from - right.from;
+
+        const leftStartSide = (left.value as Decoration & { startSide?: number })
+          .startSide ?? 0;
+        const rightStartSide = (right.value as Decoration & { startSide?: number })
+          .startSide ?? 0;
+        if (leftStartSide !== rightStartSide) {
+          return leftStartSide - rightStartSide;
+        }
+
+        if (left.to !== right.to) return left.to - right.to;
+        return 0;
+      })
+      .forEach((entry) => {
+        builder.add(entry.from, entry.to, entry.value);
+      });
+
+    return builder.finish();
+  }
 }
 
 function intersectsSelection(
@@ -253,9 +345,10 @@ function createLivePreviewExtension() {
       }
 
       buildDecorations(view: EditorView) {
-        const builder = new RangeSetBuilder<Decoration>();
+        const builder = new BufferedDecorationBuilder();
         const source = view.state.doc.toString();
         const frontmatter = extractFrontmatter(source);
+        const orderedListPattern = /^(\s*)(\d+[.)])\s+/;
 
         if (
           frontmatter.rangeEnd > 0 &&
@@ -366,8 +459,6 @@ function createLivePreviewExtension() {
                 }
                 return;
               case "QuoteMark":
-              case "ListMark":
-              case "TaskMarker":
                 if (!intersectsSelection(view, node.from, node.to, true)) {
                   addHiddenDecoration(builder, node.from, node.to);
                 }
@@ -381,6 +472,35 @@ function createLivePreviewExtension() {
         for (let lineNumber = 1; lineNumber <= view.state.doc.lines; lineNumber += 1) {
           const line = view.state.doc.line(lineNumber);
           const isActiveLine = intersectsSelection(view, line.from, line.to, true);
+          const orderedMatch = line.text.match(orderedListPattern);
+
+          let orderedFamilyWidthCh: number | null = null;
+          if (orderedMatch) {
+            const indent = orderedMatch[1];
+            let maxMarkerLength = orderedMatch[2].length;
+
+            for (let scan = lineNumber - 1; scan >= 1; scan -= 1) {
+              const candidate = view.state.doc.line(scan);
+              const candidateMatch = candidate.text.match(orderedListPattern);
+              if (!candidateMatch || candidateMatch[1] !== indent) break;
+              maxMarkerLength = Math.max(
+                maxMarkerLength,
+                candidateMatch[2].length,
+              );
+            }
+
+            for (let scan = lineNumber + 1; scan <= view.state.doc.lines; scan += 1) {
+              const candidate = view.state.doc.line(scan);
+              const candidateMatch = candidate.text.match(orderedListPattern);
+              if (!candidateMatch || candidateMatch[1] !== indent) break;
+              maxMarkerLength = Math.max(
+                maxMarkerLength,
+                candidateMatch[2].length,
+              );
+            }
+
+            orderedFamilyWidthCh = Math.max(3.25, maxMarkerLength + 1.25);
+          }
 
           if (!isActiveLine) {
             const calloutMatch = line.text.match(/^>\s*\[!([^\]\+\-]+)\]([+-])?\s*/i);
@@ -393,6 +513,48 @@ function createLivePreviewExtension() {
                 line.to,
                 "cm-kolam-callout-title",
               );
+            }
+
+            const taskMatch = line.text.match(/^(\s*)[-+*]\s+\[( |x|X)\]\s+/);
+            if (taskMatch) {
+              const markerFrom = line.from + taskMatch[1].length;
+              const markerTo = line.from + taskMatch[0].length;
+              addWidgetDecoration(
+                builder,
+                markerFrom,
+                markerTo,
+                new TaskMarkerWidget(taskMatch[2].toLowerCase() === "x"),
+              );
+            } else {
+              if (orderedMatch) {
+                const markerFrom = line.from + orderedMatch[1].length;
+                const markerTo = line.from + orderedMatch[0].length;
+                addWidgetDecoration(
+                  builder,
+                  markerFrom,
+                  markerTo,
+                  new ListMarkerWidget(
+                    orderedMatch[2],
+                    "cm-kolam-list-marker cm-kolam-ordered-marker",
+                    orderedFamilyWidthCh ?? undefined,
+                  ),
+                );
+              } else {
+                const bulletMatch = line.text.match(/^(\s*)[-+*]\s+/);
+                if (bulletMatch) {
+                  const markerFrom = line.from + bulletMatch[1].length;
+                  const markerTo = line.from + bulletMatch[0].length;
+                  addWidgetDecoration(
+                    builder,
+                    markerFrom,
+                    markerTo,
+                    new ListMarkerWidget(
+                      "\u2022",
+                      "cm-kolam-list-marker cm-kolam-bullet-marker",
+                    ),
+                  );
+                }
+              }
             }
           }
 
@@ -522,7 +684,169 @@ function formatSelection(
   };
 }
 
+type MarkdownListContinuation = {
+  from: number;
+  nextMarker: string;
+  replacement: string;
+};
+
+export function shouldAutoInsertOrderedListSpace(
+  lineText: string,
+  cursorOffset: number,
+): boolean {
+  const beforeCursor = lineText.slice(0, cursorOffset);
+  const afterCursor = lineText.slice(cursorOffset);
+
+  if (!/^\s*\d+$/.test(beforeCursor)) return false;
+  return afterCursor.length === 0 || /^\s*$/.test(afterCursor);
+}
+
+export function computeMarkdownListContinuation(
+  lineText: string,
+  cursorOffset: number,
+): MarkdownListContinuation | null {
+  const orderedMatch = lineText.match(/^(\s*)(\d+)([.)])(\s+)(.*)$/);
+  const taskMatch = lineText.match(/^(\s*)([-+*])(\s+)\[( |x|X)\](\s+)(.*)$/);
+  const bulletMatch = lineText.match(/^(\s*)([-+*])(\s+)(.*)$/);
+
+  if (taskMatch) {
+    const prefixLength =
+      taskMatch[1].length +
+      taskMatch[2].length +
+      taskMatch[3].length +
+      3 +
+      taskMatch[5].length;
+    if (cursorOffset < prefixLength) return null;
+
+    if (
+      taskMatch[6].trim().length === 0 &&
+      cursorOffset === lineText.length
+    ) {
+      return {
+        from: 0,
+        nextMarker: taskMatch[1],
+        replacement: taskMatch[1],
+      };
+    }
+
+    return {
+      from: cursorOffset,
+      nextMarker: `${taskMatch[1]}${taskMatch[2]} [ ] `,
+      replacement: `\n${taskMatch[1]}${taskMatch[2]} [ ] ${lineText.slice(cursorOffset)}`,
+    };
+  }
+
+  if (orderedMatch) {
+    const prefixLength =
+      orderedMatch[1].length +
+      orderedMatch[2].length +
+      orderedMatch[3].length +
+      orderedMatch[4].length;
+    if (cursorOffset < prefixLength) return null;
+
+    if (
+      orderedMatch[5].trim().length === 0 &&
+      cursorOffset === lineText.length
+    ) {
+      return {
+        from: 0,
+        nextMarker: orderedMatch[1],
+        replacement: orderedMatch[1],
+      };
+    }
+
+    const nextMarker = `${orderedMatch[1]}${Number.parseInt(orderedMatch[2], 10) + 1}${orderedMatch[3]} `;
+    return {
+      from: cursorOffset,
+      nextMarker,
+      replacement: `\n${nextMarker}${lineText.slice(cursorOffset)}`,
+    };
+  }
+
+  if (bulletMatch) {
+    const prefixLength =
+      bulletMatch[1].length + bulletMatch[2].length + bulletMatch[3].length;
+    if (cursorOffset < prefixLength) return null;
+
+    if (
+      bulletMatch[4].trim().length === 0 &&
+      cursorOffset === lineText.length
+    ) {
+      return {
+        from: 0,
+        nextMarker: bulletMatch[1],
+        replacement: bulletMatch[1],
+      };
+    }
+
+    const nextMarker = `${bulletMatch[1]}${bulletMatch[2]} `;
+    return {
+      from: cursorOffset,
+      nextMarker,
+      replacement: `\n${nextMarker}${lineText.slice(cursorOffset)}`,
+    };
+  }
+
+  return null;
+}
+
+function continueMarkdownList(): StateCommand {
+  return ({ state, dispatch }) => {
+    const selection = state.selection.main;
+    if (!selection.empty) return false;
+
+    const line = state.doc.lineAt(selection.from);
+    const cursorOffset = selection.from - line.from;
+    const continuation = computeMarkdownListContinuation(line.text, cursorOffset);
+    if (!continuation) return false;
+
+    dispatch(
+      state.update({
+        changes: {
+          from: line.from + continuation.from,
+          to: line.to,
+          insert: continuation.replacement,
+        },
+        selection: EditorSelection.cursor(
+          line.from + continuation.from + continuation.replacement.length - line.text.slice(cursorOffset).length,
+        ),
+        scrollIntoView: true,
+        userEvent: "input",
+      }),
+    );
+
+    return true;
+  };
+}
+
+function orderedListInputHandler() {
+  return EditorView.inputHandler.of((view, from, to, text) => {
+    if (text !== ".") return false;
+    if (!view.state.selection.main.empty || from !== to) return false;
+
+    const line = view.state.doc.lineAt(from);
+    const cursorOffset = from - line.from;
+    if (!shouldAutoInsertOrderedListSpace(line.text, cursorOffset)) {
+      return false;
+    }
+
+    view.dispatch({
+      changes: {
+        from,
+        to,
+        insert: ". ",
+      },
+      selection: EditorSelection.cursor(from + 2),
+      scrollIntoView: true,
+      userEvent: "input",
+    });
+
+    return true;
+  });
+}
+
 const kolamEditorKeymap = [
+  { key: "Enter", run: continueMarkdownList() },
   { key: "Mod-b", run: formatSelection("**") },
   { key: "Mod-i", run: formatSelection("*") },
 ];
@@ -673,6 +997,7 @@ function PropertiesPanel({
 
 export default function BaseEditor({
   initialContent,
+  initialMarkdown,
   onChange,
   editable = true,
   placeholder,
@@ -682,7 +1007,9 @@ export default function BaseEditor({
   void _highlightTerm;
 
   const [markdownValue, setMarkdownValue] = useState(() =>
-    blocksToStoredMarkdown(initialContent ?? []),
+    typeof initialMarkdown === "string"
+      ? initialMarkdown
+      : blocksToStoredMarkdown(initialContent ?? []),
   );
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -719,7 +1046,8 @@ export default function BaseEditor({
       history(),
       autocompletion(),
       markdown({ base: markdownLanguage, codeLanguages: languages }),
-      createLivePreviewExtension(),
+      orderedListInputHandler(),
+      ...(editable ? [createLivePreviewExtension()] : []),
       keymap.of([
         ...kolamEditorKeymap,
         ...defaultKeymap,
@@ -811,7 +1139,10 @@ export default function BaseEditor({
   }, [onEditorReady]);
 
   useEffect(() => {
-    const nextMarkdown = blocksToStoredMarkdown(initialContent ?? []);
+    const nextMarkdown =
+      typeof initialMarkdown === "string"
+        ? initialMarkdown
+        : blocksToStoredMarkdown(initialContent ?? []);
 
     if (focusRef.current || nextMarkdown === markdownRef.current) {
       return;
@@ -832,7 +1163,7 @@ export default function BaseEditor({
       },
       selection: EditorSelection.cursor(0),
     });
-  }, [initialContent]);
+  }, [initialContent, initialMarkdown]);
 
   const handleMarkdownChange = (nextMarkdown: string) => {
     markdownRef.current = nextMarkdown;

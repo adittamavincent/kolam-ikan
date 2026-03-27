@@ -1,15 +1,23 @@
-import bridge from "@/lib/blocknote-markdown-bridge";
+import bridge from "@/lib/markdown-block-bridge";
 import type { PartialBlock } from "@/lib/types/editor";
-import { BlockNoteBlock } from "@/lib/types";
+import { MarkdownBlock } from "@/lib/types";
 import { Json } from "@/lib/types/database.types";
 
-export const CONTENT_FORMAT_MARKDOWN_BLOCKNOTE = "markdown+blocknote-v1";
+export const CONTENT_FORMAT_MARKDOWN_EDITOR = "markdown-v1";
 
 type StoredContentRecord = {
   content_json?: Json | null;
   raw_markdown?: string | null;
   content_format?: string | null;
 };
+
+function normalizeMarkdown(value: string | null | undefined): string {
+  return typeof value === "string" ? value.replace(/\r\n?/g, "\n") : "";
+}
+
+function toTextContent(text: string) {
+  return text.length > 0 ? [{ type: "text" as const, text, styles: {} }] : [];
+}
 
 function isBlockArray(value: unknown): value is PartialBlock[] {
   return (
@@ -24,46 +32,48 @@ function isBlockArray(value: unknown): value is PartialBlock[] {
 }
 
 function fallbackMarkdownToBlocks(markdown: string): PartialBlock[] {
-  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  const lines = normalizeMarkdown(markdown).split("\n");
   const blocks: PartialBlock[] = [];
 
-  for (const line of lines) {
-    if (line.length === 0) {
+  for (const rawLine of lines) {
+    if (rawLine.length === 0) {
       blocks.push({ type: "paragraph", content: [] });
       continue;
     }
 
-    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    const line = rawLine.trimStart();
+
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
       blocks.push({
         type: "heading",
         props: { level: Math.min(3, headingMatch[1].length) },
-        content: [{ type: "text", text: headingMatch[2], styles: {} }],
+        content: toTextContent(headingMatch[2]),
       });
       continue;
     }
 
-    const bulletMatch = line.match(/^[-*]\s+(.+)$/);
+    const bulletMatch = line.match(/^[-*]\s+(.*)$/);
     if (bulletMatch) {
       blocks.push({
         type: "bulletListItem",
-        content: [{ type: "text", text: bulletMatch[1], styles: {} }],
+        content: toTextContent(bulletMatch[1]),
       });
       continue;
     }
 
-    const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
+    const numberedMatch = line.match(/^\d+[.)]\s+(.*)$/);
     if (numberedMatch) {
       blocks.push({
         type: "numberedListItem",
-        content: [{ type: "text", text: numberedMatch[1], styles: {} }],
+        content: toTextContent(numberedMatch[1]),
       });
       continue;
     }
 
     blocks.push({
       type: "paragraph",
-      content: [{ type: "text", text: line, styles: {} }],
+      content: toTextContent(rawLine),
     });
   }
 
@@ -91,14 +101,14 @@ function flattenBlockText(blocks: PartialBlock[]): string {
 }
 
 export function blocksToStoredMarkdown(
-  blocks: PartialBlock[] | BlockNoteBlock[] | null | undefined,
+  blocks: PartialBlock[] | MarkdownBlock[] | null | undefined,
 ): string {
   if (!Array.isArray(blocks) || blocks.length === 0) return "";
 
   try {
-    const markdown = bridge.blocksToBridgeMarkdown(blocks as BlockNoteBlock[]);
+    const markdown = bridge.blocksToBridgeMarkdown(blocks as MarkdownBlock[]);
     if (markdown.trim().length > 0) {
-      return markdown.replace(/\r\n?/g, "\n").replace(/\n+$/, "");
+      return normalizeMarkdown(markdown).replace(/\n+$/, "");
     }
   } catch {
     // Fall through to plain-text fallback.
@@ -108,18 +118,23 @@ export function blocksToStoredMarkdown(
 }
 
 export function buildStoredContentPayload(
-  blocks: PartialBlock[] | BlockNoteBlock[] | null | undefined,
+  blocks: PartialBlock[] | MarkdownBlock[] | null | undefined,
+  rawMarkdown?: string | null,
 ): {
   content_json: Json;
   raw_markdown: string;
   content_format: string;
 } {
   const normalizedBlocks = Array.isArray(blocks) ? blocks : [];
+  const normalizedRawMarkdown = normalizeMarkdown(rawMarkdown);
 
   return {
     content_json: normalizedBlocks as unknown as Json,
-    raw_markdown: blocksToStoredMarkdown(normalizedBlocks),
-    content_format: CONTENT_FORMAT_MARKDOWN_BLOCKNOTE,
+    raw_markdown:
+      typeof rawMarkdown === "string"
+        ? normalizedRawMarkdown
+        : blocksToStoredMarkdown(normalizedBlocks),
+    content_format: CONTENT_FORMAT_MARKDOWN_EDITOR,
   };
 }
 
@@ -133,13 +148,13 @@ export function cloneStoredContentFields(record: StoredContentRecord): {
     content_json: (isBlockArray(record.content_json) ? record.content_json : blocks) as unknown as Json,
     raw_markdown: storedContentToMarkdown(record),
     content_format:
-      record.content_format?.trim() || CONTENT_FORMAT_MARKDOWN_BLOCKNOTE,
+      record.content_format?.trim() || CONTENT_FORMAT_MARKDOWN_EDITOR,
   };
 }
 
 export function storedContentToMarkdown(record: StoredContentRecord): string {
-  const rawMarkdown = record.raw_markdown?.trim();
-  if (rawMarkdown) return rawMarkdown;
+  const rawMarkdown = normalizeMarkdown(record.raw_markdown);
+  if (rawMarkdown.trim().length > 0) return rawMarkdown;
 
   if (isBlockArray(record.content_json)) {
     return blocksToStoredMarkdown(record.content_json);
@@ -153,8 +168,8 @@ export function storedContentToBlocks(record: StoredContentRecord): PartialBlock
     return record.content_json;
   }
 
-  const rawMarkdown = record.raw_markdown?.trim();
-  if (!rawMarkdown) return [];
+  const rawMarkdown = normalizeMarkdown(record.raw_markdown);
+  if (rawMarkdown.trim().length === 0) return [];
 
   try {
     const blocks = bridge.bridgeMarkdownToBlocks(rawMarkdown) as PartialBlock[];

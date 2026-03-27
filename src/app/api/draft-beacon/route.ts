@@ -12,6 +12,7 @@ type DraftBeaconPayload = {
     sectionId: string | null;
     personaId: string | null;
     content: Json;
+    rawMarkdown?: string | null;
     updatedAt: number;
   }[];
   updatedAt: number;
@@ -59,7 +60,10 @@ export async function POST(request: Request) {
       .insert({
         entry_id: entryData.id,
         persona_id: first.personaId,
-        ...buildStoredContentPayload(first.content as PartialBlock[]),
+        ...buildStoredContentPayload(
+          first.content as PartialBlock[],
+          first.rawMarkdown,
+        ),
         sort_order: 0,
       })
       .select("id")
@@ -93,7 +97,10 @@ export async function POST(request: Request) {
       await supabase
         .from("sections")
         .update({
-          ...buildStoredContentPayload(section.content as PartialBlock[]),
+          ...buildStoredContentPayload(
+            section.content as PartialBlock[],
+            section.rawMarkdown,
+          ),
           persona_id: section.personaId,
           updated_at: new Date().toISOString(),
         })
@@ -105,7 +112,10 @@ export async function POST(request: Request) {
         .insert({
           entry_id: entryId,
           persona_id: section.personaId,
-          ...buildStoredContentPayload(section.content as PartialBlock[]),
+          ...buildStoredContentPayload(
+            section.content as PartialBlock[],
+            section.rawMarkdown,
+          ),
           sort_order: 0,
         })
         .select("id")

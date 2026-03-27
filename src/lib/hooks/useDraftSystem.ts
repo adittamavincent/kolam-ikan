@@ -16,6 +16,7 @@ interface SectionDraft {
   personaId: string | null;
   personaName?: string;
   content: PartialBlock[];
+  rawMarkdown?: string;
   contentTextSnapshot?: string;
   fileDisplayMode?: "inline" | "download" | "external";
   fileAttachments?: FileDraftAttachment[];
@@ -44,6 +45,7 @@ export interface DraftContent {
   sectionType: "PERSONA" | "FILE_ATTACHMENT";
   personaId: string | null;
   content: PartialBlock[];
+  rawMarkdown?: string;
   personaName?: string;
   contentTextSnapshot?: string;
   fileDisplayMode?: "inline" | "download" | "external";
@@ -207,22 +209,26 @@ function readLocalDraft(streamId: string): DraftState | null {
   }
 }
 
-function writeLocalDraft(streamId: string, state: DraftState): void {
+function writeLocalDraft(streamId: string, state: DraftState): boolean {
   try {
     const key = `${STORAGE_PREFIX}${streamId}`;
     const json = JSON.stringify(state);
     localStorage.setItem(key, json);
+    return true;
   } catch {
     // Ignore storage errors
+    return false;
   }
 }
 
-function removeLocalDraft(streamId: string): void {
+function removeLocalDraft(streamId: string): boolean {
   try {
     const key = `${STORAGE_PREFIX}${streamId}`;
     localStorage.removeItem(key);
+    return true;
   } catch {
     // Ignore storage errors
+    return false;
   }
 }
 
@@ -273,7 +279,11 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       ...draftStateRef.current,
       updatedAt: Date.now(),
     };
-    writeLocalDraft(streamId, draftStateRef.current);
+    const didPersist = writeLocalDraft(streamId, draftStateRef.current);
+    setStatus((prev) => {
+      if (prev === "saving") return prev;
+      return didPersist ? "saved" : "error";
+    });
   }, [streamId]);
 
   // 1. Initial Load and Legacy Cleanup
@@ -305,9 +315,9 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         const loaded: Record<string, DraftContent> = {};
         Object.entries(local.sections).forEach(([id, s]) => {
           const sectionType = s.sectionType ?? "PERSONA";
-          if (
-            sectionType === "PERSONA" &&
-            !s.personaId &&
+        if (
+          sectionType === "PERSONA" &&
+          !s.personaId &&
             !hasMeaningfulDraftContent(s.content)
           )
             return;
@@ -321,6 +331,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                 : s.contentTextSnapshot
                 ? textToBlocks(s.contentTextSnapshot)
                 : [],
+            rawMarkdown: s.rawMarkdown,
             contentTextSnapshot: s.contentTextSnapshot,
             fileDisplayMode: s.fileDisplayMode,
             fileAttachments: s.fileAttachments ?? [],
@@ -345,17 +356,26 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       content: PartialBlock[],
       personaName?: string,
       forceDelete = false,
+      rawMarkdown?: string,
     ) => {
+      if (!streamId) return;
+
       if (forceDelete) {
         delete draftStateRef.current.sections[instanceId];
         draftStateRef.current.sectionOrder =
           draftStateRef.current.sectionOrder.filter((id) => id !== instanceId);
+        draftStateRef.current.updatedAt = Date.now();
         setInitialDrafts((prev) => {
           const next = { ...prev };
           delete next[instanceId];
           return next;
         });
-        setStatus("idle");
+        const hasSections =
+          Object.keys(draftStateRef.current.sections).length > 0;
+        const didPersist = hasSections
+          ? writeLocalDraft(streamId, draftStateRef.current)
+          : removeLocalDraft(streamId);
+        setStatus(didPersist ? (hasSections ? "saved" : "idle") : "error");
         return;
       }
 
@@ -364,15 +384,18 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         personaId,
         personaName,
         content,
+        rawMarkdown,
         contentTextSnapshot: blocksToPlainText(content),
         updatedAt: Date.now(),
       };
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
         draftStateRef.current.sectionOrder.push(instanceId);
       }
-      setStatus((prev) => (prev === "error" ? "error" : "saved"));
+      draftStateRef.current.updatedAt = Date.now();
+      const didPersist = writeLocalDraft(streamId, draftStateRef.current);
+      setStatus(didPersist ? "saved" : "error");
     },
-    [],
+    [streamId],
   );
 
   const saveFileAttachmentDraft = useCallback(
@@ -382,21 +405,30 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         attachments: FileDraftAttachment[];
         displayMode: "inline" | "download" | "external";
         content?: PartialBlock[];
+        rawMarkdown?: string;
         personaId?: string | null;
         personaName?: string;
       },
       forceDelete = false,
     ) => {
+      if (!streamId) return;
+
       if (forceDelete) {
         delete draftStateRef.current.sections[instanceId];
         draftStateRef.current.sectionOrder =
           draftStateRef.current.sectionOrder.filter((id) => id !== instanceId);
+        draftStateRef.current.updatedAt = Date.now();
         setInitialDrafts((prev) => {
           const next = { ...prev };
           delete next[instanceId];
           return next;
         });
-        setStatus("idle");
+        const hasSections =
+          Object.keys(draftStateRef.current.sections).length > 0;
+        const didPersist = hasSections
+          ? writeLocalDraft(streamId, draftStateRef.current)
+          : removeLocalDraft(streamId);
+        setStatus(didPersist ? (hasSections ? "saved" : "idle") : "error");
         return;
       }
 
@@ -405,6 +437,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         personaId: payload.personaId ?? null,
         personaName: payload.personaName,
         content: payload.content ?? [],
+        rawMarkdown: payload.rawMarkdown,
         contentTextSnapshot: blocksToPlainText(payload.content ?? []),
         fileDisplayMode: payload.displayMode,
         fileAttachments: payload.attachments,
@@ -414,21 +447,23 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       if (!draftStateRef.current.sectionOrder.includes(instanceId)) {
         draftStateRef.current.sectionOrder.push(instanceId);
       }
-      setStatus((prev) => (prev === "error" ? "error" : "saved"));
+      draftStateRef.current.updatedAt = Date.now();
+      const didPersist = writeLocalDraft(streamId, draftStateRef.current);
+      setStatus(didPersist ? "saved" : "error");
     },
-    [],
+    [streamId],
   );
 
   // 3. Clear/Discard whole draft
   const clearDraft = useCallback(() => {
-    removeLocalDraft(streamId);
+    const didPersist = removeLocalDraft(streamId);
     draftStateRef.current = {
       sections: {},
       sectionOrder: [],
       updatedAt: Date.now(),
     };
     setInitialDrafts({});
-    setStatus("idle");
+    setStatus(didPersist ? "idle" : "error");
   }, [streamId]);
 
   // 4. Content Retriever
@@ -445,6 +480,21 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         return deepClone(textToBlocks(snapshot));
       }
       return [];
+    },
+    [initialDrafts],
+  );
+
+  const getDraftMarkdown = useCallback(
+    (instanceId: string) => {
+      const section = draftStateRef.current.sections[instanceId];
+      const fallback = initialDrafts[instanceId];
+      if (typeof section?.rawMarkdown === "string") {
+        return section.rawMarkdown;
+      }
+      if (typeof fallback?.rawMarkdown === "string") {
+        return fallback.rawMarkdown;
+      }
+      return "";
     },
     [initialDrafts],
   );
@@ -519,7 +569,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
             entry_id: newEntryId,
             persona_id: draft.personaId,
             persona_name_snapshot: draft.personaName ?? null,
-            ...buildStoredContentPayload(draft.content),
+            ...buildStoredContentPayload(draft.content, draft.rawMarkdown),
             sort_order: index,
             section_type: draft.sectionType,
             file_display_mode: draft.fileDisplayMode ?? "inline",
@@ -549,7 +599,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                 entry_id: newEntryId,
                 persona_id: draft.personaId,
                 persona_name_snapshot: draft.personaName,
-                ...buildStoredContentPayload(draft.content),
+                ...buildStoredContentPayload(draft.content, draft.rawMarkdown),
                 sort_order: index,
               })
               .select("id")
@@ -681,6 +731,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     commitDraft,
     initialDrafts,
     getDraftContent,
+    getDraftMarkdown,
     getFileAttachmentDraft,
     isLoading,
     clearDraft,

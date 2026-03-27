@@ -221,169 +221,9 @@ body {
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/*  TEXT OVERFLOW HANDLING FOR BLOCKNOTE EDITOR                             */
-/* -------------------------------------------------------------------------- */
-
-/* Ensure BlockNote editor content wraps properly for long strings */
-:root {
-  --editor-body-font-size: 0.8125rem; /* 13px */
-  --editor-mono-line-height: 1.5rem; /* 24px */
-  --blocknote-line-height: 1.25rem; /* 20px */
-  --blocknote-block-padding-y: 0.125rem; /* 2px */
-  --blocknote-row-height: calc(
-    var(--blocknote-line-height) + (var(--blocknote-block-padding-y) * 2)
-  ); /* 24px */
-}
-
-.blocknote-editor,
-.blocknote-editor * {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* Match BlockNote body typography to Monaco's 13px editor text. */
-.blocknote-editor {
-  font-size: var(--editor-body-font-size) !important;
-}
-
-.blocknote-editor .bn-block-outer {
-  line-height: var(--blocknote-line-height) !important;
-}
-
-.blocknote-editor .bn-block-content {
-  min-height: var(--blocknote-row-height);
-  padding-block: var(--blocknote-block-padding-y) !important;
-}
-
-.blocknote-editor .bn-editor,
-.blocknote-editor .bn-editor .ProseMirror,
-.blocknote-editor .bn-block-content,
-.blocknote-editor .bn-inline-content,
-.blocknote-editor .ProseMirror p,
-.blocknote-editor .ProseMirror div,
-.blocknote-editor .ProseMirror li,
-.blocknote-editor .ProseMirror pre {
-  font-size: var(--editor-body-font-size) !important;
-  line-height: var(--blocknote-line-height) !important;
-}
-
-/* Keep the BlockNote side menu visually proportional to the smaller body text. */
-.blocknote-editor .bn-side-menu {
-  font-size: var(--editor-body-font-size) !important;
-  height: var(--blocknote-row-height) !important;
-}
-
-.blocknote-editor .bn-side-menu[data-block-type="heading"][data-level="1"] {
-  height: 3.875rem !important; /* 62px */
-}
-
-.blocknote-editor .bn-side-menu[data-block-type="heading"][data-level="2"] {
-  height: 2.6875rem !important; /* 43px */
-}
-
-.blocknote-editor .bn-side-menu[data-block-type="heading"][data-level="3"] {
-  height: 1.875rem !important; /* 30px */
-}
-
-.blocknote-editor .bn-side-menu[data-block-type="file"] {
-  height: 1.875rem !important;
-}
-
-.blocknote-editor .bn-side-menu[data-block-type="audio"] {
-  height: 3rem !important;
-}
-
-.blocknote-editor .bn-side-menu[data-url="false"] {
-  height: 2.6875rem !important;
-}
-
-.blocknote-editor .bn-side-menu button,
-.blocknote-editor .bn-side-menu .mantine-Menu-item,
-.blocknote-editor .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) {
-  min-width: 1.375rem;
-  min-height: 1.375rem;
-  height: 1.375rem !important;
-  padding: 0.125rem !important;
-  font-size: 0.75rem !important;
-}
-
-.blocknote-editor .bn-side-menu svg {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-.blocknote-editor .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) svg {
-  width: 1rem !important;
-  height: 1rem !important;
-}
-
-/* Scale down UI elements slightly (toolbar, menus) to feel more compact */
-.blocknote-editor .bn-toolbar,
-.blocknote-editor .bn-suggestion-menu {
-  transform: scale(0.9);
-  transform-origin: top left;
-}
-
-/* Handle specific BlockNote elements that might contain long text */
-.bn-block-content,
-.bn-inline-content,
-.ProseMirror,
-.ProseMirror p,
-.ProseMirror div,
-.ProseMirror pre {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* Handle code blocks specifically to allow horizontal scrolling if needed */
-.ProseMirror pre code {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* Handle links, URLs, and other inline elements */
-.ProseMirror a,
-.ProseMirror code:not(pre code) {
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* -------------------------------------------------------------------------- */
-/*  BLOCKNOTE DARK-MODE BACKGROUND FIX                                       */
-/* -------------------------------------------------------------------------- */
-
-/* Make BlockNote editor background transparent so it inherits the section frame */
-.blocknote-editor,
-.bn-container,
-.bn-editor,
-.bn-editor .ProseMirror {
-  background-color: transparent !important;
-}
-
 .entry-creator .section-editor-surface,
 .log-pane .section-editor-surface {
   padding: 0 !important;
-}
-
-/* -------------------------------------------------------------------------- */
-/*  BLOCKNOTE READ-ONLY: HIDE SIDE MENU (plus + drag handle)                 */
-/* -------------------------------------------------------------------------- */
-
-/* (removed vertical rhythm rule per request) */
-
-/* Keep default BlockNote block rhythm to avoid side-menu offset drift. */
-
-.blocknote-readonly .bn-side-menu {
-  display: none !important;
-}
-
-/* BlockNote reserves 54px inline padding for side-menu/drag handles by default. */
-.blocknote-readonly .bn-editor {
-  padding-inline: 0 !important;
 }
 
 @layer base {
@@ -547,6 +387,34 @@ body {
   color: var(--text-normal);
   font-weight: 600;
   padding: 0.15rem 0.45rem;
+}
+
+.kolam-codemirror-root .cm-kolam-list-marker {
+  display: inline-flex;
+  min-width: var(--kolam-list-marker-width, 1.5rem);
+  align-items: center;
+  justify-content: flex-end;
+  color: color-mix(in srgb, var(--text-normal) 88%, var(--text-faint));
+  font-variant-numeric: tabular-nums;
+  padding-right: 0.6rem;
+  margin-right: 0.15rem;
+}
+
+.kolam-codemirror-root .cm-kolam-bullet-marker {
+  min-width: 1rem;
+}
+
+.kolam-codemirror-root .cm-kolam-task-marker {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.45rem;
+  vertical-align: middle;
+}
+
+.kolam-codemirror-root .cm-kolam-task-marker input {
+  width: 0.9rem;
+  height: 0.9rem;
+  accent-color: var(--text-normal);
 }
 
 .kolam-properties-panel {

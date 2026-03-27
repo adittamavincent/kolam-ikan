@@ -9,8 +9,9 @@ export interface MarkdownEditorHandle {
   isFocused?: () => boolean;
 }
 
-export interface BlockNoteEditorProps {
+export interface MarkdownEditorProps {
   initialContent?: PartialBlock[];
+  initialMarkdown?: string;
   onChange?: (blocks: PartialBlock[], markdown: string) => void;
   editable?: boolean;
   placeholder?: string;
@@ -18,7 +19,7 @@ export interface BlockNoteEditorProps {
   highlightTerm?: string;
 }
 
-// Dynamically import the BaseEditor with SSR disabled to prevent window access errors
+// Dynamically import the editor with SSR disabled to prevent window access errors.
 const BaseEditor = dynamic(() => import("./BaseEditor"), {
   ssr: false,
   loading: () => (
@@ -28,6 +29,6 @@ const BaseEditor = dynamic(() => import("./BaseEditor"), {
   ),
 });
 
-export function BlockNoteEditor(props: BlockNoteEditorProps) {
+export function MarkdownEditor(props: MarkdownEditorProps) {
   return <BaseEditor {...props} />;
 }

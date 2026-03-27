@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// Basic BlockNote block schema
-// We keep it flexible as BlockNote structure can be complex and extensible
+// Basic markdown block schema
+// We keep it flexible as the editor block structure can be complex and extensible.
 export const BlockSchema = z.object({
   id: z.string(),
   type: z.string(),

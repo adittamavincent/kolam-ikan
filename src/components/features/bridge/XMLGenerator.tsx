@@ -5,7 +5,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
-  BlockNoteBlock,
+  MarkdownBlock,
   EntryWithSections,
   STREAM_KIND,
 } from "@/lib/types";
@@ -148,7 +148,7 @@ export function XMLGenerator({
       | string
       | undefined;
     const canvasContent =
-      (canvas?.content_json as unknown as BlockNoteBlock[]) || [];
+      (canvas?.content_json as unknown as MarkdownBlock[]) || [];
     const canvasIsEmpty =
       canvasContent.length === 0 ||
       canvasContent.every((b) => !extractText(b).trim());
@@ -207,7 +207,7 @@ ${responseFormatDirective}
 ${filesStr}${
   includeCanvas
     ? `<canvas_state>
-${canvasToMarkdown((canvas?.content_json as unknown as BlockNoteBlock[]) || [])}
+${canvasToMarkdown((canvas?.content_json as unknown as MarkdownBlock[]) || [])}
 </canvas_state>`
     : ""
 }
@@ -227,7 +227,7 @@ ${(globalCanvases ?? [])
     const streamName =
       streamNameById.get(canvasItem.stream_id) || canvasItem.stream_id;
     return `<global_canvas stream="${streamName}">
-${canvasToMarkdown((canvasItem.content_json as unknown as BlockNoteBlock[]) || [])}
+${canvasToMarkdown((canvasItem.content_json as unknown as MarkdownBlock[]) || [])}
 </global_canvas>`;
   })
   .join("\n\n")}
@@ -319,12 +319,12 @@ ${userInput}
 }
 
 // Helper functions
-function canvasToMarkdown(blocks: BlockNoteBlock[]): string {
-  // Convert BlockNote blocks to markdown
+function canvasToMarkdown(blocks: MarkdownBlock[]): string {
+  // Convert markdown blocks to markdown text.
   return blocks.map(blockToMarkdown).join("\n\n");
 }
 
-function blockToMarkdown(block: BlockNoteBlock): string {
+function blockToMarkdown(block: MarkdownBlock): string {
   // Implementation depends on block type
   if (block.type === "heading") {
     const level = (block.props?.level as number) || 1;
@@ -337,7 +337,7 @@ function blockToMarkdown(block: BlockNoteBlock): string {
   return extractText(block);
 }
 
-function extractText(block: BlockNoteBlock): string {
+function extractText(block: MarkdownBlock): string {
   return block.content?.map((c) => c.text).join("") || "";
 }
 
@@ -356,7 +356,7 @@ function entryToMarkdown(entry: EntryWithSections): string {
     const sectionType = section.section_type || "text";
 
     let content = canvasToMarkdown(
-      (section.content_json as unknown as BlockNoteBlock[]) || []
+      (section.content_json as unknown as MarkdownBlock[]) || []
     );
 
     if (

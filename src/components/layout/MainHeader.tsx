@@ -144,8 +144,7 @@ export function MainHeader() {
       (logState?.syncStatus === "idle" && !logState?.isDirty);
 
     if (hasError) return "error";
-    if (isSaving) return "saving";
-    if (isDirty) return "idle";
+    if (isSaving || isDirty) return "saving";
     if (isSavedFromCanvas || isSavedFromLog) return "saved";
     return "idle";
   };
@@ -160,11 +159,9 @@ export function MainHeader() {
       logState?.localStatus === "error" ||
       logState?.status === "error" ||
       canvasState?.localStatus === "error";
-    const isDirty = logState?.isDirty || canvasState?.isDirty;
     
     if (isSaving) return "saving";
     if (isError) return "error";
-    if (isDirty) return "dirty";
     return "saved";
   };
 

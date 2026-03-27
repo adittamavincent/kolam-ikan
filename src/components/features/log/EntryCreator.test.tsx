@@ -16,8 +16,11 @@ const mockMutateAsync = vi.fn();
 const mockSaveDraft = vi.fn();
 const mockCommitDraft = vi.fn();
 const mockDraftContents: Record<string, unknown[]> = {};
+const mockDraftMarkdown: Record<string, string> = {};
 const mockGetDraftContent = (instanceId: string) =>
   mockDraftContents[instanceId] ?? [];
+const mockGetDraftMarkdown = (instanceId: string) =>
+  mockDraftMarkdown[instanceId] ?? "";
 const mockGetFileAttachmentDraft = () => undefined;
 
 vi.mock("@tanstack/react-query", async () => {
@@ -123,6 +126,7 @@ vi.mock("@/lib/hooks/useDraftSystem", () => ({
     commitDraft: mockCommitDraft,
     initialDrafts: {},
     getDraftContent: mockGetDraftContent,
+    getDraftMarkdown: mockGetDraftMarkdown,
     getFileAttachmentDraft: mockGetFileAttachmentDraft,
     isLoading: false,
     setActiveInstances: vi.fn(),
@@ -131,12 +135,17 @@ vi.mock("@/lib/hooks/useDraftSystem", () => ({
   }),
 }));
 
-vi.mock("@/components/shared/BlockNoteEditor", () => ({
+vi.mock("@/components/shared/MarkdownEditor", () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  BlockNoteEditor: ({ onChange, initialContent }: any) => (
+  MarkdownEditor: ({ onChange, initialContent }: any) => (
     <input
       data-testid="mock-editor"
-      onChange={(e) => onChange([{ content: [{ text: e.target.value }] }])}
+      onChange={(e) =>
+        onChange(
+          [{ content: [{ text: e.target.value }] }],
+          e.target.value,
+        )
+      }
       value={initialContent?.[0]?.content?.[0]?.text || ""}
     />
   ),
@@ -161,9 +170,18 @@ describe("EntryCreator", () => {
     queryClient = new QueryClient();
     vi.clearAllMocks();
     Object.keys(mockDraftContents).forEach((key) => delete mockDraftContents[key]);
+    Object.keys(mockDraftMarkdown).forEach((key) => delete mockDraftMarkdown[key]);
     mockSaveDraft.mockImplementation(
-      (instanceId: string, _personaId: string, content: unknown[]) => {
+      (
+        instanceId: string,
+        _personaId: string,
+        content: unknown[],
+        _personaName?: string,
+        _forceDelete?: boolean,
+        markdown?: string,
+      ) => {
         mockDraftContents[instanceId] = content;
+        mockDraftMarkdown[instanceId] = markdown ?? "";
       },
     );
     mockCommitDraft.mockResolvedValue("entry-1");

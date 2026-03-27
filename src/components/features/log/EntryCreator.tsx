@@ -11,9 +11,9 @@ import React, {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
-  BlockNoteEditor,
+  MarkdownEditor,
   type MarkdownEditorHandle,
-} from "@/components/shared/BlockNoteEditor";
+} from "@/components/shared/MarkdownEditor";
 
 import type { PartialBlock } from "@/lib/types/editor";
 import type { WhatsAppInjectPayload } from "./WhatsAppImportModal";
@@ -359,9 +359,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     existingDoc: DocumentWithLatestJob;
     instanceId: string;
   } | null>(null);
-  const [headerLocalStatus, setHeaderLocalStatus] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
   const [headerCloudStatus, setHeaderCloudStatus] = useState<
     "idle" | "syncing" | "synced" | "error"
   >("idle");
@@ -463,6 +460,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     commitDraft,
     initialDrafts,
     getDraftContent,
+    getDraftMarkdown,
     getFileAttachmentDraft,
     isLoading,
     setActiveInstances,
@@ -494,7 +492,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     () =>
       debounce(() => {
         setHeaderDirty(false);
-        setHeaderLocalStatus("saved");
         setHeaderCloudStatus("syncing");
         if (cloudSyncTimeoutRef.current) {
           clearTimeout(cloudSyncTimeoutRef.current);
@@ -519,7 +516,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   useEffect(() => {
     console.log(`[EntryCreator] mount streamId=${streamId}`);
     setHeaderDirty(false);
-    setHeaderLocalStatus("idle");
     setHeaderCloudStatus("idle");
     return () => {
       console.log(`[EntryCreator] unmount streamId=${streamId}`);
@@ -647,9 +643,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           previewUrl: attachment.previewUrl ?? null,
         })),
         content: [],
+        rawMarkdown: getDraftMarkdown(instanceId),
       });
     },
-    [saveFileAttachmentDraft],
+    [getDraftMarkdown, saveFileAttachmentDraft],
   );
 
   // Watch imported documents and automatically update pending attachments.
@@ -750,7 +747,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         ? "error"
         : status === "saving"
           ? "saving"
-          : headerLocalStatus;
+          : hasCommitableContent
+            ? "saved"
+            : "idle";
     const syncStatus = status === "error" ? "error" : headerCloudStatus;
     
     window.dispatchEvent(
@@ -770,8 +769,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     isLoading,
     streamId,
     status,
+    hasCommitableContent,
     headerDirty,
-    headerLocalStatus,
     headerCloudStatus,
   ]);
 
@@ -795,7 +794,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             if (i === 0) return parsed;
             return [{ type: "paragraph", content: [] } as PartialBlock, ...parsed];
           });
-          saveDraft(instanceId, turn.personaId, blocks, turn.personaName);
+          saveDraft(
+            instanceId,
+            turn.personaId,
+            blocks,
+            turn.personaName,
+            false,
+            turn.messages.join("\n\n"),
+          );
           newSections.push({
             instanceId,
             kind: "PERSONA" as const,
@@ -1041,6 +1047,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         personaName: personaName ?? undefined,
         attachments: [],
         content: getDraftContent(instanceId),
+        rawMarkdown: getDraftMarkdown(instanceId),
       });
     } else {
       const personaId = section.personaId || "";
@@ -1054,7 +1061,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       // Persist section type change; only save if we have a valid persona
       if (personaId) {
         const personaName = personas?.find((p) => p.id === personaId)?.name;
-        saveDraft(instanceId, personaId, getDraftContent(instanceId), personaName);
+        saveDraft(
+          instanceId,
+          personaId,
+          getDraftContent(instanceId),
+          personaName,
+          false,
+          getDraftMarkdown(instanceId),
+        );
       }
     }
   };
@@ -1094,7 +1108,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     const content = getDraftContent(instanceId);
 
     // Force immediate save to ensure refs are updated
-    saveDraft(instanceId, newPersonaId, content, newPersona?.name);
+    saveDraft(
+      instanceId,
+      newPersonaId,
+      content,
+      newPersona?.name,
+      false,
+      getDraftMarkdown(instanceId),
+    );
     trackPersonaUsage(newPersonaId);
 
     // Keep typing context active on the currently selected persona section.
@@ -1270,6 +1291,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       personaName: section?.personaName ?? undefined,
       attachments: nextDraftAttachments,
       content: [],
+      rawMarkdown: getDraftMarkdown(instanceId),
     });
 
     setSections((prev) =>
@@ -1636,12 +1658,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         >
                           {/* BODY CONTENT */}
                           {isPersona ? (
-                            /* BLOCKNOTE EDITOR */
+                            /* Markdown editor */
                             <div className="section-editor-surface">
-                              <BlockNoteEditor
+                              <MarkdownEditor
                                 initialContent={getDraftContent(instanceId)}
-                                onChange={(content) => {
+                                initialMarkdown={getDraftMarkdown(instanceId)}
+                                onChange={(content, markdown) => {
                                   const existingContent = getDraftContent(instanceId);
+                                  const existingMarkdown = getDraftMarkdown(instanceId);
                                   const readyAt = editorReadyAtRef.current[instanceId];
                                   const withinHydrationWindow =
                                     readyAt === undefined || Date.now() - readyAt < 500;
@@ -1656,15 +1680,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   const contentChanged =
                                     JSON.stringify(content) !==
                                     JSON.stringify(existingContent);
+                                  const markdownChanged = markdown !== existingMarkdown;
 
                                   if (
                                     editorFocused &&
                                     !withinHydrationWindow &&
-                                    contentChanged
+                                    (contentChanged || markdownChanged)
                                   ) {
                                     userEditedRef.current[instanceId] = true;
                                     setHeaderDirty(true);
-                                    setHeaderLocalStatus("idle");
                                     setHeaderCloudStatus("idle");
                                   }
 
@@ -1683,13 +1707,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                     // swallow logging errors
                                   }
 
-                                  if (!contentChanged) return;
-                                  setHeaderLocalStatus("saving");
+                                  if (!contentChanged && !markdownChanged) return;
                                   saveDraft(
                                     instanceId,
                                     section.personaId,
                                     content,
                                     persona?.name || "",
+                                    false,
+                                    markdown,
                                   );
                                   debouncedSave();
                                 }}

@@ -25,6 +25,7 @@ interface AmendEntryInput {
   sections: Array<{
     sectionId: string;
     content: PartialBlock[];
+    rawMarkdown?: string;
   }>;
 }
 
@@ -244,7 +245,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
       const nextUpdatedAt = new Date().toISOString();
       const sectionContentMap = new Map(
-        sections.map((section) => [section.sectionId, section.content]),
+        sections.map((section) => [section.sectionId, section]),
       );
 
       previousQueries.forEach(([queryKey, queryData]) => {
@@ -257,12 +258,15 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
               if (entry.id !== entryId) return entry;
 
               const nextSections = entry.sections.map((section) => {
-                const nextContent = sectionContentMap.get(section.id);
-                if (!nextContent) return section;
+                const nextSection = sectionContentMap.get(section.id);
+                if (!nextSection) return section;
 
                 return {
                   ...section,
-                  ...buildStoredContentPayload(nextContent),
+                  ...buildStoredContentPayload(
+                    nextSection.content,
+                    nextSection.rawMarkdown,
+                  ),
                   updated_at: nextUpdatedAt,
                 };
               });
@@ -287,11 +291,11 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       }
 
       const nowIso = new Date().toISOString();
-      const updates = sections.map(({ sectionId, content }) =>
+      const updates = sections.map(({ sectionId, content, rawMarkdown }) =>
         supabase
           .from("sections")
           .update({
-            ...buildStoredContentPayload(content),
+            ...buildStoredContentPayload(content, rawMarkdown),
             updated_at: nowIso,
           })
           .eq("id", sectionId),

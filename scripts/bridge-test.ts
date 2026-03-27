@@ -1,4 +1,4 @@
-import bridge from "../src/lib/blocknote-markdown-bridge";
+import bridge from "../src/lib/markdown-block-bridge";
 
 const md = `test
 

@@ -100,16 +100,16 @@ export interface DocumentImportDispatchResult {
 // Enums
 export type PersonaType = string;
 
-// BlockNote Types
-export interface BlockNoteBlock {
+// Markdown editor block types
+export interface MarkdownBlock {
   id: string;
   type: string;
   props?: Record<string, Json>;
-  content?: BlockNoteContent[];
-  children?: BlockNoteBlock[];
+  content?: MarkdownInlineContent[];
+  children?: MarkdownBlock[];
 }
 
-export interface BlockNoteContent {
+export interface MarkdownInlineContent {
   type: "text" | "link";
   text: string;
   styles?: Record<string, boolean>;

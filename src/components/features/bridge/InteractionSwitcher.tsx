@@ -10,9 +10,9 @@ import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { encode } from "gpt-tokenizer";
-import { BlockNoteBlock, EntryWithSections } from "@/lib/types";
+import { MarkdownBlock, EntryWithSections } from "@/lib/types";
 
-function blocksToText(blocks: BlockNoteBlock[]): string {
+function blocksToText(blocks: MarkdownBlock[]): string {
   return blocks
     .map((block) => {
       const content = Array.isArray(block.content) ? block.content : [];
@@ -159,13 +159,13 @@ export function InteractionSwitcher({
         (entry) =>
           entry.sections
             ?.map((section) =>
-              blocksToText(section.content_json as unknown as BlockNoteBlock[]),
+              blocksToText(section.content_json as unknown as MarkdownBlock[]),
             )
             .join("\n") ?? "",
       ) ?? [];
     const canvasText = includeCanvas
       ? blocksToText(
-          (canvas?.content_json as unknown as BlockNoteBlock[]) ?? [],
+          (canvas?.content_json as unknown as MarkdownBlock[]) ?? [],
         )
       : "";
     const globalEntryText =
@@ -175,7 +175,7 @@ export function InteractionSwitcher({
               entry.sections
                 ?.map((section) =>
                   blocksToText(
-                    section.content_json as unknown as BlockNoteBlock[],
+                    section.content_json as unknown as MarkdownBlock[],
                   ),
                 )
                 .join("\n") ?? "",
@@ -185,7 +185,7 @@ export function InteractionSwitcher({
       includeGlobalStream && additionalGlobalStreamIds.length > 0
         ? (globalCanvases?.map((canvasItem) =>
             blocksToText(
-              (canvasItem.content_json as unknown as BlockNoteBlock[]) ?? [],
+              (canvasItem.content_json as unknown as MarkdownBlock[]) ?? [],
             ),
           ) ?? [])
         : [];

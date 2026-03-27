@@ -6,6 +6,7 @@ import { areCanvasContentsEquivalent } from "@/lib/utils/canvasContent";
 interface CanvasDraftState {
   dirtyStreams: Set<string>;
   liveContentByStream: Record<string, PartialBlock[] | null>;
+  liveMarkdownByStream: Record<string, string>;
   starterBaselineByStream: Record<
     string,
     { canvasId: string | null; content: PartialBlock[] | null }
@@ -16,6 +17,7 @@ interface CanvasDraftState {
   markClean: (streamId: string) => void;
   isDirty: (streamId: string) => boolean;
   setLiveContent: (streamId: string, content: PartialBlock[] | null) => void;
+  setLiveMarkdown: (streamId: string, markdown: string) => void;
   clearLiveContent: (streamId: string) => void;
   setStarterBaseline: (
     streamId: string,
@@ -34,6 +36,7 @@ interface CanvasDraftState {
 
 interface PersistedCanvasState {
   liveContentByStream: Record<string, PartialBlock[] | null>;
+  liveMarkdownByStream: Record<string, string>;
 }
 
 export const useCanvasDraft = create<CanvasDraftState>()(
@@ -41,6 +44,7 @@ export const useCanvasDraft = create<CanvasDraftState>()(
     (set, get) => ({
       dirtyStreams: new Set<string>(),
       liveContentByStream: {},
+      liveMarkdownByStream: {},
       starterBaselineByStream: {},
       dbSyncStatusByStream: {},
       localSaveStatusByStream: {},
@@ -79,15 +83,32 @@ export const useCanvasDraft = create<CanvasDraftState>()(
           };
         });
       },
+      setLiveMarkdown: (streamId: string, markdown: string) => {
+        set((state) => {
+          if (state.liveMarkdownByStream[streamId] === markdown) return state;
+          return {
+            liveMarkdownByStream: {
+              ...state.liveMarkdownByStream,
+              [streamId]: markdown,
+            },
+          };
+        });
+      },
       clearLiveContent: (streamId: string) => {
         set((state) => {
           const hasLiveContent = streamId in state.liveContentByStream;
+          const hasLiveMarkdown = streamId in state.liveMarkdownByStream;
           const hasDirty = state.dirtyStreams.has(streamId);
           const hasBaseline = streamId in state.starterBaselineByStream;
-          if (!hasLiveContent && !hasDirty && !hasBaseline) return state;
+          if (!hasLiveContent && !hasLiveMarkdown && !hasDirty && !hasBaseline) {
+            return state;
+          }
 
           const next = { ...state.liveContentByStream };
           delete next[streamId];
+
+          const nextMarkdown = { ...state.liveMarkdownByStream };
+          delete nextMarkdown[streamId];
 
           const nextLocal = { ...state.localSaveStatusByStream };
           delete nextLocal[streamId];
@@ -104,6 +125,7 @@ export const useCanvasDraft = create<CanvasDraftState>()(
           return {
             dirtyStreams: nextDirty,
             liveContentByStream: next,
+            liveMarkdownByStream: nextMarkdown,
             starterBaselineByStream: nextBaseline,
             localSaveStatusByStream: nextLocal,
             dbSyncStatusByStream: nextDb,
@@ -169,6 +191,7 @@ export const useCanvasDraft = create<CanvasDraftState>()(
       name: "kolam-canvas-drafts",
       partialize: (state) => ({
         liveContentByStream: state.liveContentByStream,
+        liveMarkdownByStream: state.liveMarkdownByStream,
       }),
       merge: (persistedState, currentState) => {
         const persisted = persistedState as PersistedCanvasState;

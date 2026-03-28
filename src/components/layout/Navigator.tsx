@@ -1355,6 +1355,7 @@ export function Navigator({}: NavigatorProps) {
         id: `temp-${Date.now()}`,
         name: newStream.name,
         cabinet_id: newStream.cabinet_id ?? null,
+        description: newStream.description ?? null,
         domain_id: newStream.domain_id,
         sort_order: newStream.sort_order ?? 0,
         stream_kind:

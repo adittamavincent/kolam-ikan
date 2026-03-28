@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useId, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -69,6 +69,7 @@ const PRESET_COLORS = [
 ];
 
 export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
+  const nameFieldHintId = useId();
   const supabase = createClient();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -342,6 +343,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     ? editingPersona
     : { is_shadow: false as const };
   const previewTypeLabel = sanitizePersonaTypeInput(type, DEFAULT_PERSONA_TYPE);
+  const previewName = name.trim() || "Untitled Persona";
   const canEditPersona = (persona: Persona) =>
     !persona.is_system && persona.user_id === user?.id;
 
@@ -372,7 +374,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0"
             >
-              <DialogPanel className="w-full max-w-xl transform overflow-hidden bg-surface-default p-4 text-left align-middle transition-all border border-border-default">
+              <DialogPanel className="w-full max-w-2xl transform overflow-hidden bg-surface-default p-4 text-left align-middle transition-all border border-border-default">
                 <div className="flex items-center justify-between mb-4">
                   <DialogTitle
                     as="h3"
@@ -534,21 +536,31 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   </div>
                 ) : isCreating || editingPersona ? (
                   <form onSubmit={handleSave} className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+                    <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)]">
                       <div className="space-y-4">
                         <div>
                           <label className="mb-1 block text-sm font-medium text-text-subtle">
                             Title
                           </label>
-                          <input
-                            type="text"
+                          <textarea
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
+                            className="min-h-22 w-full resize-none border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
                             placeholder="e.g., Creative Mode"
+                            rows={3}
                             maxLength={60}
                             autoFocus
+                            aria-describedby={nameFieldHintId}
                           />
+                          <div
+                            id={nameFieldHintId}
+                            className="mt-1 flex items-center justify-between gap-2 text-[11px] text-text-muted"
+                          >
+                            <span>
+                              Long titles wrap here and stay compact in the preview.
+                            </span>
+                            <span>{name.length}/60</span>
+                          </div>
                         </div>
 
                         <div>
@@ -581,9 +593,9 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         </div>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="min-w-0 space-y-4">
                         <div
-                          className="border p-3"
+                          className="w-full min-w-0 overflow-hidden border p-3"
                           style={getPersonaTintStyle(
                             {
                               color,
@@ -599,16 +611,25 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-muted">
                             Preview
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex min-w-0 items-start gap-3">
                             <div
-                              className="flex h-10 w-10 items-center justify-center"
+                              className="flex h-10 w-10 shrink-0 items-center justify-center"
                               style={{ backgroundColor: `${color}20`, color }}
                             >
                               <DynamicIcon name={icon} className="h-5 w-5" />
                             </div>
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-medium text-text-default">
-                                {name.trim() || "Untitled Persona"}
+                            <div className="min-w-0 flex-1">
+                              <div
+                                className="overflow-hidden text-sm font-medium leading-5 text-text-default"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitBoxOrient: "vertical",
+                                  WebkitLineClamp: 2,
+                                  overflowWrap: "anywhere",
+                                }}
+                                title={previewName}
+                              >
+                                {previewName}
                               </div>
                               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
                                 <span className="border border-border-default bg-surface-default/70 px-1.5 py-0.5 text-text-muted">

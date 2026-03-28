@@ -82,7 +82,12 @@ describe("continueMarkdownListCommand", () => {
     });
 
     expect(handled).toBe(true);
-    expect(nextState?.doc.toString()).toBe("1. one\n");
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe("1. one\n");
   });
 });
 

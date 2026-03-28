@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   computeMarkdownListContinuation,
+  getTableCellContentBounds,
+  pickRectIndexFromAxis,
+  resolveMeasuredTextPositionFromMeasuredCharacters,
+  resolveTableCellSourceOffset,
+  resolveVisibleOffsetFromMeasuredCharacters,
   shouldIgnoreOrderedListExtraSpace,
   shouldAutoInsertOrderedListSpace,
 } from "@/components/shared/BaseEditor";
@@ -74,5 +79,170 @@ describe("shouldIgnoreOrderedListExtraSpace", () => {
 
   it("does not block spaces once list content has started", () => {
     expect(shouldIgnoreOrderedListExtraSpace("1. hello", 3)).toBe(false);
+  });
+});
+
+describe("resolveTableCellSourceOffset", () => {
+  it("keeps table clicks anchored to rendered text instead of stretched cell width", () => {
+    expect(
+      resolveTableCellSourceOffset(
+        {
+          content: "Alex",
+          paddingLeft: 1,
+          rawEnd: 18,
+          rawStart: 0,
+        },
+        [0, 1, 2, 3, 4],
+        4,
+      ),
+    ).toBe(5);
+  });
+
+  it("respects leading markdown padding and clamps to the raw cell width", () => {
+    expect(
+      resolveTableCellSourceOffset(
+        {
+          content: "",
+          paddingLeft: 3,
+          rawEnd: 2,
+          rawStart: 0,
+        },
+        [0],
+        0,
+      ),
+    ).toBe(2);
+  });
+});
+
+describe("resolveVisibleOffsetFromMeasuredCharacters", () => {
+  it("clamps clicks in the empty right side of a left-aligned cell to the last character", () => {
+    expect(
+      resolveVisibleOffsetFromMeasuredCharacters(
+        [
+          { startOffset: 0, endOffset: 1, left: 0, right: 5, top: 0, bottom: 10 },
+          { startOffset: 1, endOffset: 2, left: 5, right: 10, top: 0, bottom: 10 },
+          { startOffset: 2, endOffset: 3, left: 10, right: 15, top: 0, bottom: 10 },
+          { startOffset: 3, endOffset: 4, left: 15, right: 20, top: 0, bottom: 10 },
+        ],
+        80,
+        5,
+      ),
+    ).toBe(4);
+  });
+
+  it("clamps clicks in the empty left side of a line to the first character", () => {
+    expect(
+      resolveVisibleOffsetFromMeasuredCharacters(
+        [
+          { startOffset: 0, endOffset: 1, left: 20, right: 25, top: 0, bottom: 10 },
+          { startOffset: 1, endOffset: 2, left: 25, right: 30, top: 0, bottom: 10 },
+        ],
+        2,
+        5,
+      ),
+    ).toBe(0);
+  });
+
+  it("selects the nearest rendered line before clamping horizontally", () => {
+    expect(
+      resolveVisibleOffsetFromMeasuredCharacters(
+        [
+          { startOffset: 0, endOffset: 1, left: 0, right: 5, top: 0, bottom: 10 },
+          { startOffset: 1, endOffset: 2, left: 5, right: 10, top: 0, bottom: 10 },
+          { startOffset: 2, endOffset: 3, left: 0, right: 5, top: 14, bottom: 24 },
+          { startOffset: 3, endOffset: 4, left: 5, right: 10, top: 14, bottom: 24 },
+        ],
+        50,
+        18,
+      ),
+    ).toBe(4);
+  });
+});
+
+describe("getTableCellContentBounds", () => {
+  it("uses the trimmed raw cell end so clicks after bold text land after the closing markdown", () => {
+    expect(
+      getTableCellContentBounds({
+        paddingLeft: 1,
+        rawContent: " **Beta Testing**    ",
+        rawEnd: 21,
+        rawStart: 0,
+      }),
+    ).toEqual({
+      end: 17,
+      start: 1,
+    });
+  });
+
+  it("keeps plain-text cells ending before trailing padding spaces", () => {
+    expect(
+      getTableCellContentBounds({
+        paddingLeft: 1,
+        rawContent: " Low    ",
+        rawEnd: 8,
+        rawStart: 0,
+      }),
+    ).toEqual({
+      end: 4,
+      start: 1,
+    });
+  });
+});
+
+describe("resolveMeasuredTextPositionFromMeasuredCharacters", () => {
+  it("marks clicks to the right of rendered text as after-text placement", () => {
+    expect(
+      resolveMeasuredTextPositionFromMeasuredCharacters(
+        [
+          { startOffset: 0, endOffset: 1, left: 0, right: 5, top: 0, bottom: 10 },
+          { startOffset: 1, endOffset: 2, left: 5, right: 10, top: 0, bottom: 10 },
+        ],
+        80,
+        5,
+      ),
+    ).toEqual({
+      offset: 2,
+      placement: "after",
+    });
+  });
+});
+
+describe("pickRectIndexFromAxis", () => {
+  it("clamps points to the last rendered cell when clicking past the right edge", () => {
+    expect(
+      pickRectIndexFromAxis(
+        [
+          { start: 0, end: 100 },
+          { start: 100, end: 200 },
+          { start: 200, end: 300 },
+        ],
+        340,
+      ),
+    ).toBe(2);
+  });
+
+  it("keeps points in the middle of a rendered cell on that cell", () => {
+    expect(
+      pickRectIndexFromAxis(
+        [
+          { start: 0, end: 100 },
+          { start: 100, end: 200 },
+          { start: 200, end: 300 },
+        ],
+        175,
+      ),
+    ).toBe(1);
+  });
+
+  it("moves exact boundary clicks to the cell on the right", () => {
+    expect(
+      pickRectIndexFromAxis(
+        [
+          { start: 0, end: 100 },
+          { start: 100, end: 200 },
+        ],
+        100,
+      ),
+    ).toBe(1);
   });
 });

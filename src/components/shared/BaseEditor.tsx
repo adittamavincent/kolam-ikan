@@ -6,6 +6,7 @@ import {
   EditorSelection,
   EditorState,
   RangeSetBuilder,
+  StateField,
   type Extension,
   type StateCommand,
 } from "@codemirror/state";
@@ -25,15 +26,13 @@ import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { searchKeymap } from "@codemirror/search";
 import {
   Decoration,
+  type DecorationSet,
   EditorView,
-  ViewPlugin,
   WidgetType,
   drawSelection,
   highlightActiveLine,
   keymap,
   placeholder as placeholderExtension,
-  type DecorationSet,
-  type ViewUpdate,
 } from "@codemirror/view";
 import {
   Point as MarkdownPoint,
@@ -45,6 +44,7 @@ import { blocksToStoredMarkdown, storedContentToBlocks } from "@/lib/content-pro
 import {
   MARKDOWN_TABLE_OPTIONS,
   findMarkdownTableBlocks,
+  isMarkdownHorizontalRule,
   type MarkdownTableCellModel,
   type MarkdownTableAlignment,
   type MarkdownTableRowModel,
@@ -225,7 +225,33 @@ function appendInlineMarkdown(target: HTMLElement, text: string) {
   return offsetMap.length > 0 ? offsetMap : [0];
 }
 
-function getVisibleOffsetFromPoint(root: HTMLElement, event: MouseEvent) {
+function getVisibleOffsetFromPoint(
+  root: HTMLElement,
+  clientX: number,
+  clientY: number,
+) {
+  const getProportionalOffset = () => {
+    const visibleLength = root.textContent?.length ?? 0;
+    if (visibleLength === 0) {
+      return 0;
+    }
+
+    const rect = root.getBoundingClientRect();
+    if (rect.width <= 0) {
+      return visibleLength;
+    }
+
+    const styles = root.ownerDocument.defaultView?.getComputedStyle(root);
+    const paddingLeft = Number.parseFloat(styles?.paddingLeft ?? "0") || 0;
+    const paddingRight = Number.parseFloat(styles?.paddingRight ?? "0") || 0;
+    const contentStart = rect.left + paddingLeft;
+    const contentEnd = Math.max(contentStart, rect.right - paddingRight);
+    const contentWidth = Math.max(1, contentEnd - contentStart);
+    const clampedX = Math.max(contentStart, Math.min(clientX, contentEnd));
+    const ratio = (clampedX - contentStart) / contentWidth;
+    return Math.round(ratio * visibleLength);
+  };
+
   const doc = root.ownerDocument;
   const anyDoc = doc as Document & {
     caretPositionFromPoint?: (x: number, y: number) => { offset: number; offsetNode: Node } | null;
@@ -235,12 +261,12 @@ function getVisibleOffsetFromPoint(root: HTMLElement, event: MouseEvent) {
   let node: Node | null = null;
   let offset = 0;
 
-  const caretPosition = anyDoc.caretPositionFromPoint?.(event.clientX, event.clientY);
+  const caretPosition = anyDoc.caretPositionFromPoint?.(clientX, clientY);
   if (caretPosition) {
     node = caretPosition.offsetNode;
     offset = caretPosition.offset;
   } else {
-    const range = anyDoc.caretRangeFromPoint?.(event.clientX, event.clientY) ?? null;
+    const range = anyDoc.caretRangeFromPoint?.(clientX, clientY) ?? null;
     if (range) {
       node = range.startContainer;
       offset = range.startOffset;
@@ -248,47 +274,559 @@ function getVisibleOffsetFromPoint(root: HTMLElement, event: MouseEvent) {
   }
 
   if (!node || !root.contains(node)) {
-    return root.textContent?.length ?? 0;
+    return getProportionalOffset();
   }
 
+  try {
+    const range = doc.createRange();
+    range.setStart(root, 0);
+    range.setEnd(node, offset);
+    return Math.max(
+      0,
+      Math.min(range.toString().length, root.textContent?.length ?? 0),
+    );
+  } catch {
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let visibleOffset = 0;
+
+    while (walker.nextNode()) {
+      const current = walker.currentNode;
+      const length = current.textContent?.length ?? 0;
+
+      if (current === node) {
+        return visibleOffset + Math.min(offset, length);
+      }
+
+      visibleOffset += length;
+    }
+  }
+
+  return getProportionalOffset();
+}
+
+type TableCellBinding = {
+  cell: MarkdownTableCellModel;
+  element: HTMLTableCellElement;
+  lineNumber: number;
+  offsetMap: number[];
+};
+
+type MeasuredVisibleCharacter = {
+  bottom: number;
+  endOffset: number;
+  left: number;
+  right: number;
+  startOffset: number;
+  top: number;
+};
+
+type MeasuredVisibleOffsetResult =
+  | {
+      offset: number;
+      placement: "inside";
+    }
+  | {
+      offset: number;
+      placement: "before" | "after";
+    };
+
+type AxisRect = {
+  end: number;
+  start: number;
+};
+
+export function resolveTableCellSourceOffset(
+  cell: Pick<MarkdownTableCellModel, "content" | "paddingLeft" | "rawEnd" | "rawStart">,
+  offsetMap: number[],
+  visibleOffset: number,
+) {
+  const rawCellWidth = Math.max(0, cell.rawEnd - cell.rawStart);
+  const boundedVisibleOffset = Math.max(
+    0,
+    Math.min(visibleOffset, Math.max(0, offsetMap.length - 1)),
+  );
+  const visibleSourceOffset =
+    cell.paddingLeft + (offsetMap[boundedVisibleOffset] ?? cell.content.length);
+
+  return Math.max(0, Math.min(visibleSourceOffset, rawCellWidth));
+}
+
+export function pickRectIndexFromAxis(rects: AxisRect[], point: number) {
+  if (rects.length === 0) {
+    return -1;
+  }
+
+  if (point <= rects[0].start) {
+    return 0;
+  }
+
+  for (let index = 0; index < rects.length - 1; index += 1) {
+    const boundary = (rects[index].end + rects[index + 1].start) / 2;
+    if (point < boundary) {
+      return index;
+    }
+  }
+
+  return rects.length - 1;
+}
+
+export function getTableCellContentBounds(
+  cell: Pick<MarkdownTableCellModel, "paddingLeft" | "rawContent" | "rawEnd" | "rawStart">,
+) {
+  const rawCellWidth = Math.max(0, cell.rawEnd - cell.rawStart);
+  const trailingWhitespace = cell.rawContent.match(/\s*$/)?.[0].length ?? 0;
+  const start = Math.max(0, Math.min(cell.paddingLeft, rawCellWidth));
+  const end = Math.max(start, Math.min(rawCellWidth - trailingWhitespace, rawCellWidth));
+
+  return { end, start };
+}
+
+export function resolveMeasuredTextPositionFromMeasuredCharacters(
+  measuredCharacters: MeasuredVisibleCharacter[],
+  clientX: number,
+  clientY: number,
+) : MeasuredVisibleOffsetResult | null {
+  if (measuredCharacters.length === 0) {
+    return null;
+  }
+
+  const sortedCharacters = [...measuredCharacters].sort((left, right) => {
+    if (left.top !== right.top) return left.top - right.top;
+    if (left.left !== right.left) return left.left - right.left;
+    return left.startOffset - right.startOffset;
+  });
+
+  const lines: Array<{
+    bottom: number;
+    chars: MeasuredVisibleCharacter[];
+    left: number;
+    right: number;
+    top: number;
+  }> = [];
+
+  for (const character of sortedCharacters) {
+    const lastLine = lines.at(-1);
+    const overlapsLastLine =
+      lastLine &&
+      character.top <= lastLine.bottom + 2 &&
+      character.bottom >= lastLine.top - 2;
+
+    if (overlapsLastLine && lastLine) {
+      lastLine.chars.push(character);
+      lastLine.left = Math.min(lastLine.left, character.left);
+      lastLine.right = Math.max(lastLine.right, character.right);
+      lastLine.top = Math.min(lastLine.top, character.top);
+      lastLine.bottom = Math.max(lastLine.bottom, character.bottom);
+      continue;
+    }
+
+    lines.push({
+      bottom: character.bottom,
+      chars: [character],
+      left: character.left,
+      right: character.right,
+      top: character.top,
+    });
+  }
+
+  const targetLine =
+    lines.reduce<{
+      distance: number;
+      line: (typeof lines)[number];
+    } | null>((nearest, line) => {
+      const dy =
+        clientY < line.top
+          ? line.top - clientY
+          : clientY > line.bottom
+            ? clientY - line.bottom
+            : 0;
+      const dx =
+        clientX < line.left
+          ? line.left - clientX
+          : clientX > line.right
+            ? clientX - line.right
+            : 0;
+      const distance = Math.hypot(dx, dy);
+
+      if (!nearest || distance < nearest.distance) {
+        return { distance, line };
+      }
+
+      return nearest;
+    }, null)?.line ?? lines[0];
+
+  const lineCharacters = [...targetLine.chars].sort((left, right) => {
+    if (left.left !== right.left) return left.left - right.left;
+    return left.startOffset - right.startOffset;
+  });
+  const firstCharacter = lineCharacters[0];
+  const lastCharacter = lineCharacters.at(-1) ?? firstCharacter;
+
+  if (clientX <= firstCharacter.left) {
+    return {
+      offset: firstCharacter.startOffset,
+      placement: "before",
+    };
+  }
+
+  if (clientX >= lastCharacter.right) {
+    return {
+      offset: lastCharacter.endOffset,
+      placement: "after",
+    };
+  }
+
+  for (const character of lineCharacters) {
+    if (clientX >= character.left && clientX <= character.right) {
+      const midpoint = (character.left + character.right) / 2;
+      return {
+        offset: clientX <= midpoint ? character.startOffset : character.endOffset,
+        placement: "inside",
+      };
+    }
+  }
+
+  const nearestCharacter =
+    lineCharacters.reduce<{
+      character: MeasuredVisibleCharacter;
+      distance: number;
+    } | null>((nearest, character) => {
+      const distance =
+        clientX < character.left
+          ? character.left - clientX
+          : clientX > character.right
+            ? clientX - character.right
+            : 0;
+
+      if (!nearest || distance < nearest.distance) {
+        return { character, distance };
+      }
+
+      return nearest;
+    }, null)?.character ?? lastCharacter;
+
+  return {
+    offset:
+      clientX <= nearestCharacter.left
+        ? nearestCharacter.startOffset
+        : nearestCharacter.endOffset,
+    placement: "inside",
+  };
+}
+
+export function resolveVisibleOffsetFromMeasuredCharacters(
+  measuredCharacters: MeasuredVisibleCharacter[],
+  clientX: number,
+  clientY: number,
+) {
+  return (
+    resolveMeasuredTextPositionFromMeasuredCharacters(
+      measuredCharacters,
+      clientX,
+      clientY,
+    )?.offset ?? null
+  );
+}
+
+function measureVisibleCharacters(root: HTMLElement) {
+  const doc = root.ownerDocument;
   const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const measuredCharacters: MeasuredVisibleCharacter[] = [];
+
   let visibleOffset = 0;
 
   while (walker.nextNode()) {
-    const current = walker.currentNode;
-    const length = current.textContent?.length ?? 0;
+    const node = walker.currentNode;
+    const text = node.textContent ?? "";
 
-    if (current === node) {
-      return visibleOffset + Math.min(offset, length);
+    for (let index = 0; index < text.length; index += 1) {
+      const range = doc.createRange();
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+
+      const rects = Array.from(range.getClientRects()).filter(
+        (rect) => rect.width > 0 || rect.height > 0,
+      );
+      if (rects.length === 0) {
+        continue;
+      }
+
+      measuredCharacters.push({
+        bottom: Math.max(...rects.map((rect) => rect.bottom)),
+        endOffset: visibleOffset + index + 1,
+        left: Math.min(...rects.map((rect) => rect.left)),
+        right: Math.max(...rects.map((rect) => rect.right)),
+        startOffset: visibleOffset + index,
+        top: Math.min(...rects.map((rect) => rect.top)),
+      });
     }
 
-    visibleOffset += length;
+    visibleOffset += text.length;
   }
 
-  return visibleOffset;
+  return measuredCharacters;
 }
 
-function attachTableCellSelection(
+function getVisibleTextOffsetFromPoint(
   root: HTMLElement,
-  cellElement: HTMLElement,
-  cell: MarkdownTableCellModel,
+  clientX: number,
+  clientY: number,
+) {
+  const measuredCharacters = measureVisibleCharacters(root);
+  const measuredPosition = resolveMeasuredTextPositionFromMeasuredCharacters(
+    measuredCharacters,
+    clientX,
+    clientY,
+  );
+
+  if (measuredPosition !== null) {
+    return measuredPosition;
+  }
+
+  return {
+    offset: getVisibleOffsetFromPoint(root, clientX, clientY),
+    placement: "inside" as const,
+  };
+}
+
+function getDistanceToRect(rect: DOMRect, clientX: number, clientY: number) {
+  const dx =
+    clientX < rect.left
+      ? rect.left - clientX
+      : clientX > rect.right
+        ? clientX - rect.right
+        : 0;
+  const dy =
+    clientY < rect.top
+      ? rect.top - clientY
+      : clientY > rect.bottom
+        ? clientY - rect.bottom
+        : 0;
+
+  return Math.hypot(dx, dy);
+}
+
+function findTableCellBindingFromPoint(
+  table: HTMLTableElement,
+  bindings: TableCellBinding[],
+  clientX: number,
+  clientY: number,
+) {
+  const tableRect = table.getBoundingClientRect();
+  if (
+    clientX < tableRect.left - 1 ||
+    clientX > tableRect.right + 1 ||
+    clientY < tableRect.top - 1 ||
+    clientY > tableRect.bottom + 1
+  ) {
+    return null;
+  }
+
+  const documentAtPoint = table.ownerDocument;
+  const elementsAtPoint =
+    documentAtPoint.elementsFromPoint?.(clientX, clientY) ??
+    [documentAtPoint.elementFromPoint(clientX, clientY)].filter(
+      (element): element is Element => Boolean(element),
+    );
+  const bindingByElement = new Map(bindings.map((binding) => [binding.element, binding]));
+
+  for (const element of elementsAtPoint) {
+    const candidate =
+      element instanceof HTMLTableCellElement
+        ? element
+        : element.closest("th, td");
+
+    if (
+      candidate instanceof HTMLTableCellElement &&
+      table.contains(candidate)
+    ) {
+      const binding = bindingByElement.get(candidate);
+      if (binding) {
+        return binding;
+      }
+    }
+  }
+
+  const rows = Array.from(table.querySelectorAll("tr")).filter(
+    (row): row is HTMLTableRowElement => row.children.length > 0,
+  );
+  const rowIndex = pickRectIndexFromAxis(
+    rows.map((row) => {
+      const rect = row.getBoundingClientRect();
+      return {
+        end: rect.bottom,
+        start: rect.top,
+      };
+    }),
+    clientY,
+  );
+
+  if (rowIndex >= 0) {
+    const row = rows[rowIndex];
+    const cells = Array.from(row.children).filter(
+      (cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+    );
+    const cellIndex = pickRectIndexFromAxis(
+      cells.map((cell) => {
+        const rect = cell.getBoundingClientRect();
+        return {
+          end: rect.right,
+          start: rect.left,
+        };
+      }),
+      clientX,
+    );
+    const cell = cellIndex >= 0 ? cells[cellIndex] : null;
+
+    if (cell) {
+      const binding = bindingByElement.get(cell);
+      if (binding) {
+        return binding;
+      }
+    }
+  }
+
+  let nearest: { binding: TableCellBinding; distance: number } | null = null;
+
+  for (const binding of bindings) {
+    const rect = binding.element.getBoundingClientRect();
+    const inside =
+      clientX >= rect.left - 0.5 &&
+      clientX <= rect.right + 0.5 &&
+      clientY >= rect.top - 0.5 &&
+      clientY <= rect.bottom + 0.5;
+
+    if (inside) {
+      return binding;
+    }
+
+    const distance = getDistanceToRect(rect, clientX, clientY);
+    if (!nearest || distance < nearest.distance) {
+      nearest = { binding, distance };
+    }
+  }
+
+  return nearest && nearest.distance <= 1 ? nearest.binding : null;
+}
+
+function applyTableHitFeedback(
+  table: HTMLTableElement,
+  hitCell: HTMLTableCellElement,
+) {
+  table
+    .querySelectorAll(".cm-kolam-table-hit-cell, .cm-kolam-table-hit-row, .cm-kolam-table-hit-col")
+    .forEach((node) => {
+      node.classList.remove(
+        "cm-kolam-table-hit-cell",
+        "cm-kolam-table-hit-row",
+        "cm-kolam-table-hit-col",
+      );
+    });
+
+  hitCell.classList.add("cm-kolam-table-hit-cell");
+
+  const row = hitCell.parentElement as HTMLTableRowElement | null;
+  if (row) {
+    Array.from(row.children).forEach((child) => {
+      if (child instanceof HTMLTableCellElement) {
+        child.classList.add("cm-kolam-table-hit-row");
+      }
+    });
+  }
+
+  const columnIndex = hitCell.cellIndex;
+  table.querySelectorAll("tr").forEach((rowElement) => {
+    const columnCell = rowElement.children.item(columnIndex);
+    if (columnCell instanceof HTMLTableCellElement) {
+      columnCell.classList.add("cm-kolam-table-hit-col");
+    }
+  });
+}
+
+function attachTableSelection(
+  table: HTMLTableElement,
+  bindings: TableCellBinding[],
+) {
+  table.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const binding = findTableCellBindingFromPoint(
+      table,
+      bindings,
+      event.clientX,
+      event.clientY,
+    );
+    if (!binding) {
+      return;
+    }
+
+    const view = EditorView.findFromDOM(table);
+    if (!view) return;
+
+    const line = view.state.doc.line(binding.lineNumber);
+    const visiblePosition = getVisibleTextOffsetFromPoint(
+      binding.element,
+      event.clientX,
+      event.clientY,
+    );
+    const visibleOffset = Math.max(
+      0,
+      Math.min(
+        visiblePosition.offset,
+        binding.offsetMap.length - 1,
+      ),
+    );
+    const contentBounds = getTableCellContentBounds(binding.cell);
+    const sourceOffset =
+      visiblePosition.placement === "before"
+        ? contentBounds.start
+        : visiblePosition.placement === "after"
+          ? contentBounds.end
+          : resolveTableCellSourceOffset(
+              binding.cell,
+              binding.offsetMap,
+              visibleOffset,
+            );
+    const anchor = line.from + binding.cell.rawStart + sourceOffset;
+
+    view.dispatch({
+      selection: EditorSelection.cursor(
+        Math.max(line.from, Math.min(anchor, line.to)),
+      ),
+      scrollIntoView: true,
+    });
+    view.focus();
+
+    applyTableHitFeedback(table, binding.element);
+  });
+}
+
+function attachHorizontalRuleSelection(
+  root: HTMLElement,
+  hitbox: HTMLElement,
   lineNumber: number,
 ) {
-  const offsetMap = appendInlineMarkdown(cellElement, cell.content);
+  hitbox.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) {
+      return;
+    }
 
-  cellElement.addEventListener("mousedown", (event) => {
     event.preventDefault();
 
     const view = EditorView.findFromDOM(root);
     if (!view) return;
 
     const line = view.state.doc.line(lineNumber);
-    const visibleOffset = Math.max(
-      0,
-      Math.min(getVisibleOffsetFromPoint(cellElement, event), offsetMap.length - 1),
-    );
-    const sourceOffset = offsetMap[visibleOffset] ?? cell.content.length;
-    const anchor = line.from + cell.rawStart + cell.paddingLeft + sourceOffset;
+    const rect = hitbox.getBoundingClientRect();
+    const width = Math.max(1, rect.width);
+    const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / width));
+    const lineLength = Math.max(1, line.length);
+    const anchor = line.from + Math.round(ratio * lineLength);
 
     view.dispatch({
       selection: EditorSelection.cursor(
@@ -305,6 +843,7 @@ class TableBlockWidget extends WidgetType {
     private readonly rows: MarkdownTableRowModel[],
     private readonly alignments: MarkdownTableAlignment[],
     private readonly startLineNumber: number,
+    private readonly interactive: boolean,
   ) {
     super();
   }
@@ -333,12 +872,13 @@ class TableBlockWidget extends WidgetType {
   }
 
   ignoreEvent() {
-    return false;
+    return true;
   }
 
   toDOM() {
     const table = document.createElement("table");
     table.className = "kolam-table cm-kolam-table-preview-block";
+    const bindings: TableCellBinding[] = [];
 
     const thead = document.createElement("thead");
     const tbody = document.createElement("tbody");
@@ -358,7 +898,15 @@ class TableBlockWidget extends WidgetType {
       row.cells.forEach((cell, index) => {
         const cellElement = document.createElement(cellTag);
         cellElement.style.textAlign = this.alignments[index] ?? "left";
-        attachTableCellSelection(table, cellElement, cell, lineNumber);
+        const offsetMap = appendInlineMarkdown(cellElement, cell.content);
+        if (this.interactive && cellElement instanceof HTMLTableCellElement) {
+          bindings.push({
+            cell,
+            element: cellElement,
+            lineNumber,
+            offsetMap,
+          });
+        }
         tr.appendChild(cellElement);
       });
 
@@ -370,7 +918,29 @@ class TableBlockWidget extends WidgetType {
       table.appendChild(tbody);
     }
 
+    if (this.interactive && bindings.length > 0) {
+      attachTableSelection(table, bindings);
+    }
+
     return table;
+  }
+}
+
+class HorizontalRuleWidget extends WidgetType {
+  constructor(private readonly lineNumber: number) {
+    super();
+  }
+
+  toDOM() {
+    const hitbox = document.createElement("div");
+    hitbox.className = "cm-kolam-rule-hitbox";
+
+    const rule = document.createElement("hr");
+    rule.className = "kolam-rule cm-kolam-rule-preview-block";
+
+    hitbox.appendChild(rule);
+    attachHorizontalRuleSelection(hitbox, hitbox, this.lineNumber);
+    return hitbox;
   }
 }
 
@@ -533,15 +1103,15 @@ class BufferedDecorationBuilder {
 }
 
 function intersectsSelection(
-  view: EditorView,
+  state: EditorState,
   from: number,
   to: number,
   expandToLine = false,
 ) {
-  const rangeFrom = expandToLine ? view.state.doc.lineAt(from).from : from;
-  const rangeTo = expandToLine ? view.state.doc.lineAt(to).to : to;
+  const rangeFrom = expandToLine ? state.doc.lineAt(from).from : from;
+  const rangeTo = expandToLine ? state.doc.lineAt(to).to : to;
 
-  return view.state.selection.ranges.some((selection) => {
+  return state.selection.ranges.some((selection) => {
     if (selection.empty) {
       return selection.from >= rangeFrom && selection.from <= rangeTo;
     }
@@ -568,12 +1138,12 @@ function decorateDelimitedToken(
 
 function decorateHeading(
   builder: { add: (from: number, to: number, value: Decoration) => void },
-  view: EditorView,
+  state: EditorState,
   from: number,
   level: number,
 ) {
-  const line = view.state.doc.lineAt(from);
-  const lineText = view.state.doc.sliceString(line.from, line.to);
+  const line = state.doc.lineAt(from);
+  const lineText = state.doc.sliceString(line.from, line.to);
   const markerMatch = lineText.match(/^(#{1,6})\s+/);
 
   if (!markerMatch) return;
@@ -590,11 +1160,11 @@ function decorateHeading(
 
 function decorateLink(
   builder: { add: (from: number, to: number, value: Decoration) => void },
-  view: EditorView,
+  state: EditorState,
   from: number,
   to: number,
 ) {
-  const raw = view.state.doc.sliceString(from, to);
+  const raw = state.doc.sliceString(from, to);
   const match = raw.match(/^\[([^\]]*)\]\(([\s\S]*)\)$/);
   if (!match) return;
 
@@ -760,340 +1330,343 @@ function runTableEditorCommand(
   return true;
 }
 
-function createLivePreviewExtension() {
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
+function buildLivePreviewDecorations(
+  state: EditorState,
+  revealSelection: boolean,
+) {
+  const builder = new BufferedDecorationBuilder();
+  const source = state.doc.toString();
+  const lines = source.split("\n");
+  const frontmatter = extractFrontmatter(source);
+  const frontmatterEndLine =
+    frontmatter.rangeEnd > 0
+      ? state.doc.lineAt(Math.max(0, frontmatter.rangeEnd - 1)).number
+      : 0;
+  const orderedListPattern = /^(\s*)(\d+[.)])\s+/;
+  const tableLineNumbers = new Set<number>();
 
-      constructor(view: EditorView) {
-        this.decorations = this.buildDecorations(view);
-      }
+  if (
+    frontmatter.rangeEnd > 0 &&
+    (!revealSelection || !intersectsSelection(state, 0, frontmatter.rangeEnd))
+  ) {
+    addHiddenDecoration(builder, 0, frontmatter.rangeEnd);
+  }
 
-      update(update: ViewUpdate) {
-        if (update.docChanged || update.selectionSet || update.viewportChanged) {
-          this.decorations = this.buildDecorations(update.view);
-        }
-      }
+  syntaxTree(state).iterate({
+    enter: (node) => {
+      if (node.from === node.to) return;
 
-      buildDecorations(view: EditorView) {
-        const builder = new BufferedDecorationBuilder();
-        const source = view.state.doc.toString();
-        const lines = source.split("\n");
-        const frontmatter = extractFrontmatter(source);
-        const orderedListPattern = /^(\s*)(\d+[.)])\s+/;
-        const tableLineNumbers = new Set<number>();
-
-        if (
-          frontmatter.rangeEnd > 0 &&
-          !intersectsSelection(view, 0, frontmatter.rangeEnd)
-        ) {
-          addHiddenDecoration(builder, 0, frontmatter.rangeEnd);
-        }
-
-        // Live Preview hides markdown punctuation only when the caret is outside
-        // the parsed token. We walk the CM6 syntax tree, keep active tokens raw,
-        // and replace only their marker ranges with empty decorations.
-        syntaxTree(view.state).iterate({
-          enter: (node) => {
-            if (node.from === node.to) return;
-
-            switch (node.name) {
-              case "ATXHeading1":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  decorateHeading(builder, view, node.from, 1);
-                }
-                return false;
-              case "ATXHeading2":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  decorateHeading(builder, view, node.from, 2);
-                }
-                return false;
-              case "ATXHeading3":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  decorateHeading(builder, view, node.from, 3);
-                }
-                return false;
-              case "ATXHeading4":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  decorateHeading(builder, view, node.from, 4);
-                }
-                return false;
-              case "ATXHeading5":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  decorateHeading(builder, view, node.from, 5);
-                }
-                return false;
-              case "ATXHeading6":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  decorateHeading(builder, view, node.from, 6);
-                }
-                return false;
-              case "StrongEmphasis":
-                if (!intersectsSelection(view, node.from, node.to)) {
-                  decorateDelimitedToken(
-                    builder,
-                    node.from,
-                    node.to,
-                    2,
-                    2,
-                    "cm-kolam-strong",
-                  );
-                }
-                return false;
-              case "Emphasis":
-                if (!intersectsSelection(view, node.from, node.to)) {
-                  decorateDelimitedToken(
-                    builder,
-                    node.from,
-                    node.to,
-                    1,
-                    1,
-                    "cm-kolam-emphasis",
-                  );
-                }
-                return false;
-              case "Strikethrough":
-                if (!intersectsSelection(view, node.from, node.to)) {
-                  decorateDelimitedToken(
-                    builder,
-                    node.from,
-                    node.to,
-                    2,
-                    2,
-                    "cm-kolam-strikethrough",
-                  );
-                }
-                return false;
-              case "InlineCode":
-                if (!intersectsSelection(view, node.from, node.to)) {
-                  decorateDelimitedToken(
-                    builder,
-                    node.from,
-                    node.to,
-                    1,
-                    1,
-                    "cm-kolam-inline-code",
-                  );
-                }
-                return false;
-              case "Link":
-                if (!intersectsSelection(view, node.from, node.to)) {
-                  decorateLink(builder, view, node.from, node.to);
-                }
-                return false;
-              case "Blockquote":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  addMarkDecoration(
-                    builder,
-                    node.from,
-                    node.to,
-                    "cm-kolam-blockquote",
-                  );
-                }
-                return;
-              case "QuoteMark":
-                if (!intersectsSelection(view, node.from, node.to, true)) {
-                  addHiddenDecoration(builder, node.from, node.to);
-                }
-                return;
-              default:
-                return;
-            }
-          },
-        });
-
-        findMarkdownTableBlocks(lines).forEach((block) => {
-          let intersectsTable = false;
-
-          block.model.rows.forEach((_, rowOffset) => {
-            const lineNumber = block.start + rowOffset + 1;
-            tableLineNumbers.add(lineNumber);
-
-            const line = view.state.doc.line(lineNumber);
-            if (intersectsSelection(view, line.from, line.to, true)) {
-              intersectsTable = true;
-            }
-          });
-
-          if (intersectsTable) {
-            return;
+      switch (node.name) {
+        case "ATXHeading1":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            decorateHeading(builder, state, node.from, 1);
           }
-
-          const firstLine = view.state.doc.line(block.start + 1);
-          const widget = new TableBlockWidget(
-            block.model.rows,
-            block.model.alignments,
-            block.start + 1,
-          );
-
-          addDecoration(
-            builder,
-            firstLine.from,
-            firstLine.to,
-            Decoration.replace({ widget }),
-          );
-          addDecoration(
-            builder,
-            firstLine.from,
-            firstLine.from,
-            Decoration.line({
-              class: "cm-kolam-table-preview-line",
-            }),
-          );
-
-          for (let rowOffset = 1; rowOffset < block.model.rows.length; rowOffset += 1) {
-            const lineNumber = block.start + rowOffset + 1;
-            const line = view.state.doc.line(lineNumber);
-
-            addDecoration(builder, line.from, line.to, Decoration.replace({}));
-            addDecoration(
+          return false;
+        case "ATXHeading2":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            decorateHeading(builder, state, node.from, 2);
+          }
+          return false;
+        case "ATXHeading3":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            decorateHeading(builder, state, node.from, 3);
+          }
+          return false;
+        case "ATXHeading4":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            decorateHeading(builder, state, node.from, 4);
+          }
+          return false;
+        case "ATXHeading5":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            decorateHeading(builder, state, node.from, 5);
+          }
+          return false;
+        case "ATXHeading6":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            decorateHeading(builder, state, node.from, 6);
+          }
+          return false;
+        case "StrongEmphasis":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to)) {
+            decorateDelimitedToken(
               builder,
-              line.from,
-              line.from,
-              Decoration.line({
-                class: "cm-kolam-table-hidden-line",
-              }),
+              node.from,
+              node.to,
+              2,
+              2,
+              "cm-kolam-strong",
             );
           }
-        });
-
-        for (let lineNumber = 1; lineNumber <= view.state.doc.lines; lineNumber += 1) {
-          const line = view.state.doc.line(lineNumber);
-          if (tableLineNumbers.has(lineNumber)) {
-            continue;
+          return false;
+        case "Emphasis":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to)) {
+            decorateDelimitedToken(
+              builder,
+              node.from,
+              node.to,
+              1,
+              1,
+              "cm-kolam-emphasis",
+            );
           }
-          const isActiveLine = intersectsSelection(view, line.from, line.to, true);
-          const orderedMatch = line.text.match(orderedListPattern);
-
-          let orderedFamilyWidthCh: number | null = null;
-          if (orderedMatch) {
-            const indent = orderedMatch[1];
-            let maxMarkerLength = orderedMatch[2].length;
-
-            for (let scan = lineNumber - 1; scan >= 1; scan -= 1) {
-              const candidate = view.state.doc.line(scan);
-              const candidateMatch = candidate.text.match(orderedListPattern);
-              if (!candidateMatch || candidateMatch[1] !== indent) break;
-              maxMarkerLength = Math.max(
-                maxMarkerLength,
-                candidateMatch[2].length,
-              );
-            }
-
-            for (let scan = lineNumber + 1; scan <= view.state.doc.lines; scan += 1) {
-              const candidate = view.state.doc.line(scan);
-              const candidateMatch = candidate.text.match(orderedListPattern);
-              if (!candidateMatch || candidateMatch[1] !== indent) break;
-              maxMarkerLength = Math.max(
-                maxMarkerLength,
-                candidateMatch[2].length,
-              );
-            }
-
-            orderedFamilyWidthCh = Math.max(3.25, maxMarkerLength + 1.25);
+          return false;
+        case "Strikethrough":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to)) {
+            decorateDelimitedToken(
+              builder,
+              node.from,
+              node.to,
+              2,
+              2,
+              "cm-kolam-strikethrough",
+            );
           }
-
-          if (!isActiveLine) {
-            const calloutMatch = line.text.match(/^>\s*\[!([^\]\+\-]+)\]([+-])?\s*/i);
-            if (calloutMatch) {
-              const contentFrom = line.from + calloutMatch[0].length;
-              addHiddenDecoration(builder, line.from, contentFrom);
-              addMarkDecoration(
-                builder,
-                contentFrom,
-                line.to,
-                "cm-kolam-callout-title",
-              );
-            }
-
-            const taskMatch = line.text.match(/^(\s*)[-+*]\s+\[( |x|X)\]\s+/);
-            if (taskMatch) {
-              const markerFrom = line.from + taskMatch[1].length;
-              const markerTo = line.from + taskMatch[0].length;
-              addWidgetDecoration(
-                builder,
-                markerFrom,
-                markerTo,
-                new TaskMarkerWidget(taskMatch[2].toLowerCase() === "x"),
-              );
-            } else {
-              if (orderedMatch) {
-                const markerFrom = line.from + orderedMatch[1].length;
-                const markerTo = line.from + orderedMatch[0].length;
-                addWidgetDecoration(
-                  builder,
-                  markerFrom,
-                  markerTo,
-                  new ListMarkerWidget(
-                    orderedMatch[2],
-                    "cm-kolam-list-marker cm-kolam-ordered-marker",
-                    orderedFamilyWidthCh ?? undefined,
-                  ),
-                );
-              } else {
-                const bulletMatch = line.text.match(/^(\s*)[-+*]\s+/);
-                if (bulletMatch) {
-                  const markerFrom = line.from + bulletMatch[1].length;
-                  const markerTo = line.from + bulletMatch[0].length;
-                  addWidgetDecoration(
-                    builder,
-                    markerFrom,
-                    markerTo,
-                    new ListMarkerWidget(
-                      "\u2022",
-                      "cm-kolam-list-marker cm-kolam-bullet-marker",
-                    ),
-                  );
-                }
-              }
-            }
+          return false;
+        case "InlineCode":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to)) {
+            decorateDelimitedToken(
+              builder,
+              node.from,
+              node.to,
+              1,
+              1,
+              "cm-kolam-inline-code",
+            );
           }
-
-          const regexTokens = [
-            {
-              className: "cm-kolam-link",
-              leftWidth: 2,
-              regex: /\[\[([^[\]]+)\]\]/g,
-              rightWidth: 2,
-            },
-            {
-              className: "cm-kolam-highlight",
-              leftWidth: 2,
-              regex: /==([^=]+)==/g,
-              rightWidth: 2,
-            },
-          ];
-
-          regexTokens.forEach((token) => {
-            let match: RegExpExecArray | null;
-
-            while ((match = token.regex.exec(line.text)) !== null) {
-              const from = line.from + match.index;
-              const to = from + match[0].length;
-
-              if (intersectsSelection(view, from, to)) {
-                continue;
-              }
-
-              decorateDelimitedToken(
-                builder,
-                from,
-                to,
-                token.leftWidth,
-                token.rightWidth,
-                token.className,
-              );
-            }
-          });
-        }
-
-        return builder.finish();
+          return false;
+        case "Link":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to)) {
+            decorateLink(builder, state, node.from, node.to);
+          }
+          return false;
+        case "Blockquote":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            addMarkDecoration(
+              builder,
+              node.from,
+              node.to,
+              "cm-kolam-blockquote",
+            );
+          }
+          return;
+        case "QuoteMark":
+          if (!revealSelection || !intersectsSelection(state, node.from, node.to, true)) {
+            addHiddenDecoration(builder, node.from, node.to);
+          }
+          return;
+        default:
+          return;
       }
     },
-    {
-      decorations: (plugin) => plugin.decorations,
+  });
+
+  findMarkdownTableBlocks(lines).forEach((block) => {
+    let intersectsTable = false;
+
+    block.model.rows.forEach((_, rowOffset) => {
+      const lineNumber = block.start + rowOffset + 1;
+      tableLineNumbers.add(lineNumber);
+
+      const line = state.doc.line(lineNumber);
+      if (revealSelection && intersectsSelection(state, line.from, line.to, true)) {
+        intersectsTable = true;
+      }
+    });
+
+    if (intersectsTable) {
+      return;
+    }
+
+    const firstLine = state.doc.line(block.start + 1);
+    const widget = new TableBlockWidget(
+      block.model.rows,
+      block.model.alignments,
+      block.start + 1,
+      revealSelection,
+    );
+
+    const lastLine = state.doc.line(block.start + block.model.rows.length);
+
+    addDecoration(
+      builder,
+      firstLine.from,
+      lastLine.to,
+      Decoration.replace({ block: true, widget }),
+    );
+  });
+
+  for (let lineNumber = 1; lineNumber <= state.doc.lines; lineNumber += 1) {
+    const line = state.doc.line(lineNumber);
+    if (tableLineNumbers.has(lineNumber)) {
+      continue;
+    }
+    const isActiveLine =
+      revealSelection && intersectsSelection(state, line.from, line.to, true);
+
+    if (lineNumber <= frontmatterEndLine || isRowInsideFence(lines, lineNumber - 1)) {
+      continue;
+    }
+
+    if (!isActiveLine && isMarkdownHorizontalRule(line.text)) {
+      addDecoration(
+        builder,
+        line.from,
+        line.to,
+        Decoration.replace({
+          block: true,
+          widget: new HorizontalRuleWidget(lineNumber),
+        }),
+      );
+      continue;
+    }
+    const orderedMatch = line.text.match(orderedListPattern);
+
+    let orderedFamilyWidthCh: number | null = null;
+    if (orderedMatch) {
+      const indent = orderedMatch[1];
+      let maxMarkerLength = orderedMatch[2].length;
+
+      for (let scan = lineNumber - 1; scan >= 1; scan -= 1) {
+        const candidate = state.doc.line(scan);
+        const candidateMatch = candidate.text.match(orderedListPattern);
+        if (!candidateMatch || candidateMatch[1] !== indent) break;
+        maxMarkerLength = Math.max(
+          maxMarkerLength,
+          candidateMatch[2].length,
+        );
+      }
+
+      for (let scan = lineNumber + 1; scan <= state.doc.lines; scan += 1) {
+        const candidate = state.doc.line(scan);
+        const candidateMatch = candidate.text.match(orderedListPattern);
+        if (!candidateMatch || candidateMatch[1] !== indent) break;
+        maxMarkerLength = Math.max(
+          maxMarkerLength,
+          candidateMatch[2].length,
+        );
+      }
+
+      orderedFamilyWidthCh = Math.max(3.25, maxMarkerLength + 1.25);
+    }
+
+    if (!isActiveLine) {
+      const calloutMatch = line.text.match(/^>\s*\[!([^\]\+\-]+)\]([+-])?\s*/i);
+      if (calloutMatch) {
+        const contentFrom = line.from + calloutMatch[0].length;
+        addHiddenDecoration(builder, line.from, contentFrom);
+        addMarkDecoration(
+          builder,
+          contentFrom,
+          line.to,
+          "cm-kolam-callout-title",
+        );
+      }
+
+      const taskMatch = line.text.match(/^(\s*)[-+*]\s+\[( |x|X)\]\s+/);
+      if (taskMatch) {
+        const markerFrom = line.from + taskMatch[1].length;
+        const markerTo = line.from + taskMatch[0].length;
+        addWidgetDecoration(
+          builder,
+          markerFrom,
+          markerTo,
+          new TaskMarkerWidget(taskMatch[2].toLowerCase() === "x"),
+        );
+      } else {
+        if (orderedMatch) {
+          const markerFrom = line.from + orderedMatch[1].length;
+          const markerTo = line.from + orderedMatch[0].length;
+          addWidgetDecoration(
+            builder,
+            markerFrom,
+            markerTo,
+            new ListMarkerWidget(
+              orderedMatch[2],
+              "cm-kolam-list-marker cm-kolam-ordered-marker",
+              orderedFamilyWidthCh ?? undefined,
+            ),
+          );
+        } else {
+          const bulletMatch = line.text.match(/^(\s*)[-+*]\s+/);
+          if (bulletMatch) {
+            const markerFrom = line.from + bulletMatch[1].length;
+            const markerTo = line.from + bulletMatch[0].length;
+            addWidgetDecoration(
+              builder,
+              markerFrom,
+              markerTo,
+              new ListMarkerWidget(
+                "\u2022",
+                "cm-kolam-list-marker cm-kolam-bullet-marker",
+              ),
+            );
+          }
+        }
+      }
+    }
+
+    const regexTokens = [
+      {
+        className: "cm-kolam-link",
+        leftWidth: 2,
+        regex: /\[\[([^[\]]+)\]\]/g,
+        rightWidth: 2,
+      },
+      {
+        className: "cm-kolam-highlight",
+        leftWidth: 2,
+        regex: /==([^=]+)==/g,
+        rightWidth: 2,
+      },
+    ];
+
+    regexTokens.forEach((token) => {
+      let match: RegExpExecArray | null;
+
+      while ((match = token.regex.exec(line.text)) !== null) {
+        const from = line.from + match.index;
+        const to = from + match[0].length;
+
+        if (revealSelection && intersectsSelection(state, from, to)) {
+          continue;
+        }
+
+        decorateDelimitedToken(
+          builder,
+          from,
+          to,
+          token.leftWidth,
+          token.rightWidth,
+          token.className,
+        );
+      }
+    });
+  }
+
+  return builder.finish();
+}
+
+function createLivePreviewExtension({
+  revealSelection = true,
+}: {
+  revealSelection?: boolean;
+} = {}) {
+  return StateField.define<DecorationSet>({
+    create: (state) => buildLivePreviewDecorations(state, revealSelection),
+    update: (decorations, transaction) => {
+      if (
+        transaction.docChanged ||
+        transaction.selection ||
+        transaction.effects.length > 0
+      ) {
+        return buildLivePreviewDecorations(transaction.state, revealSelection);
+      }
+
+      return decorations.map(transaction.changes);
     },
-  );
+    provide: (field) => EditorView.decorations.from(field),
+  });
 }
 
 function formatSelection(
@@ -1320,6 +1893,42 @@ function continueMarkdownList(): StateCommand {
   };
 }
 
+function exitMarkdownTable(): StateCommand {
+  return ({ state, dispatch }) => {
+    const selection = state.selection.main;
+    if (!selection.empty) return false;
+
+    const cursorLine = state.doc.lineAt(selection.from).number;
+    const lines = getDocumentLines(state.doc);
+    const block = findMarkdownTableBlocks(lines).find((candidate) => {
+      const firstLine = candidate.start + 1;
+      const lastLine = candidate.start + candidate.model.rows.length;
+      return cursorLine >= firstLine && cursorLine <= lastLine;
+    });
+
+    if (!block) return false;
+
+    const lastLine = state.doc.line(block.start + block.model.rows.length);
+    const insert = lastLine.number === state.doc.lines ? "\n\n" : "\n";
+    const nextCursor = lastLine.to + 1;
+
+    dispatch(
+      state.update({
+        changes: {
+          from: lastLine.to,
+          insert,
+          to: lastLine.to,
+        },
+        selection: EditorSelection.cursor(nextCursor),
+        scrollIntoView: true,
+        userEvent: "input",
+      }),
+    );
+
+    return true;
+  };
+}
+
 function orderedListInputHandler() {
   return EditorView.inputHandler.of((view, from, to, text) => {
     if (!view.state.selection.main.empty || from !== to) return false;
@@ -1374,6 +1983,10 @@ const kolamEditorKeymap = [
     run: (target: EditorView) =>
       runTableEditorCommand(target, (editor) => editor.nextRow(MARKDOWN_TABLE_OPTIONS)) ||
       continueMarkdownList()(target),
+  },
+  {
+    key: "Shift-Enter",
+    run: (target: EditorView) => exitMarkdownTable()(target),
   },
   { key: "Mod-b", run: formatSelection("**") },
   { key: "Mod-i", run: formatSelection("*") },
@@ -1575,7 +2188,7 @@ export default function BaseEditor({
       autocompletion(),
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       orderedListInputHandler(),
-      ...(editable ? [createLivePreviewExtension()] : []),
+      createLivePreviewExtension({ revealSelection: editable }),
       keymap.of([
         ...kolamEditorKeymap,
         ...defaultKeymap,

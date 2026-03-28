@@ -490,8 +490,29 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block {
-  margin: 0;
+  margin: 0 !important;
+  display: table;
   table-layout: fixed;
+}
+
+.kolam-codemirror-root .cm-kolam-rule-preview-block {
+  display: block;
+  margin: 0 !important;
+}
+
+.kolam-codemirror-root .cm-kolam-rule-hitbox {
+  display: flex;
+  align-items: center;
+  min-height: 1.4rem;
+  cursor: text;
+}
+
+.kolam-codemirror-root .kolam-table {
+  margin: 0 !important;
+}
+
+.kolam-codemirror-root .kolam-rule {
+  margin: 0 !important;
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block th,
@@ -501,26 +522,17 @@ body {
   word-break: break-word;
 }
 
-.kolam-codemirror-root .cm-line.cm-kolam-table-divider-line {
-  min-height: 0;
-  height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  line-height: 0;
-  font-size: 0;
-  overflow: hidden;
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-row {
+  background: color-mix(in srgb, var(--text-selection) 14%, transparent);
 }
 
-.kolam-codemirror-root .cm-line.cm-kolam-table-preview-line {
-  min-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  line-height: 0;
-  font-size: 0;
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-col {
+  background: color-mix(in srgb, var(--text-selection) 10%, transparent);
 }
 
-.kolam-codemirror-root .cm-line.cm-kolam-table-hidden-line {
-  display: none;
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-cell {
+  background: color-mix(in srgb, var(--text-selection) 20%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text-normal) 45%, transparent);
 }
 
 .kolam-properties-panel {
@@ -660,6 +672,14 @@ body {
 .kolam-table th {
   background: color-mix(in srgb, var(--text-selection) 16%, transparent);
   border-bottom-width: 2px;
+}
+
+.kolam-rule {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-border-default, #d6d6d6) 82%, transparent);
 }
 
 .kolam-code-block {

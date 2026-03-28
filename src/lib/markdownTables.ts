@@ -43,6 +43,7 @@ export const MARKDOWN_TABLE_OPTIONS: Options = optionsWithDefaults({});
 
 const TABLE_DELIMITER_PATTERN =
   /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+(?:\s*:?-{3,}:?\s*)\|?\s*$/;
+const HORIZONTAL_RULE_PATTERN = /^\s*(?:---+|\*\*\*+|___+)\s*$/;
 
 const FENCE_PATTERN = /^(```|~~~)/;
 
@@ -103,7 +104,7 @@ function getCellRanges(line: string, expectedCellCount: number) {
     ends.push(line.length);
   } else {
     let segmentStart = pipes[0] === 0 ? 1 : 0;
-    let pipeIndex = 0;
+    let pipeIndex = pipes[0] === 0 ? 1 : 0;
 
     while (pipeIndex < pipes.length) {
       const segmentEnd = pipes[pipeIndex];
@@ -116,16 +117,6 @@ function getCellRanges(line: string, expectedCellCount: number) {
     if (pipes.at(-1) !== line.length - 1) {
       starts.push(segmentStart);
       ends.push(line.length);
-    }
-
-    if (pipes[0] === 0 && starts[0] === ends[0]) {
-      starts.shift();
-      ends.shift();
-    }
-
-    if (pipes.at(-1) === line.length - 1 && starts.at(-1) === ends.at(-1)) {
-      starts.pop();
-      ends.pop();
     }
   }
 
@@ -158,6 +149,10 @@ function buildCellModel(cell: TableCell | undefined, line: string, rawStart: num
 
 export function isMarkdownTableDelimiter(text: string) {
   return TABLE_DELIMITER_PATTERN.test(text);
+}
+
+export function isMarkdownHorizontalRule(text: string) {
+  return HORIZONTAL_RULE_PATTERN.test(text);
 }
 
 export function buildMarkdownTableModel(

@@ -51,6 +51,76 @@ describe("computeMarkdownListContinuation", () => {
     });
   });
 
+  it("exits an empty ordered list item even when the caret is reported at the start of the line", () => {
+    expect(computeMarkdownListContinuation("2. ", 0)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+  });
+
+  it("exits an empty bullet list item instead of repeating the marker", () => {
+    expect(computeMarkdownListContinuation("- ", "- ".length)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+  });
+
+  it("exits empty bullet markers for all supported bullet syntaxes", () => {
+    expect(computeMarkdownListContinuation("+ ", 0)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+    expect(computeMarkdownListContinuation("* ", 0)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+
+    expect(computeMarkdownListContinuation("-", 0)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+  });
+
+  it("exits nested empty list items without leaving indentation-only lines", () => {
+    expect(computeMarkdownListContinuation("    - ", "    - ".length)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+
+    expect(computeMarkdownListContinuation("\t* ", "\t* ".length)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+
+    expect(computeMarkdownListContinuation("  4. ", "  4. ".length)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+
+    expect(computeMarkdownListContinuation("    5) ", "    5) ".length)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+  });
+
   it("continues task list items as unchecked tasks", () => {
     expect(
       computeMarkdownListContinuation("- [x] Done", "- [x] Done".length),
@@ -63,6 +133,21 @@ describe("computeMarkdownListContinuation", () => {
 
   it("ignores cursors inside the list marker prefix", () => {
     expect(computeMarkdownListContinuation("7. Item", 1)).toBeNull();
+  });
+
+  it("exits empty ordered-paren and task list items", () => {
+    expect(computeMarkdownListContinuation("3) ", 0)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+    expect(computeMarkdownListContinuation("- [ ] ", 0)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
   });
 });
 
@@ -88,6 +173,336 @@ describe("continueMarkdownListCommand", () => {
     }
     const finalState: EditorState = nextState;
     expect(finalState.doc.toString()).toBe("1. one\n");
+  });
+
+  it("keeps the caret on the blank line when exiting an empty ordered item before the trailing space", () => {
+    const doc = ["1. body", "2. "].join("\n");
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(doc.length - 1),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe("1. body\n");
+    expect(finalState.selection.main.from).toBe(finalState.doc.length);
+  });
+
+  it("exits an empty bullet item after a populated sibling", () => {
+    const doc = ["- body", "- "].join("\n");
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(doc.length),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe("- body\n");
+    expect(finalState.selection.main.from).toBe(finalState.doc.length);
+  });
+
+  it("exits nested empty unordered items in one Enter without keeping indentation", () => {
+    const doc = ["- parent", "  - child", "  - "].join("\n");
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(doc.length),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe(["- parent", "  - child", ""].join("\n"));
+    expect(finalState.selection.main.from).toBe(finalState.doc.length);
+  });
+
+  it("exits nested empty ordered items in one Enter across both ordered syntaxes", () => {
+    const dottedDoc = ["1. root", "  2. child", "  3. "].join("\n");
+    const dottedState = EditorState.create({
+      doc: dottedDoc,
+      selection: EditorSelection.cursor(dottedDoc.length),
+    });
+
+    let dottedNextState: EditorState | null = null;
+    const dottedHandled = continueMarkdownListCommand()({
+      state: dottedState,
+      dispatch: (transaction) => {
+        dottedNextState = transaction.state;
+      },
+    });
+
+    expect(dottedHandled).toBe(true);
+    expect(dottedNextState).not.toBeNull();
+    if (!dottedNextState) {
+      throw new Error("Expected ordered list continuation command to dispatch");
+    }
+
+    const dottedFinalState: EditorState = dottedNextState;
+    expect(dottedFinalState.doc.toString()).toBe(["1. root", "  2. child", ""].join("\n"));
+    expect(dottedFinalState.selection.main.from).toBe(dottedFinalState.doc.length);
+
+    const parenDoc = ["1) root", "  2) child", "  3) "].join("\n");
+    const parenState = EditorState.create({
+      doc: parenDoc,
+      selection: EditorSelection.cursor(parenDoc.length),
+    });
+
+    let parenNextState: EditorState | null = null;
+    const parenHandled = continueMarkdownListCommand()({
+      state: parenState,
+      dispatch: (transaction) => {
+        parenNextState = transaction.state;
+      },
+    });
+
+    expect(parenHandled).toBe(true);
+    expect(parenNextState).not.toBeNull();
+    if (!parenNextState) {
+      throw new Error("Expected ordered paren list continuation command to dispatch");
+    }
+
+    const parenFinalState: EditorState = parenNextState;
+    expect(parenFinalState.doc.toString()).toBe(["1) root", "  2) child", ""].join("\n"));
+    expect(parenFinalState.selection.main.from).toBe(parenFinalState.doc.length);
+  });
+
+  it("collapses whitespace-only blank lines before an empty list item when exiting", () => {
+    const doc = ["1. parent", "   ", "  2. "].join("\n");
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(doc.length),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe("1. parent\n");
+    expect(finalState.selection.main.from).toBe(finalState.doc.length);
+  });
+
+  it("handles mixed list types by exiting the current empty marker immediately", () => {
+    const bulletDoc = ["1. numbered", "- bullet", "+ "].join("\n");
+    const bulletState = EditorState.create({
+      doc: bulletDoc,
+      selection: EditorSelection.cursor(bulletDoc.length),
+    });
+
+    let bulletNextState: EditorState | null = null;
+    const bulletHandled = continueMarkdownListCommand()({
+      state: bulletState,
+      dispatch: (transaction) => {
+        bulletNextState = transaction.state;
+      },
+    });
+
+    expect(bulletHandled).toBe(true);
+    expect(bulletNextState).not.toBeNull();
+    if (!bulletNextState) {
+      throw new Error("Expected bullet list continuation command to dispatch");
+    }
+    const bulletFinalState: EditorState = bulletNextState;
+    expect(bulletFinalState.doc.toString()).toBe(["1. numbered", "- bullet", ""].join("\n"));
+
+    const orderedDoc = ["- bullet", "* bullet 2", "3. "].join("\n");
+    const orderedState = EditorState.create({
+      doc: orderedDoc,
+      selection: EditorSelection.cursor(orderedDoc.length),
+    });
+
+    let orderedNextState: EditorState | null = null;
+    const orderedHandled = continueMarkdownListCommand()({
+      state: orderedState,
+      dispatch: (transaction) => {
+        orderedNextState = transaction.state;
+      },
+    });
+
+    expect(orderedHandled).toBe(true);
+    expect(orderedNextState).not.toBeNull();
+    if (!orderedNextState) {
+      throw new Error("Expected ordered list continuation command to dispatch");
+    }
+    const orderedFinalState: EditorState = orderedNextState;
+    expect(orderedFinalState.doc.toString()).toBe(["- bullet", "* bullet 2", ""].join("\n"));
+  });
+
+  it("exits an empty bullet item even when the caret is at the line start", () => {
+    const doc = ["- body", "- "].join("\n");
+    const secondLineStart = doc.lastIndexOf("\n") + 1;
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(secondLineStart),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe("- body\n");
+    expect(finalState.selection.main.from).toBe(finalState.doc.length);
+  });
+
+  it("exits an empty bullet item when the caret is inside the marker prefix", () => {
+    const doc = ["- one", "- "].join("\n");
+    const secondLineStart = doc.lastIndexOf("\n") + 1;
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(secondLineStart + 1),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe("- one\n");
+    expect(finalState.selection.main.from).toBe(finalState.doc.length);
+  });
+
+  it("exits an empty final bullet in a two-item list without inserting a blank line", () => {
+    const doc = ["- one", "- "].join("\n");
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.cursor(doc.length),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState).not.toBeNull();
+    if (!nextState) {
+      throw new Error("Expected list continuation command to dispatch");
+    }
+
+    const finalState: EditorState = nextState;
+    expect(finalState.doc.toString()).toBe("- one\n");
+    expect(finalState.selection.main.from).toBe(finalState.doc.length);
+  });
+
+  it("exits empty ordered-paren and task items after populated siblings", () => {
+    const orderedDoc = ["1) body", "2) "].join("\n");
+    const orderedState = EditorState.create({
+      doc: orderedDoc,
+      selection: EditorSelection.cursor(orderedDoc.lastIndexOf("\n") + 1),
+    });
+
+    let orderedNextState: EditorState | null = null;
+    const orderedHandled = continueMarkdownListCommand()({
+      state: orderedState,
+      dispatch: (transaction) => {
+        orderedNextState = transaction.state;
+      },
+    });
+
+    expect(orderedHandled).toBe(true);
+    expect(orderedNextState).not.toBeNull();
+    if (!orderedNextState) {
+      throw new Error("Expected ordered list continuation command to dispatch");
+    }
+
+    const orderedFinalState: EditorState = orderedNextState;
+    expect(orderedFinalState.doc.toString()).toBe("1) body\n");
+    expect(orderedFinalState.selection.main.from).toBe(orderedFinalState.doc.length);
+
+    const taskDoc = ["- [ ] body", "- [ ] "].join("\n");
+    const taskState = EditorState.create({
+      doc: taskDoc,
+      selection: EditorSelection.cursor(taskDoc.lastIndexOf("\n") + 1),
+    });
+
+    let taskNextState: EditorState | null = null;
+    const taskHandled = continueMarkdownListCommand()({
+      state: taskState,
+      dispatch: (transaction) => {
+        taskNextState = transaction.state;
+      },
+    });
+
+    expect(taskHandled).toBe(true);
+    expect(taskNextState).not.toBeNull();
+    if (!taskNextState) {
+      throw new Error("Expected task list continuation command to dispatch");
+    }
+
+    const taskFinalState: EditorState = taskNextState;
+    expect(taskFinalState.doc.toString()).toBe("- [ ] body\n");
+    expect(taskFinalState.selection.main.from).toBe(taskFinalState.doc.length);
   });
 });
 

@@ -5,6 +5,7 @@ import {
   Compartment,
   EditorSelection,
   EditorState,
+  Prec,
   RangeSetBuilder,
   StateEffect,
   StateField,
@@ -2538,18 +2539,13 @@ type MarkdownListContinuation = {
 function shouldExitEmptyListItem(
   lineText: string,
   cursorOffset: number,
-  markerPrefixLength: number,
-  itemContent: string,
+  contentStartOffset: number,
 ) {
-  if (itemContent.trim().length > 0) {
+  if (lineText.slice(contentStartOffset).trim().length > 0) {
     return false;
   }
 
-  if (cursorOffset < markerPrefixLength) {
-    return false;
-  }
-
-  return lineText.slice(cursorOffset).trim().length === 0;
+  return cursorOffset >= 0 && cursorOffset <= lineText.length;
 }
 
 export function shouldAutoInsertOrderedListSpace(
@@ -2577,6 +2573,36 @@ export function computeMarkdownListContinuation(
   lineText: string,
   cursorOffset: number,
 ): MarkdownListContinuation | null {
+  const emptyTaskMatch = lineText.match(/^\s*[-+*]\s+\[(?: |x|X)\]\s*$/);
+  if (emptyTaskMatch && cursorOffset >= 0 && cursorOffset <= lineText.length) {
+    return {
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    };
+  }
+
+  const emptyOrderedMatch = lineText.match(/^\s*\d+[.)]\s*$/);
+  if (emptyOrderedMatch && cursorOffset >= 0 && cursorOffset <= lineText.length) {
+    return {
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    };
+  }
+
+  const emptyBulletMatch = lineText.match(/^\s*[-+*]\s*$/);
+  if (emptyBulletMatch && cursorOffset >= 0 && cursorOffset <= lineText.length) {
+    return {
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    };
+  }
+
   const orderedMatch = lineText.match(/^(\s*)(\d+)([.)])(\s+)(.*)$/);
   const taskMatch = lineText.match(/^(\s*)([-+*])(\s+)\[( |x|X)\](\s+)(.*)$/);
   const bulletMatch = lineText.match(/^(\s*)([-+*])(\s+)(.*)$/);
@@ -2588,22 +2614,19 @@ export function computeMarkdownListContinuation(
       taskMatch[3].length +
       3 +
       taskMatch[5].length;
-    const markerPrefixLength =
-      taskMatch[1].length + taskMatch[2].length + taskMatch[3].length + 3;
 
     if (
       shouldExitEmptyListItem(
         lineText,
         cursorOffset,
-        markerPrefixLength,
-        taskMatch[6],
+        prefixLength,
       )
     ) {
       return {
         exitList: true,
         from: 0,
-        nextMarker: taskMatch[1],
-        replacement: taskMatch[1],
+        nextMarker: "",
+        replacement: "",
       };
     }
 
@@ -2622,22 +2645,19 @@ export function computeMarkdownListContinuation(
       orderedMatch[2].length +
       orderedMatch[3].length +
       orderedMatch[4].length;
-    const markerPrefixLength =
-      orderedMatch[1].length + orderedMatch[2].length + orderedMatch[3].length;
 
     if (
       shouldExitEmptyListItem(
         lineText,
         cursorOffset,
-        markerPrefixLength,
-        orderedMatch[5],
+        prefixLength,
       )
     ) {
       return {
         exitList: true,
         from: 0,
-        nextMarker: orderedMatch[1],
-        replacement: orderedMatch[1],
+        nextMarker: "",
+        replacement: "",
       };
     }
 
@@ -2654,21 +2674,19 @@ export function computeMarkdownListContinuation(
   if (bulletMatch) {
     const prefixLength =
       bulletMatch[1].length + bulletMatch[2].length + bulletMatch[3].length;
-    const markerPrefixLength = bulletMatch[1].length + bulletMatch[2].length;
 
     if (
       shouldExitEmptyListItem(
         lineText,
         cursorOffset,
-        markerPrefixLength,
-        bulletMatch[4],
+        prefixLength,
       )
     ) {
       return {
         exitList: true,
         from: 0,
-        nextMarker: bulletMatch[1],
-        replacement: bulletMatch[1],
+        nextMarker: "",
+        replacement: "",
       };
     }
 
@@ -2695,17 +2713,17 @@ export function continueMarkdownListCommand(): StateCommand {
     const continuation = computeMarkdownListContinuation(line.text, cursorOffset);
     if (!continuation) return false;
 
-    if (continuation.exitList && line.from >= 2) {
-      const precedingText = state.doc.sliceString(line.from - 2, line.from);
-      if (precedingText === "\n\n") {
+    if (continuation.exitList && line.number > 1) {
+      const previousLine = state.doc.line(line.number - 1);
+      if (previousLine.text.trim().length === 0) {
         dispatch(
           state.update({
             changes: {
-              from: line.from - 1,
+              from: previousLine.from,
               to: line.to,
               insert: "",
             },
-            selection: EditorSelection.cursor(line.from - 1),
+            selection: EditorSelection.cursor(previousLine.from),
             scrollIntoView: true,
             userEvent: "input",
           }),
@@ -2723,7 +2741,12 @@ export function continueMarkdownListCommand(): StateCommand {
           insert: continuation.replacement,
         },
         selection: EditorSelection.cursor(
-          line.from + continuation.from + continuation.replacement.length - line.text.slice(cursorOffset).length,
+          continuation.exitList
+            ? line.from + continuation.replacement.length
+            : line.from +
+                continuation.from +
+                continuation.replacement.length -
+                line.text.slice(cursorOffset).length,
         ),
         scrollIntoView: true,
         userEvent: "input",
@@ -3154,8 +3177,8 @@ export default function BaseEditor({
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       orderedListInputHandler(),
       createLivePreviewExtension({ revealSelection: editable }),
+      Prec.highest(keymap.of(kolamEditorKeymap)),
       keymap.of([
-        ...kolamEditorKeymap,
         ...defaultKeymap,
         ...historyKeymap,
         ...searchKeymap,

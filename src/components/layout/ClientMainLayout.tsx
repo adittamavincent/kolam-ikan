@@ -531,7 +531,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             {error}
           </div>
         )}
-        <MainHeader />
+        {!isHomeRoute && <MainHeader />}
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (

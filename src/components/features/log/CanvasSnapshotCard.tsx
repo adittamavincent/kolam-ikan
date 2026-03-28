@@ -79,17 +79,18 @@ export function CanvasSnapshotCard({
 
   return (
     <>
-      <div className="relative group border border-dashed border-violet-800 bg-violet-950 overflow-hidden transition-all ">
+      <div className="group relative overflow-hidden border border-border-default bg-surface-subtle transition-colors">
         {/* Header */}
-        <div className="flex items-center px-2.5 py-1.5 bg-violet-950 border-b border-dashed border-violet-800">
+        <div className="flex items-center border-b border-border-subtle bg-surface-elevated px-2.5 py-2">
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
-              <Camera className="h-3 w-3 text-violet-500" />
-              <span className="text-[10px] font-semibold text-violet-500">
+              <span className="h-4 w-1 bg-border-strong" aria-hidden="true" />
+              <Camera className="h-3 w-3 text-text-subtle" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default">
                 Canvas Snapshot
               </span>
               {isAIGenerated ? (
-                <span className="inline-flex items-center gap-0.5 border border-violet-800 bg-violet-950 px-1.5 py-0.5 text-[9px] font-semibold text-violet-500">
+                <span className="inline-flex items-center gap-0.5 border border-border-strong bg-surface-default px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-action-primary-bg">
                   <Sparkles className="h-2.5 w-2.5" />
                   AI
                 </span>
@@ -107,46 +108,46 @@ export function CanvasSnapshotCard({
         </div>
 
         {/* Body */}
-        <div className="px-2.5 py-2">
+        <div className="px-2.5 py-2.5">
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium text-text-default truncate">
+              <div className="truncate text-xs font-medium text-text-default">
                 {version.name || "Untitled Snapshot"}
               </div>
               {version.summary && (
-                <div className="text-[10px] text-text-muted mt-0.5 line-clamp-2">
+                <div className="mt-0.5 line-clamp-2 text-[10px] text-text-muted">
                   {version.summary}
                 </div>
               )}
             </div>
-            <div className="shrink-0 ml-2">
+            <div className="ml-2 shrink-0">
               {showConfirm ? (
                 <div className="flex items-center gap-1">
                   <button
                     onClick={handleOpenInCanvas}
-                    className=" bg-action-primary-bg px-2 py-0.5 text-[10px] font-semibold text-action-primary-text hover:opacity-90"
+                    className="bg-action-primary-bg px-2 py-0.5 text-[10px] font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover"
                   >
                     Open
                   </button>
                   <button
                     onClick={() => setShowConfirm(false)}
-                    className=" border border-border-default px-2 py-0.5 text-[10px] font-semibold text-text-subtle hover:bg-surface-subtle"
+                    className="border border-border-default bg-surface-default px-2 py-0.5 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
                   >
                     Cancel
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => setIsCompareOpen(true)}
-                    className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                    className="border border-border-subtle p-1 text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
                     title="Compare with current canvas draft"
                   >
                     <GitCompare className="h-3 w-3" />
                   </button>
                   <button
                     onClick={() => setShowConfirm(true)}
-                    className=" p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                    className="border border-border-subtle p-1 text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
                     title="Open this snapshot in canvas preview"
                   >
                     <RotateCcw className="h-3 w-3" />
@@ -175,10 +176,10 @@ export function CanvasSnapshotCard({
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-emerald-500">
+                <span className="text-[11px] font-mono text-diff-add-text">
                   +{additions}
                 </span>
-                <span className="text-[11px] font-mono text-rose-500">
+                <span className="text-[11px] font-mono text-diff-del-text">
                   -{deletions}
                 </span>
                 <button
@@ -203,7 +204,7 @@ export function CanvasSnapshotCard({
               </button>
               <button
                 onClick={handleOpenInCanvas}
-                className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text hover:opacity-90"
+                className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover"
               >
                 <Eye className="h-3.5 w-3.5" />
                 Open in Canvas

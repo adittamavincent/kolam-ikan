@@ -188,7 +188,7 @@ export function MainHeader() {
     (logState?.commitCount ?? 0) + (logState?.canvasCommitCount ?? 0);
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
   const headerButtonClass =
-    "inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 disabled:cursor-not-allowed disabled:opacity-40";
+    "inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-text-muted";
   const cloudStatusLabel =
     cloudStatus === "saving"
       ? "Cloud syncing"
@@ -202,11 +202,6 @@ export function MainHeader() {
     : domainId
       ? "Domain workspace"
       : "Kolam Ikan";
-  const workspaceParent = streamId
-    ? stream?.cabinet?.name ?? "Cabinet"
-    : domainId
-      ? "Domain context"
-      : "Prompt workspace";
   const summaryPillClass =
     "inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-subtle";
   const toolbarLeadGroupClass = "flex items-center gap-1";
@@ -253,10 +248,10 @@ export function MainHeader() {
   };
 
   return (
-    <header className="shrink-0 border-b border-border-default bg-surface-default px-3 pt-2 pb-1">
+    <header className="shrink-0 border-b border-border-default bg-surface-default p-2">
       <div className="flex flex-col gap-2">
         <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex min-w-0 items-start gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {domainId && !sidebarVisible && (
               <button
                 onClick={showSidebar}
@@ -268,52 +263,40 @@ export function MainHeader() {
             )}
 
             <div className="min-w-0 flex-1">
-              <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] font-mono text-text-muted">
-                <span>{workspaceParent}</span>
-                <span>/</span>
-                <span>Active thread</span>
-              </div>
-
               <div className="min-w-0">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="truncate text-[15px] font-semibold text-text-default md:text-base">
                     {workspaceTitle}
                   </span>
                   {streamId && (
-                      <span className="text-[10px] font-mono text-text-muted">
-                        {streamId}
-                      </span>
-                    )}
+                    <>
+                      {isEditingDescription ? (
+                        <input
+                          value={descriptionDraft}
+                          onChange={(event) => setDescriptionDraft(event.target.value)}
+                          onBlur={() => void saveDescription()}
+                          onKeyDown={(event) => void handleDescriptionKeyDown(event)}
+                          placeholder="Add a description"
+                          autoFocus
+                          className="w-full max-w-2xl border-0 bg-transparent px-0 py-0 text-xs leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDescriptionDraft(stream?.description ?? "");
+                            setIsEditingDescription(true);
+                          }}
+                          className={`block max-w-2xl text-left text-xs leading-5 transition-colors hover:text-text-default ${
+                            hasDescription ? "text-text-subtle" : "text-text-muted"
+                          }`}
+                        >
+                          {stream?.description?.trim() || "Add a description"}
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>  
-
-                {streamId && (
-                  <>
-                    {isEditingDescription ? (
-                      <input
-                        value={descriptionDraft}
-                        onChange={(event) => setDescriptionDraft(event.target.value)}
-                        onBlur={() => void saveDescription()}
-                        onKeyDown={(event) => void handleDescriptionKeyDown(event)}
-                        placeholder="Add a description"
-                        autoFocus
-                        className="mt-1 w-full max-w-2xl border-0 bg-transparent px-0 py-0 text-xs leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDescriptionDraft(stream?.description ?? "");
-                          setIsEditingDescription(true);
-                        }}
-                        className={`block max-w-2xl text-left text-xs leading-5 transition-colors hover:text-text-default ${
-                          hasDescription ? "text-text-subtle" : "text-text-muted"
-                        }`}
-                      >
-                        {stream?.description?.trim() || "Add a description"}
-                      </button>
-                    )}
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -322,233 +305,225 @@ export function MainHeader() {
             <div className="flex flex-col items-start gap-1.5 border-t border-border-default pt-2 xl:items-end xl:border-t-0 xl:pt-0">
               {logState && (
                 <>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className={toolbarLeadGroupClass}>
-                    <span
-                      className={`${headerButtonClass} pointer-events-none ${
-                        cloudStatus === "saving"
-                          ? "border-amber-800 text-amber-300"
-                          : cloudStatus === "error"
-                            ? "border-red-800 text-red-300"
-                            : cloudStatus === "saved"
-                              ? "border-emerald-800 text-emerald-300"
-                              : ""
-                      }`}
-                      aria-label={cloudStatusLabel}
-                      title={cloudStatusLabel}
-                    >
-                      {cloudStatus === "saving" ? (
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                      ) : cloudStatus === "error" ? (
-                        <CloudOff className="h-3.5 w-3.5" />
-                      ) : cloudStatus === "saved" ? (
-                        <Check className="h-3.5 w-3.5" />
-                      ) : (
-                        <div className="h-3 w-3 border border-current" />
-                      )}
-                    </span>
-
-                    <button
-                      onClick={() =>
-                        emit("kolam_header_log_toggle_compact_all", {
-                          collapsed: !collapseAllActive,
-                        })
-                      }
-                      disabled={!hasEntries}
-                      className={`${headerButtonClass} relative ${
-                        collapseAllActive
-                          ? "border-primary-800 bg-primary-950 text-action-primary-bg"
-                          : collapsedEntryCount > 0
-                            ? "text-text-default"
-                            : ""
-                      }`}
-                      title={
-                        collapseAllActive
-                          ? "Expand all commits"
-                          : "Compact all commits"
-                      }
-                    >
-                      {collapseAllActive ? (
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      ) : (
-                        <ChevronDown className="h-3.5 w-3.5" />
-                      )}
-                      {collapsedEntryCount > 0 && (
-                        <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
-                          {collapsedEntryCount}
-                        </span>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => setIsSearchOpen((prev) => !prev)}
-                      className={`${headerButtonClass} ${isSearchOpen ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
-                      title={isSearchOpen ? "Hide search" : "Show search"}
-                    >
-                      <Search className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      onClick={() => emit("kolam_header_log_toggle_stash")}
-                      className={`${headerButtonClass} ${logState.showStash ? "border-amber-800 bg-amber-950 text-amber-500" : ""}`}
-                      title={
-                        logState.showStash
-                          ? "Hide stashed entries"
-                          : `Show stash (${logState.stashCount ?? 0})`
-                      }
-                    >
-                      <Archive className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      onClick={() => emit("kolam_header_log_toggle_sort")}
-                      className={headerButtonClass}
-                      title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
-                    >
-                      <ArrowUpDown
-                        className={`h-4 w-4 transition-transform ${logState.sortOrder === "oldest" ? "rotate-180" : ""}`}
-                      />
-                    </button>
-
-                    <button
-                      onClick={() => emit("kolam_header_log_toggle_graph")}
-                      className={`${headerButtonClass} ${logState.graphView ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
-                      title={
-                        logState.graphView
-                          ? "Back to commit list"
-                          : "Show commit graph"
-                      }
-                    >
-                      <Network className="h-4 w-4" />
-                    </button>
-
-                    {isSearchOpen && (
-                      <div className="relative ml-1 w-full min-w-[180px] max-w-xs">
-                        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
-                        <input
-                          type="text"
-                          value={searchTerm}
-                          onChange={(event) => {
-                            const term = event.target.value;
-                            setSearchTerm(term);
-                            emit("kolam_header_log_search_term", { term });
-                          }}
-                          placeholder="Search commits..."
-                          className="w-full border border-border-default bg-surface-default py-2 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
-                        />
-                      </div>
-                    )}
-                    </div>
-
-                    <div className={toolbarGroupClass}>
-                    <button
-                      onClick={() => emit("kolam_header_whatsapp_import")}
-                      className={headerButtonClass}
-                      title="Import WhatsApp Chat"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      onClick={() => emit("kolam_header_documents_import")}
-                      className={headerButtonClass}
-                      title="Import PDF"
-                    >
-                      <FileUp className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      onClick={() => emit("kolam_header_log_export")}
-                      className={headerButtonClass}
-                      title="Export to Markdown"
-                    >
-                      <Download className="h-4 w-4" />
-                    </button>
-                    </div>
-
-                    <div className={toolbarGroupClass}>
-                    <Menu as="div" className="relative hidden md:block">
-                      <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
-                        <GitBranch className="h-3 w-3" />
-                        {logState.currentBranch ?? "main"}
-                        <ChevronDown className="h-3 w-3" />
-                      </MenuButton>
-                      <Transition
-                        as={Fragment}
-                        enter="transition ease-out duration-100"
-                        enterFrom="transform opacity-0 scale-95"
-                        enterTo="transform opacity-100 scale-100"
-                        leave="transition ease-in duration-75"
-                        leaveFrom="transform opacity-100 scale-100"
-                        leaveTo="transform opacity-0 scale-95"
-                      >
-                        <MenuItems
-                          anchor={{ to: "bottom end", gap: 6 }}
-                          portal
-                          className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+                  <div className="flex w-full flex-wrap items-center gap-2 xl:justify-end">
+                    <div className="flex flex-wrap items-center gap-1.5 xl:justify-end">
+                      <div className={toolbarLeadGroupClass}>
+                        <span
+                          className={`${headerButtonClass} pointer-events-none ${
+                            cloudStatus === "saving"
+                              ? "border-amber-800 text-amber-300"
+                              : cloudStatus === "error"
+                                ? "border-red-800 text-red-300"
+                                : cloudStatus === "saved"
+                                  ? "border-emerald-800 text-emerald-300"
+                                  : ""
+                          }`}
+                          aria-label={cloudStatusLabel}
+                          title={cloudStatusLabel}
                         >
-                          <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
-                            Checkout Branch
-                          </div>
-                          {logState.branchNames?.map((branchName) => (
-                            <MenuItem key={branchName}>
-                              {({ active }) => (
-                                <button
-                                  onClick={() =>
-                                    emit("kolam_header_log_set_branch", {
-                                      branchName,
-                                    })
-                                  }
-                                  className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 text-xs transition-all duration-200`}
-                                >
-                                  <span className="flex items-center gap-1.5">
-                                    <GitBranch className="h-3 w-3" />
-                                    {branchName}
-                                  </span>
-                                  {logState.currentBranch === branchName && (
-                                    <Check className="h-3 w-3 text-action-primary-bg" />
-                                  )}
-                                </button>
-                              )}
-                            </MenuItem>
-                          ))}
-                          <div className="my-1 h-px bg-border-subtle" />
-                          <button
-                            onClick={() => {
-                              emit("kolam_header_log_open_create_branch", {
-                                defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
-                              });
-                            }}
-                            className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                          >
-                            <Plus className="h-3 w-3" />
-                            New branch
-                          </button>
-                        </MenuItems>
-                      </Transition>
-                    </Menu>
-                    </div>
-                  </div>
+                          {cloudStatus === "saving" ? (
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                          ) : cloudStatus === "error" ? (
+                            <CloudOff className="h-3.5 w-3.5" />
+                          ) : cloudStatus === "saved" ? (
+                            <Check className="h-3.5 w-3.5" />
+                          ) : (
+                            <div className="h-3 w-3 border border-current" />
+                          )}
+                        </span>
 
-                  <div className="flex flex-wrap items-center gap-1.5 xl:justify-end">
-                    <span className={summaryPillClass}>
-                      <GitBranch className="h-3 w-3" />
-                      {logState.currentBranch ?? "main"}
-                    </span>
-                    <span className={summaryPillClass}>
-                      <GitCommitHorizontal className="h-3 w-3" />
-                      {totalCommitCount} commits
-                    </span>
-                    <span className={summaryPillClass}>
-                      <Archive className="h-3 w-3" />
-                      {logState.stashCount ?? 0} stashed
-                    </span>
-                    {canvasState?.hasCanvas && (
+                        <button
+                          onClick={() =>
+                            emit("kolam_header_log_toggle_compact_all", {
+                              collapsed: !collapseAllActive,
+                            })
+                          }
+                          disabled={!hasEntries}
+                          className={`${headerButtonClass} relative ${
+                            collapseAllActive
+                              ? "border-primary-800 bg-primary-950 text-action-primary-bg"
+                              : collapsedEntryCount > 0
+                                ? "text-text-default"
+                                : ""
+                          }`}
+                          title={
+                            collapseAllActive
+                              ? "Expand all commits"
+                              : "Compact all commits"
+                          }
+                        >
+                          {collapseAllActive ? (
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          )}
+                          {collapsedEntryCount > 0 && (
+                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
+                              {collapsedEntryCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => setIsSearchOpen((prev) => !prev)}
+                          className={`${headerButtonClass} ${isSearchOpen ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
+                          title={isSearchOpen ? "Hide search" : "Show search"}
+                        >
+                          <Search className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          onClick={() => emit("kolam_header_log_toggle_stash")}
+                          className={`${headerButtonClass} ${logState.showStash ? "border-amber-800 bg-amber-950 text-amber-500" : ""}`}
+                          title={
+                            logState.showStash
+                              ? "Hide stashed entries"
+                              : `Show stash (${logState.stashCount ?? 0})`
+                          }
+                        >
+                          <Archive className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          onClick={() => emit("kolam_header_log_toggle_sort")}
+                          className={headerButtonClass}
+                          title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
+                        >
+                          <ArrowUpDown
+                            className={`h-4 w-4 transition-transform ${logState.sortOrder === "oldest" ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        <button
+                          onClick={() => emit("kolam_header_log_toggle_graph")}
+                          className={`${headerButtonClass} ${logState.graphView ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
+                          title={
+                            logState.graphView
+                              ? "Back to commit list"
+                              : "Show commit graph"
+                          }
+                        >
+                          <Network className="h-4 w-4" />
+                        </button>
+
+                        {isSearchOpen && (
+                          <div className="relative ml-1 w-full min-w-45 max-w-xs">
+                            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
+                            <input
+                              type="text"
+                              value={searchTerm}
+                              onChange={(event) => {
+                                const term = event.target.value;
+                                setSearchTerm(term);
+                                emit("kolam_header_log_search_term", { term });
+                              }}
+                              placeholder="Search commits..."
+                              className="w-full border border-border-default bg-surface-default py-2 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={toolbarGroupClass}>
+                        <button
+                          onClick={() => emit("kolam_header_whatsapp_import")}
+                          className={headerButtonClass}
+                          title="Import WhatsApp Chat"
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          onClick={() => emit("kolam_header_documents_import")}
+                          className={headerButtonClass}
+                          title="Import PDF"
+                        >
+                          <FileUp className="h-4 w-4" />
+                        </button>
+
+                        <button
+                          onClick={() => emit("kolam_header_log_export")}
+                          className={headerButtonClass}
+                          title="Export to Markdown"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={toolbarGroupClass}>
+                      <Menu as="div" className="relative hidden md:block">
+                        <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
+                          <GitBranch className="h-3 w-3" />
+                          {logState.currentBranch ?? "main"}
+                          <ChevronDown className="h-3 w-3" />
+                        </MenuButton>
+                        <Transition
+                          as={Fragment}
+                          enter="transition ease-out duration-100"
+                          enterFrom="transform opacity-0 scale-95"
+                          enterTo="transform opacity-100 scale-100"
+                          leave="transition ease-in duration-75"
+                          leaveFrom="transform opacity-100 scale-100"
+                          leaveTo="transform opacity-0 scale-95"
+                        >
+                          <MenuItems
+                            anchor={{ to: "bottom end", gap: 6 }}
+                            portal
+                            className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+                          >
+                            <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+                              Checkout Branch
+                            </div>
+                            {logState.branchNames?.map((branchName) => (
+                              <MenuItem key={branchName}>
+                                {({ active }) => (
+                                  <button
+                                    onClick={() =>
+                                      emit("kolam_header_log_set_branch", {
+                                        branchName,
+                                      })
+                                    }
+                                    className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 text-xs transition-all duration-200`}
+                                  >
+                                    <span className="flex items-center gap-1.5">
+                                      <GitBranch className="h-3 w-3" />
+                                      {branchName}
+                                    </span>
+                                    {logState.currentBranch === branchName && (
+                                      <Check className="h-3 w-3 text-action-primary-bg" />
+                                    )}
+                                  </button>
+                                )}
+                              </MenuItem>
+                            ))}
+                            <div className="my-1 h-px bg-border-subtle" />
+                            <button
+                              onClick={() => {
+                                emit("kolam_header_log_open_create_branch", {
+                                  defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
+                                });
+                              }}
+                              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                            >
+                              <Plus className="h-3 w-3" />
+                              New branch
+                            </button>
+                          </MenuItems>
+                        </Transition>
+                      </Menu>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5 xl:justify-end">
                       <span className={summaryPillClass}>
-                        <Blocks className="h-3 w-3" />
-                        Canvas active
+                        <GitCommitHorizontal className="h-3 w-3" />
+                        {totalCommitCount} commits
                       </span>
-                    )}
+                      <span className={summaryPillClass}>
+                        <Archive className="h-3 w-3" />
+                        {logState.stashCount ?? 0} stashed
+                      </span>
+                    </div>
                   </div>
                 </>
               )}

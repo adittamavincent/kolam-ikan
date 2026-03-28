@@ -30,6 +30,33 @@ export interface FileAttachmentViewProps {
   onRemove?: () => void;
 }
 
+function deriveFileTypeLabel(
+  title: string,
+  storagePath?: string | null,
+  previewUrl?: string | null,
+) {
+  const candidate = [title, storagePath, previewUrl]
+    .find((value) => typeof value === "string" && value.includes("."))
+    ?.split(/[?#]/, 1)[0]
+    .split("/")
+    .pop();
+
+  const extension = candidate?.match(/\.([a-z0-9]{1,8})$/i)?.[1]?.toUpperCase();
+  return extension || "FILE";
+}
+
+function normalizeSubtitle(
+  subtitle: string | null | undefined,
+  title: string,
+  storagePath?: string | null,
+  previewUrl?: string | null,
+) {
+  if (!subtitle) return null;
+
+  const fileTypeLabel = deriveFileTypeLabel(title, storagePath, previewUrl);
+  return subtitle.replace(/^File(?=$| • )/i, fileTypeLabel);
+}
+
 function FileAttachmentActions({
   title,
   onPreviewFile,
@@ -154,50 +181,99 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
     onPreviewParsed,
     onRemove,
   } = props;
+  const normalizedSubtitle = normalizeSubtitle(
+    subtitle,
+    title,
+    storagePath,
+    previewUrl,
+  );
+  const fileTypeLabel = deriveFileTypeLabel(title, storagePath, previewUrl);
+  const overlaySubtitle = normalizedSubtitle || fileTypeLabel;
 
   if (variant === "log") {
     return (
-      <div className="group/log-pdf flex items-start justify-between gap-3 border border-border-default bg-surface-elevated px-3 py-2 transition-colors hover:bg-surface-elevated">
-        <div className="flex items-start gap-2 min-w-0 flex-1">
-          <FileAttachmentThumbnail
-            url={previewUrl}
-            storagePath={storagePath}
-            thumbnailPath={thumbnailPath}
-            thumbnailStatus={thumbnailStatus}
-            documentId={documentId}
-            title={title}
-            importStatus={importStatus ?? null}
-            progressPercent={progressPercent}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="border border-border-default bg-surface-default px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-                File
-              </span>
-              <div className="truncate text-xs font-medium text-text-default">
-                {title}
-              </div>
-            </div>
-            {annotationText && (
-              <div className="mt-1 text-[11px] text-text-muted">
-                {annotationText}
-              </div>
-            )}
-          </div>
+      <div
+        className="group/log-pdf relative h-40 w-28 overflow-hidden border border-border-default bg-surface-elevated transition-colors hover:border-border-strong"
+        title={annotationText || subtitle || title}
+      >
+        <FileAttachmentThumbnail
+          url={previewUrl}
+          storagePath={storagePath}
+          thumbnailPath={thumbnailPath}
+          thumbnailStatus={thumbnailStatus}
+          documentId={documentId}
+          title={title}
+          importStatus={importStatus ?? null}
+          progressPercent={progressPercent}
+          className="h-full w-full border-0"
+        />
+
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-surface-default via-surface-default/90 to-surface-default/15 opacity-0 transition-opacity duration-150 group-hover/log-pdf:opacity-100" />
+
+        {onRemove && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onRemove();
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onTouchStart={(event) => event.stopPropagation()}
+            className="absolute left-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center border border-border-default bg-surface-default/95 text-text-muted opacity-0 transition-all duration-150 hover:text-text-default group-hover/log-pdf:opacity-100"
+            aria-label={`Remove ${title}`}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+
+        <div className="absolute inset-x-1.5 bottom-1.5 z-10 flex translate-y-1 flex-col gap-1 opacity-0 transition-all duration-150 group-hover/log-pdf:translate-y-0 group-hover/log-pdf:opacity-100">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onPreviewFile?.();
+            }}
+            disabled={!onPreviewFile}
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            aria-label={`Preview ${title}`}
+            title={onPreviewFile ? "Open original file preview" : "File preview unavailable"}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>Original</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (canOpenParsed && onPreviewParsed) onPreviewParsed();
+            }}
+            disabled={!canOpenParsed || !onPreviewParsed}
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            aria-label={`Open parsed Docling for ${title}`}
+            title={
+              !onPreviewParsed
+                ? "Parsed preview unavailable"
+                : canOpenParsed
+                  ? "Open parsed Docling content"
+                  : "Parsed content not ready"
+            }
+          >
+            <FileText className="h-3.5 w-3.5" />
+            <span>Parsed</span>
+          </button>
         </div>
 
-        <div className="shrink-0">
-          <FileAttachmentActions
-            title={title}
-            canOpenParsed={canOpenParsed}
-            displayMode={displayMode}
-            previewUrl={previewUrl}
-            onPreviewFile={onPreviewFile}
-            onPreviewParsed={onPreviewParsed}
-            onRemove={onRemove}
-            showPreviewButtons
-          />
+        <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 z-1 truncate bg-surface-default/85 px-2 py-1 text-[10px] font-medium text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+          {title}
         </div>
+
+        {overlaySubtitle && (
+          <div className="pointer-events-none absolute inset-x-1.5 bottom-8 z-1 line-clamp-2 bg-surface-default/85 px-2 py-1 text-[10px] text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+            {overlaySubtitle}
+          </div>
+        )}
       </div>
     );
   }

@@ -50,7 +50,7 @@ export function getPersonaScopeDescription(
     : "Available across your workspace";
 }
 
-export function hexToRgba(color?: string | null, alpha = 1): string | undefined {
+export function normalizePersonaColor(color?: string | null): string | undefined {
   if (!color) return undefined;
 
   const normalized = color.trim().replace("#", "");
@@ -66,12 +66,36 @@ export function hexToRgba(color?: string | null, alpha = 1): string | undefined 
     return undefined;
   }
 
-  const int = Number.parseInt(expanded, 16);
-  const r = (int >> 16) & 255;
-  const g = (int >> 8) & 255;
-  const b = int & 255;
+  return `#${expanded.toLowerCase()}`;
+}
 
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+function blendHex(
+  foreground?: string | null,
+  background = "#21252b",
+  alpha = 1,
+): string | undefined {
+  const fg = normalizePersonaColor(foreground);
+  const bg = normalizePersonaColor(background);
+
+  if (!fg || !bg) return fg ?? bg;
+
+  const clampAlpha = Math.max(0, Math.min(1, alpha));
+  const fgChannels = fg
+    .slice(1)
+    .match(/../g)
+    ?.map((channel) => Number.parseInt(channel, 16));
+  const bgChannels = bg
+    .slice(1)
+    .match(/../g)
+    ?.map((channel) => Number.parseInt(channel, 16));
+
+  if (!fgChannels || !bgChannels) return fg;
+
+  const blended = fgChannels.map((value, index) =>
+    Math.round(value * clampAlpha + bgChannels[index] * (1 - clampAlpha)),
+  );
+
+  return `#${blended.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
 export function getPersonaTintStyle(
@@ -85,9 +109,17 @@ export function getPersonaTintStyle(
 
   const backgroundAlpha = options?.backgroundAlpha ?? 0.06;
   const borderAlpha = options?.borderAlpha ?? 0.18;
+  const baseSurface =
+    backgroundAlpha >= 0.12
+      ? "#2c313a"
+      : backgroundAlpha >= 0.08
+        ? "#282c34"
+        : "#21252b";
+  const backgroundColor = blendHex(persona.color, baseSurface, backgroundAlpha);
+  const borderColor = blendHex(persona.color, "#21252b", borderAlpha);
 
   return {
-    backgroundColor: hexToRgba(persona.color, backgroundAlpha),
-    borderColor: hexToRgba(persona.color, borderAlpha),
+    backgroundColor: backgroundColor ?? baseSurface,
+    borderColor: borderColor ?? "var(--border-default)",
   };
 }

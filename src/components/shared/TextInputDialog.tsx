@@ -77,7 +77,7 @@ export function TextInputDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-surface-dark backdrop-blur-xs" />
+          <div className="fixed inset-0 bg-surface-dark" />
         </Transition.Child>
 
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -107,7 +107,7 @@ export function TextInputDialog({
                     type="button"
                     onClick={onConfirm}
                     disabled={loading}
-                    className="inline-flex items-center justify-center gap-2 bg-action-primary-bg px-4 py-2 text-sm font-semibold text-action-primary-text hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    className="inline-flex items-center justify-center gap-2 bg-action-primary-bg px-4 py-2 text-sm font-semibold text-action-primary-text hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:bg-action-primary-disabled"
                   >
                     {loading ? (
                       <Loader2 className="h-4 w-4 animate-spin text-current" />

@@ -152,7 +152,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm transition-opacity" />
+          <div className="fixed inset-0 bg-surface-dark transition-opacity" />
         </TransitionChild>
 
       {/* Modal */}
@@ -166,10 +166,10 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
           leaveFrom="opacity-100 scale-100 translate-y-0"
           leaveTo="opacity-0 translate-y-4"
         >
-        <DialogPanel className="mx-auto max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-surface-default backdrop-blur-xl p-8 border border-border-default transition-all flex flex-col gap-6">
+        <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col gap-6 overflow-y-auto border border-border-default bg-surface-default p-8 transition-all">
           <div className="flex items-start justify-between">
             <div>
-              <DialogTitle className="text-2xl font-bold bg-linear-to-r from-text-default to-text-muted bg-clip-text text-transparent">
+              <DialogTitle className="text-2xl font-bold text-text-default">
                 The Bridge
               </DialogTitle>
               <p className="text-sm text-text-muted mt-1.5">
@@ -249,7 +249,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
               placeholder="What would you like to accomplish?"
-              className="w-full resize-y min-h-25 border border-border-default bg-surface-hover px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted/50 focus:border-border-default focus: focus: focus:bg-surface-default transition-all"
+              className="min-h-25 w-full resize-y border border-border-default bg-surface-hover px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted focus:border-border-default focus:bg-surface-default"
               rows={3}
             />
           </div>

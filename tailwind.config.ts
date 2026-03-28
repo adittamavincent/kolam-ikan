@@ -70,6 +70,20 @@ const config: Config = {
             text: "var(--status-success-text)",
           },
         },
+        diff: {
+          add: {
+            bg: "var(--diff-add-bg)",
+            subtle: "var(--diff-add-subtle)",
+            text: "var(--diff-add-text)",
+            accent: "var(--diff-add-accent)",
+          },
+          del: {
+            bg: "var(--diff-del-bg)",
+            subtle: "var(--diff-del-subtle)",
+            text: "var(--diff-del-text)",
+            accent: "var(--diff-del-accent)",
+          },
+        },
         // Domain Colors
         programming: "#61afef", // One Dark blue
         internship: "#c678dd", // One Dark purple

@@ -23,8 +23,6 @@ import {
   Send,
   Plus,
   X,
-  FileText,
-  Upload,
   GripVertical,
   Settings,
   Paperclip,
@@ -51,7 +49,7 @@ import { PersonaItem } from "../../shared/PersonaItem";
 import { SectionPreset, ThreadFrame } from "@/components/shared/SectionPreset";
 import { getPersonaHoverClass } from "@/components/shared/getPersonaHoverClass";
 
-import { FileAttachmentItem } from "./FileAttachmentItem";
+import { FileAttachmentsSection } from "./FileAttachmentsSection";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
 import AttachmentsManager from "@/components/layout/AttachmentsManager";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -336,6 +334,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     fileHash?: string;
   }
 
+  interface AttachmentSectionMemory {
+    displayMode: "inline" | "download" | "external";
+    attachments: FileAttachmentState[];
+    personaId?: string | null;
+    personaName?: string | null;
+  }
+
   type SectionState =
     | {
         instanceId: string;
@@ -349,7 +354,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         attachments: FileAttachmentState[];
         personaId?: string | null;
         personaName?: string | null;
-        note: string;
         isUploading: boolean;
       };
 
@@ -379,6 +383,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     previewUrl: string | null;
     importStatus?: string;
   } | null>(null);
+  const attachmentSectionMemoryRef = useRef<
+    Record<string, AttachmentSectionMemory>
+  >({});
   const [activePreviewTab, setActivePreviewTab] = useState<"file" | "parsed">(
     "file",
   );
@@ -525,8 +532,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         const attachmentDraft = getFileAttachmentDraft(section.instanceId);
         return (
           section.attachments.length > 0 ||
-          (attachmentDraft?.attachments?.length ?? 0) > 0 ||
-          section.note.trim().length > 0
+          (attachmentDraft?.attachments?.length ?? 0) > 0
         );
       }
 
@@ -783,7 +789,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                       fileHash: attachment.fileHash,
                     }),
                   ),
-                  note: "",
                   isUploading: false,
                 }
               : {
@@ -809,6 +814,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     ) => {
       if (!draft || draft.kind !== "FILE_ATTACHMENT") return;
 
+      attachmentSectionMemoryRef.current[instanceId] = {
+        displayMode: draft.displayMode,
+        attachments: draft.attachments.map((attachment) => ({ ...attachment })),
+        personaId: draft.personaId ?? null,
+        personaName: draft.personaName ?? null,
+      };
+
       saveFileAttachmentDraft(instanceId, {
         displayMode: draft.displayMode,
         personaId: draft.personaId,
@@ -823,11 +835,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           fileHash: attachment.fileHash,
           previewUrl: attachment.previewUrl ?? null,
         })),
-        content: [],
+        content: getDraftContent(instanceId),
         rawMarkdown: getDraftMarkdown(instanceId),
       });
     },
-    [getDraftMarkdown, saveFileAttachmentDraft],
+    [getDraftContent, getDraftMarkdown, saveFileAttachmentDraft],
   );
 
   // Watch imported documents and automatically update pending attachments.
@@ -1024,7 +1036,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
               referencedPage: null,
               fileHash: attachment.fileHash,
             })),
-            note: "",
             isUploading: false,
           });
         }
@@ -1188,6 +1199,38 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       handlePersonaEditorFocusChange,
       handlePersonaEditorReady,
     ],
+  );
+
+  const handleAttachmentNotesChange = useCallback(
+    (instanceId: string, content: PartialBlock[], markdown: string) => {
+      const section = sections.find(
+        (candidate) =>
+          candidate.instanceId === instanceId &&
+          candidate.kind === "FILE_ATTACHMENT",
+      ) as Extract<SectionState, { kind: "FILE_ATTACHMENT" }> | undefined;
+
+      if (!section) return;
+
+      saveFileAttachmentDraft(instanceId, {
+        displayMode: section.displayMode,
+        personaId: section.personaId ?? null,
+        personaName: section.personaName ?? undefined,
+        attachments: section.attachments.map((attachment) => ({
+          documentId: attachment.documentId,
+          storagePath: attachment.storagePath,
+          titleSnapshot: attachment.titleSnapshot,
+          annotationText: attachment.annotationText ?? null,
+          referencedPersonaId: attachment.referencedPersonaId ?? null,
+          referencedPage: attachment.referencedPage ?? null,
+          fileHash: attachment.fileHash,
+          previewUrl: attachment.previewUrl ?? null,
+        })),
+        content,
+        rawMarkdown: markdown,
+      });
+      debouncedSave();
+    },
+    [debouncedSave, saveFileAttachmentDraft, sections],
   );
 
   function renderAddPersonaMenu({
@@ -1442,6 +1485,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       }
     }
 
+    delete attachmentSectionMemoryRef.current[instanceId];
+
     if (remaining.length === 0) {
       // Clear immediately when the last section is removed so clearing flags
       // are written before a fast page unload can interrupt async cleanup.
@@ -1476,7 +1521,38 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     if (!section) return;
 
     if (section.kind === "PERSONA") {
-      const personaName = personas?.find((p) => p.id === section.personaId)?.name || null;
+      const personaName =
+        personas?.find((p) => p.id === section.personaId)?.name || null;
+      const rememberedAttachmentSection =
+        attachmentSectionMemoryRef.current[instanceId];
+      const persistedAttachmentDraft = getFileAttachmentDraft(instanceId) ?? {
+        displayMode: "inline" as const,
+        attachments: [],
+      };
+      const restoredAttachments =
+        rememberedAttachmentSection?.attachments.length
+          ? rememberedAttachmentSection.attachments
+          : (persistedAttachmentDraft.attachments ?? []).map((attachment) => ({
+              documentId: attachment.documentId ?? "",
+              storagePath: attachment.storagePath ?? "",
+              titleSnapshot: attachment.titleSnapshot,
+              pageCount: 0,
+              author: null,
+              creationDate: null,
+              thumbnailPath: attachment.thumbnailPath ?? null,
+              previewUrl: attachment.previewUrl ?? null,
+              annotationText: attachment.annotationText ?? null,
+              referencedPersonaId: attachment.referencedPersonaId ?? null,
+              referencedPage: attachment.referencedPage ?? null,
+              fileHash: attachment.fileHash,
+            }));
+      const restoredDisplayMode =
+        rememberedAttachmentSection?.displayMode ??
+        persistedAttachmentDraft.displayMode ??
+        "inline";
+      const restoredPersonaName =
+        rememberedAttachmentSection?.personaName ?? personaName;
+
       setSections((prev) =>
         prev.map((s) =>
           s.instanceId !== instanceId
@@ -1484,26 +1560,41 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             : {
                 instanceId,
                 kind: "FILE_ATTACHMENT" as const,
-                displayMode: "inline",
-                attachments: [],
+                displayMode: restoredDisplayMode,
+                attachments: restoredAttachments,
                 personaId: section.personaId,
-                personaName,
-                note: "",
+                personaName: restoredPersonaName,
                 isUploading: false,
               },
         ),
       );
       // Persist section type change so reload shows the correct kind
       saveFileAttachmentDraft(instanceId, {
-        displayMode: "inline",
+        displayMode: restoredDisplayMode,
         personaId: section.personaId,
-        personaName: personaName ?? undefined,
-        attachments: [],
+        personaName: restoredPersonaName ?? undefined,
+        attachments: restoredAttachments.map((attachment) => ({
+          documentId: attachment.documentId,
+          storagePath: attachment.storagePath,
+          thumbnailPath: attachment.thumbnailPath ?? null,
+          titleSnapshot: attachment.titleSnapshot ?? "Document",
+          annotationText: attachment.annotationText ?? null,
+          referencedPersonaId: attachment.referencedPersonaId ?? null,
+          referencedPage: attachment.referencedPage ?? null,
+          fileHash: attachment.fileHash,
+          previewUrl: attachment.previewUrl ?? null,
+        })),
         content: getDraftContent(instanceId),
         rawMarkdown: getDraftMarkdown(instanceId),
       });
     } else {
       const personaId = section.personaId || "";
+      attachmentSectionMemoryRef.current[instanceId] = {
+        displayMode: section.displayMode,
+        attachments: section.attachments.map((attachment) => ({ ...attachment })),
+        personaId: section.personaId ?? null,
+        personaName: section.personaName ?? null,
+      };
       setSections((prev) =>
         prev.map((s) =>
           s.instanceId !== instanceId
@@ -1536,6 +1627,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     setFullscreenSectionId(null);
     setFocusedPersonaInstanceId(null);
     setLastFocusedPersonaInstanceId(null);
+    attachmentSectionMemoryRef.current = {};
     void clearDraft();
     setClearSectionsDialogOpen(false);
   };
@@ -1755,7 +1847,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     const section = sections.find(
       (s) => s.instanceId === instanceId && s.kind === "FILE_ATTACHMENT",
     ) as Extract<SectionState, { kind: "FILE_ATTACHMENT" }> | undefined;
-    const draft = getFileAttachmentDraft(instanceId);
+    const draft = getFileAttachmentDraft(instanceId) ?? {
+      displayMode: "inline" as const,
+      attachments: [],
+    };
 
     const nextDraftAttachments = (draft?.attachments ?? []).filter(
       (attachment, index) =>
@@ -1769,9 +1864,32 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       personaId: section?.personaId ?? null,
       personaName: section?.personaName ?? undefined,
       attachments: nextDraftAttachments,
-      content: [],
+      content: getDraftContent(instanceId),
       rawMarkdown: getDraftMarkdown(instanceId),
     });
+
+    attachmentSectionMemoryRef.current[instanceId] = {
+      displayMode: section?.displayMode ?? draft?.displayMode ?? "inline",
+      personaId: section?.personaId ?? null,
+      personaName: section?.personaName ?? null,
+      attachments:
+        source === "draft"
+          ? nextDraftAttachments.map((attachment) => ({
+              documentId: attachment.documentId ?? "",
+              storagePath: attachment.storagePath ?? "",
+              titleSnapshot: attachment.titleSnapshot,
+              pageCount: 0,
+              author: null,
+              creationDate: null,
+              thumbnailPath: attachment.thumbnailPath ?? null,
+              previewUrl: attachment.previewUrl ?? null,
+              annotationText: attachment.annotationText ?? null,
+              referencedPersonaId: attachment.referencedPersonaId ?? null,
+              referencedPage: attachment.referencedPage ?? null,
+              fileHash: attachment.fileHash,
+            }))
+          : (section?.attachments ?? []).filter((_, index) => index !== attachmentIndex),
+    };
 
     setSections((prev) =>
       prev.map((s) => {
@@ -2135,98 +2253,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                             ) : (
                               /* FILE ATTACHMENTS BLOCK */
                               <div className="p-2">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <label className="inline-flex cursor-pointer items-center gap-1.5 border border-border-default bg-surface-subtle px-2 py-1 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
-                                  <Upload className="h-3 w-3" />
-                                  Upload File
-                                  <input
-                                    type="file"
-                                    accept="*/*"
-                                    multiple
-                                    className="hidden"
-                                    onChange={async (e) => {
-                                      const files = e.target.files;
-
-                                      e.target.value = ""; // Clear file
-                                      if (!files || files.length === 0) return;
-                                      await queueFilesForAttachmentSection(
-                                        instanceId,
-                                        files,
-                                      );
-                                    }}
-                                  />
-                                </label>
-
-                                <button
-                                  type="button"
-                                  className="inline-flex items-center gap-1.5 border border-border-default bg-surface-subtle px-2 py-1 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
-                                  onClick={() => {
-                                    setAttachmentManagerTargetInstanceId(instanceId);
-                                  }}
-                                >
-                                  <FileText className="h-3 w-3" />
-                                  Select from Library
-                                </button>
-
-                                {section.isUploading && (
-                                  <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    Uploading files...
-                                  </span>
-                                )}
-                              </div>
-                              <div
-                                className={`rounded-sm border border-dashed pt-2 transition-colors ${
-                                  dragOverAttachmentInstanceId === instanceId
-                                    ? "border-action-primary-bg bg-primary-950"
-                                    : effectiveAttachments.length === 0
-                                      ? "border-border-default bg-surface-subtle"
-                                      : "border-transparent"
-                                }`}
-                                onDragEnter={(event) => {
-                                  if (event.dataTransfer.types.includes("Files")) {
-                                    setDragOverAttachmentInstanceId(instanceId);
-                                  }
-                                }}
-                                onDragOver={(event) => {
-                                  if (!event.dataTransfer.types.includes("Files")) return;
-                                  event.preventDefault();
-                                  event.dataTransfer.dropEffect = "copy";
-                                  if (dragOverAttachmentInstanceId !== instanceId) {
-                                    setDragOverAttachmentInstanceId(instanceId);
-                                  }
-                                }}
-                                onDragLeave={(event) => {
-                                  if (
-                                    event.currentTarget.contains(
-                                      event.relatedTarget as Node | null,
-                                    )
-                                  ) {
-                                    return;
-                                  }
-                                  setDragOverAttachmentInstanceId((current) =>
-                                    current === instanceId ? null : current,
-                                  );
-                                }}
-                                onDrop={async (event) => {
-                                  if (!event.dataTransfer.files.length) return;
-                                  event.preventDefault();
-                                  setDragOverAttachmentInstanceId((current) =>
-                                    current === instanceId ? null : current,
-                                  );
-                                  await queueFilesForAttachmentSection(
-                                    instanceId,
-                                    event.dataTransfer.files,
-                                  );
-                                }}
-                              >
-                                {effectiveAttachments.length === 0 ? (
-                                  <div className="px-2 py-3 text-center text-xs text-text-muted">
-                                    Drop or attach one or more files to start
-                                    building this section.
-                                  </div>
-                                ) : (
-                                  effectiveAttachments.map(
+                                <FileAttachmentsSection
+                                  items={effectiveAttachments.map(
                                     (attachment, attachmentIndex) => {
                                       const docDetail = attachment.documentId
                                         ? attachedDocDetails.get(
@@ -2239,79 +2267,141 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                         latestJob?.status;
                                       const thumbnailStatus =
                                         docDetail?.thumbnail_status ?? null;
-                                      const isProcessing =
-                                        importStatus === "queued" ||
-                                        importStatus === "processing";
                                       const canOpenParsed =
                                         importStatus === "completed" &&
                                         !!attachment.documentId;
                                       const progressPercent =
                                         latestJob?.progress_percent ?? 0;
-                                      const progressMessage =
-                                        latestJob?.progress_message;
 
-                                      return (
-                                        <FileAttachmentItem
-                                          key={
-                                            attachment.documentId ||
-                                            attachment.fileHash ||
-                                            attachment.titleSnapshot
-                                          }
-                                          keyId={
-                                            attachment.documentId ||
-                                            attachment.fileHash ||
-                                            attachment.titleSnapshot
-                                          }
-                                          variant="creator"
-                                          title={attachment.titleSnapshot}
-                                          subtitle={`${attachment.pageCount > 0 ? `${attachment.pageCount} pages` : "File"}${attachment.author ? ` • ${attachment.author}` : ""}`}
-                                          documentId={
-                                            attachment.documentId ??
-                                            docDetail?.id ??
-                                            null
-                                          }
-                                          storagePath={attachment.storagePath}
-                                          thumbnailPath={
-                                            attachment.thumbnailPath ??
-                                            docDetail?.thumbnail_path ??
-                                            null
-                                          }
-                                          thumbnailStatus={thumbnailStatus}
-                                          importStatus={importStatus ?? null}
-                                          progressPercent={progressPercent}
-                                          progressMessage={progressMessage}
-                                          previewUrl={attachment.previewUrl}
-                                          isProcessing={isProcessing}
-                                          canOpenParsed={canOpenParsed}
-                                          displayMode={attachmentSection?.displayMode}
-                                          onPreviewFile={() =>
-                                            openAttachmentPreview(
-                                              attachment,
-                                              importStatus,
-                                              "file",
-                                            )
-                                          }
-                                          onPreviewParsed={() =>
-                                            openAttachmentPreview(
-                                              attachment,
-                                              importStatus,
-                                              "parsed",
-                                            )
-                                          }
-                                          onRemove={() =>
-                                            removeFileAttachment(
-                                              instanceId,
-                                              attachment,
-                                              attachmentIndex,
-                                              attachmentsSource,
-                                            )
-                                          }
-                                        />
-                                      );
+                                      return {
+                                        keyId:
+                                          attachment.documentId ||
+                                          attachment.fileHash ||
+                                          attachment.titleSnapshot,
+                                        variant: "log" as const,
+                                        title: attachment.titleSnapshot,
+                                        subtitle: `${
+                                          attachment.pageCount > 0
+                                            ? `${attachment.pageCount} pages`
+                                            : "File"
+                                        }${attachment.author ? ` • ${attachment.author}` : ""}`,
+                                        documentId:
+                                          attachment.documentId ??
+                                          docDetail?.id ??
+                                          null,
+                                        storagePath: attachment.storagePath,
+                                        thumbnailPath:
+                                          attachment.thumbnailPath ??
+                                          docDetail?.thumbnail_path ??
+                                          null,
+                                        thumbnailStatus,
+                                        importStatus: importStatus ?? null,
+                                        progressPercent,
+                                        progressMessage:
+                                          latestJob?.progress_message,
+                                        previewUrl: attachment.previewUrl,
+                                        canOpenParsed,
+                                        displayMode:
+                                          attachmentSection?.displayMode,
+                                        onPreviewFile: () =>
+                                          openAttachmentPreview(
+                                            attachment,
+                                            importStatus,
+                                            "file",
+                                          ),
+                                        onPreviewParsed: () =>
+                                          openAttachmentPreview(
+                                            attachment,
+                                            importStatus,
+                                            "parsed",
+                                          ),
+                                        onRemove: () =>
+                                          removeFileAttachment(
+                                            instanceId,
+                                            attachment,
+                                            attachmentIndex,
+                                            attachmentsSource,
+                                          ),
+                                      };
                                     },
-                                  )
-                                )}
-                              </div>
+                                  )}
+                                  canUpload
+                                  isUploading={section.isUploading}
+                                  isDragOver={
+                                    dragOverAttachmentInstanceId === instanceId
+                                  }
+                                  emptyStateMessage="Drop or attach one or more files to start building this section."
+                                  onUploadFiles={(files) =>
+                                    queueFilesForAttachmentSection(
+                                      instanceId,
+                                      files,
+                                    )
+                                  }
+                                  onOpenLibrary={() => {
+                                    setAttachmentManagerTargetInstanceId(
+                                      instanceId,
+                                    );
+                                  }}
+                                  onDragEnter={(event) => {
+                                    if (event.dataTransfer.types.includes("Files")) {
+                                      setDragOverAttachmentInstanceId(instanceId);
+                                    }
+                                  }}
+                                  onDragOver={(event) => {
+                                    if (!event.dataTransfer.types.includes("Files")) {
+                                      return;
+                                    }
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = "copy";
+                                    if (dragOverAttachmentInstanceId !== instanceId) {
+                                      setDragOverAttachmentInstanceId(instanceId);
+                                    }
+                                  }}
+                                  onDragLeave={(event) => {
+                                    if (
+                                      event.currentTarget.contains(
+                                        event.relatedTarget as Node | null,
+                                      )
+                                    ) {
+                                      return;
+                                    }
+                                    setDragOverAttachmentInstanceId((current) =>
+                                      current === instanceId ? null : current,
+                                    );
+                                  }}
+                                  onDrop={async (event) => {
+                                    if (!event.dataTransfer.files.length) return;
+                                    event.preventDefault();
+                                    setDragOverAttachmentInstanceId((current) =>
+                                      current === instanceId ? null : current,
+                                    );
+                                    await queueFilesForAttachmentSection(
+                                      instanceId,
+                                      event.dataTransfer.files,
+                                    );
+                                  }}
+                                  notes={
+                                    <div className="pt-2">
+                                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                                        Attachment Notes
+                                      </div>
+                                      <div className="section-editor-surface">
+                                        <MarkdownEditor
+                                          initialContent={getDraftContent(instanceId)}
+                                          initialMarkdown={getDraftMarkdown(instanceId)}
+                                          onChange={(content, markdown) => {
+                                            handleAttachmentNotesChange(
+                                              instanceId,
+                                              content,
+                                              markdown,
+                                            );
+                                          }}
+                                          placeholder="Add one note for all attached files..."
+                                        />
+                                      </div>
+                                    </div>
+                                  }
+                                />
                               </div>
                             )}
                           </SectionPreset>
@@ -2331,7 +2421,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   <kbd className="entry-creator__shortcut border px-1 py-0.5 text-[9px] font-mono">
                   ⌘+Enter
                 </kbd>
-                <span className="text-border-default">→</span>
+                <span className="text-text-muted">→</span>
                 <span className="entry-creator__branch-pill inline-flex min-w-0 items-center gap-1 border px-1.5 py-0.5">
                   <GitBranch className="h-3 w-3 shrink-0" />
                   <span className="truncate font-medium">
@@ -2390,7 +2480,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         <Dialog
           open={Boolean(activeFullscreenSection)}
           onClose={closeFullscreenEditor}
-          className="relative z-[120]"
+          className="relative z-120"
         >
           <div className="fixed inset-0 bg-surface-overlay" />
           <div className="fixed inset-0">
@@ -2404,7 +2494,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         key={section.instanceId}
                         type="button"
                         onClick={() => setFullscreenSectionId(section.instanceId)}
-                        className={`entry-creator-fullscreen__tab group min-w-[9rem] border border-b-0 px-3 py-2 text-left transition-colors ${
+                        className={`entry-creator-fullscreen__tab group min-w-36 border border-b-0 px-3 py-2 text-left transition-colors ${
                           isActive
                             ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
                             : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"

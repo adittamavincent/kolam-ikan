@@ -22,8 +22,8 @@ export function MergeCommitCard({
   const targetBranchName = entry.merge_target_branch_name ?? "current";
 
   return (
-    <div className="group relative overflow-hidden border border-dashed border-border-default bg-primary-950 transition-all">
-      <div className="flex items-center justify-between border-b border-dashed border-border-default/25 bg-primary-950 px-2.5 py-1.5">
+    <div className="group relative overflow-hidden border border-border-default bg-primary-950 transition-all">
+      <div className="flex items-center justify-between border-b border-border-default bg-primary-950 px-2.5 py-1.5">
         <div className="flex items-center gap-1.5">
           <GitMerge className="h-3.5 w-3.5 text-action-primary-bg" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-action-primary-bg">

@@ -940,7 +940,7 @@ export function DocumentImportModal({
                                     setDocumentToDelete(document);
                                   }}
                                   disabled={actionDisabled}
-                                  className={`absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-transparent focus: disabled:opacity-60 ${
+                                  className={`absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-surface-default focus: disabled:text-text-muted ${
                                     isInUse && !isPending
                                       ? "cursor-not-allowed text-text-muted"
                                       : "text-text-muted hover:bg-surface-hover hover:text-rose-600"

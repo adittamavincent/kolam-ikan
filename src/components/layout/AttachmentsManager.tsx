@@ -202,8 +202,8 @@ export function AttachmentsManager({
                               className={`${
                                 isInUse
                                   ? "cursor-not-allowed text-text-muted"
-                                  : "text-status-error-text hover:opacity-80"
-                              } disabled:opacity-70`}
+                                  : "text-status-error-text hover:text-status-error-border"
+                              } disabled:text-text-muted`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -220,7 +220,7 @@ export function AttachmentsManager({
                       setRemoveError(null);
                       onClose();
                     }}
-                    className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover"
+                    className="inline-flex justify-center border border-action-primary-bg bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover"
                   >
                     Close
                   </button>

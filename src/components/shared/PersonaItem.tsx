@@ -41,7 +41,7 @@ function PersonaButtonDisplay({
           {isAttachment ? (filePersonaName ?? "Attachment") : "Unknown"}
         </span>
         {showChevron && (
-          <ChevronDown className="persona-button-display__chevron h-3 w-3 text-text-muted opacity-50" />
+          <ChevronDown className="persona-button-display__chevron h-3 w-3 text-text-muted" />
         )}
       </>
     );
@@ -79,7 +79,7 @@ function PersonaButtonDisplay({
               {persona.name}
             </span>
             {showTypeBadge && (
-              <span className="persona-button-display__type-badge shrink-0 border px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em]">
+              <span className="persona-button-display__type-badge shrink-0 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em]">
                 {personaTypeLabel}
               </span>
             )}
@@ -176,11 +176,11 @@ export function PersonaItem({
           <Transition
             as={Fragment}
             enter="transition ease-out duration-100"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
+            enterFrom=""
+            enterTo=""
             leave="transition ease-in duration-75"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
+            leaveFrom=""
+            leaveTo=""
           >
             <MenuItems
               anchor={{ to: "bottom start", gap: 4 }}

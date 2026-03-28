@@ -1,13 +1,14 @@
 import { SectionWithPersona } from "@/lib/types";
+import type { SectionFileAttachmentWithDocument } from "@/lib/types";
 import { MarkdownEditor } from "@/components/shared/MarkdownEditor";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
 import type { PartialBlock } from "@/lib/types/editor";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { SectionPreset } from "@/components/shared/SectionPreset";
 import { PersonaItem } from "../../shared/PersonaItem";
-import { FileAttachmentItem } from "./FileAttachmentItem";
 import { FileText, Paperclip } from "lucide-react";
+import { FileAttachmentsSection } from "./FileAttachmentsSection";
 import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-protocol";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
@@ -34,6 +35,13 @@ interface LogSectionProps {
     >[number],
     tab: "file" | "parsed",
   ) => void;
+  attachmentOverrides?: SectionFileAttachmentWithDocument[];
+  onRemoveAttachment?: (
+    attachment: SectionFileAttachmentWithDocument,
+    attachmentIndex: number,
+  ) => void;
+  onAddAttachments?: (files: FileList | File[]) => Promise<void> | void;
+  isUploadingAttachments?: boolean;
 }
 
 export function LogSection({
@@ -47,9 +55,14 @@ export function LogSection({
   currentEditedMarkdown,
   onContentChange,
   onPreviewAttachment,
+  attachmentOverrides,
+  onRemoveAttachment,
+  onAddAttachments,
+  isUploadingAttachments = false,
 }: LogSectionProps) {
   const { personas } = usePersonas({ streamId, includeLocal: true });
   const { updateSectionPersona } = usePersonaMutations();
+  const [isDragOver, setIsDragOver] = useState(false);
 
   // Prefer the resolved persona from global list; if missing, fall back to
   // the persona object returned on the section or the persona name snapshot
@@ -160,12 +173,17 @@ export function LogSection({
     () => (personas ?? []).filter((persona) => isLocalPersona(persona)),
     [personas],
   );
-  const attachments = section.section_attachments ?? [];
+  const attachments = attachmentOverrides ?? section.section_attachments ?? [];
   const hasAttachments = attachments.length > 0;
-  const shouldShowEditor =
-    section.section_type !== "FILE_ATTACHMENT" || editableContent.length > 0;
+  const shouldShowEditorAboveAttachments =
+    section.section_type !== "FILE_ATTACHMENT";
+  const shouldShowAttachmentNotes =
+    section.section_type === "FILE_ATTACHMENT" &&
+    (editable || editableContent.length > 0);
+  const canAddAttachments =
+    editable && section.section_type === "FILE_ATTACHMENT" && !!onAddAttachments;
   const showEmptyAttachmentsNotice =
-    section.section_type === "FILE_ATTACHMENT" && !hasAttachments;
+    section.section_type === "FILE_ATTACHMENT" && !hasAttachments && !canAddAttachments;
   const isAttachmentSection = section.section_type === "FILE_ATTACHMENT";
   const sectionLabel = isAttachmentSection ? "Attachment" : "Message";
   const SectionIcon = isAttachmentSection ? Paperclip : FileText;
@@ -201,7 +219,7 @@ export function LogSection({
         />
       }
       leftHeader={
-        <div className="inline-flex items-center gap-1 border border-border-default bg-surface-default px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+        <div className="inline-flex items-center gap-1 bg-surface-default px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
           <span className="text-text-default">S{sectionIndex + 1}</span>
           <span className="h-px w-1.5 bg-border-strong" />
           <SectionIcon className="h-3 w-3" />
@@ -209,7 +227,7 @@ export function LogSection({
         </div>
       }
       rightHeader={
-        <span className="border border-border-default bg-surface-default px-1 py-px text-[10px] text-text-muted">
+        <span className="px-1 py-px text-[10px] text-text-muted">
           {section.updated_at
             ? new Date(section.updated_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -221,7 +239,7 @@ export function LogSection({
       contentClassName="space-y-0.5"
     >
       <div className="min-w-0 flex-1 space-y-0.5">
-        {shouldShowEditor && (
+        {shouldShowEditorAboveAttachments && (
           <div
             className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose prose-sm max-w-none dark:prose-invert`}
           >
@@ -244,9 +262,9 @@ export function LogSection({
           </div>
         )}
 
-        {hasAttachments && (
-          <div className="space-y-1.5">
-            {attachments.map((attachment) => {
+        {(hasAttachments || canAddAttachments) && (
+          <FileAttachmentsSection
+            items={attachments.map((attachment, attachmentIndex) => {
               const importStatus =
                 attachment.document?.import_status ??
                 attachment.document?.latestJob?.status ??
@@ -255,45 +273,103 @@ export function LogSection({
                 isParsedReadyStatus(importStatus) &&
                 !!(attachment.document_id ?? attachment.document?.id);
 
-              return (
-                <FileAttachmentItem
-                  key={attachment.id}
-                  keyId={attachment.id}
-                  variant="log"
-                  title={
-                    attachment.title_snapshot ||
-                    attachment.document?.title ||
-                    "File Attachment"
-                  }
-                  annotationText={attachment.annotation_text}
-                  documentId={attachment.document_id ?? attachment.document?.id ?? null}
-                  storagePath={attachment.document?.storage_path}
-                  thumbnailPath={attachment.document?.thumbnail_path}
-                  thumbnailStatus={attachment.document?.thumbnail_status ?? null}
-                  importStatus={importStatus}
-                  progressPercent={
-                    attachment.document?.latestJob?.progress_percent ?? 0
-                  }
-                  canOpenParsed={canOpenParsed}
-                  onPreviewFile={
-                    onPreviewAttachment
-                      ? () => onPreviewAttachment(attachment, "file")
-                      : undefined
-                  }
-                  onPreviewParsed={
-                    onPreviewAttachment
-                      ? () => onPreviewAttachment(attachment, "parsed")
-                      : undefined
-                  }
-                />
-              );
+              return {
+                keyId: attachment.id,
+                variant: "log" as const,
+                title:
+                  attachment.title_snapshot ||
+                  attachment.document?.title ||
+                  "File Attachment",
+                annotationText: attachment.annotation_text,
+                documentId: attachment.document_id ?? attachment.document?.id ?? null,
+                storagePath: attachment.document?.storage_path,
+                thumbnailPath: attachment.document?.thumbnail_path,
+                thumbnailStatus: attachment.document?.thumbnail_status ?? null,
+                importStatus,
+                progressPercent:
+                  attachment.document?.latestJob?.progress_percent ?? 0,
+                canOpenParsed,
+                onPreviewFile: onPreviewAttachment
+                  ? () => onPreviewAttachment(attachment, "file")
+                  : undefined,
+                onPreviewParsed: onPreviewAttachment
+                  ? () => onPreviewAttachment(attachment, "parsed")
+                  : undefined,
+                onRemove:
+                  editable && onRemoveAttachment
+                    ? () => onRemoveAttachment(attachment, attachmentIndex)
+                    : undefined,
+              };
             })}
-          </div>
+            canUpload={canAddAttachments}
+            isUploading={isUploadingAttachments}
+            isDragOver={isDragOver}
+            emptyStateMessage="Drop or attach one or more files to add them to this section."
+            onUploadFiles={onAddAttachments}
+            onDragEnter={(event) => {
+              if (!canAddAttachments || !event.dataTransfer.types.includes("Files")) {
+                return;
+              }
+              setIsDragOver(true);
+            }}
+            onDragOver={(event) => {
+              if (!canAddAttachments || !event.dataTransfer.types.includes("Files")) {
+                return;
+              }
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "copy";
+              if (!isDragOver) {
+                setIsDragOver(true);
+              }
+            }}
+            onDragLeave={(event) => {
+              if (
+                event.currentTarget.contains(event.relatedTarget as Node | null)
+              ) {
+                return;
+              }
+              setIsDragOver(false);
+            }}
+            onDrop={async (event) => {
+              if (!canAddAttachments || !event.dataTransfer.files.length) return;
+              event.preventDefault();
+              setIsDragOver(false);
+              await onAddAttachments(event.dataTransfer.files);
+            }}
+          />
         )}
 
         {showEmptyAttachmentsNotice && (
           <div className="border border-dashed border-border-default bg-surface-default px-2 py-1.5 text-[11px] text-text-muted">
             No file attachments in this section.
+          </div>
+        )}
+
+        {shouldShowAttachmentNotes && (
+          <div className="">
+            <div className="p-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+              Attachment Notes
+            </div>
+            <div
+              className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose prose-sm max-w-none dark:prose-invert`}
+            >
+              <MarkdownEditor
+                key={
+                  editable
+                    ? `editable-${section.id}`
+                    : `readonly-${section.id}-${section.updated_at ?? "na"}`
+                }
+                initialContent={
+                  editable ? (currentEditedContent ?? editableContent) : trimmedContent
+                }
+                initialMarkdown={
+                  editable ? currentEditedMarkdown : storedContentToMarkdown(section)
+                }
+                editable={editable}
+                onChange={editable ? onContentChange : undefined}
+                highlightTerm={editable ? undefined : highlightTerm}
+              />
+            </div>
           </div>
         )}
       </div>

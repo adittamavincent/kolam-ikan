@@ -18,16 +18,22 @@ const { mockUseKeyboard } = vi.hoisted(() => ({
 const mockMutate = vi.fn();
 const mockMutateAsync = vi.fn();
 const mockSaveDraft = vi.fn();
+const mockSaveFileAttachmentDraft = vi.fn();
 const mockCommitDraft = vi.fn();
 const mockDraftContents: Record<string, unknown[]> = {};
 const mockDraftMarkdown: Record<string, string> = {};
+const mockInitialDrafts: Record<string, unknown> = {};
 const mockPersonas = [
   { id: "p1", name: "Myself", icon: "User", color: "#0ea5e9" },
 ];
 const mockGetDraftContent = (instanceId: string) =>
-  mockDraftContents[instanceId] ?? [];
+  mockDraftContents[instanceId] ??
+  ((mockInitialDrafts[instanceId] as { content?: unknown[] } | undefined)
+    ?.content ?? []);
 const mockGetDraftMarkdown = (instanceId: string) =>
-  mockDraftMarkdown[instanceId] ?? "";
+  mockDraftMarkdown[instanceId] ??
+  ((mockInitialDrafts[instanceId] as { rawMarkdown?: string } | undefined)
+    ?.rawMarkdown ?? "");
 const mockGetFileAttachmentDraft = () => undefined;
 
 vi.mock("@tanstack/react-query", async () => {
@@ -130,9 +136,9 @@ vi.mock("@/lib/hooks/useDraftSystem", () => ({
     status: "idle",
     localStatus: "idle",
     saveDraft: mockSaveDraft,
-    saveFileAttachmentDraft: vi.fn(),
+    saveFileAttachmentDraft: mockSaveFileAttachmentDraft,
     commitDraft: mockCommitDraft,
-    initialDrafts: {},
+    initialDrafts: mockInitialDrafts,
     getDraftContent: mockGetDraftContent,
     getDraftMarkdown: mockGetDraftMarkdown,
     getFileAttachmentDraft: mockGetFileAttachmentDraft,
@@ -253,6 +259,7 @@ describe("EntryCreator", () => {
     vi.clearAllMocks();
     Object.keys(mockDraftContents).forEach((key) => delete mockDraftContents[key]);
     Object.keys(mockDraftMarkdown).forEach((key) => delete mockDraftMarkdown[key]);
+    Object.keys(mockInitialDrafts).forEach((key) => delete mockInitialDrafts[key]);
     mockSaveDraft.mockImplementation(
       (
         instanceId: string,
@@ -264,6 +271,18 @@ describe("EntryCreator", () => {
       ) => {
         mockDraftContents[instanceId] = content;
         mockDraftMarkdown[instanceId] = markdown ?? "";
+      },
+    );
+    mockSaveFileAttachmentDraft.mockImplementation(
+      (
+        instanceId: string,
+        payload: {
+          content?: unknown[];
+          rawMarkdown?: string;
+        },
+      ) => {
+        mockDraftContents[instanceId] = payload.content ?? [];
+        mockDraftMarkdown[instanceId] = payload.rawMarkdown ?? "";
       },
     );
     mockCommitDraft.mockResolvedValue("entry-1");
@@ -387,5 +406,58 @@ describe("EntryCreator", () => {
     triggerShortcut({ key: "Enter", metaKey: true, shiftKey: true });
 
     expect(screen.queryByTitle("Exit fullscreen editor")).not.toBeInTheDocument();
+  });
+
+  it("renders shared attachment notes from the attachment section draft", async () => {
+    mockInitialDrafts["attachment-1"] = {
+      sectionType: "FILE_ATTACHMENT",
+      personaId: "p1",
+      personaName: "Myself",
+      content: [{ content: [{ text: "Shared note" }] }],
+      rawMarkdown: "Shared note",
+      fileDisplayMode: "inline",
+      fileAttachments: [
+        {
+          documentId: "doc-1",
+          titleSnapshot: "Invoice.pdf",
+        },
+      ],
+    };
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByDisplayValue("Shared note"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Attachment Notes")).toBeInTheDocument();
+  });
+
+  it("saves shared attachment notes through the attachment draft path", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+    fireEvent.click(screen.getByTitle("Switch to Attachments"));
+
+    const notesEditor = await screen.findByPlaceholderText(
+      "Add one note for all attached files...",
+    );
+    fireEvent.change(notesEditor, { target: { value: "Batch note" } });
+
+    expect(mockSaveFileAttachmentDraft).toHaveBeenCalled();
+    expect(mockSaveFileAttachmentDraft).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        rawMarkdown: "Batch note",
+        content: [{ content: [{ text: "Batch note" }] }],
+      }),
+    );
   });
 });

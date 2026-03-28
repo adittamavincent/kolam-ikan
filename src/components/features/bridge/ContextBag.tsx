@@ -144,7 +144,7 @@ export function ContextBag({
               Include Domain Global Stream
             </span>
             {globalStreamLoading && (
-              <span className="ml-1 inline-block h-3 w-3 animate-spin border-2 border-border-default border-t-transparent" />
+              <span className="ml-1 inline-block h-3 w-3 animate-spin border-2 border-border-default border-t-action-primary-bg" />
             )}
           </label>
           {!globalStreamLoading &&
@@ -168,14 +168,14 @@ export function ContextBag({
           <button
             onClick={selectAll}
             disabled={disableSelectAll || isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated disabled:opacity-50 transition-all"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted"
           >
             Select All
           </button>
           <button
             onClick={selectLastFive}
             disabled={isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated disabled:opacity-50 transition-all"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted"
           >
             Last 5
           </button>

@@ -218,7 +218,7 @@ export function InteractionSwitcher({
   return (
     <div className="flex flex-wrap items-center gap-4">
       {/* Interaction Mode Toggle */}
-      <div className="flex w-full max-w-sm bg-surface-hover p-1 border border-border-subtle backdrop-blur-sm">
+      <div className="flex w-full max-w-sm border border-border-subtle bg-surface-hover p-1">
         {(["ASK", "GO", "BOTH"] as const).map((mode) => (
           <button
             key={mode}
@@ -236,7 +236,7 @@ export function InteractionSwitcher({
 
       {/* Token Indicator */}
       <div
-        className={`flex items-center gap-3 px-3 py-1.5  border transition-all ${overLimit ? "bg-status-error-bg/5 border-border-subtle" : "bg-surface-subtle border-border-subtle"}`}
+        className={`flex items-center gap-3 border border-border-subtle px-3 py-1.5 transition-all ${overLimit ? "bg-status-error-bg" : "bg-surface-subtle"}`}
       >
         <div className="flex flex-col">
           <span className="text-[10px] font-bold text-text-muted uppercase leading-none tracking-tight">
@@ -248,7 +248,7 @@ export function InteractionSwitcher({
             >
               {tokens.toLocaleString()}
             </span>
-            <span className="text-[10px] text-text-muted opacity-50">
+            <span className="text-[10px] text-text-muted">
               / {tokenLimit.toLocaleString()}
             </span>
           </div>
@@ -276,7 +276,7 @@ export function InteractionSwitcher({
             <span>Copy XML</span>
           </button>
 
-          <div className="w-px h-4 bg-border-subtle/30 mx-0.5" />
+          <div className="mx-0.5 h-4 w-px bg-border-subtle" />
 
           <button
             onClick={onPaste}
@@ -293,7 +293,7 @@ export function InteractionSwitcher({
             onClick={onParse}
             disabled={!status.canParse}
             title="Parse Response"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group disabled:opacity-30 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default transition-all group hover:bg-surface-hover hover:text-action-primary-bg disabled:cursor-not-allowed disabled:text-text-muted"
           >
             <Play
               className={`h-3.5 w-3.5 ${status.canParse ? "text-text-muted group-hover:text-action-primary-bg" : "text-text-muted"} transition-colors`}
@@ -305,7 +305,7 @@ export function InteractionSwitcher({
             onClick={onApply}
             disabled={!status.canApply || status.isApplying}
             title="Apply Changes"
-            className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
+            className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:text-text-muted ${
               status.canApply
                 ? "bg-primary-950 text-action-primary-bg hover:bg-action-primary-bg hover:text-white"
                 : "text-text-muted hover:bg-surface-hover"
@@ -315,7 +315,7 @@ export function InteractionSwitcher({
             <span>{status.isApplying ? "Applying..." : "Apply"}</span>
           </button>
 
-          <div className="w-px h-4 bg-border-subtle/30 mx-0.5" />
+          <div className="mx-0.5 h-4 w-px bg-border-subtle" />
 
           <button
             onClick={onReset}

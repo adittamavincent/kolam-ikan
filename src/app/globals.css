@@ -13,11 +13,7 @@
   --text-normal: var(--text-default);
   --text-faint: var(--text-muted);
   --caret-color: var(--action-primary-bg);
-  --text-selection: color-mix(
-    in srgb,
-    var(--action-primary-bg) 34%,
-    transparent
-  );
+  --text-selection: #375698;
 
   /* -------------------------------------------------------------------------- */
   /*  PRIMITIVES (Brand & Base Colors)                                         */
@@ -84,6 +80,16 @@
   --color-status-error-text: var(--status-error-text);
   --color-status-success-bg: var(--status-success-bg);
   --color-status-success-text: var(--status-success-text);
+
+  /* Git / Diff */
+  --color-diff-add-bg: var(--diff-add-bg);
+  --color-diff-add-subtle: var(--diff-add-subtle);
+  --color-diff-add-text: var(--diff-add-text);
+  --color-diff-add-accent: var(--diff-add-accent);
+  --color-diff-del-bg: var(--diff-del-bg);
+  --color-diff-del-subtle: var(--diff-del-subtle);
+  --color-diff-del-text: var(--diff-del-text);
+  --color-diff-del-accent: var(--diff-del-accent);
 }
 
 :root {
@@ -99,7 +105,7 @@
   --bg-surface-elevated: #2c313a;
   --bg-surface-hover: #323844;
   --bg-surface-dark: #1b1f24;
-  --bg-surface-overlay: rgba(18, 20, 24, 0.72);
+  --bg-surface-overlay: #1b1f24;
 
   /* Text */
   --text-default: #abb2bf;
@@ -129,6 +135,16 @@
   --status-error-text: #e06c75;
   --status-success-bg: #2b4242;
   --status-success-text: #98c379;
+
+  /* Git / Diff */
+  --diff-add-bg: #173a2f;
+  --diff-add-subtle: #1f4a3d;
+  --diff-add-text: #6fd3a8;
+  --diff-add-accent: #baf3dc;
+  --diff-del-bg: #4a2029;
+  --diff-del-subtle: #5c2933;
+  --diff-del-text: #f08b9d;
+  --diff-del-accent: #ffd0d8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -142,7 +158,7 @@
     --bg-surface-elevated: #2c313a;
     --bg-surface-hover: #323844;
     --bg-surface-dark: #1b1f24;
-    --bg-surface-overlay: rgba(18, 20, 24, 0.72);
+    --bg-surface-overlay: #1b1f24;
 
     --text-default: #abb2bf;
     --text-subtle: #a0a7b4;
@@ -168,6 +184,15 @@
     --status-error-text: #e06c75;
     --status-success-bg: #2b4242;
     --status-success-text: #98c379;
+
+    --diff-add-bg: #173a2f;
+    --diff-add-subtle: #1f4a3d;
+    --diff-add-text: #6fd3a8;
+    --diff-add-accent: #baf3dc;
+    --diff-del-bg: #4a2029;
+    --diff-del-subtle: #5c2933;
+    --diff-del-text: #f08b9d;
+    --diff-del-accent: #ffd0d8;
   }
 }
 
@@ -188,7 +213,7 @@ body {
 
 @layer base {
   * {
-    scrollbar-color: var(--border-strong) transparent;
+    scrollbar-color: var(--border-strong) var(--bg-surface-default);
     scrollbar-width: thin;
   }
 
@@ -199,7 +224,7 @@ body {
   }
 
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--bg-surface-default);
   }
 
   ::-webkit-scrollbar-thumb {
@@ -227,39 +252,39 @@ body {
 }
 
 .entry-creator {
-  --entry-local-hover: rgba(91, 168, 255, 0.16);
-  --entry-topbar-bg: #21375c;
-  --entry-topbar-border: rgba(102, 146, 210, 0.32);
-  --entry-topbar-button-bg: rgba(106, 152, 223, 0.08);
-  --entry-topbar-button-hover: rgba(125, 181, 255, 0.14);
-  --entry-topbar-button-border: rgba(124, 170, 236, 0.38);
+  --entry-local-hover: #2a3a4d;
+  --entry-topbar-bg: #2b3340;
+  --entry-topbar-border: #374860;
+  --entry-topbar-button-bg: #272e39;
+  --entry-topbar-button-hover: #2e3949;
+  --entry-topbar-button-border: #445874;
   --entry-topbar-button-text: #d6e6ff;
   --entry-topbar-icon: #88baf5;
-  --entry-section-header-bg: rgba(35, 43, 58, 0.98);
-  --entry-section-header-border: rgba(94, 114, 145, 0.34);
-  --entry-section-label-bg: rgba(91, 116, 153, 0.12);
-  --entry-section-label-border: rgba(118, 145, 189, 0.38);
+  --entry-section-header-bg: #232b3a;
+  --entry-section-header-border: #363f4e;
+  --entry-section-label-bg: #282e38;
+  --entry-section-label-border: #414e62;
   --entry-section-label-text: #9caeca;
   --entry-section-label-index: #edf4ff;
-  --entry-section-label-divider: rgba(135, 160, 198, 0.52);
+  --entry-section-label-divider: #56657c;
   --entry-icon-color: #89a2c6;
   --entry-icon-hover: #dceaff;
-  --entry-icon-hover-bg: rgba(116, 156, 214, 0.14);
+  --entry-icon-hover-bg: #2d3643;
   --entry-icon-danger: #f0b8ad;
-  --entry-icon-danger-border: rgba(170, 104, 94, 0.48);
-  --entry-badge-bg: rgba(118, 157, 219, 0.12);
-  --entry-badge-border: rgba(135, 181, 246, 0.3);
+  --entry-icon-danger-border: #634543;
+  --entry-badge-bg: #2b3340;
+  --entry-badge-border: #405068;
   --entry-badge-text: #cbdcff;
   --entry-local-text: #8acbf2;
-  --entry-footer-bg: #253d67;
-  --entry-footer-border: rgba(102, 146, 210, 0.28);
-  --entry-shortcut-bg: rgba(16, 24, 39, 0.3);
-  --entry-shortcut-border: rgba(136, 167, 216, 0.24);
-  --entry-branch-bg: rgba(80, 137, 218, 0.14);
-  --entry-branch-border: rgba(105, 165, 245, 0.34);
+  --entry-footer-bg: #2f3a4c;
+  --entry-footer-border: #34445a;
+  --entry-shortcut-bg: #1c212a;
+  --entry-shortcut-border: #3a4455;
+  --entry-branch-bg: #283344;
+  --entry-branch-border: #395170;
   --entry-branch-text: #86c7ff;
-  --entry-warning-bg: rgba(118, 98, 43, 0.18);
-  --entry-warning-border: rgba(187, 151, 74, 0.32);
+  --entry-warning-bg: #30302b;
+  --entry-warning-border: #524935;
   --entry-warning-text: #e2c77a;
 }
 
@@ -276,7 +301,7 @@ body {
 
 .entry-creator__topbar-button:hover {
   background: var(--entry-topbar-button-hover);
-  border-color: color-mix(in srgb, var(--entry-topbar-button-border) 70%, white);
+  border-color: #56657c;
   color: #f3f8ff;
 }
 
@@ -285,7 +310,7 @@ body {
 }
 
 .entry-creator__topbar-button--icon {
-  background: rgba(89, 112, 154, 0.08);
+  background: #272e39;
 }
 
 .entry-creator__section-header {
@@ -311,17 +336,17 @@ body {
 
 .entry-creator__icon-button {
   color: var(--entry-icon-color);
-  border: 1px solid transparent;
+  border: 1px solid var(--entry-section-header-border);
 }
 
 .entry-creator__icon-button:hover {
   background: var(--entry-icon-hover-bg);
-  border-color: rgba(110, 146, 196, 0.28);
+  border-color: #56657c;
   color: var(--entry-icon-hover);
 }
 
 .entry-creator__icon-button--danger:hover {
-  background: rgba(114, 59, 54, 0.18);
+  background: #4d232e;
   border-color: var(--entry-icon-danger-border);
   color: var(--entry-icon-danger);
 }
@@ -349,19 +374,18 @@ body {
 }
 
 .persona-button-display__icon {
-  border: 1px solid transparent;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--entry-section-header-border);
+  box-shadow: none;
 }
 
 .persona-button-display__type-badge {
-  background: var(--entry-badge-bg, rgba(118, 157, 219, 0.12));
-  border-color: var(--entry-badge-border, rgba(135, 181, 246, 0.3));
+  background: var(--entry-badge-bg, #2e477b);
+  border-color: var(--entry-badge-border, #568af2);
   color: var(--entry-badge-text, #cbdcff);
 }
 
 .persona-button-display__chevron {
   color: var(--entry-icon-color, var(--text-muted));
-  opacity: 0.78;
 }
 
 .persona-button-display__fallback-icon {
@@ -394,7 +418,7 @@ body {
   right: 0;
   bottom: 0;
   left: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 70%, transparent);
+  border-bottom: 1px solid var(--border-default);
   pointer-events: none;
 }
 
@@ -426,7 +450,7 @@ body {
 .entry-creator-fullscreen .kolam-codemirror-root .cm-editor,
 .entry-creator-fullscreen .kolam-codemirror-root .cm-scroller,
 .entry-creator-fullscreen .kolam-codemirror-root .cm-gutters {
-  background: transparent;
+  background: var(--bg-surface-default);
 }
 
 .entry-creator-fullscreen .kolam-codemirror-root {
@@ -486,7 +510,7 @@ body {
 .am-block { border-radius: 0; padding: 12px; margin: 0 0 0.75rem 0; }
 .am-code pre { background: #0b0f14; color: #e6edf3; padding: 12px; border-radius: 0; overflow: auto; }
 .am-table { border-collapse: collapse; width: 100%; margin-bottom: 0.75rem; }
-.am-table th, .am-table td { border: 1px solid rgba(0,0,0,0.08); padding: 6px 8px; text-align: left; vertical-align: top; }
+.am-table th, .am-table td { border: 1px solid var(--border-default); padding: 6px 8px; text-align: left; vertical-align: top; }
 .am-table thead th { background: #f6f9ff; border-bottom-width: 2px; }
 .am-root mark { padding: 0 4px; border-radius: 0; background: #fff7b2; }
 
@@ -522,7 +546,7 @@ body {
 }
 
 .entry-creator .kolam-codemirror-root .cm-editor {
-  background: transparent;
+  background: var(--background-primary);
   height: auto;
   min-height: 1.65em;
 }
@@ -531,7 +555,7 @@ body {
 .entry-creator .kolam-codemirror-root,
 .entry-creator .kolam-codemirror-root .cm-editor,
 .entry-creator .kolam-codemirror-root .cm-scroller {
-  background: transparent;
+  background: var(--background-primary);
   height: auto;
   min-height: 0;
 }
@@ -662,7 +686,7 @@ body {
 
 .kolam-codemirror-root .cm-kolam-inline-code {
   border-radius: 0;
-  background: color-mix(in srgb, var(--background-primary) 65%, black);
+  background: var(--bg-surface-dark);
   color: var(--text-normal);
   font-family: var(--font-monospace);
   padding: 0 0.25rem;
@@ -674,19 +698,19 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-highlight {
-  background: color-mix(in srgb, #facc15 42%, transparent);
+  background: #8d6e2c;
   border-radius: 0;
 }
 
 .kolam-codemirror-root .cm-kolam-blockquote {
-  border-left: 2px solid color-mix(in srgb, var(--text-faint) 55%, transparent);
-  color: color-mix(in srgb, var(--text-normal) 86%, var(--text-faint));
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-subtle);
   padding-left: 0.9rem;
 }
 
 .kolam-codemirror-root .cm-kolam-callout-title {
   border-radius: 0;
-  background: color-mix(in srgb, var(--text-selection) 22%, transparent);
+  background: var(--text-selection);
   color: var(--text-normal);
   font-weight: 600;
   padding: 0.15rem 0.45rem;
@@ -697,7 +721,7 @@ body {
   min-width: var(--kolam-list-marker-width, 1.5rem);
   align-items: center;
   justify-content: flex-end;
-  color: color-mix(in srgb, var(--text-normal) 88%, var(--text-faint));
+  color: var(--text-subtle);
   font-variant-numeric: tabular-nums;
   padding-right: 0.6rem;
   margin-right: 0.15rem;
@@ -741,27 +765,20 @@ body {
 .kolam-codemirror-root .cm-kolam-table-preview-cell {
   min-width: 0;
   padding: 0.12rem 0.45rem;
-  border-right: 1px solid
-    color-mix(in srgb, var(--color-border-default, #d6d6d6) 82%, transparent);
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--color-border-default, #d6d6d6) 82%, transparent);
-  background: color-mix(
-    in srgb,
-    var(--color-surface-default, #fff) 92%,
-    transparent
-  );
+  border-right: 1px solid var(--color-border-default, #333841);
+  border-bottom: 1px solid var(--color-border-default, #333841);
+  background: var(--color-surface-default, #21252b);
   box-sizing: border-box;
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-row.is-header .cm-kolam-table-preview-cell {
   font-weight: 700;
-  background: color-mix(in srgb, var(--text-selection) 16%, transparent);
+  background: var(--text-selection);
   border-bottom-width: 2px;
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-cell:first-child {
-  border-left: 1px solid
-    color-mix(in srgb, var(--color-border-default, #d6d6d6) 82%, transparent);
+  border-left: 1px solid var(--color-border-default, #333841);
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-cell[data-align="center"] {
@@ -786,7 +803,7 @@ body {
 
 .kolam-codemirror-root .cm-kolam-table-inline-code {
   border-radius: 0;
-  background: color-mix(in srgb, var(--background-primary) 65%, black);
+  background: var(--bg-surface-dark);
   color: var(--text-normal);
   font-family: var(--font-monospace);
   padding: 0 0.25rem;
@@ -854,23 +871,21 @@ body {
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: transparent;
+  background: var(--bg-surface-default);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: var(--text-muted);
   cursor: grab;
-  opacity: 0;
   touch-action: none;
-  transition: opacity 140ms ease, background 140ms ease, outline-color 140ms ease,
+  transition: background 140ms ease, outline-color 140ms ease,
     color 140ms ease;
 }
 
 .kolam-codemirror-root .cm-kolam-table-handle:hover {
-  background: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 14%, transparent);
-  outline: 1px solid
-    color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 36%, transparent);
-  color: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 88%, transparent);
+  background: var(--bg-surface-hover);
+  outline: 1px solid var(--action-primary-bg);
+  color: var(--action-primary-bg);
 }
 
 .kolam-codemirror-root .cm-kolam-table-handle:active {
@@ -878,10 +893,8 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-table-handle.is-dragging {
-  opacity: 1;
-  background: color-mix(in srgb, var(--interactive-accent, #8b5cf6) 84%, transparent);
-  outline: 1px solid
-    color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  background: var(--action-primary-bg);
+  outline: 1px solid var(--action-primary-hover);
   color: var(--background-primary);
 }
 
@@ -890,7 +903,6 @@ body {
   height: 0.72rem;
   border-radius: 0;
   background: currentColor;
-  opacity: 0.92;
 }
 
 .kolam-codemirror-root .cm-kolam-table-handle.is-row .cm-kolam-table-grip-dots {
@@ -900,13 +912,12 @@ body {
 .kolam-codemirror-root .cm-kolam-table-add-zone {
   pointer-events: auto;
   position: absolute;
-  border: 1px dashed color-mix(in srgb, var(--text-normal) 16%, transparent);
+  border: 1px dashed var(--border-strong);
   border-radius: 0;
-  background: color-mix(in srgb, var(--background-primary) 90%, black);
-  color: color-mix(in srgb, var(--text-normal) 74%, transparent);
-  opacity: 0;
+  background: var(--bg-surface-dark);
+  color: var(--text-subtle);
   touch-action: none;
-  transition: opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+  transition: border-color 160ms ease, background 160ms ease;
   z-index: 2;
 }
 
@@ -931,7 +942,7 @@ body {
   font-size: 0.66rem;
   font-weight: 700;
   color: var(--background-primary);
-  background: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 80%, #8b5cf6 20%);
+  background: var(--action-primary-bg);
 }
 
 .kolam-codemirror-root .cm-kolam-table-add-zone.is-right {
@@ -949,37 +960,27 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-table-shell:hover .cm-kolam-table-handle,
-.kolam-codemirror-root .cm-kolam-table-shell:hover .cm-kolam-table-add-zone,
-.kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-handle,
-.kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-add-zone {
-  opacity: 1;
-}
-
-.kolam-codemirror-root .cm-kolam-table-shell:hover .cm-kolam-table-handle,
 .kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-handle {
-  background: color-mix(in srgb, var(--background-primary) 78%, transparent);
+  background: var(--bg-surface-hover);
 }
 
 .kolam-codemirror-root .cm-kolam-table-add-zone:hover,
 .kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-add-zone {
-  border-color: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 56%, transparent);
-  background: color-mix(in srgb, var(--background-primary) 84%, black);
+  border-color: var(--action-primary-bg);
+  background: var(--bg-surface-hover);
 }
 
 .kolam-codemirror-root .cm-kolam-table-drop-indicator {
   position: absolute;
   z-index: 3;
   pointer-events: none;
-  opacity: 0;
   border-radius: 0;
-  background: color-mix(in srgb, var(--interactive-accent, #8b5cf6) 88%, transparent);
-  outline: 1px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 56%, transparent);
-  transition: opacity 120ms ease;
+  background: var(--action-primary-bg);
+  outline: 1px solid var(--action-primary-hover);
+  transition: none;
 }
 
-.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-visible {
-  opacity: 1;
-}
+.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-visible { display: block; }
 
 .kolam-codemirror-root .cm-kolam-table-drop-indicator.is-column {
   width: 0.28rem;
@@ -1019,60 +1020,60 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-row {
-  background: color-mix(in srgb, var(--text-selection) 14%, transparent);
+  background: #2e477b;
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-col {
-  background: color-mix(in srgb, var(--text-selection) 10%, transparent);
+  background: #243963;
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-cell {
-  background: color-mix(in srgb, var(--text-selection) 20%, transparent);
-  outline: 2px solid color-mix(in srgb, var(--text-normal) 45%, transparent);
+  background: var(--text-selection);
+  outline: 2px solid var(--text-default);
   outline-offset: -2px;
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source {
-  background: color-mix(in srgb, var(--interactive-accent, #8b5cf6) 14%, transparent);
+  background: #243963;
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-column {
-  border-left: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
-  border-right: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  border-left: 3px solid var(--action-primary-bg);
+  border-right: 3px solid var(--action-primary-bg);
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-column.cm-kolam-table-drag-edge-start {
-  border-top: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  border-top: 3px solid var(--action-primary-bg);
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-column.cm-kolam-table-drag-edge-end {
-  border-bottom: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  border-bottom: 3px solid var(--action-primary-bg);
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-row {
-  border-top: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
-  border-bottom: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  border-top: 3px solid var(--action-primary-bg);
+  border-bottom: 3px solid var(--action-primary-bg);
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-row.cm-kolam-table-drag-edge-start {
-  border-left: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  border-left: 3px solid var(--action-primary-bg);
 }
 
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-row.cm-kolam-table-drag-edge-end {
-  border-right: 3px solid color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  border-right: 3px solid var(--action-primary-bg);
 }
 
 .kolam-properties-panel {
   margin-bottom: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 70%, transparent);
-  background: color-mix(in srgb, var(--color-surface-subtle, #f8fafc) 88%, transparent);
+  border: 1px solid var(--color-border-default, #333841);
+  background: var(--color-surface-subtle, #282c34);
 }
 
 .kolam-properties-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 70%, transparent);
+  border-bottom: 1px solid var(--color-border-default, #333841);
   padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 700;
@@ -1081,8 +1082,8 @@ body {
 }
 
 .kolam-property-action {
-  border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 75%, transparent);
-  background: color-mix(in srgb, var(--color-surface-default, #fff) 92%, transparent);
+  border: 1px solid var(--color-border-default, #333841);
+  background: var(--color-surface-default, #21252b);
   padding: 0.2rem 0.45rem;
   font-size: 0.7rem;
   font-weight: 700;
@@ -1098,10 +1099,7 @@ body {
   font-size: 0.875rem;
 }
 
-.kolam-property-key {
-  color: color-mix(in srgb, var(--color-text-muted, #6b7280) 92%, transparent);
-  font-weight: 600;
-}
+.kolam-property-key { color: var(--color-text-muted, #5c6370); font-weight: 600; }
 
 .kolam-property-value {
   display: flex;
@@ -1111,8 +1109,8 @@ body {
 
 .kolam-property-input {
   width: 100%;
-  border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 75%, transparent);
-  background: color-mix(in srgb, var(--color-surface-default, #fff) 96%, transparent);
+  border: 1px solid var(--color-border-default, #333841);
+  background: var(--color-surface-default, #21252b);
   padding: 0.35rem 0.5rem;
   font-size: 0.8125rem;
 }
@@ -1125,8 +1123,8 @@ body {
 }
 
 .kolam-property-pill {
-  border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 75%, transparent);
-  background: color-mix(in srgb, var(--color-surface-default, #fff) 90%, transparent);
+  border: 1px solid var(--color-border-default, #333841);
+  background: var(--color-surface-default, #21252b);
   padding: 0.1rem 0.45rem;
   font-size: 0.75rem;
 }
@@ -1157,7 +1155,7 @@ body {
 
 .kolam-inline-code {
   border-radius: 0;
-  background: color-mix(in srgb, var(--color-surface-subtle, #f5f5f5) 92%, transparent);
+  background: var(--color-surface-subtle, #282c34);
   padding: 0 0.25rem;
 }
 
@@ -1168,7 +1166,7 @@ body {
 
 .kolam-blockquote {
   margin: 0;
-  border-left: 3px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 90%, transparent);
+  border-left: 3px solid var(--color-border-default, #333841);
   padding-left: 0.75rem;
 }
 
@@ -1190,14 +1188,14 @@ body {
 
 .kolam-table th,
 .kolam-table td {
-  border: 1px solid color-mix(in srgb, var(--color-border-default, #d6d6d6) 80%, transparent);
+  border: 1px solid var(--color-border-default, #333841);
   padding: 0.4rem 0.55rem;
   text-align: left;
   vertical-align: top;
 }
 
 .kolam-table th {
-  background: color-mix(in srgb, var(--text-selection) 16%, transparent);
+  background: var(--text-selection);
   border-bottom-width: 2px;
 }
 
@@ -1205,8 +1203,7 @@ body {
   width: 100%;
   margin: 0;
   border: 0;
-  border-top: 1px solid
-    color-mix(in srgb, var(--color-border-default, #d6d6d6) 82%, transparent);
+  border-top: 1px solid var(--color-border-default, #333841);
 }
 
 .kolam-code-block {
@@ -1233,7 +1230,7 @@ body {
 
 .kolam-callout {
   border-left: 4px solid #60a5fa;
-  background: color-mix(in srgb, #dbeafe 60%, transparent);
+  background: #243963;
   padding: 0.75rem;
 }
 
@@ -1248,16 +1245,16 @@ body {
 
 .kolam-callout-warning {
   border-left-color: #f59e0b;
-  background: color-mix(in srgb, #fef3c7 70%, transparent);
+  background: #4c3b1f;
 }
 
 .kolam-callout-danger,
 .kolam-callout-failure {
   border-left-color: #ef4444;
-  background: color-mix(in srgb, #fee2e2 68%, transparent);
+  background: #4d232e;
 }
 
 .kolam-callout-success {
   border-left-color: #22c55e;
-  background: color-mix(in srgb, #dcfce7 68%, transparent);
+  background: #2b4242;
 }

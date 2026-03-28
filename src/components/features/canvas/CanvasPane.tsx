@@ -511,10 +511,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     >
       <div className="flex h-full flex-col" style={contentStyle}>
         {isPreviewing && (
-          <div className="mx-3 mt-2 mb-1 border border-amber-400/40 bg-amber-950 px-3 py-2">
+          <div className="mx-3 mt-2 mb-1 border border-border-default bg-surface-elevated px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-action-primary-bg">
                   <Eye className="h-3.5 w-3.5" />
                   Snapshot Preview
                 </div>
@@ -541,7 +541,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                   onClick={() => {
                     void applyPreviewToCanvas();
                   }}
-                  className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[11px] font-semibold text-action-primary-text hover:opacity-90"
+                  className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[11px] font-semibold text-action-primary-text hover:bg-action-primary-hover"
                 >
                   <Save className="h-3 w-3" />
                   Apply to Canvas
@@ -586,10 +586,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-emerald-500">
+                <span className="text-[11px] font-mono text-diff-add-text">
                   +{previewAdditions}
                 </span>
-                <span className="text-[11px] font-mono text-rose-500">
+                <span className="text-[11px] font-mono text-diff-del-text">
                   -{previewDeletions}
                 </span>
                 <button

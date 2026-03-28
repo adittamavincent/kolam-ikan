@@ -14,6 +14,8 @@ interface FileAttachmentThumbnailProps {
   title: string;
   importStatus?: string | null;
   progressPercent?: number | null;
+  className?: string;
+  imageClassName?: string;
 }
 
 function isLikelyImageUrl(url: string) {
@@ -38,6 +40,8 @@ export function FileAttachmentThumbnail({
   title,
   importStatus = null,
   progressPercent = null,
+  className,
+  imageClassName,
 }: FileAttachmentThumbnailProps) {
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
@@ -166,14 +170,16 @@ export function FileAttachmentThumbnail({
   const overlayBg = hasPreview ? "bg-surface-dark" : "bg-surface-subtle";
 
   return (
-    <div className="relative h-16 w-12 overflow-hidden border border-border-default bg-surface-subtle">
+    <div
+      className={`relative overflow-hidden border border-border-default bg-surface-subtle ${className ?? "h-16 w-12"}`}
+    >
       {previewKind === "image" && effectivePreviewUrl && !imageFailed && (
         <Image
           src={effectivePreviewUrl}
           alt={`Thumbnail preview for ${title}`}
-          width={48}
-          height={64}
-          className="object-cover"
+          fill
+          sizes="160px"
+          className={`object-cover ${imageClassName ?? ""}`}
           unoptimized
           onError={() => setImageFailed(true)}
         />
@@ -185,7 +191,7 @@ export function FileAttachmentThumbnail({
         >
           {showError ? (
             <div className="flex flex-col items-center gap-1">
-              <div className="bg-rose-600/90 p-1 text-white">
+              <div className="bg-rose-600 p-1 text-white">
                 <X className="h-4 w-4" />
               </div>
               <div className="text-[10px] font-semibold text-rose-600">Failed</div>
@@ -212,8 +218,8 @@ export function FileAttachmentThumbnail({
       )}
 
       {(importStatus === "completed" || importStatus === "done") && (
-        <div className="absolute right-0 top-0 m-1 bg-green-500/90 p-0.5 text-white">
-          <Check className="h-3 w-3" />
+        <div className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center border border-emerald-400/60 bg-emerald-500/95 text-white">
+          <Check className="h-3.5 w-3.5" />
         </div>
       )}
     </div>

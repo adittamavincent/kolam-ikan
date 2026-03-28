@@ -105,7 +105,7 @@ function formatAbsoluteDate(date: Date): string {
   });
 }
 
-function toRgba(hex: string, alpha: number): string {
+function solidColor(hex: string): string {
   const normalized = hex.replace("#", "");
   const hexValue =
     normalized.length === 3
@@ -116,12 +116,7 @@ function toRgba(hex: string, alpha: number): string {
       : normalized;
 
   if (!/^[0-9a-fA-F]{6}$/.test(hexValue)) return hex;
-
-  const intValue = Number.parseInt(hexValue, 16);
-  const r = (intValue >> 16) & 255;
-  const g = (intValue >> 8) & 255;
-  const b = intValue & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return `#${hexValue.toLowerCase()}`;
 }
 
 interface GraphEdge {
@@ -815,7 +810,7 @@ export function CommitGraph({
                       headCommitId: headCommitId ?? "",
                     });
                   }}
-                  className={`grid min-w-[124px] grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
+                  className={`grid min-w-31 grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
                     currentBranch === branch.name
                       ? "border-primary-800 bg-primary-950"
                       : "border-border-default bg-surface-default hover:bg-surface-hover"
@@ -845,7 +840,7 @@ export function CommitGraph({
                     role="button"
                     tabIndex={0}
                     aria-label={`Branch actions for ${branch.name}`}
-                    className="col-start-2 row-start-1 inline-flex h-5 w-5 items-center justify-center border border-transparent text-text-muted transition-colors hover:border-border-default hover:bg-surface-subtle hover:text-text-default"
+                    className="col-start-2 row-start-1 inline-flex h-5 w-5 items-center justify-center border border-border-subtle text-text-muted transition-colors hover:border-border-default hover:bg-surface-subtle hover:text-text-default"
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -920,7 +915,7 @@ export function CommitGraph({
               <button
                 onClick={() => void handleBranchMenuAction("open")}
                 disabled={!branchMenu.branch.headCommitId}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
               >
                 <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
                 Open head commit
@@ -928,7 +923,7 @@ export function CommitGraph({
               <button
                 onClick={() => void handleBranchMenuAction("checkout")}
                 disabled={branchMenu.branch.name === currentBranch}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
               >
                 <GitBranch className="h-3.5 w-3.5 text-text-muted" />
                 Checkout branch
@@ -936,7 +931,7 @@ export function CommitGraph({
               <button
                 onClick={() => void handleBranchMenuAction("merge")}
                 disabled={branchMenu.branch.name === currentBranch}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
               >
                 <GitMerge className="h-3.5 w-3.5 text-text-muted" />
                 Merge into {currentBranch}
@@ -951,7 +946,7 @@ export function CommitGraph({
               <button
                 onClick={() => void handleBranchMenuAction("copy-sha")}
                 disabled={!branchMenu.branch.headCommitId}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
               >
                 <Copy className="h-3.5 w-3.5 text-text-muted" />
                 Copy head SHA
@@ -1007,16 +1002,13 @@ export function CommitGraph({
             const x = laneX(node.lane);
 
             return (
-              <g key={node.id} opacity={hoveredId && !isHovered ? 0.5 : 1}>
+              <g key={node.id}>
                 {node.isHead && (
                   <circle
                     cx={x}
                     cy={y}
                     r={DOT_R + 7}
-                    fill={toRgba(
-                      typeof nodeColor === "string" ? nodeColor : "#568af2",
-                      0.14,
-                    )}
+                    fill="var(--bg-surface-hover)"
                   />
                 )}
 
@@ -1025,10 +1017,7 @@ export function CommitGraph({
                     cx={x}
                     cy={y}
                     r={DOT_R + 10}
-                    fill={toRgba(
-                      typeof nodeColor === "string" ? nodeColor : "#568af2",
-                      0.1,
-                    )}
+                    fill="var(--bg-surface-elevated)"
                   />
                 )}
 
@@ -1051,7 +1040,7 @@ export function CommitGraph({
                     cx={x}
                     cy={y}
                     r={DOT_R - 2}
-                    fill={toRgba(nodeColor, 0.45)}
+                    fill={solidColor(nodeColor)}
                   />
                 )}
               </g>
@@ -1073,7 +1062,6 @@ export function CommitGraph({
                 style={{
                   minHeight: ROW_H,
                   gridTemplateColumns: `${graphWidth}px minmax(0, 1fr)`,
-                  opacity: hoveredId && !isHovered ? 0.78 : 1,
                 }}
                 onClick={() => {
                   if (node.commitId) {
@@ -1099,10 +1087,10 @@ export function CommitGraph({
                   className="relative border border-border-default bg-surface-default px-4 py-3 transition-all duration-150 hover:bg-surface-hover"
                   style={{
                     boxShadow: isHovered
-                      ? `0 0 0 1px ${toRgba(accent, 0.2)}`
+                      ? `0 0 0 1px ${solidColor(accent)}`
                       : undefined,
                     backgroundColor: isHovered
-                      ? toRgba(accent, 0.045)
+                      ? "var(--bg-surface-hover)"
                       : undefined,
                   }}
                 >
@@ -1151,7 +1139,7 @@ export function CommitGraph({
                             className="inline-flex items-center gap-1 border border-border-default px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                             style={{
                               color: ref.color,
-                              backgroundColor: toRgba(ref.color, 0.1),
+                              backgroundColor: "var(--bg-surface-subtle)",
                             }}
                           >
                             <GitBranch className="h-3 w-3" />

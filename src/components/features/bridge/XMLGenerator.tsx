@@ -294,15 +294,15 @@ ${userInput}
           readOnly
           rows={6}
           value={currentXML}
-          className="w-full bg-transparent p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] resize-y min-h-35"
+          className="min-h-35 w-full resize-y bg-[#0d1117] p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9]"
         />
         <div className="absolute top-2 right-2">
           <button
             onClick={copyToClipboard}
-            className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-semibold backdrop-blur-md transition-all ${
+            className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-all ${
               copied
                 ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
-                : "bg-white/10 text-white border border-white/20 hover:bg-white/20 opacity-0 group-hover:opacity-100"
+                : "border-border-default bg-surface-elevated text-white hover:bg-surface-hover"
             }`}
           >
             {copied ? (

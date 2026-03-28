@@ -10,6 +10,7 @@ import {
   useLayoutEffect,
 } from "react";
 import { useEntries } from "@/lib/hooks/useEntries";
+import { useDocuments } from "@/lib/hooks/useDocuments";
 import { EntryCreator } from "./EntryCreator";
 import { LogSection } from "./LogSection";
 import {
@@ -47,6 +48,7 @@ import {
 import { createPortal } from "react-dom";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
 import { EntryWithSections, SectionFileAttachmentWithDocument } from "@/lib/types";
+import { calculateFileHash } from "@/lib/utils/hash";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { PartialBlock } from "@/lib/types/editor";
@@ -236,10 +238,10 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
             </code>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-mono text-emerald-500">
+            <span className="text-[11px] font-mono text-diff-add-text">
               +{additions}
             </span>
-            <span className="text-[11px] font-mono text-rose-500">
+            <span className="text-[11px] font-mono text-diff-del-text">
               -{deletions}
             </span>
             <button
@@ -268,9 +270,9 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
                 key={i}
                 className={`flex gap-3 px-4 py-0.5 leading-5 ${
                   line.type === "add"
-                    ? "bg-emerald-950 text-emerald-600 dark:text-emerald-400"
+                    ? "bg-diff-add-bg text-diff-add-text"
                     : line.type === "del"
-                      ? "bg-rose-950 text-rose-600 dark:text-rose-400 line-through opacity-70"
+                      ? "bg-diff-del-bg text-diff-del-text line-through opacity-70"
                       : "text-text-subtle"
                 }`}
               >
@@ -360,7 +362,30 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
 
 interface AmendState {
   entryId: string;
-  sections: Record<string, { content: PartialBlock[]; markdown: string }>;
+  sections: Record<
+    string,
+    {
+      content?: PartialBlock[];
+      markdown?: string;
+      attachments?: SectionFileAttachmentWithDocument[];
+    }
+  >;
+}
+
+function serializeAttachments(
+  attachments: SectionFileAttachmentWithDocument[] | undefined,
+): string {
+  return JSON.stringify(
+    (attachments ?? []).map((attachment) => ({
+      id: attachment.id,
+      document_id: attachment.document_id,
+      title_snapshot: attachment.title_snapshot,
+      annotation_text: attachment.annotation_text,
+      referenced_persona_id: attachment.referenced_persona_id,
+      referenced_page: attachment.referenced_page,
+      sort_order: attachment.sort_order,
+    })),
+  );
 }
 
 interface LogPaneProps {
@@ -389,6 +414,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
   const [amendState, setAmendState] = useState<AmendState | null>(null);
   const [amendError, setAmendError] = useState<string | null>(null);
+  const [uploadingAmendSectionIds, setUploadingAmendSectionIds] = useState<
+    Set<string>
+  >(new Set());
   const [contextMenu, setContextMenu] = useState<{
     entry: EntryWithSections;
     x: number;
@@ -525,6 +553,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   };
 
   const { stream } = useStream(streamId);
+  const { createImport } = useDocuments(streamId);
   const { timelineItems } = useTimelineItems(streamId, entryList, {
     sortOrder,
   });
@@ -642,6 +671,126 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       void handleAttachmentPreview(attachment, tab);
     },
     [handleAttachmentPreview],
+  );
+
+  const buildAmendAttachment = useCallback(
+    async (
+      documentId: string,
+      titleSnapshot: string,
+    ): Promise<SectionFileAttachmentWithDocument | null> => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("id", documentId)
+        .single();
+
+      if (error || !data) {
+        throw error ?? new Error("Failed to load uploaded document");
+      }
+
+      let previewUrl: string | null = null;
+      if (data.storage_path) {
+        const signed = await supabase.storage
+          .from("document-files")
+          .createSignedUrl(data.storage_path, 60 * 30);
+
+        if (!signed.error && signed.data?.signedUrl) {
+          previewUrl = signed.data.signedUrl;
+        }
+      }
+
+      return {
+        id: `draft-${documentId}`,
+        section_id: "",
+        document_id: data.id,
+        sort_order: 0,
+        title_snapshot: titleSnapshot || data.title || "File Attachment",
+        annotation_text: null,
+        referenced_persona_id: null,
+        referenced_page: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        document: {
+          ...data,
+          latestJob: null,
+          fileUrl: previewUrl,
+        },
+      };
+    },
+    [supabase],
+  );
+
+  const handleAddAmendAttachments = useCallback(
+    async (
+      sectionId: string,
+      currentAttachments: SectionFileAttachmentWithDocument[],
+      fileList: FileList | File[],
+    ) => {
+      const files = Array.from(fileList).filter((file) => file instanceof File);
+      if (files.length === 0) return;
+
+      setUploadingAmendSectionIds((prev) => new Set(prev).add(sectionId));
+
+      try {
+        const nextAttachments = [...currentAttachments];
+
+        for (const file of files) {
+          const fileHash = await calculateFileHash(file).catch(() => undefined);
+          const result = await createImport.mutateAsync({
+            file,
+            title: file.name,
+            flavor: "stream",
+            enableTableStructure: true,
+            debugDoclingTables: false,
+            fileHash,
+          });
+
+          const documentId = result?.documentId ?? result?.document?.id;
+          if (!documentId) {
+            throw new Error(result?.error ?? "Failed to import attachment");
+          }
+
+          if (
+            nextAttachments.some(
+              (attachment) => attachment.document_id === documentId,
+            )
+          ) {
+            continue;
+          }
+
+          const nextAttachment = await buildAmendAttachment(documentId, file.name);
+          if (nextAttachment) {
+            nextAttachments.push(nextAttachment);
+          }
+        }
+
+        setAmendState((prev) => {
+          if (!prev) return prev;
+
+          return {
+            ...prev,
+            sections: {
+              ...prev.sections,
+              [sectionId]: {
+                ...prev.sections[sectionId],
+                attachments: nextAttachments,
+              },
+            },
+          };
+        });
+      } catch (error) {
+        setAmendError(
+          error instanceof Error ? error.message : "Failed to add attachments",
+        );
+      } finally {
+        setUploadingAmendSectionIds((prev) => {
+          const next = new Set(prev);
+          next.delete(sectionId);
+          return next;
+        });
+      }
+    },
+    [buildAmendAttachment, createImport],
   );
 
   const { data: branches, refetch: refetchBranches } = useQuery({
@@ -1382,12 +1531,27 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       const original = JSON.stringify(
         (section.content_json as unknown as PartialBlock[]) ?? [],
       );
-      const updated = JSON.stringify(draftBlocks);
-      if (original === updated && draft.markdown === originalMarkdown) return [];
+      const updated = draftBlocks ? JSON.stringify(draftBlocks) : original;
+      const nextMarkdown = draft.markdown ?? originalMarkdown;
+      const originalAttachments = serializeAttachments(section.section_attachments);
+      const updatedAttachments = draft.attachments
+        ? serializeAttachments(draft.attachments)
+        : originalAttachments;
+      const contentChanged =
+        !!draftBlocks && (original !== updated || nextMarkdown !== originalMarkdown);
+      const attachmentsChanged = updatedAttachments !== originalAttachments;
+
+      if (!contentChanged && !attachmentsChanged) return [];
+
       return [{
         sectionId: section.id,
-        content: draftBlocks,
-        rawMarkdown: draft.markdown,
+        ...(draftBlocks
+          ? {
+              content: draftBlocks,
+              rawMarkdown: nextMarkdown,
+            }
+          : {}),
+        ...(draft.attachments ? { attachments: draft.attachments } : {}),
       }];
     });
     if (!changedSections.length) {
@@ -1407,6 +1571,40 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       );
     }
   };
+
+  const handleRemoveAmendAttachment = useCallback(
+    (
+      sectionId: string,
+      currentAttachments: SectionFileAttachmentWithDocument[],
+      attachmentToRemove: SectionFileAttachmentWithDocument,
+      attachmentIndex: number,
+    ) => {
+      setAmendState((prev) => {
+        if (!prev) return prev;
+
+        const baseAttachments =
+          prev.sections[sectionId]?.attachments ?? currentAttachments;
+        const nextAttachments = baseAttachments.filter((attachment, index) => {
+          if (attachment.id && attachmentToRemove.id) {
+            return attachment.id !== attachmentToRemove.id;
+          }
+          return index !== attachmentIndex;
+        });
+
+        return {
+          ...prev,
+          sections: {
+            ...prev.sections,
+            [sectionId]: {
+              ...prev.sections[sectionId],
+              attachments: nextAttachments,
+            },
+          },
+        };
+      });
+    },
+    [],
+  );
 
   const handleExport = useCallback(async () => {
     try {
@@ -1897,7 +2095,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                             entryRefs.current[entry.id] = node;
                           }}
                           onContextMenu={(e) => handleContextMenu(e, entry)}
-                          className={isStashed ? "opacity-50" : undefined}
+                          className={isStashed ? "text-text-muted" : undefined}
                         >
                           <ThreadFrame
                             hideBody={isCollapsed}
@@ -1905,7 +2103,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                               isCollapsed
                                 ? "border-border-strong bg-surface-default"
                                 : "border-border-default bg-surface-default"
-                            } ${isAmending ? "ring-1 ring-action-primary-bg/20" : ""}`}
+                            } ${isAmending ? "ring-1 ring-action-primary-bg" : ""}`}
                             headerClassName={`${
                               isCollapsed
                                 ? "bg-surface-hover hover:bg-surface-subtle"
@@ -1932,7 +2130,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     className={`inline-flex h-5 w-5 shrink-0 items-center justify-center border ${
                                       isCollapsed
                                         ? "border-border-default bg-surface-default text-text-muted"
-                                        : "border-action-primary-bg/25 bg-surface-default text-action-primary-bg"
+                                        : "border-action-primary-bg bg-surface-default text-action-primary-bg"
                                     }`}
                                     aria-hidden="true"
                                   >
@@ -1976,16 +2174,16 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     {createdAtText}
                                   </span>
                                   <span
-                                    className={`shrink-0 border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                    className={`shrink-0 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
                                       isCollapsed
                                         ? "border-border-default bg-surface-default text-text-muted"
-                                        : "border-border-subtle bg-surface-default text-text-subtle"
+                                        : "bg-surface-default text-text-subtle"
                                     }`}
                                   >
                                     {sectionCount} section{sectionCount === 1 ? "" : "s"}
                                   </span>
                                   {tag && (
-                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-subtle bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                                    <span className="shrink-0 flex items-center gap-0.5 bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
                                       <Tag className="h-2.5 w-2.5" />
                                       {tag}
                                     </span>
@@ -1993,29 +2191,38 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   {entryBranches.map((branchName) => (
                                     <span
                                       key={`${entry.id}-${branchName}`}
-                                      className="inline-flex shrink-0 items-stretch text-[9px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
+                                      className="relative inline-flex h-4.5 shrink-0 items-center px-1.5 pr-3 text-[9px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
                                       title={`${branchName} points at this commit`}
                                     >
-                                      <span className="inline-flex items-center gap-1 border border-sky-800 bg-sky-950 px-1.5 py-0.5">
+                                      <span
+                                        aria-hidden="true"
+                                        className="absolute inset-0 bg-sky-800"
+                                        style={{
+                                          clipPath:
+                                            "polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%)",
+                                        }}
+                                      />
+                                      <span
+                                        aria-hidden="true"
+                                        className="absolute inset-px bg-sky-950"
+                                        style={{
+                                          clipPath:
+                                            "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)",
+                                        }}
+                                      />
+                                      <span className="relative z-10 inline-flex items-center gap-1">
                                         <GitBranch className="h-2.5 w-2.5" />
                                         {branchName}
                                       </span>
-                                      <span
-                                        aria-hidden="true"
-                                        className="-ml-px h-[18px] w-2 border-y border-r border-sky-800 bg-sky-950"
-                                        style={{
-                                          clipPath: "polygon(0 0, 100% 50%, 0 100%)",
-                                        }}
-                                      />
                                     </span>
                                   ))}
                                   {isLatestEntry && (
-                                    <span className="shrink-0 inline-flex items-center border border-border-subtle bg-primary-950 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                                    <span className="shrink-0 inline-flex items-center bg-primary-950 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                                       HEAD
                                     </span>
                                   )}
                                   {isStashed && (
-                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-subtle bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
+                                    <span className="shrink-0 flex items-center gap-0.5 bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
                                       <Archive className="h-2.5 w-2.5" />
                                       stashed
                                     </span>
@@ -2031,7 +2238,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                           handleSaveAmend(entry);
                                         }}
                                         disabled={amendEntry.isPending}
-                                        className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
+                                        className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:bg-action-primary-disabled"
                                       >
                                         {amendEntry.isPending ? (
                                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -2046,7 +2253,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                           handleCancelAmend();
                                         }}
                                         disabled={amendEntry.isPending}
-                                        className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-70"
+                                        className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
                                       >
                                         <X className="h-3 w-3" />
                                         Cancel
@@ -2058,7 +2265,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                         event.stopPropagation();
                                         handleStartAmend(entry);
                                       }}
-                                      className="inline-flex items-center gap-1 border border-border-default px-1 py-px text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
+                                      className="inline-flex items-center gap-1 px-1 py-px text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
                                       title="Amend commit"
                                     >
                                       <PencilLine className="h-3 w-3" />
@@ -2071,7 +2278,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           >
                             {/* Commit header — mimics git log --oneline */}
                             {isAmending && amendError && (
-                              <div className="border border-danger-border/30 bg-danger-bg/15 px-2.5 py-1 text-[11px] text-danger-text">
+                              <div className="border border-status-error-border bg-status-error-bg px-2.5 py-1 text-[11px] text-status-error-text">
                                 {amendError}
                               </div>
                             )}
@@ -2099,6 +2306,40 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                         isAmending
                                           ? amendState.sections[section.id]?.markdown
                                           : undefined
+                                      }
+                                      attachmentOverrides={
+                                        isAmending
+                                          ? amendState.sections[section.id]?.attachments
+                                          : undefined
+                                      }
+                                      onRemoveAttachment={
+                                        isAmending
+                                          ? (attachment, attachmentIndex) =>
+                                              handleRemoveAmendAttachment(
+                                                section.id,
+                                                amendState.sections[section.id]?.attachments ??
+                                                  section.section_attachments ??
+                                                  [],
+                                                attachment,
+                                                attachmentIndex,
+                                              )
+                                          : undefined
+                                      }
+                                      onAddAttachments={
+                                        isAmending
+                                          ? (files) =>
+                                              handleAddAmendAttachments(
+                                                section.id,
+                                                amendState.sections[section.id]
+                                                  ?.attachments ??
+                                                  section.section_attachments ??
+                                                  [],
+                                                files,
+                                              )
+                                          : undefined
+                                      }
+                                      isUploadingAttachments={
+                                        uploadingAmendSectionIds.has(section.id)
                                       }
                                       onContentChange={(content, markdown) => {
                                         if (!isAmending) return;

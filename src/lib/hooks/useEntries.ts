@@ -6,9 +6,12 @@ import {
 } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { EntryWithSections } from "@/lib/types";
+import {
+  EntryWithSections,
+  SectionFileAttachmentInsert,
+  SectionFileAttachmentWithDocument,
+} from "@/lib/types";
 import type { PartialBlock } from "@/lib/types/editor";
-import { SectionFileAttachmentInsert } from "@/lib/types";
 import {
   buildStoredContentPayload,
   cloneStoredContentFields,
@@ -26,8 +29,9 @@ interface AmendEntryInput {
   entryId: string;
   sections: Array<{
     sectionId: string;
-    content: PartialBlock[];
+    content?: PartialBlock[];
     rawMarkdown?: string;
+    attachments?: SectionFileAttachmentWithDocument[];
   }>;
 }
 
@@ -285,10 +289,15 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
                 return {
                   ...section,
-                  ...buildStoredContentPayload(
-                    nextSection.content,
-                    nextSection.rawMarkdown,
-                  ),
+                  ...(nextSection.content
+                    ? buildStoredContentPayload(
+                        nextSection.content,
+                        nextSection.rawMarkdown,
+                      )
+                    : {}),
+                  ...(nextSection.attachments
+                    ? { section_attachments: nextSection.attachments }
+                    : {}),
                   updated_at: nextUpdatedAt,
                 };
               });
@@ -313,19 +322,53 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       }
 
       const nowIso = new Date().toISOString();
-      const updates = sections.map(({ sectionId, content, rawMarkdown }) =>
-        supabase
-          .from("sections")
-          .update({
-            ...buildStoredContentPayload(content, rawMarkdown),
-            updated_at: nowIso,
-          })
-          .eq("id", sectionId),
-      );
+      const updates = sections
+        .filter((section) => section.content)
+        .map(({ sectionId, content, rawMarkdown }) =>
+          supabase
+            .from("sections")
+            .update({
+              ...buildStoredContentPayload(content ?? [], rawMarkdown),
+              updated_at: nowIso,
+            })
+            .eq("id", sectionId),
+        );
 
       const results = await Promise.all(updates);
       const failed = results.find((result) => result.error);
       if (failed?.error) throw failed.error;
+
+      const attachmentSections = sections.filter(
+        (section): section is typeof section & { attachments: SectionFileAttachmentWithDocument[] } =>
+          Array.isArray(section.attachments),
+      );
+
+      for (const section of attachmentSections) {
+        const { error: deleteError } = await supabase
+          .from("section_attachments")
+          .delete()
+          .eq("section_id", section.sectionId);
+        if (deleteError) throw deleteError;
+
+        const attachmentInserts: SectionFileAttachmentInsert[] = section.attachments.map(
+          (attachment, index) => ({
+            section_id: section.sectionId,
+            document_id: attachment.document_id,
+            sort_order: index,
+            title_snapshot: attachment.title_snapshot,
+            annotation_text: attachment.annotation_text,
+            referenced_persona_id: attachment.referenced_persona_id,
+            referenced_page: attachment.referenced_page,
+          }),
+        );
+
+        if (attachmentInserts.length > 0) {
+          const { error: insertError } = await supabase
+            .from("section_attachments")
+            .insert(attachmentInserts);
+          if (insertError) throw insertError;
+        }
+      }
 
       const { error: entryError } = await supabase
         .from("entries")

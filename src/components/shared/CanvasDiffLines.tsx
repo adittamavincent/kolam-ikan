@@ -15,10 +15,10 @@ function formatSegmentText(text: string, showWhitespace: boolean): string {
 
 function rowClasses(type: DiffLine["type"]): string {
   if (type === "add") {
-    return "bg-emerald-950 text-emerald-600 dark:text-emerald-400";
+    return "bg-diff-add-bg text-diff-add-text";
   }
   if (type === "del") {
-    return "bg-rose-950 text-rose-600 dark:text-rose-400";
+    return "bg-diff-del-bg text-diff-del-text";
   }
   return "text-text-subtle";
 }
@@ -26,10 +26,10 @@ function rowClasses(type: DiffLine["type"]): string {
 function segmentClasses(type: DiffLine["type"], changed: boolean): string {
   if (!changed) return "";
   if (type === "add") {
-    return "bg-emerald-950 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200";
+    return "bg-diff-add-subtle text-diff-add-accent";
   }
   if (type === "del") {
-    return "bg-rose-950 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200";
+    return "bg-diff-del-subtle text-diff-del-accent";
   }
   return "";
 }
@@ -53,7 +53,7 @@ export function CanvasDiffLines({
           key={`${line.type}-${index}`}
           className={`flex gap-3 px-4 py-0.5 leading-5 ${rowClasses(line.type)}`}
         >
-          <span className="w-3 shrink-0 select-none text-text-muted opacity-60">
+          <span className="w-3 shrink-0 select-none text-text-muted">
             {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
           </span>
           <span className="whitespace-pre-wrap wrap-break-word">

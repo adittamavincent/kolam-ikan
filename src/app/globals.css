@@ -204,7 +204,7 @@ body {
 
   ::-webkit-scrollbar-thumb {
     background: var(--border-strong);
-    border-radius: 10px;
+    border-radius: 0;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -242,12 +242,12 @@ body {
   color: var(--text-default);
 }
 .am-root p { margin: 0 0 0.75rem 0; }
-.am-block { border-radius: 8px; padding: 12px; margin: 0 0 0.75rem 0; }
-.am-code pre { background: #0b0f14; color: #e6edf3; padding: 12px; border-radius: 6px; overflow: auto; }
+.am-block { border-radius: 0; padding: 12px; margin: 0 0 0.75rem 0; }
+.am-code pre { background: #0b0f14; color: #e6edf3; padding: 12px; border-radius: 0; overflow: auto; }
 .am-table { border-collapse: collapse; width: 100%; margin-bottom: 0.75rem; }
 .am-table th, .am-table td { border: 1px solid rgba(0,0,0,0.08); padding: 6px 8px; text-align: left; vertical-align: top; }
 .am-table thead th { background: #f6f9ff; border-bottom-width: 2px; }
-.am-root mark { padding: 0 4px; border-radius: 3px; background: #fff7b2; }
+.am-root mark { padding: 0 4px; border-radius: 0; background: #fff7b2; }
 
 /* -------------------------------------------------------------------------- */
 /*  Kolam editor                                                               */
@@ -270,13 +270,16 @@ body {
 }
 
 .entry-creator .kolam-codemirror-root .cm-editor {
+  background: transparent;
   height: auto;
-  min-height: calc(1.65em + 2px);
+  min-height: 1.65em;
 }
 
 .entry-creator .kolam-codemirror-frame,
 .entry-creator .kolam-codemirror-root,
+.entry-creator .kolam-codemirror-root .cm-editor,
 .entry-creator .kolam-codemirror-root .cm-scroller {
+  background: transparent;
   height: auto;
   min-height: 0;
 }
@@ -293,12 +296,33 @@ body {
   min-height: 0;
 }
 
+.log-pane .markdown-editor-readonly,
+.log-pane .markdown-editor-readonly .kolam-editor-shell,
+.log-pane .markdown-editor-readonly .kolam-codemirror-frame {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
 .log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-editor {
   overflow: visible;
 }
 
 .log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-scroller {
   overflow: hidden;
+}
+
+.log-pane .markdown-editor-readonly .kolam-rendered-markdown {
+  gap: 0.2rem;
+}
+
+.log-pane .markdown-editor-readonly .kolam-paragraph,
+.log-pane .markdown-editor-readonly .kolam-list {
+  margin: 0;
+}
+
+.log-pane .markdown-editor-readonly .kolam-paragraph {
+  line-height: 1.45;
 }
 
 .kolam-codemirror-root .cm-scroller {
@@ -390,7 +414,7 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-inline-code {
-  border-radius: 4px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background-primary) 65%, black);
   color: var(--text-normal);
   font-family: var(--font-monospace);
@@ -404,7 +428,7 @@ body {
 
 .kolam-codemirror-root .cm-kolam-highlight {
   background: color-mix(in srgb, #facc15 42%, transparent);
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 .kolam-codemirror-root .cm-kolam-blockquote {
@@ -414,7 +438,7 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-callout-title {
-  border-radius: 6px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--text-selection) 22%, transparent);
   color: var(--text-normal);
   font-weight: 600;
@@ -514,7 +538,7 @@ body {
 }
 
 .kolam-codemirror-root .cm-kolam-table-inline-code {
-  border-radius: 4px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background-primary) 65%, black);
   color: var(--text-normal);
   font-family: var(--font-monospace);
@@ -582,7 +606,7 @@ body {
   min-height: 1.05rem;
   padding: 0;
   border: 0;
-  border-radius: 0.55rem;
+  border-radius: 0;
   background: transparent;
   display: inline-flex;
   align-items: center;
@@ -617,7 +641,7 @@ body {
 .kolam-codemirror-root .cm-kolam-table-handle .cm-kolam-table-grip-dots {
   width: 0.72rem;
   height: 0.72rem;
-  border-radius: 0.2rem;
+  border-radius: 0;
   background-image: radial-gradient(currentColor 30%, transparent 31%);
   background-size: 33% 33%;
   background-position: center;
@@ -632,7 +656,7 @@ body {
   pointer-events: auto;
   position: absolute;
   border: 1px dashed color-mix(in srgb, var(--text-normal) 16%, transparent);
-  border-radius: 0.45rem;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background-primary) 90%, black);
   color: color-mix(in srgb, var(--text-normal) 74%, transparent);
   opacity: 0;
@@ -657,7 +681,7 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -160%);
-  border-radius: 999px;
+  border-radius: 0;
   padding: 0.06rem 0.4rem;
   font-size: 0.66rem;
   font-weight: 700;
@@ -702,7 +726,7 @@ body {
   z-index: 3;
   pointer-events: none;
   opacity: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--interactive-accent, #8b5cf6) 88%, transparent);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent, #8b5cf6) 56%, transparent),
     0 0 16px color-mix(in srgb, var(--interactive-accent, #8b5cf6) 28%, transparent);
@@ -909,7 +933,7 @@ body {
 }
 
 .kolam-inline-code {
-  border-radius: 4px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--color-surface-subtle, #f5f5f5) 92%, transparent);
   padding: 0 0.25rem;
 }

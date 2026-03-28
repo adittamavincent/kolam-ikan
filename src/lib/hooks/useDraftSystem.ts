@@ -14,6 +14,7 @@ export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 interface UseDraftSystemProps {
   streamId: string;
+  parentEntryId?: string | null;
 }
 
 interface SectionDraft {
@@ -255,7 +256,10 @@ function shouldHydrateFromLocalSnapshot(): boolean {
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-export function useDraftSystem({ streamId }: UseDraftSystemProps) {
+export function useDraftSystem({
+  streamId,
+  parentEntryId = null,
+}: UseDraftSystemProps) {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [localStatus, setLocalStatus] = useState<SaveStatus>("idle");
   const [initialDrafts, setInitialDrafts] = useState<
@@ -551,6 +555,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         .insert({
           stream_id: streamId,
           is_draft: false,
+          parent_commit_id: parentEntryId,
         })
         .select("id")
         .single();
@@ -705,7 +710,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       setStatus("error");
       throw new Error(message);
     }
-  }, [streamId, supabase, queryClient]);
+  }, [parentEntryId, streamId, supabase, queryClient]);
 
   // Maintain API compatibility with current component implementation
   const setActiveInstances = useCallback(

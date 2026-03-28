@@ -14,6 +14,7 @@ interface ThreadFrameProps {
   children?: React.ReactNode;
   hideBody?: boolean;
   nested?: boolean;
+  nestedConnector?: "branch" | "last";
   className?: string;
   frameClassName?: string;
   headerClassName?: string;
@@ -31,6 +32,7 @@ export function ThreadFrame({
   children,
   hideBody = false,
   nested = false,
+  nestedConnector = "branch",
   className = "",
   frameClassName = "",
   headerClassName = "",
@@ -41,12 +43,22 @@ export function ThreadFrame({
   bodyStyle,
   footerStyle,
 }: ThreadFrameProps) {
+  const connectorTopClass = "top-[0.875rem]";
+
   return (
     <div className={`${nested ? "relative pl-5" : ""} ${className}`.trim()}>
       {nested && (
         <>
-          <div className="pointer-events-none absolute bottom-0 left-2 top-0 w-px bg-border-default/35" />
-          <div className="pointer-events-none absolute left-2 top-3.5 h-px w-2.5 bg-border-default/35" />
+          <div
+            className={`pointer-events-none absolute left-2 w-px bg-border-default/35 ${
+              nestedConnector === "last"
+                ? `top-0 ${connectorTopClass}`
+                : "bottom-0 top-0"
+            }`}
+          />
+          <div
+            className={`pointer-events-none absolute ${connectorTopClass} left-2 h-px w-[0.6875rem] bg-border-default/35`}
+          />
         </>
       )}
 
@@ -85,6 +97,7 @@ export function ThreadFrame({
 interface SectionPresetProps {
   persona: Persona | null;
   isAttachment?: boolean;
+  nestedConnector?: "branch" | "last";
   leftHeader?: React.ReactNode;
   centerHeader: React.ReactNode;
   rightHeader?: React.ReactNode;
@@ -98,6 +111,7 @@ interface SectionPresetProps {
 export function SectionPreset({
   persona,
   isAttachment = false,
+  nestedConnector = "branch",
   leftHeader,
   centerHeader,
   rightHeader,
@@ -131,6 +145,7 @@ export function SectionPreset({
   return (
     <ThreadFrame
       nested
+      nestedConnector={nestedConnector}
       className={`group ${className}`.trim()}
       frameClassName={isAttachment ? "bg-surface-subtle/25" : ""}
       headerClassName={headerClassName}

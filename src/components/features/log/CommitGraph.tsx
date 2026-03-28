@@ -18,6 +18,9 @@ interface GraphNode {
   shortHash: string;
   isHead: boolean;
   tag?: string;
+  parentCommitId: string | null;
+  lane: number;
+  color: string;
 }
 
 interface BranchRef {
@@ -35,7 +38,8 @@ interface CommitGraphProps {
 }
 
 const ROW_H = 82;
-const LANE_W = 84;
+const LANE_GAP = 18;
+const GRAPH_PAD_X = 24;
 const DOT_R = 6;
 
 const BRANCH_COLORS = [
@@ -95,6 +99,39 @@ function toRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+interface GraphEdge {
+  key: string;
+  fromLane: number;
+  toLane: number;
+  fromRow: number;
+  toRow: number;
+  color: string;
+}
+
+function laneX(lane: number): number {
+  return GRAPH_PAD_X + lane * LANE_GAP;
+}
+
+function compareBranchNames(a: string, b: string): number {
+  if (a === "main") return -1;
+  if (b === "main") return 1;
+  return a.localeCompare(b);
+}
+
+function buildEdgePath(edge: GraphEdge): string {
+  const x1 = laneX(edge.fromLane);
+  const x2 = laneX(edge.toLane);
+  const y1 = edge.fromRow * ROW_H + ROW_H / 2;
+  const y2 = edge.toRow * ROW_H + ROW_H / 2;
+
+  if (x1 === x2) {
+    return `M ${x1} ${y1} L ${x2} ${y2}`;
+  }
+
+  const midY = y1 + (y2 - y1) / 2;
+  return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+}
+
 export function CommitGraph({
   currentStreamId,
   tags,
@@ -110,7 +147,7 @@ export function CommitGraph({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("branches")
-        .select("id, name, created_at")
+        .select("id, name, created_at, head_commit_id")
         .eq("stream_id", currentStreamId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -137,33 +174,12 @@ export function CommitGraph({
       }));
   }, [branches]);
 
-  const branchIds = useMemo(
-    () => orderedBranches.map((branch) => branch.id),
-    [orderedBranches],
-  );
-
-  const { data: commitBranches } = useQuery({
-    queryKey: ["graph-commit-branches", currentStreamId, branchIds],
-    queryFn: async () => {
-      if (!branchIds.length) return [];
-
-      const { data, error } = await supabase
-        .from("commit_branches")
-        .select("commit_id, branch_id")
-        .in("branch_id", branchIds);
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!currentStreamId && branchIds.length > 0,
-  });
-
   const { data: rawEntries } = useQuery({
     queryKey: ["graph-entries", currentStreamId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("entries")
-        .select("id, created_at")
+        .select("id, created_at, parent_commit_id")
         .eq("stream_id", currentStreamId)
         .eq("is_draft", false)
         .is("deleted_at", null)
@@ -173,6 +189,7 @@ export function CommitGraph({
       return data as Array<{
         id: string;
         created_at: string | null;
+        parent_commit_id: string | null;
       }>;
     },
     enabled: !!currentStreamId,
@@ -196,9 +213,6 @@ export function CommitGraph({
             queryClient.invalidateQueries({
               queryKey: ["graph-entries", currentStreamId],
             });
-            queryClient.invalidateQueries({
-              queryKey: ["graph-commit-branches", currentStreamId],
-            });
           }
         },
       )
@@ -217,10 +231,10 @@ export function CommitGraph({
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "commit_branches" },
+        { event: "*", schema: "public", table: "entries" },
         () => {
           queryClient.invalidateQueries({
-            queryKey: ["graph-commit-branches", currentStreamId],
+            queryKey: ["graph-entries", currentStreamId],
           });
         },
       )
@@ -232,51 +246,122 @@ export function CommitGraph({
     };
   }, [currentStreamId, queryClient, supabase]);
 
-  const nodes = useMemo((): GraphNode[] => {
-    if (!rawEntries) return [];
-
-    return rawEntries.map((entry, index) => ({
-      id: entry.id,
-      row: index,
-      date: new Date(entry.created_at ?? 0),
-      shortHash: shortHash(entry.id),
-      isHead: entry.id === latestEntryId,
-      tag: tags[entry.id],
-    }));
-  }, [latestEntryId, rawEntries, tags]);
-
   const branchRefsByCommitId = useMemo(() => {
     const map = new Map<string, BranchRef[]>();
-    const branchMap = new Map(
-      orderedBranches.map((branch) => [branch.id, branch]),
-    );
-
-    for (const link of commitBranches ?? []) {
-      const branch = branchMap.get(link.branch_id);
-      if (!branch) continue;
-
-      const existing = map.get(link.commit_id) ?? [];
+    for (const branch of orderedBranches) {
+      if (!branch.head_commit_id) continue;
+      const existing = map.get(branch.head_commit_id) ?? [];
       existing.push({
         id: branch.id,
         name: branch.name,
         color: branch.color,
-        headCommitId: link.commit_id,
+        headCommitId: branch.head_commit_id,
       });
-      map.set(link.commit_id, existing);
+      map.set(branch.head_commit_id, existing);
     }
 
     for (const refs of map.values()) {
-      refs.sort((a, b) => {
-        if (a.name === "main") return -1;
-        if (b.name === "main") return 1;
-        return a.name.localeCompare(b.name);
-      });
+      refs.sort((a, b) => compareBranchNames(a.name, b.name));
+    }
+
+    if (!orderedBranches.some((branch) => branch.name === "main") && latestEntryId) {
+      const existing = map.get(latestEntryId) ?? [];
+      if (!existing.some((ref) => ref.name === "main")) {
+        existing.unshift({
+          id: "__main__",
+          name: "main",
+          color: BRANCH_COLORS[0],
+          headCommitId: latestEntryId,
+        });
+        map.set(latestEntryId, existing);
+      }
     }
 
     return map;
-  }, [commitBranches, orderedBranches]);
+  }, [latestEntryId, orderedBranches]);
 
-  const laneX = LANE_W / 2;
+  const { nodes, edges, laneCount } = useMemo(() => {
+    if (!rawEntries) {
+      return { nodes: [] as GraphNode[], edges: [] as GraphEdge[], laneCount: 1 };
+    }
+
+    const entryById = new Map(rawEntries.map((entry) => [entry.id, entry]));
+    const rowById = new Map(rawEntries.map((entry, index) => [entry.id, index]));
+    const laneByCommitId = new Map<string, number>();
+    const colorByCommitId = new Map<string, string>();
+
+    const effectiveBranches = [...orderedBranches];
+    if (!effectiveBranches.some((branch) => branch.name === "main") && latestEntryId) {
+      effectiveBranches.unshift({
+        id: "__main__",
+        name: "main",
+        created_at: null,
+        head_commit_id: latestEntryId,
+        color: BRANCH_COLORS[0],
+      });
+    }
+
+    effectiveBranches.forEach((branch, lane) => {
+      let cursor = branch.head_commit_id ?? null;
+
+      while (cursor) {
+        if (laneByCommitId.has(cursor)) break;
+
+        laneByCommitId.set(cursor, lane);
+        colorByCommitId.set(cursor, branch.color);
+        cursor = entryById.get(cursor)?.parent_commit_id ?? null;
+      }
+    });
+
+    const nextNodes: GraphNode[] = [];
+    const nextEdges: GraphEdge[] = [];
+    let maxLaneCount = Math.max(effectiveBranches.length, 1);
+
+    rawEntries.forEach((entry, row) => {
+      const refs = branchRefsByCommitId.get(entry.id) ?? [];
+      const lane = laneByCommitId.get(entry.id) ?? 0;
+      const color =
+        refs[0]?.color ??
+        colorByCommitId.get(entry.id) ??
+        BRANCH_COLORS[lane % BRANCH_COLORS.length];
+
+      nextNodes.push({
+        id: entry.id,
+        row,
+        date: new Date(entry.created_at ?? 0),
+        shortHash: shortHash(entry.id),
+        isHead: entry.id === latestEntryId,
+        tag: tags[entry.id],
+        parentCommitId: entry.parent_commit_id,
+        lane,
+        color,
+      });
+
+      if (entry.parent_commit_id) {
+        const parentRow = rowById.get(entry.parent_commit_id);
+        if (parentRow !== undefined) {
+          const parentLane = laneByCommitId.get(entry.parent_commit_id) ?? 0;
+          nextEdges.push({
+            key: `parent-${entry.id}`,
+            fromLane: lane,
+            toLane: parentLane,
+            fromRow: row,
+            toRow: parentRow,
+            color,
+          });
+          maxLaneCount = Math.max(maxLaneCount, lane + 1, parentLane + 1);
+        }
+      }
+    });
+
+    return {
+      nodes: nextNodes,
+      edges: nextEdges,
+      laneCount: maxLaneCount,
+    };
+  }, [branchRefsByCommitId, latestEntryId, orderedBranches, rawEntries, tags]);
+
+  const graphWidth = Math.max(72, GRAPH_PAD_X * 2 + (laneCount - 1) * LANE_GAP);
   const graphHeight = Math.max(nodes.length * ROW_H, ROW_H);
 
   if (!nodes.length) {
@@ -294,10 +379,7 @@ export function CommitGraph({
         <div className="sticky top-0 z-20 border-b border-border-default/50 bg-surface-default/95 px-3 py-2 backdrop-blur-sm">
           <div className="flex gap-2 overflow-x-auto">
             {orderedBranches.map((branch) => {
-              const branchRef = (commitBranches ?? []).find(
-                (link) => link.branch_id === branch.id,
-              );
-              const headCommitId = branchRef?.commit_id ?? null;
+              const headCommitId = branch.head_commit_id ?? null;
               const headHash = headCommitId ? shortHash(headCommitId) : "------";
 
               return (
@@ -337,7 +419,7 @@ export function CommitGraph({
       <div className="relative w-full min-w-0">
         <svg
           className="pointer-events-none absolute left-0 top-0"
-          width={LANE_W}
+          width={graphWidth}
           height={graphHeight}
           aria-hidden="true"
         >
@@ -348,7 +430,7 @@ export function CommitGraph({
                 key={`row-${index}`}
                 x1={0}
                 y1={y}
-                x2={LANE_W}
+                x2={graphWidth}
                 y2={y}
                 stroke="var(--border-subtle)"
                 strokeOpacity={0.3}
@@ -356,27 +438,37 @@ export function CommitGraph({
             );
           })}
 
-          <line
-            x1={laneX}
-            y1={0}
-            x2={laneX}
-            y2={graphHeight}
-            stroke="var(--border-strong)"
-            strokeOpacity={0.5}
-            strokeWidth={1.5}
-          />
+          {edges.map((edge) => {
+            const isRelated =
+              hoveredId === null ||
+              nodes[edge.fromRow]?.id === hoveredId ||
+              nodes[edge.toRow]?.id === hoveredId;
+
+            return (
+              <path
+                key={edge.key}
+                d={buildEdgePath(edge)}
+                fill="none"
+                stroke={edge.color}
+                strokeOpacity={isRelated ? 0.95 : 0.35}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+              />
+            );
+          })}
 
           {nodes.map((node) => {
             const y = node.row * ROW_H + ROW_H / 2;
             const isHovered = hoveredId === node.id;
             const refs = branchRefsByCommitId.get(node.id) ?? [];
-            const nodeColor = refs[0]?.color ?? "var(--action-primary-bg)";
+            const nodeColor = refs[0]?.color ?? node.color;
+            const x = laneX(node.lane);
 
             return (
               <g key={node.id} opacity={hoveredId && !isHovered ? 0.5 : 1}>
                 {node.isHead && (
                   <circle
-                    cx={laneX}
+                    cx={x}
                     cy={y}
                     r={DOT_R + 7}
                     fill={toRgba(
@@ -388,7 +480,7 @@ export function CommitGraph({
 
                 {isHovered && (
                   <circle
-                    cx={laneX}
+                    cx={x}
                     cy={y}
                     r={DOT_R + 10}
                     fill={toRgba(
@@ -399,13 +491,13 @@ export function CommitGraph({
                 )}
 
                 <circle
-                  cx={laneX}
+                  cx={x}
                   cy={y}
                   r={DOT_R + 1}
                   fill="var(--bg-surface-default)"
                 />
                 <circle
-                  cx={laneX}
+                  cx={x}
                   cy={y}
                   r={DOT_R}
                   fill={node.isHead ? nodeColor : "var(--bg-surface-default)"}
@@ -414,7 +506,7 @@ export function CommitGraph({
                 />
                 {!node.isHead && (
                   <circle
-                    cx={laneX}
+                    cx={x}
                     cy={y}
                     r={DOT_R - 2}
                     fill={toRgba(nodeColor, 0.45)}
@@ -438,7 +530,7 @@ export function CommitGraph({
                 className="grid w-full min-w-0 items-center gap-3 px-3 text-left transition-opacity"
                 style={{
                   minHeight: ROW_H,
-                  gridTemplateColumns: `${LANE_W}px minmax(0, 1fr)`,
+                  gridTemplateColumns: `${graphWidth}px minmax(0, 1fr)`,
                   opacity: hoveredId && !isHovered ? 0.78 : 1,
                 }}
                 onClick={() => onEntryClick?.(currentStreamId, node.id)}

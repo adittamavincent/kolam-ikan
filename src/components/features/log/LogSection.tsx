@@ -22,6 +22,7 @@ interface LogSectionProps {
   section: SectionWithPersona;
   streamId: string;
   sectionIndex?: number;
+  isLastSection?: boolean;
   highlightTerm?: string;
   editable?: boolean;
   currentEditedContent?: PartialBlock[];
@@ -39,6 +40,7 @@ export function LogSection({
   section,
   streamId,
   sectionIndex = 0,
+  isLastSection = false,
   highlightTerm,
   editable = false,
   currentEditedContent,
@@ -172,6 +174,7 @@ export function LogSection({
     <SectionPreset
       persona={currentPersona || null}
       isAttachment={isAttachmentSection}
+      nestedConnector={isLastSection ? "last" : "branch"}
       className="flex flex-col"
       headerClassName="bg-surface-subtle/55"
       bodyClassName="bg-surface-default/55"
@@ -190,7 +193,7 @@ export function LogSection({
         />
       }
       leftHeader={
-        <div className="inline-flex items-center gap-1 border border-border-default/55 bg-surface-default/80 px-1 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+        <div className="inline-flex items-center gap-1 border border-border-default/55 bg-surface-default/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
           <span className="text-text-default/80">S{sectionIndex + 1}</span>
           <span className="h-px w-1.5 bg-border-strong" />
           <SectionIcon className="h-3 w-3" />
@@ -198,7 +201,7 @@ export function LogSection({
         </div>
       }
       rightHeader={
-        <span className="border border-border-default/45 bg-surface-default/75 px-1 py-0.5 text-[10px] text-text-muted">
+        <span className="border border-border-default/45 bg-surface-default/75 px-1 py-px text-[10px] text-text-muted">
           {section.updated_at
             ? new Date(section.updated_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -207,9 +210,9 @@ export function LogSection({
             : ""}
         </span>
       }
-      contentClassName="space-y-1"
+      contentClassName="space-y-0.5"
     >
-      <div className="min-w-0 flex-1 space-y-1">
+      <div className="min-w-0 flex-1 space-y-0.5">
         {shouldShowEditor && (
           <div
             className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose prose-sm max-w-none dark:prose-invert`}

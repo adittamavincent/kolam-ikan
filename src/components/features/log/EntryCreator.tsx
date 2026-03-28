@@ -20,14 +20,16 @@ import type { WhatsAppInjectPayload } from "./WhatsAppImportModal";
 import {
   Loader2,
   Send,
-    Plus,
+  Plus,
   X,
-    FileText,
+  FileText,
   Upload,
   GripVertical,
   Settings,
   Paperclip,
   Type,
+  GitBranch,
+  GitCommitHorizontal,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import {
@@ -73,6 +75,10 @@ import { CSS } from "@dnd-kit/utilities";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
+}
+
+function shortHash(id: string): string {
+  return id.replace(/-/g, "").slice(0, 7);
 }
 
 function textToBlockContent(text: string) {
@@ -425,6 +431,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     enabled: !!streamId,
   });
 
+  const currentBranchRecord =
+    branches?.find((branch) => branch.name === selectedBranch) ?? null;
+  const currentBranchHeadId = currentBranchRecord?.head_commit_id ?? null;
+
   // Refs for editors to clear them
   const editorRefs = useRef<Record<string, MarkdownEditorHandle>>({});
   const pendingFocusInstanceIdRef = useRef<string | null>(null);
@@ -469,6 +479,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     clearDraft,
   } = useDraftSystem({
     streamId,
+    parentEntryId: currentBranchHeadId,
   });
 
   const hasCommitableContent = sections.some((section) => {
@@ -925,25 +936,16 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       }
 
       if (targetBranch) {
-        const { error: deleteError } = await supabase
-          .from("commit_branches")
-          .delete()
-          .eq("branch_id", targetBranch.id);
-        if (deleteError) throw deleteError;
-
         const { error } = await supabase
-          .from("commit_branches")
-          .insert({ commit_id: committedEntryId, branch_id: targetBranch.id });
+          .from("branches")
+          .update({ head_commit_id: committedEntryId })
+          .eq("id", targetBranch.id);
         if (error) throw error;
       }
 
       await refetchBranches();
-      queryClient.invalidateQueries({
-        queryKey: ["commit-branches", streamId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["branch-head-entry", streamId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
 
       // Reset to empty state (no auto-default persona)
       setSections([]);
@@ -1440,7 +1442,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <MenuItems
                   anchor={{ to: "bottom start", gap: 4 }}
                   portal
-                  className="z-9999 w-64 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
+                  className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
                 >
                   <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                     Add Author Section
@@ -1457,6 +1459,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           persona={persona}
                           role="global"
                           focus={active}
+                          showMeta={false}
                           onClick={() => addPersona(persona.id)}
                         />
                       )}
@@ -1474,6 +1477,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           persona={persona}
                           role="local"
                           focus={active}
+                          showMeta={false}
                           onClick={() => addPersona(persona.id)}
                         />
                       )}
@@ -1584,6 +1588,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                         <SectionPreset
                           persona={persona || null}
                           isAttachment={isAttachment}
+                          nestedConnector={
+                            sectionIndex === sections.length - 1
+                              ? "last"
+                              : "branch"
+                          }
                           className="flex flex-col"
                           headerClassName="bg-surface-subtle/50"
                           bodyClassName="bg-surface-default/55"
@@ -1904,12 +1913,25 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           {/* Footer — commit action */}
           {sections.length > 0 && (
             <div className="flex items-center justify-between border-t border-border-default/35 bg-action-primary-bg/10 p-1">
-              <div className="text-[10px] text-text-muted">
-                <kbd className=" border border-border-default bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
+              <div className="flex min-w-0 items-center gap-2 text-[10px] text-text-muted">
+                <kbd className="border border-border-default bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
                   ⌘+Enter
                 </kbd>
-                <span className="mx-1">→</span>
-                <span className="font-medium">{selectedBranch || "main"}</span>
+                <span className="text-border-default">→</span>
+                <span className="inline-flex min-w-0 items-center gap-1 border border-sky-500/25 bg-sky-500/10 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">
+                  <GitBranch className="h-3 w-3 shrink-0" />
+                  <span className="truncate font-medium">
+                    {selectedBranch || "main"}
+                  </span>
+                </span>
+                <span className="hidden items-center gap-1 text-text-muted sm:inline-flex">
+                  <GitCommitHorizontal className="h-3 w-3 shrink-0" />
+                  {currentBranchHeadId
+                    ? `tip ${shortHash(currentBranchHeadId)}`
+                    : currentBranchRecord
+                      ? "no commits yet"
+                      : "creates branch on commit"}
+                </span>
               </div>
               {commitBlockedByFileAttachmentStatus && (
                 <div className="inline-flex items-center gap-2 ml-3 border border-border-default/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">

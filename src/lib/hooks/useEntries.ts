@@ -15,6 +15,8 @@ import {
 } from "@/lib/content-protocol";
 
 interface UseEntriesOptions {
+  branchId?: string | null;
+  parentEntryId?: string | null;
   search?: string;
   personaId?: string | null;
   sortOrder?: "newest" | "oldest";
@@ -104,7 +106,13 @@ function normalizeEntryOrder(entries: EntryWithSections[]): EntryWithSections[] 
 export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const { search, personaId, sortOrder = "newest" } = options;
+  const {
+    branchId = null,
+    parentEntryId = null,
+    search,
+    personaId,
+    sortOrder = "newest",
+  } = options;
   const PAGE_SIZE = 20;
 
   const cacheKey = useMemo(
@@ -209,11 +217,21 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     mutationFn: async () => {
       const { data, error } = await supabase
         .from("entries")
-        .insert({ stream_id: streamId })
+        .insert({ stream_id: streamId, parent_commit_id: parentEntryId })
         .select()
         .single();
 
       if (error) throw error;
+
+      if (branchId) {
+        const { error: branchError } = await supabase
+          .from("branches")
+          .update({ head_commit_id: data.id })
+          .eq("id", branchId);
+
+        if (branchError) throw branchError;
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -227,6 +245,8 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         queryKey: ["bridge-token-entries", streamId],
       });
       queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
       queryClient.invalidateQueries({ queryKey: ["home-domains"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
@@ -383,6 +403,8 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
       queryClient.invalidateQueries({ queryKey: ["home-domains"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
@@ -394,7 +416,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       // Create a new entry
       const { data: newEntry, error: entryError } = await supabase
         .from("entries")
-        .insert({ stream_id: streamId })
+        .insert({ stream_id: streamId, parent_commit_id: parentEntryId })
         .select()
         .single();
 
@@ -443,6 +465,15 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
         }
       }
 
+      if (branchId) {
+        const { error: branchError } = await supabase
+          .from("branches")
+          .update({ head_commit_id: newEntry.id })
+          .eq("id", branchId);
+
+        if (branchError) throw branchError;
+      }
+
       return newEntry;
     },
     onSuccess: () => {
@@ -453,6 +484,8 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
       queryClient.invalidateQueries({ queryKey: ["home-domains"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
@@ -463,7 +496,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
     mutationFn: async (entry: EntryWithSections) => {
       const { data: newEntry, error: entryError } = await supabase
         .from("entries")
-        .insert({ stream_id: streamId })
+        .insert({ stream_id: streamId, parent_commit_id: parentEntryId })
         .select()
         .single();
 
@@ -512,6 +545,15 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
             .insert(attachmentInserts);
           if (attachmentsError) throw attachmentsError;
         }
+      }
+
+      if (branchId) {
+        const { error: branchError } = await supabase
+          .from("branches")
+          .update({ head_commit_id: newEntry.id })
+          .eq("id", branchId);
+
+        if (branchError) throw branchError;
       }
 
       return newEntry;

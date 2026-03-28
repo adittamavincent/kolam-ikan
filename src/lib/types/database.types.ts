@@ -70,6 +70,7 @@ export type Database = {
       branches: {
         Row: {
           created_at: string | null
+          head_commit_id: string | null
           id: string
           name: string
           stream_id: string
@@ -77,6 +78,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          head_commit_id?: string | null
           id?: string
           name: string
           stream_id: string
@@ -84,12 +86,20 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          head_commit_id?: string | null
           id?: string
           name?: string
           stream_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "branches_head_commit_id_fkey"
+            columns: ["head_commit_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "branches_stream_id_fkey"
             columns: ["stream_id"]
@@ -559,6 +569,7 @@ export type Database = {
           deleted_at: string | null
           id: string
           is_draft: boolean
+          parent_commit_id: string | null
           stream_id: string
           updated_at: string | null
         }
@@ -567,6 +578,7 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_draft?: boolean
+          parent_commit_id?: string | null
           stream_id: string
           updated_at?: string | null
         }
@@ -575,10 +587,18 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           is_draft?: boolean
+          parent_commit_id?: string | null
           stream_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "entries_parent_commit_id_fkey"
+            columns: ["parent_commit_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "entries_stream_id_fkey"
             columns: ["stream_id"]
@@ -825,6 +845,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_ui_preferences: {
+        Row: {
+          created_at: string
+          preferences: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          preferences?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          preferences?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

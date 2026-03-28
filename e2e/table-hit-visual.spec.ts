@@ -25,7 +25,7 @@ const MARKUP = `
     position: fixed;
     width: 8px;
     height: 8px;
-    border-radius: 999px;
+    border-radius: 0;
     background: #22c55e;
     border: 1px solid #14532d;
     transform: translate(-50%, -50%);

@@ -96,6 +96,12 @@ function getSupabaseErrorMessage(error: unknown): string {
   return maybeError.code ? `Code ${maybeError.code}` : "Unknown error";
 }
 
+function compareBranchNames(a: string, b: string): number {
+  if (a === "main") return -1;
+  if (b === "main") return 1;
+  return a.localeCompare(b);
+}
+
 type EntryConfirmType = "reset" | "delete";
 
 function isParsedReadyStatus(status?: string | null): boolean {
@@ -407,6 +413,22 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     if (ref) ref.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [highlightEntryId]);
 
+  const { data: branchRowsForMutations } = useQuery({
+    queryKey: ["branches", streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("branches")
+        .select("*")
+        .eq("stream_id", streamId);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!streamId,
+  });
+
+  const currentBranchForMutations =
+    branchRowsForMutations?.find((branch) => branch.name === currentBranch) ?? null;
+
   const {
     items: entryList,
     isLoading: isEntriesLoading,
@@ -421,6 +443,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     revertEntry,
     fetchAllEntriesForExport,
   } = useEntries(streamId, {
+    branchId: currentBranchForMutations?.id ?? null,
+    parentEntryId: currentBranchForMutations?.head_commit_id ?? null,
     search: debouncedSearch,
     personaId: filterPersonaId,
     sortOrder,
@@ -570,53 +594,58 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     enabled: !!streamId,
   });
 
-  const { data: commitBranches, refetch: refetchCommitBranches } = useQuery({
-    queryKey: ["commit-branches", streamId],
+  const { data: entryLineage, isLoading: isEntryLineageLoading } = useQuery({
+    queryKey: ["entries-lineage", streamId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("commit_branches")
-        .select("*");
+        .from("entries")
+        .select("id,parent_commit_id,created_at")
+        .eq("stream_id", streamId)
+        .eq("is_draft", false)
+        .is("deleted_at", null);
       if (error) throw error;
       return data;
     },
     enabled: !!streamId,
   });
 
-  const { data: currentBranchHeadEntry } = useQuery({
-    queryKey: [
-      "branch-head-entry",
-      streamId,
-      currentBranch,
-      branches,
-      commitBranches,
-    ],
-    queryFn: async () => {
-      const branch = branches?.find((b) => b.name === currentBranch);
-      if (!branch) return null;
+  const currentBranchRecord = useMemo(
+    () => branches?.find((branch) => branch.name === currentBranch) ?? null,
+    [branches, currentBranch],
+  );
 
-      const { data: branchLinks, error: branchLinksError } = await supabase
-        .from("commit_branches")
-        .select("commit_id")
-        .eq("branch_id", branch.id);
+  const entryLineageById = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; parent_commit_id: string | null; created_at: string | null }
+    >();
 
-      if (branchLinksError) throw branchLinksError;
-      if (!branchLinks || branchLinks.length === 0) return null;
+    for (const entry of entryLineage ?? []) {
+      map.set(entry.id, entry);
+    }
 
-      const commitIds = branchLinks.map((link) => link.commit_id);
+    return map;
+  }, [entryLineage]);
 
-      const { data: headEntry, error: headEntryError } = await supabase
-        .from("entries")
-        .select("id,created_at")
-        .in("id", commitIds)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+  const currentBranchHeadId =
+    currentBranchRecord?.head_commit_id ??
+    (currentBranch === "main" ? latestEntryId ?? null : null);
 
-      if (headEntryError) throw headEntryError;
-      return headEntry;
-    },
-    enabled: !!streamId && !!currentBranch,
-  });
+  const currentBranchHeadEntry = currentBranchHeadId
+    ? entryLineageById.get(currentBranchHeadId) ?? null
+    : null;
+
+  const reachableCommitIds = useMemo(() => {
+    const ids = new Set<string>();
+    let cursor = currentBranchHeadId;
+
+    while (cursor && !ids.has(cursor)) {
+      ids.add(cursor);
+      cursor = entryLineageById.get(cursor)?.parent_commit_id ?? null;
+    }
+
+    return ids;
+  }, [currentBranchHeadId, entryLineageById]);
 
   useEffect(() => {
     scrollToHighlighted();
@@ -797,8 +826,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         if (!targetBranch) {
           const { data, error } = await supabase
             .from("branches")
-            .insert({ stream_id: streamId, name: branchName })
-            .select("id,name,stream_id,created_at,updated_at")
+            .insert({
+              stream_id: streamId,
+              name: branchName,
+              head_commit_id: entry.id,
+            })
+            .select("id,name,stream_id,created_at,updated_at,head_commit_id")
             .single();
 
           if (error) {
@@ -812,39 +845,23 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         }
 
         if (targetBranch) {
-          const { error: resetBranchError } = await supabase
-            .from("commit_branches")
-            .delete()
-            .eq("branch_id", targetBranch.id);
+          const { error: branchUpdateError } = await supabase
+            .from("branches")
+            .update({ head_commit_id: entry.id })
+            .eq("id", targetBranch.id);
 
-          if (resetBranchError) {
-            const message = getSupabaseErrorMessage(resetBranchError);
+          if (branchUpdateError) {
+            const message = getSupabaseErrorMessage(branchUpdateError);
             console.error(
               "Failed to move branch pointer:",
               message,
-              resetBranchError,
+              branchUpdateError,
             );
             window.alert(`Failed to move branch pointer: ${message}`);
             break;
           }
 
-          const { error: commitError } = await supabase
-            .from("commit_branches")
-            .insert({ commit_id: entry.id, branch_id: targetBranch.id });
-
-          if (commitError) {
-            const message = getSupabaseErrorMessage(commitError);
-            console.error(
-              "Failed to associate commit with branch:",
-              message,
-              commitError,
-            );
-            window.alert(`Failed to associate commit with branch: ${message}`);
-            break;
-          }
-
-          refetchBranches();
-          refetchCommitBranches();
+          await refetchBranches();
           setCurrentBranch(branchName);
         }
 
@@ -975,16 +992,24 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   }, [currentBranchHeadEntry]);
 
   const branchTimelineItems = useMemo(() => {
-    // If viewing the main branch, don't apply the branch head cutoff —
-    // show all recent entries (including AI responses) by default.
-    if (currentBranch === "main" || currentBranchCutoffMs === null)
-      return timelineItems;
+    if (isEntryLineageLoading) return [];
+    if (!currentBranchHeadId || currentBranchCutoffMs === null) return [];
 
     return timelineItems.filter((item) => {
+      if (item.type === "entry") {
+        return reachableCommitIds.has(item.data.id);
+      }
+
       const itemTs = new Date(item.created_at).getTime();
       return Number.isFinite(itemTs) && itemTs <= currentBranchCutoffMs;
     });
-  }, [timelineItems, currentBranchCutoffMs, currentBranch]);
+  }, [
+    currentBranchCutoffMs,
+    currentBranchHeadId,
+    isEntryLineageLoading,
+    reachableCommitIds,
+    timelineItems,
+  ]);
 
   const branchEntries = useMemo(
     () =>
@@ -1076,18 +1101,29 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const branchesByEntryId = useMemo(() => {
     const map = new Map<string, string[]>();
-    if (!branches || !commitBranches) return map;
+    if (!branches) return map;
 
-    for (const commitBranch of commitBranches) {
-      const branch = branches.find((b) => b.id === commitBranch.branch_id);
-      if (branch) {
-        const existing = map.get(commitBranch.commit_id) ?? [];
-        existing.push(branch.name);
-        map.set(commitBranch.commit_id, existing);
+    for (const branch of branches) {
+      if (!branch.head_commit_id) continue;
+      const existing = map.get(branch.head_commit_id) ?? [];
+      existing.push(branch.name);
+      map.set(branch.head_commit_id, existing);
+    }
+
+    for (const refs of map.values()) {
+      refs.sort(compareBranchNames);
+    }
+
+    if (!currentBranchRecord?.head_commit_id && currentBranch === "main" && latestEntryId) {
+      const existing = map.get(latestEntryId) ?? [];
+      if (!existing.includes("main")) {
+        existing.unshift("main");
+        map.set(latestEntryId, existing);
       }
     }
+
     return map;
-  }, [branches, commitBranches]);
+  }, [branches, currentBranch, currentBranchRecord?.head_commit_id, latestEntryId]);
 
   const branchNames = useMemo(() => {
     const names = (branches ?? []).map((branch) => branch.name);
@@ -1172,8 +1208,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
       const { data: createdBranch, error: createError } = await supabase
         .from("branches")
-        .insert({ stream_id: streamId, name: branchName })
-        .select("id,name,stream_id,created_at,updated_at")
+        .insert({
+          stream_id: streamId,
+          name: branchName,
+          head_commit_id: currentBranchHeadId,
+        })
+        .select("id,name,stream_id,created_at,updated_at,head_commit_id")
         .single();
 
       if (createError || !createdBranch) {
@@ -1182,29 +1222,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         return;
       }
 
-      const branchHeadCommitId = currentBranchHeadEntry?.id ?? headEntryId;
-
-      if (branchHeadCommitId) {
-        const { error: linkError } = await supabase
-          .from("commit_branches")
-          .insert({
-            commit_id: branchHeadCommitId,
-            branch_id: createdBranch.id,
-          });
-
-        if (linkError) {
-          console.error(
-            "Failed to point new branch at current head:",
-            linkError,
-          );
-          window.alert(
-            "Branch created, but failed to point it to the current head.",
-          );
-        }
-      }
-
       await refetchBranches();
-      await refetchCommitBranches();
       setCurrentBranch(branchName);
     };
 
@@ -1267,12 +1285,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   }, [
     handleExport,
     branches,
-    currentBranchHeadEntry?.id,
-    headEntryId,
+    branchEntries,
+    currentBranchHeadId,
     supabase,
     streamId,
     refetchBranches,
-    refetchCommitBranches,
     allVisibleCollapsed,
     setVisibleEntriesCollapsed,
   ]);
@@ -1499,6 +1516,25 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                       {tag}
                                     </span>
                                   )}
+                                  {entryBranches.map((branchName) => (
+                                    <span
+                                      key={`${entry.id}-${branchName}`}
+                                      className="inline-flex shrink-0 items-stretch text-[9px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
+                                      title={`${branchName} points at this commit`}
+                                    >
+                                      <span className="inline-flex items-center gap-1 border border-sky-500/30 bg-sky-500/12 px-1.5 py-0.5">
+                                        <GitBranch className="h-2.5 w-2.5" />
+                                        {branchName}
+                                      </span>
+                                      <span
+                                        aria-hidden="true"
+                                        className="-ml-px h-[18px] w-2 border-y border-r border-sky-500/30 bg-sky-500/12"
+                                        style={{
+                                          clipPath: "polygon(0 0, 100% 50%, 0 100%)",
+                                        }}
+                                      />
+                                    </span>
+                                  ))}
                                   {isLatestEntry && (
                                     <span className="shrink-0 inline-flex items-center border border-border-default/35 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                                       HEAD
@@ -1577,6 +1613,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                       section={section}
                                       streamId={streamId}
                                       sectionIndex={sectionIndex}
+                                      isLastSection={
+                                        sectionIndex === entry.sections.length - 1
+                                      }
                                       onPreviewAttachment={openAttachmentPreview}
                                       editable={isAmending}
                                       currentEditedContent={

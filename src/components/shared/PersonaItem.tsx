@@ -44,7 +44,7 @@ function PersonaButtonDisplay({
 
   return (
     <>
-      <div className={`flex items-center ${compact ? "gap-1.5" : "gap-2"}`}>
+      <div className={`flex min-w-0 items-center ${compact ? "gap-1.5" : "gap-2"}`}>
         <div
           className="flex h-4 w-4 items-center justify-center"
           style={{ backgroundColor: `${persona.color}20`, color: persona.color }}
@@ -63,7 +63,11 @@ function PersonaButtonDisplay({
             </div>
           </div>
         ) : (
-          <span className={`${nameClass} ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}>{persona.name}</span>
+          <span
+            className={`${nameClass} truncate ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}
+          >
+            {persona.name}
+          </span>
         )}
       </div>
       {showChevron && <ChevronDown className="h-3 w-3 text-text-muted opacity-50 ml-2" />}
@@ -77,6 +81,7 @@ interface PersonaItemProps {
   focus?: boolean;
   onClick?: () => void;
   compact?: boolean;
+  showMeta?: boolean;
   className?: string;
   style?: React.CSSProperties;
   title?: string;
@@ -98,14 +103,16 @@ export function PersonaItem({
   focus = false,
   onClick,
   compact = false,
+  showMeta,
   className = "",
   style,
   title,
   menuProps = null,
 }: PersonaItemProps) {
   const sharedClass = `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 px-2 py-1.5 text-xs transition-colors`;
-  const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} ${className}`;
+  const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} text-left ${className}`;
   const nameClass = role === "local" ? "text-amber-700 dark:text-amber-400" : "";
+  const resolvedShowMeta = showMeta ?? !compact;
 
   // If menuProps provided, render as a selector control (Menu + MenuButton + MenuItems)
   if (menuProps) {
@@ -157,7 +164,7 @@ export function PersonaItem({
           >
             <MenuItems
               anchor={{ to: "bottom start", gap: 4 }}
-              className="z-9999 w-64 max-h-60 overflow-y-auto overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl"
+              className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 shadow-2xl"
             >
               <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                 Switch to...
@@ -216,7 +223,7 @@ export function PersonaItem({
         compact={compact}
         nameClass={nameClass}
         showChevron={false}
-        showMeta={!compact}
+        showMeta={resolvedShowMeta}
       />
     </button>
   );

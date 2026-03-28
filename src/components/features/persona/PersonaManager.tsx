@@ -568,7 +568,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           </p>
                         </div>
 
-                        <div className="rounded-md border border-border-default bg-surface-subtle/40 p-3">
+                        <div className="border border-border-default bg-surface-subtle/40 p-3">
                           <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-text-muted">
                             Scope
                           </div>
@@ -583,7 +583,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
 
                       <div className="space-y-4">
                         <div
-                          className="rounded-md border p-3"
+                          className="border p-3"
                           style={getPersonaTintStyle(
                             {
                               color,
@@ -601,7 +601,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           </div>
                           <div className="flex items-center gap-3">
                             <div
-                              className="flex h-10 w-10 items-center justify-center rounded-md"
+                              className="flex h-10 w-10 items-center justify-center"
                               style={{ backgroundColor: `${color}20`, color }}
                             >
                               <DynamicIcon name={icon} className="h-5 w-5" />
@@ -802,7 +802,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   />
                                 )}
                                 <div
-                                  className="flex h-8 w-8 items-center justify-center rounded-md"
+                                  className="flex h-8 w-8 items-center justify-center"
                                   style={{
                                     backgroundColor: `${persona.color}20`,
                                     color: persona.color,

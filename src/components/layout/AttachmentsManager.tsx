@@ -92,7 +92,7 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                         setRemoveError(null);
                         setDocImportOpen(true);
                       }}
-                      className="inline-flex items-center gap-2 rounded-md border border-border-default px-3 py-1 text-sm bg-surface-subtle hover:bg-surface-hover"
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1 text-sm bg-surface-subtle hover:bg-surface-hover"
                     >
                       <span className="text-xs">Go to import</span>
                     </button>
@@ -102,7 +102,7 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                   </div>
 
                   {removeError && (
-                    <div className="rounded border border-status-error-border bg-status-error-bg px-3 py-2 text-xs text-status-error-text">
+                    <div className="border border-status-error-border bg-status-error-bg px-3 py-2 text-xs text-status-error-text">
                       {removeError}
                     </div>
                   )}
@@ -121,7 +121,7 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                         const usageCount = att.usageCount ?? 0;
                         const isInUse = usageCount > 0;
                         return (
-                        <li key={att.id} className="flex items-center justify-between gap-2 rounded p-2 hover:bg-surface-subtle">
+                        <li key={att.id} className="flex items-center justify-between gap-2 p-2 hover:bg-surface-subtle">
                           <div className="flex items-center gap-3">
                             <FileAttachmentThumbnail
                               url={att.fileUrl ?? null}

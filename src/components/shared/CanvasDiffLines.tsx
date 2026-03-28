@@ -26,10 +26,10 @@ function rowClasses(type: DiffLine["type"]): string {
 function segmentClasses(type: DiffLine["type"], changed: boolean): string {
   if (!changed) return "";
   if (type === "add") {
-    return "rounded-[2px] bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200";
+    return "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200";
   }
   if (type === "del") {
-    return "rounded-[2px] bg-rose-500/20 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200";
+    return "bg-rose-500/20 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200";
   }
   return "";
 }

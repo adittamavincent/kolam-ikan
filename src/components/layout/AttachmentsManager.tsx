@@ -59,7 +59,7 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -185,7 +185,7 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                       setRemoveError(null);
                       onClose();
                     }}
-                    className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90"
+                    className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover"
                   >
                     Close
                   </button>

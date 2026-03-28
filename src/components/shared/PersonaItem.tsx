@@ -36,11 +36,13 @@ function PersonaButtonDisplay({
   if (!persona) {
     return (
       <>
-        <FileText className="h-3 w-3 text-text-muted" />
+        <FileText className="persona-button-display__fallback-icon h-3 w-3 text-text-muted" />
         <span className="text-[10px] font-medium text-text-subtle uppercase tracking-wider">
           {isAttachment ? (filePersonaName ?? "Attachment") : "Unknown"}
         </span>
-        {showChevron && <ChevronDown className="h-3 w-3 text-text-muted opacity-50" />}
+        {showChevron && (
+          <ChevronDown className="persona-button-display__chevron h-3 w-3 text-text-muted opacity-50" />
+        )}
       </>
     );
   }
@@ -49,15 +51,19 @@ function PersonaButtonDisplay({
     <>
       <div className={`flex min-w-0 items-center ${compact ? "gap-1.5" : "gap-2"}`}>
         <div
-          className="flex h-4 w-4 items-center justify-center"
-          style={{ backgroundColor: `${persona.color}20`, color: persona.color }}
+          className="persona-button-display__icon flex h-4 w-4 items-center justify-center"
+          style={{
+            backgroundColor: `${persona.color}20`,
+            color: persona.color,
+            borderColor: `${persona.color}4d`,
+          }}
         >
           <DynamicIcon name={persona.icon} className="h-2.5 w-2.5" />
         </div>
         {showMeta ? (
           <div className="min-w-0">
             <div
-              className={`${nameClass} truncate ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}
+              className={`${nameClass} truncate ${persona.is_shadow ? "persona-button-display__name--local" : ""}`.trim()}
             >
               {persona.name}
             </div>
@@ -68,19 +74,21 @@ function PersonaButtonDisplay({
         ) : (
           <div className="flex min-w-0 items-center gap-1.5">
             <span
-              className={`${nameClass} truncate ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}
+              className={`${nameClass} truncate ${persona.is_shadow ? "persona-button-display__name--local" : ""}`.trim()}
             >
               {persona.name}
             </span>
             {showTypeBadge && (
-              <span className="shrink-0 border border-border-default/50 bg-surface-subtle px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+              <span className="persona-button-display__type-badge shrink-0 border px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em]">
                 {personaTypeLabel}
               </span>
             )}
           </div>
         )}
       </div>
-      {showChevron && <ChevronDown className="h-3 w-3 text-text-muted opacity-50 ml-2" />}
+      {showChevron && (
+        <ChevronDown className="persona-button-display__chevron ml-2 h-3 w-3 text-text-muted opacity-50" />
+      )}
     </>
   );
 }
@@ -123,7 +131,7 @@ export function PersonaItem({
 }: PersonaItemProps) {
   const sharedClass = `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 px-2 py-1.5 text-xs transition-colors hover:bg-surface-subtle hover:text-text-default`;
   const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} text-left ${className}`;
-  const nameClass = role === "local" ? "text-amber-700 dark:text-amber-400" : "";
+  const nameClass = role === "local" ? "persona-button-display__name--local" : "";
   const resolvedShowMeta = showMeta ?? !compact;
 
   // If menuProps provided, render as a selector control (Menu + MenuButton + MenuItems)
@@ -200,7 +208,7 @@ export function PersonaItem({
               ))}
 
               {localPersonas.length > 0 && (
-                <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                <div className="persona-button-display__local-label mt-1 px-2 py-1 text-[10px] font-semibold">
                   Local To This Stream
                 </div>
               )}

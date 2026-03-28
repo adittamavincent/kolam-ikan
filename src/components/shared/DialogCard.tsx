@@ -31,7 +31,7 @@ export const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>(
       >
         <div className="flex items-start gap-3">
           {icon ? (
-            <div className="border border-border-default bg-surface-subtle/80 p-2">
+            <div className="border border-border-default bg-surface-hover p-2">
               {icon}
             </div>
           ) : null}

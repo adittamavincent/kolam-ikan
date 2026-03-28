@@ -165,9 +165,9 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   if (!hasDraftDiff) return null;
 
   return (
-    <div className=" border border-dashed border-border-default/50 bg-amber-500/4 overflow-hidden transition-all">
+    <div className=" border border-dashed border-border-default bg-amber-950 overflow-hidden transition-all">
       {/* Header */}
-      <div className="flex items-center px-2.5 py-1.5 bg-amber-500/6 border-b border-dashed border-border-default/20">
+      <div className="flex items-center px-2.5 py-1.5 bg-amber-950 border-b border-dashed border-border-subtle">
         <div className="flex w-full items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <CircleDot className="h-3 w-3 text-amber-500 animate-pulse" />
@@ -226,7 +226,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setIsCompareOpen(true)}
-              className="inline-flex items-center gap-1.5 border border-border-default/30 px-2.5 py-1 text-[11px] font-semibold text-text-subtle hover:bg-surface-subtle transition-colors"
+              className="inline-flex items-center gap-1.5 border border-border-subtle px-2.5 py-1 text-[11px] font-semibold text-text-subtle hover:bg-surface-subtle transition-colors"
               title={`Compare against ${compareLabel.toLowerCase()}`}
             >
               <GitCompare className="h-3 w-3" />
@@ -234,7 +234,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             </button>
             <button
               onClick={() => setIsExpanded(true)}
-              className="inline-flex items-center gap-1.5 border border-border-default/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+              className="inline-flex items-center gap-1.5 border border-border-subtle bg-amber-950 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-900 transition-colors"
             >
               <GitCommitHorizontal className="h-3 w-3" />
               Commit Snapshot
@@ -245,7 +245,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
 
       {isCompareOpen && (
         <div
-          className="fixed inset-0 z-200 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-200 flex items-center justify-center bg-surface-dark p-4"
           onClick={() => setIsCompareOpen(false)}
         >
           <div

@@ -1671,7 +1671,7 @@ export function WhatsAppImportModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity" />
+          <div className="fixed inset-0 bg-surface-dark backdrop-blur-xs transition-opacity" />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto p-2 lg:p-3">
@@ -1685,7 +1685,7 @@ export function WhatsAppImportModal({
               leaveFrom="opacity-100 scale-100 translate-y-0"
               leaveTo="opacity-0 translate-y-4"
             >
-              <DialogPanel className="flex w-full max-w-xl flex-col border border-border-default/70 bg-surface-default transition-all">
+              <DialogPanel className="flex w-full max-w-xl flex-col border border-border-strong bg-surface-default transition-all">
             {/* ─── Header ────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
               <div className="flex items-center gap-2">
@@ -1733,7 +1733,7 @@ export function WhatsAppImportModal({
                   }}
                 />
 
-                <div className="flex flex-wrap items-center gap-2 border border-border-default bg-surface-subtle/40 px-3 py-2">
+                <div className="flex flex-wrap items-center gap-2 border border-border-default bg-surface-subtle px-3 py-2">
                   <button
                     onClick={() => zipInputRef.current?.click()}
                     disabled={zipLoading}
@@ -1842,7 +1842,7 @@ export function WhatsAppImportModal({
                   </p>
                 </div>
 
-                <div className=" border border-border-default bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
+                <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
                   <div>
                     Total turns:{" "}
                     <span className="font-semibold text-text-default">
@@ -1958,7 +1958,7 @@ export function WhatsAppImportModal({
                 </div>
 
                 {/* Preview list with clickable controls to set start/end */}
-                <div className="max-h-48 overflow-y-auto border border-border-default bg-surface-subtle/30 p-2 text-[11px]">
+                <div className="max-h-48 overflow-y-auto border border-border-default bg-surface-subtle p-2 text-[11px]">
                   {parsedTurns.length === 0 ? (
                     <div className="text-text-muted">No turns to preview.</div>
                   ) : (
@@ -1988,7 +1988,7 @@ export function WhatsAppImportModal({
                       return (
                         <div
                           key={t.id}
-                          className={`relative flex items-center justify-between gap-3 px-2 py-1  ${isSelected ? "bg-action-primary-bg/10 border border-border-default/20" : "hover:bg-surface-subtle"}`}
+                          className={`relative flex items-center justify-between gap-3 px-2 py-1  ${isSelected ? "bg-primary-950 border border-border-subtle" : "hover:bg-surface-subtle"}`}
                         >
                           <div
                             className="min-w-0 flex-1 text-[11px]"
@@ -2074,7 +2074,7 @@ export function WhatsAppImportModal({
                     </div>
                   </div>
                   {unmappedCount > 0 && (
-                    <span className="flex shrink-0 items-center gap-1 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400">
+                    <span className="flex shrink-0 items-center gap-1 bg-amber-950 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400">
                       <AlertTriangle className="h-3 w-3" />
                       {unmappedCount} unmapped
                     </span>
@@ -2082,14 +2082,14 @@ export function WhatsAppImportModal({
                 </div>
 
                   {mapError && (
-                    <div className="flex items-start gap-1.5 border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
+                    <div className="flex items-start gap-1.5 border border-red-800 bg-red-950 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
                       <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>{mapError}</span>
                     </div>
                   )}
 
                   {mapNotice && (
-                    <div className="flex items-start gap-1.5 border border-border-default/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                    <div className="flex items-start gap-1.5 border border-border-subtle bg-amber-950 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
                       <Info className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>{mapNotice}</span>
                     </div>
@@ -2105,7 +2105,7 @@ export function WhatsAppImportModal({
                     return (
                       <div
                         key={sender}
-                        className="flex items-center gap-3 border border-border-default bg-surface-subtle/40 px-3 py-2"
+                        className="flex items-center gap-3 border border-border-default bg-surface-subtle px-3 py-2"
                       >
                         <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-default">
                           {sender}
@@ -2131,7 +2131,7 @@ export function WhatsAppImportModal({
                             <span
                               className={` px-1.5 py-0.5 text-[10px] font-medium ${
                                 isLocalPersona(assignedPersona)
-                                  ? "border border-border-default/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                  ? "border border-border-subtle bg-amber-950 text-amber-700 dark:text-amber-400"
                                   : "border border-border-default bg-surface-subtle text-text-muted"
                               }`}
                             >
@@ -2193,7 +2193,7 @@ export function WhatsAppImportModal({
                 </div>
 
                 {unmappedCount > 0 && (
-                  <div className="flex items-start justify-between gap-2 border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                  <div className="flex items-start justify-between gap-2 border border-blue-800 bg-blue-950 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
                     <div className="flex items-start gap-1.5 max-w-[70%]">
                       <Info className="mt-0.5 h-3 w-3 shrink-0" />
                       <span>
@@ -2243,7 +2243,7 @@ export function WhatsAppImportModal({
                           setMapping((prev) => ({ ...prev, ...newMappingEntries }));
                         }}
                         disabled={creatingAllPersonas}
-                        className="bg-blue-500/10 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-500/20 disabled:opacity-50 transition-colors border border-blue-500/20"
+                        className="bg-blue-950 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-900 disabled:opacity-50 transition-colors border border-blue-800"
                       >
                         {creatingAllPersonas ? (
                           <>
@@ -2262,7 +2262,7 @@ export function WhatsAppImportModal({
                 )}
 
                 {hasPdfTurns && allMapped && (
-                  <div className="flex items-start gap-1.5 border border-blue-500/20 bg-blue-500/5 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                  <div className="flex items-start gap-1.5 border border-blue-800 bg-blue-950 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
                     <Info className="mt-0.5 h-3 w-3 shrink-0" />
                     <span>
                       {pdfTurns.length} PDF file
@@ -2360,7 +2360,7 @@ export function WhatsAppImportModal({
                 </div>
 
                 {/* Summary */}
-                <div className=" border border-border-default bg-surface-subtle/40 px-3 py-2 text-[11px] text-text-muted">
+                <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
                   <span className="font-semibold text-text-default">
                     {plannedImportableCount}
                   </span>{" "}
@@ -2559,10 +2559,10 @@ function PdfUploadRow({
     <div
       className={`flex flex-col gap-2  border px-3 py-2.5 transition-opacity ${
         isSkipped
-          ? "border-border-default/40 opacity-50"
+          ? "border-border-subtle opacity-50"
           : isDone
-            ? "border-green-500/20 bg-green-500/5"
-            : "border-border-default bg-surface-subtle/30"
+            ? "border-green-800 bg-green-950"
+            : "border-border-default bg-surface-subtle"
       }`}
     >
       <div className="flex items-start gap-2">
@@ -2614,7 +2614,7 @@ function PdfUploadRow({
           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-action-primary-bg" />
         )}
         {isDone && (
-          <span className="flex shrink-0 items-center gap-1 bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+          <span className="flex shrink-0 items-center gap-1 bg-green-950 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
             <Check className="h-3 w-3" />
             Uploaded
           </span>
@@ -2625,7 +2625,7 @@ function PdfUploadRow({
           </span>
         )}
         {isQueued && (
-          <span className="shrink-0 bg-blue-500/15 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+          <span className="shrink-0 bg-blue-950 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
             Queued
           </span>
         )}
@@ -2703,7 +2703,7 @@ function PdfUploadRow({
               {isError && (
                 <button
                   onClick={onRetry}
-                  className="inline-flex items-center gap-1 border border-red-500/30 bg-red-500/10 px-2 py-1 text-[11px] text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                  className="inline-flex items-center gap-1 border border-red-800 bg-red-950 px-2 py-1 text-[11px] text-red-600 hover:bg-red-500/20 dark:text-red-400"
                 >
                   <RefreshCw className="h-3 w-3" />
                   Retry

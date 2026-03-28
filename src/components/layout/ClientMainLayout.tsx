@@ -442,7 +442,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     return (
       <>
         {text.slice(0, index)}
-        <span className="bg-action-primary-bg/20 text-text-default">
+        <span className="bg-primary-900 text-text-default">
           {text.slice(index, index + term.length)}
         </span>
         {text.slice(index + term.length)}
@@ -470,7 +470,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ---- Mobile Overlay ---- */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-surface-dark md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -510,7 +510,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <div
           className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors z-50 ${
             sidebarVisible
-              ? "hover:bg-action-primary-bg/50 active:bg-action-primary-bg"
+              ? "hover:bg-primary-9500 active:bg-action-primary-bg"
               : "pointer-events-none"
           } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
           onMouseDown={handleMouseDown}
@@ -535,7 +535,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 border border-border-default bg-surface-default/90 p-1.5 shadow-lg backdrop-blur-md z-30 transition-all">
+          <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 border border-border-default bg-surface-default p-1.5 shadow-lg backdrop-blur-md z-30 transition-all">
             <button
               onClick={() => setMode("log-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
@@ -590,7 +590,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/40" />
+            <div className="fixed inset-0 bg-surface-dark" />
           </TransitionChild>
           <div className="fixed inset-0 flex items-start justify-center p-4">
             <TransitionChild

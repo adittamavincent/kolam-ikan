@@ -61,7 +61,7 @@ export function FileAttachmentPreviewDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity" />
+          <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm transition-opacity" />
         </TransitionChild>
         
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -138,7 +138,7 @@ export function FileAttachmentPreviewDialog({
                   title={`File preview for ${attachmentPreview.title}`}
                 />
               ) : (
-                <div className="border border-border-default bg-surface-subtle/40 px-3 py-2 text-sm text-text-muted">
+                <div className="border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-muted">
                   Preview is not available for this attachment yet.
                 </div>
               ))}
@@ -146,7 +146,7 @@ export function FileAttachmentPreviewDialog({
             {activePreviewTab === "parsed" && (
               <>
                 {!isParsedReadyStatus(attachmentPreview?.importStatus) && (
-                  <div className="border border-border-default/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                  <div className="border border-border-subtle bg-amber-950 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
                     Parsed Docling output is not ready yet. Wait until import status is completed.
                   </div>
                 )}
@@ -162,7 +162,7 @@ export function FileAttachmentPreviewDialog({
                 {isParsedReadyStatus(attachmentPreview?.importStatus) &&
                   !parsedPreviewLoading &&
                   parsedPreviewError && (
-                    <div className="border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-600">
+                    <div className="border border-rose-800 bg-rose-950 px-3 py-2 text-sm text-rose-600">
                       {parsedPreviewError}
                     </div>
                   )}
@@ -171,7 +171,7 @@ export function FileAttachmentPreviewDialog({
                   !parsedPreviewLoading &&
                   !parsedPreviewError &&
                   parsedPreview && (
-                    <pre className="whitespace-pre-wrap wrap-break-word border border-border-default bg-surface-subtle/40 p-3 text-xs text-text-default">
+                    <pre className="whitespace-pre-wrap wrap-break-word border border-border-default bg-surface-subtle p-3 text-xs text-text-default">
                       {parsedPreview.markdown}
                     </pre>
                   )}

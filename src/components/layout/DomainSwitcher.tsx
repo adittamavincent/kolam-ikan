@@ -232,7 +232,7 @@ export function DomainSwitcher({
           onClick={() => setIsCreateModalOpen(true)}
           aria-label="Add Domain"
           title="Add Domain"
-          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg"
+          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-primary-950 hover:text-action-primary-bg"
         >
           <Plus className="h-4 w-4" />
           <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
@@ -267,7 +267,7 @@ export function DomainSwitcher({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-action-primary-bg/10 text-xs font-semibold text-action-primary-bg">
+              <div className="flex h-full w-full items-center justify-center bg-primary-950 text-xs font-semibold text-action-primary-bg">
                 {initials}
               </div>
             )}
@@ -363,7 +363,7 @@ export function DomainSwitcher({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
+            <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm" />
           </TransitionChild>
 
           <div className="fixed inset-0 overflow-y-auto">
@@ -396,7 +396,7 @@ export function DomainSwitcher({
                           className=" object-cover border-2 border-border-default"
                         />
                       ) : (
-                        <div className="flex h-16 w-16 items-center justify-center bg-action-primary-bg/10 text-xl font-bold text-action-primary-bg border-2 border-border-default/20">
+                        <div className="flex h-16 w-16 items-center justify-center bg-primary-950 text-xl font-bold text-action-primary-bg border-2 border-border-subtle">
                           {initials}
                         </div>
                       )}
@@ -432,7 +432,7 @@ export function DomainSwitcher({
                   <div className="mt-6 flex justify-end">
                     <button
                       type="button"
-                      className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-bg/90 focus: focus-visible: focus-visible: focus-visible: transition-colors"
+                      className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: transition-colors"
                       onClick={() => setProfileOpen(false)}
                     >
                       Close

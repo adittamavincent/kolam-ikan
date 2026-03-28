@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-8">
             <Link
               href="/login"
-              className="text-sm font-bold text-action-primary-bg hover:text-action-primary-bg/80"
+              className="text-sm font-bold text-action-primary-bg hover:text-primary-400"
             >
               Return to login
             </Link>
@@ -129,7 +129,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full justify-center bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus: focus: transition-all disabled:opacity-70"
+              className="flex w-full justify-center bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-hover focus: focus: transition-all disabled:opacity-70"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

@@ -434,7 +434,7 @@ const StreamNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{displayName}</span>
             {kindBadge && (
-              <span className="shrink-0 border border-border-default/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+              <span className="shrink-0 border border-border-subtle bg-primary-950 px-1.5 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                 {kindBadge}
               </span>
             )}
@@ -1996,7 +1996,7 @@ export function Navigator({}: NavigatorProps) {
 
         {/* Tree View */}
         <div
-          className={`flex-1 overflow-y-auto transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-action-primary-bg/5" : ""}`}
+          className={`flex-1 overflow-y-auto transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-primary-950" : ""}`}
           role="tree"
           onClick={() => {
             setManualActiveNode(null);
@@ -2196,7 +2196,7 @@ export function Navigator({}: NavigatorProps) {
               <button
                 onClick={() => handleContextAction("delete")}
                 disabled={contextMenuIsGlobal}
-                className="flex w-full items-center justify-between px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-rose-500/10"
+                className="flex w-full items-center justify-between px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-rose-950"
               >
                 <span className="flex items-center gap-2">
                   <Trash2 className="h-4 w-4" />
@@ -2240,7 +2240,7 @@ export function Navigator({}: NavigatorProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/40" />
+            <div className="fixed inset-0 bg-surface-dark" />
           </TransitionChild>
           <div className="fixed inset-0 flex items-center justify-center p-4">
             <TransitionChild
@@ -2326,7 +2326,7 @@ export function Navigator({}: NavigatorProps) {
                         : (moveDestination ?? null) ===
                           (moveItem as Cabinet | undefined)?.parent_id
                     }
-                    className=" bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-action-primary-bg/90 disabled:cursor-not-allowed disabled:opacity-60"
+                    className=" bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Move
                   </button>
@@ -2352,7 +2352,7 @@ export function Navigator({}: NavigatorProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/40" />
+            <div className="fixed inset-0 bg-surface-dark" />
           </TransitionChild>
           <div className="fixed inset-0 flex items-center justify-center p-4">
             <TransitionChild

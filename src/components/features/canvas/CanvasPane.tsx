@@ -511,7 +511,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     >
       <div className="flex h-full flex-col" style={contentStyle}>
         {isPreviewing && (
-          <div className="mx-3 mt-2 mb-1 border border-amber-400/40 bg-amber-500/10 px-3 py-2">
+          <div className="mx-3 mt-2 mb-1 border border-amber-400/40 bg-amber-950 px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
@@ -571,7 +571,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       </div>
       {isPreviewing && isCompareOpen && (
         <div
-          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/50"
+          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
           onClick={() => setIsCompareOpen(false)}
         >
           <div

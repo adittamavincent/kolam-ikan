@@ -216,7 +216,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
   return (
     <>
       <div
-      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
       onClick={onClose}
     >
       <div
@@ -268,9 +268,9 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
                 key={i}
                 className={`flex gap-3 px-4 py-0.5 leading-5 ${
                   line.type === "add"
-                    ? "bg-emerald-500/8 text-emerald-600 dark:text-emerald-400"
+                    ? "bg-emerald-950 text-emerald-600 dark:text-emerald-400"
                     : line.type === "del"
-                      ? "bg-rose-500/8 text-rose-600 dark:text-rose-400 line-through opacity-70"
+                      ? "bg-rose-950 text-rose-600 dark:text-rose-400 line-through opacity-70"
                       : "text-text-subtle"
                 }`}
               >
@@ -303,7 +303,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
   const [value, setValue] = useState(currentTag ?? "");
   return (
     <div
-      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
       onClick={onClose}
     >
       <div
@@ -1825,7 +1825,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                   {[1, 2, 3].map((i) => (
                     <div
                       key={i}
-                      className="h-28 bg-surface-subtle/50"
+                      className="h-28 bg-surface-hover"
                     />
                   ))}
                 </div>
@@ -1903,15 +1903,15 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                             hideBody={isCollapsed}
                             frameClassName={`group transition-colors ${
                               isCollapsed
-                                ? "border-border-default/70 bg-surface-default"
-                                : "border-border-default/55 bg-surface-default"
+                                ? "border-border-strong bg-surface-default"
+                                : "border-border-default bg-surface-default"
                             } ${isAmending ? "ring-1 ring-action-primary-bg/20" : ""}`}
                             headerClassName={`${
                               isCollapsed
-                                ? "bg-surface-subtle/75 hover:bg-surface-subtle"
-                                : "bg-action-primary-bg/10 hover:bg-action-primary-bg/15"
+                                ? "bg-surface-hover hover:bg-surface-subtle"
+                                : "bg-primary-950 hover:bg-primary-950"
                             } ${isAmending ? "cursor-default" : "cursor-pointer"} transition-colors`}
-                            bodyClassName="bg-surface-default/55"
+                            bodyClassName="bg-surface-default"
                             header={
                               <div
                                 role="button"
@@ -1931,8 +1931,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   <span
                                     className={`inline-flex h-5 w-5 shrink-0 items-center justify-center border ${
                                       isCollapsed
-                                        ? "border-border-default/60 bg-surface-default text-text-muted"
-                                        : "border-action-primary-bg/25 bg-surface-default/80 text-action-primary-bg"
+                                        ? "border-border-default bg-surface-default text-text-muted"
+                                        : "border-action-primary-bg/25 bg-surface-default text-action-primary-bg"
                                     }`}
                                     aria-hidden="true"
                                   >
@@ -1944,7 +1944,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   </span>
                                   <GitCommitHorizontal className="h-3 w-3 shrink-0 text-text-muted" />
                                   <span className="relative shrink-0 group/hash">
-                                    <code className="cursor-help text-[10px] font-mono text-action-primary-bg/80">
+                                    <code className="cursor-help text-[10px] font-mono text-primary-400">
                                       {hash}
                                     </code>
                                     <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 border border-border-default bg-surface-elevated p-2 text-[10px] font-mono text-text-default group-hover/hash:block">
@@ -1978,14 +1978,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                   <span
                                     className={`shrink-0 border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
                                       isCollapsed
-                                        ? "border-border-default/50 bg-surface-default text-text-muted"
-                                        : "border-border-default/35 bg-surface-default/80 text-text-subtle"
+                                        ? "border-border-default bg-surface-default text-text-muted"
+                                        : "border-border-subtle bg-surface-default text-text-subtle"
                                     }`}
                                   >
                                     {sectionCount} section{sectionCount === 1 ? "" : "s"}
                                   </span>
                                   {tag && (
-                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-default/35 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-subtle bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
                                       <Tag className="h-2.5 w-2.5" />
                                       {tag}
                                     </span>
@@ -1996,13 +1996,13 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                       className="inline-flex shrink-0 items-stretch text-[9px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
                                       title={`${branchName} points at this commit`}
                                     >
-                                      <span className="inline-flex items-center gap-1 border border-sky-500/30 bg-sky-500/12 px-1.5 py-0.5">
+                                      <span className="inline-flex items-center gap-1 border border-sky-800 bg-sky-950 px-1.5 py-0.5">
                                         <GitBranch className="h-2.5 w-2.5" />
                                         {branchName}
                                       </span>
                                       <span
                                         aria-hidden="true"
-                                        className="-ml-px h-[18px] w-2 border-y border-r border-sky-500/30 bg-sky-500/12"
+                                        className="-ml-px h-[18px] w-2 border-y border-r border-sky-800 bg-sky-950"
                                         style={{
                                           clipPath: "polygon(0 0, 100% 50%, 0 100%)",
                                         }}
@@ -2010,12 +2010,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     </span>
                                   ))}
                                   {isLatestEntry && (
-                                    <span className="shrink-0 inline-flex items-center border border-border-default/35 bg-action-primary-bg/10 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                                    <span className="shrink-0 inline-flex items-center border border-border-subtle bg-primary-950 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
                                       HEAD
                                     </span>
                                   )}
                                   {isStashed && (
-                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-default/40 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
+                                    <span className="shrink-0 flex items-center gap-0.5 border border-border-subtle bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
                                       <Archive className="h-2.5 w-2.5" />
                                       stashed
                                     </span>
@@ -2147,7 +2147,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       <button
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-subtle/80 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-hover transition-colors disabled:opacity-50"
                       >
                         <ChevronsDown className="h-3.5 w-3.5" />
                         {isFetchingNextPage
@@ -2194,7 +2194,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             {/* Hash label */}
             <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
               <GitCommitHorizontal className="h-3.5 w-3.5 text-text-muted" />
-              <code className="text-[11px] font-mono text-action-primary-bg/80">
+              <code className="text-[11px] font-mono text-primary-400">
                 {shortHash(contextMenu.entry.id)}
               </code>
               <span className="text-[10px] text-text-muted truncate">
@@ -2308,7 +2308,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             </button>
             <button
               onClick={() => handleContextAction("delete")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete commit

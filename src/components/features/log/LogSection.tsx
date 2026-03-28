@@ -184,8 +184,8 @@ export function LogSection({
       isAttachment={isAttachmentSection}
       nestedConnector={nestedConnector}
       className="flex flex-col"
-      headerClassName="bg-surface-subtle/55"
-      bodyClassName="bg-surface-default/55"
+      headerClassName="bg-surface-hover"
+      bodyClassName="bg-surface-default"
       centerHeader={
         <PersonaItem
           persona={currentPersona ?? null}
@@ -201,15 +201,15 @@ export function LogSection({
         />
       }
       leftHeader={
-        <div className="inline-flex items-center gap-1 border border-border-default/55 bg-surface-default/80 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-          <span className="text-text-default/80">S{sectionIndex + 1}</span>
+        <div className="inline-flex items-center gap-1 border border-border-default bg-surface-default px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-text-default">S{sectionIndex + 1}</span>
           <span className="h-px w-1.5 bg-border-strong" />
           <SectionIcon className="h-3 w-3" />
           <span>{sectionLabel}</span>
         </div>
       }
       rightHeader={
-        <span className="border border-border-default/45 bg-surface-default/75 px-1 py-px text-[10px] text-text-muted">
+        <span className="border border-border-default bg-surface-default px-1 py-px text-[10px] text-text-muted">
           {section.updated_at
             ? new Date(section.updated_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -292,7 +292,7 @@ export function LogSection({
         )}
 
         {showEmptyAttachmentsNotice && (
-          <div className="border border-dashed border-border-default/55 bg-surface-default/60 px-2 py-1.5 text-[11px] text-text-muted">
+          <div className="border border-dashed border-border-default bg-surface-default px-2 py-1.5 text-[11px] text-text-muted">
             No file attachments in this section.
           </div>
         )}

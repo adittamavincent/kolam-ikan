@@ -289,7 +289,7 @@ ${userInput}
         </p>
       </div>
 
-      <div className="relative group border border-border-default/50 bg-[#0d1117] overflow-hidden">
+      <div className="relative group border border-border-default bg-[#0d1117] overflow-hidden">
         <textarea
           readOnly
           rows={6}
@@ -301,7 +301,7 @@ ${userInput}
             onClick={copyToClipboard}
             className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-semibold backdrop-blur-md transition-all ${
               copied
-                ? "bg-status-success-bg/20 text-status-success-text border border-status-success-bg/30"
+                ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
                 : "bg-white/10 text-white border border-white/20 hover:bg-white/20 opacity-0 group-hover:opacity-100"
             }`}
           >

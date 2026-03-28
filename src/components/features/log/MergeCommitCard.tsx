@@ -22,8 +22,8 @@ export function MergeCommitCard({
   const targetBranchName = entry.merge_target_branch_name ?? "current";
 
   return (
-    <div className="group relative overflow-hidden border border-dashed border-border-default/45 bg-action-primary-bg/4 transition-all">
-      <div className="flex items-center justify-between border-b border-dashed border-border-default/25 bg-action-primary-bg/7 px-2.5 py-1.5">
+    <div className="group relative overflow-hidden border border-dashed border-border-default bg-primary-950 transition-all">
+      <div className="flex items-center justify-between border-b border-dashed border-border-default/25 bg-primary-950 px-2.5 py-1.5">
         <div className="flex items-center gap-1.5">
           <GitMerge className="h-3.5 w-3.5 text-action-primary-bg" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-action-primary-bg">
@@ -37,13 +37,13 @@ export function MergeCommitCard({
 
       <div className="px-2.5 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+          <span className="inline-flex items-center gap-1 border border-emerald-800 bg-emerald-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
             <GitBranch className="h-3 w-3" />
             {sourceBranchName}
           </span>
           <span className="text-[10px] font-mono text-text-muted">{sourceHash}</span>
           <span className="text-[10px] font-mono text-text-muted">into</span>
-          <span className="inline-flex items-center gap-1 border border-action-primary-bg/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-action-primary-bg">
+          <span className="inline-flex items-center gap-1 border border-primary-800 bg-primary-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-action-primary-bg">
             <GitBranch className="h-3 w-3" />
             {targetBranchName}
           </span>

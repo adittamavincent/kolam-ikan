@@ -16,6 +16,7 @@ export interface MarkdownEditorProps {
   editable?: boolean;
   placeholder?: string;
   onEditorReady?: (editor: MarkdownEditorHandle) => void;
+  onFocusChange?: (isFocused: boolean) => void;
   highlightTerm?: string;
 }
 

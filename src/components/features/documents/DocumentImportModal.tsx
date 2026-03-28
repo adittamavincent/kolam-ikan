@@ -85,11 +85,11 @@ function formatEta(seconds: number | null | undefined) {
 }
 
 function getStatusTone(status: string) {
-  if (status === "queued") return "bg-amber-500/15 text-amber-600";
-  if (status === "completed") return "bg-emerald-500/15 text-emerald-600";
+  if (status === "queued") return "bg-amber-950 text-amber-600";
+  if (status === "completed") return "bg-emerald-950 text-emerald-600";
   if (status === "failed" || status === "canceled")
-    return "bg-rose-500/15 text-rose-600";
-  if (status === "processing") return "bg-amber-500/15 text-amber-600";
+    return "bg-rose-950 text-rose-600";
+  if (status === "processing") return "bg-amber-950 text-amber-600";
   return "bg-surface-subtle text-text-muted";
 }
 
@@ -594,7 +594,7 @@ export function DocumentImportModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/25 backdrop-blur-xs transition-opacity" />
+          <div className="fixed inset-0 bg-surface-dark backdrop-blur-xs transition-opacity" />
         </TransitionChild>
 
       <div
@@ -621,14 +621,14 @@ export function DocumentImportModal({
             >
           <DialogPanel
             ref={dialogPanelRef}
-            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3 border border-border-default/70 bg-surface-default/95 p-3 backdrop-blur-xl transition-all"
+            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3 border border-border-strong bg-surface-default p-3 backdrop-blur-xl transition-all"
           >
             <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1.6fr)_360px] xl:items-start">
               <form
                 onSubmit={handleSubmit}
-                className="flex min-h-0 flex-col gap-3 border border-border-default/60 bg-surface-subtle/45 p-3"
+                className="flex min-h-0 flex-col gap-3 border border-border-default bg-surface-subtle p-3"
               >
-                <div className="flex items-center justify-between border border-border-default/60 bg-surface-default px-4 py-3">
+                <div className="flex items-center justify-between border border-border-default bg-surface-default px-4 py-3">
                   <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
                     <UploadCloud className="h-4 w-4 text-action-primary-bg" />
                     Import PDF
@@ -640,7 +640,7 @@ export function DocumentImportModal({
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_280px]">
-                  <label className="flex flex-col gap-2 border border-dashed border-border-default/30 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
+                  <label className="flex flex-col gap-2 border border-dashed border-border-subtle bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle">
                     <div className="flex items-center justify-between gap-8">
                       <span className="font-medium">PDF file</span>
                       <span className="text-xs text-text-muted">
@@ -684,7 +684,7 @@ export function DocumentImportModal({
                     />
                   </label>
 
-                  <div className=" border border-border-default/60 bg-surface-default p-4 text-sm text-text-muted">
+                  <div className=" border border-border-default bg-surface-default p-4 text-sm text-text-muted">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
                       Selected
                     </div>
@@ -712,7 +712,7 @@ export function DocumentImportModal({
                 </div>
 
                 <div className="flex gap-3">
-                  <label className="flex-1 flex flex-col gap-2 justify-between border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
+                  <label className="flex-1 flex flex-col gap-2 justify-between border border-border-default bg-surface-default p-4 text-sm text-text-default">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">Document title</span>
                       <span className="text-xs text-text-muted">
@@ -735,7 +735,7 @@ export function DocumentImportModal({
                     />
                   </label>
 
-                  <label className="flex-1 flex-col gap-2 justify-between border border-border-default/60 bg-surface-default p-4 text-sm text-text-default">
+                  <label className="flex-1 flex-col gap-2 justify-between border border-border-default bg-surface-default p-4 text-sm text-text-default">
                     <div className="flex items-start justify-between">
                       <span className="font-medium shrink-0">Parsing mode</span>
                       <span className="text-xs leading-5 text-text-muted text-balance flex-1 text-right min-w-0">
@@ -768,7 +768,7 @@ export function DocumentImportModal({
                 </div>
 
                 <div className="flex gap-2.5">
-                  <label className="w-1/2 flex items-start gap-3 border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
+                  <label className="w-1/2 flex items-start gap-3 border border-border-default bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle">
                     <input
                       type="checkbox"
                       checked={enableTableStructure}
@@ -787,7 +787,7 @@ export function DocumentImportModal({
                     </div>
                   </label>
 
-                  <label className="w-1/2 flex items-start gap-3 border border-border-default/60 bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle/35">
+                  <label className="w-1/2 flex items-start gap-3 border border-border-default bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle">
                     <input
                       type="checkbox"
                       checked={debugDoclingTables}
@@ -808,20 +808,20 @@ export function DocumentImportModal({
                 </div>
 
                 {submitError && (
-                  <div className="flex items-start gap-3 border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-600">
+                  <div className="flex items-start gap-3 border border-rose-800 bg-rose-950 px-4 py-3 text-sm text-rose-600">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     {submitError}
                   </div>
                 )}
 
                 {submitWarning && (
-                  <div className="flex items-start gap-3 border border-border-default/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-600">
+                  <div className="flex items-start gap-3 border border-border-subtle bg-amber-950 px-4 py-3 text-sm text-amber-600">
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     {submitWarning}
                   </div>
                 )}
 
-                <div className="flex flex-col gap-2 border border-border-default/60 bg-surface-default p-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 border border-border-default bg-surface-default p-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-text-default">
                       Ready to queue
@@ -845,9 +845,9 @@ export function DocumentImportModal({
                 </div>
               </form>
 
-              <div className="flex min-h-0 w-full flex-col items-stretch gap-2 border border-border-default/60 bg-surface-subtle/45 p-3">
+              <div className="flex min-h-0 w-full flex-col items-stretch gap-2 border border-border-default bg-surface-subtle p-3">
                 {cancelableDocuments.length > 0 && (
-                  <div className="flex w-full items-center justify-between gap-3 border border-border-default/60 bg-surface-default px-3 py-2 text-xs text-text-muted">
+                  <div className="flex w-full items-center justify-between gap-3 border border-border-default bg-surface-default px-3 py-2 text-xs text-text-muted">
                     <div>
                       <div className="font-semibold text-text-default">
                         {cancelableDocuments.length} active import
@@ -868,14 +868,14 @@ export function DocumentImportModal({
 
                 <div className="min-h-0 w-full flex-1 space-y-2.5 overflow-y-auto">
                   {isLoading && (
-                    <div className="flex items-center gap-2 border border-border-default/60 bg-surface-default px-4 py-4 text-sm text-text-muted">
+                    <div className="flex items-center gap-2 border border-border-default bg-surface-default px-4 py-4 text-sm text-text-muted">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading documents...
                     </div>
                   )}
 
                   {!isLoading && documents.length === 0 && (
-                    <div className="border border-dashed border-border-default/80 bg-surface-default px-4 py-6 text-sm text-text-muted">
+                    <div className="border border-dashed border-border-strong bg-surface-default px-4 py-6 text-sm text-text-muted">
                       <div className="flex items-center gap-2 text-text-default">
                         <CheckCircle2 className="h-4 w-4 text-action-primary-bg" />
                         Nothing queued yet
@@ -910,7 +910,7 @@ export function DocumentImportModal({
                     return (
                       <div
                         key={document.id}
-                        className="relative border border-border-default/60 bg-surface-default p-4"
+                        className="relative border border-border-default bg-surface-default p-4"
                       >
                         {/* X Icon Action Button */}
                         {(isPending || status !== "processing") && (
@@ -1046,7 +1046,7 @@ export function DocumentImportModal({
                           <div className="flex-1 items-center gap-3">
                             {/* Error Message */}
                             {latestJob?.error_message && (
-                              <div className=" border border-rose-500/25 bg-rose-500/8 px-2.5 py-1.5 text-xs text-rose-600">
+                              <div className=" border border-rose-800 bg-rose-950 px-2.5 py-1.5 text-xs text-rose-600">
                                 {latestJob.error_message}
                               </div>
                             )}

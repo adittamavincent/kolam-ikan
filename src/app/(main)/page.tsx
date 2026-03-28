@@ -83,7 +83,7 @@ function DomainCardSkeleton() {
           <div className="h-2 w-32 bg-surface-elevated" />
         </div>
       </div>
-      <div className="flex gap-4 mt-auto pt-2 border-t border-border-default/50 w-full">
+      <div className="flex gap-4 mt-auto pt-2 border-t border-border-default w-full">
         <div className="h-2.5 w-12 bg-surface-elevated" />
         <div className="h-2.5 w-12 bg-surface-elevated" />
         <div className="h-2.5 w-12 bg-surface-elevated" />
@@ -123,24 +123,24 @@ function StatCard({
   const colorMap: Record<string, { bg: string; text: string; iconBg: string }> =
     {
       blue: {
-        bg: "bg-blue-500/5",
+        bg: "bg-blue-950",
         text: "text-blue-600 dark:text-blue-400",
-        iconBg: "bg-blue-500/10",
+        iconBg: "bg-blue-950",
       },
       purple: {
-        bg: "bg-purple-500/5",
+        bg: "bg-purple-950",
         text: "text-purple-600 dark:text-purple-400",
-        iconBg: "bg-purple-500/10",
+        iconBg: "bg-purple-950",
       },
       emerald: {
         bg: "bg-emerald-500/5",
         text: "text-emerald-600 dark:text-emerald-400",
-        iconBg: "bg-emerald-500/10",
+        iconBg: "bg-emerald-950",
       },
       amber: {
-        bg: "bg-amber-500/5",
+        bg: "bg-amber-950",
         text: "text-amber-600 dark:text-amber-400",
-        iconBg: "bg-amber-500/10",
+        iconBg: "bg-amber-950",
       },
     };
   const c = colorMap[color] ?? colorMap.blue;
@@ -209,7 +209,7 @@ function DomainCard({
       className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-action-primary-bg/10 text-xl group-hover:bg-action-primary-bg/20 transition-colors">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-xl group-hover:bg-primary-900 transition-colors">
           <DynamicIcon name={domain.icon ?? domain.name} />
         </span>
         <div className="min-w-0 flex-1">
@@ -231,7 +231,7 @@ function DomainCard({
           </button>
         </div>
       </div>
-      <div className="flex gap-4 text-xs text-text-muted mt-auto pt-2 border-t border-border-default/50 w-full">
+      <div className="flex gap-4 text-xs text-text-muted mt-auto pt-2 border-t border-border-default w-full">
         <span className="flex items-center gap-1">
           <span className="font-medium">{domain.cabinetCount}</span> cab
         </span>
@@ -264,7 +264,7 @@ function RecentActivityItem({
       onClick={onClick}
       className="group flex w-full items-start gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
     >
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle text-sm transition-colors group-hover:bg-action-primary-bg/10">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle text-sm transition-colors group-hover:bg-primary-950">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -685,7 +685,7 @@ export default function HomePage() {
         </div>
 
         {/* ---- Footer tip ---- */}
-        <div className="mt-10 bg-action-primary-bg/10 px-5 py-4 text-center">
+        <div className="mt-10 bg-primary-950 px-5 py-4 text-center">
           <p className="text-xs text-text-default">
             <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
             Use the sidebar to quickly switch between domains, or click any card

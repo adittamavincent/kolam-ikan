@@ -625,7 +625,7 @@ function LoginForm() {
                   {mode === "signin" && (
                     <Link
                       href="/forgot-password"
-                      className="text-xs font-semibold text-action-primary-bg hover:text-action-primary-bg/80"
+                      className="text-xs font-semibold text-action-primary-bg hover:text-primary-400"
                     >
                       Forgot password?
                     </Link>
@@ -774,7 +774,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative flex w-full justify-center bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-bg/90 focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="group relative flex w-full justify-center bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-hover focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -794,7 +794,7 @@ function LoginForm() {
                   Don&apos;t have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-primary-bg hover:text-action-primary-bg/80"
+                    className="font-bold text-action-primary-bg hover:text-primary-400"
                   >
                     Sign up
                   </button>
@@ -804,7 +804,7 @@ function LoginForm() {
                   Already have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-primary-bg hover:text-action-primary-bg/80"
+                    className="font-bold text-action-primary-bg hover:text-primary-400"
                   >
                     Sign in
                   </button>
@@ -847,7 +847,7 @@ function LoginForm() {
                     <button
                       onClick={() => quickSignup(acc)}
                       disabled={loading}
-                      className="text-xs font-medium text-action-primary-bg hover:text-action-primary-bg/80"
+                      className="text-xs font-medium text-action-primary-bg hover:text-primary-400"
                     >
                       Sign up
                     </button>

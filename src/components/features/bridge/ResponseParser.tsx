@@ -822,7 +822,7 @@ export const ResponseParser = forwardRef<
         )}
 
         {conflictWarning && (
-          <div className=" border border-border-default bg-status-error-bg/20 p-3 text-xs text-status-error-text">
+          <div className=" border border-border-default bg-status-error-bg p-3 text-xs text-status-error-text">
             {conflictWarning}
           </div>
         )}
@@ -897,14 +897,14 @@ export const ResponseParser = forwardRef<
               </div>
             </div>
 
-            <div className="divide-y divide-border-subtle/30 overflow-hidden border border-border-default/50 bg-surface-default">
+            <div className="divide-y divide-border-subtle overflow-hidden border border-border-default bg-surface-default">
               {changes.map((change) => (
                 <div
                   key={change.id}
-                  className="flex flex-col md:flex-row items-stretch group hover:bg-surface-subtle/30 transition-colors"
+                  className="flex flex-col md:flex-row items-stretch group hover:bg-surface-subtle transition-colors"
                 >
                   {/* Meta info & Labels */}
-                  <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center px-4 py-2 bg-surface-subtle/50 md:w-32 border-b md:border-b-0 md:border-r border-border-default/30">
+                  <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center px-4 py-2 bg-surface-hover md:w-32 border-b md:border-b-0 md:border-r border-border-subtle">
                     <span
                       className={`text-[10px] font-bold uppercase tracking-wider ${change.type === "add" ? "text-status-success-text" : "text-action-primary-bg"}`}
                     >
@@ -918,7 +918,7 @@ export const ResponseParser = forwardRef<
                   </div>
 
                   {/* Content area */}
-                  <div className="flex-1 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border-subtle/20">
+                  <div className="flex-1 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border-subtle">
                     {change.current && (
                       <div className="flex-1 p-3 flex flex-col gap-1 min-w-0">
                         <span className="text-[9px] font-bold text-text-muted uppercase">
@@ -929,7 +929,7 @@ export const ResponseParser = forwardRef<
                         </div>
                       </div>
                     )}
-                    <div className="flex-1 p-3 flex flex-col gap-1 min-w-0 bg-surface-subtle/10">
+                    <div className="flex-1 p-3 flex flex-col gap-1 min-w-0 bg-surface-subtle">
                       <span className="text-[9px] font-bold text-text-muted uppercase">
                         Incoming
                       </span>
@@ -940,14 +940,14 @@ export const ResponseParser = forwardRef<
                   </div>
 
                   {/* Actions */}
-                  <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle/20 border-t md:border-t-0 md:border-l border-border-default/30 min-w-30">
+                  <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle border-t md:border-t-0 md:border-l border-border-subtle min-w-30">
                     <button
                       onClick={() => updateDecision(change.id, "accept")}
                       title="Accept"
                       className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
                         change.decision === "accept"
                           ? "bg-action-primary-bg text-action-primary-text"
-                          : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
+                          : "text-text-muted hover:text-text-default hover:bg-surface-hover"
                       }`}
                     >
                       Accept
@@ -959,7 +959,7 @@ export const ResponseParser = forwardRef<
                         className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
                           change.decision === "both"
                             ? "bg-action-primary-bg text-action-primary-text"
-                            : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
+                            : "text-text-muted hover:text-text-default hover:bg-surface-hover"
                         }`}
                       >
                         Both
@@ -971,7 +971,7 @@ export const ResponseParser = forwardRef<
                       className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
                         change.decision === "reject"
                           ? "bg-action-primary-bg text-action-primary-text"
-                          : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
+                          : "text-text-muted hover:text-text-default hover:bg-surface-hover"
                       }`}
                     >
                       Reject

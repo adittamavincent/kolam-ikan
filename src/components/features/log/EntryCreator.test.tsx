@@ -7,16 +7,23 @@ import {
   cleanup,
   waitFor,
 } from "@testing-library/react";
+import React from "react";
 import { EntryCreator } from "./EntryCreator";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mocks
+const { mockUseKeyboard } = vi.hoisted(() => ({
+  mockUseKeyboard: vi.fn(),
+}));
 const mockMutate = vi.fn();
 const mockMutateAsync = vi.fn();
 const mockSaveDraft = vi.fn();
 const mockCommitDraft = vi.fn();
 const mockDraftContents: Record<string, unknown[]> = {};
 const mockDraftMarkdown: Record<string, string> = {};
+const mockPersonas = [
+  { id: "p1", name: "Myself", icon: "User", color: "#0ea5e9" },
+];
 const mockGetDraftContent = (instanceId: string) =>
   mockDraftContents[instanceId] ?? [];
 const mockGetDraftMarkdown = (instanceId: string) =>
@@ -99,7 +106,7 @@ vi.mock("@/lib/supabase/client", () => ({
 
 vi.mock("@/lib/hooks/usePersonas", () => ({
   usePersonas: () => ({
-    personas: [{ id: "p1", name: "Myself", icon: "User", color: "#0ea5e9" }],
+    personas: mockPersonas,
   }),
 }));
 
@@ -115,7 +122,7 @@ vi.mock("@/components/features/documents/DocumentImportModal", () => ({
 }));
 
 vi.mock("@/lib/hooks/useKeyboard", () => ({
-  useKeyboard: vi.fn(),
+  useKeyboard: mockUseKeyboard,
 }));
 
 vi.mock("@/lib/hooks/useDraftSystem", () => ({
@@ -137,19 +144,65 @@ vi.mock("@/lib/hooks/useDraftSystem", () => ({
 }));
 
 vi.mock("@/components/shared/MarkdownEditor", () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  MarkdownEditor: ({ onChange, initialContent }: any) => (
-    <input
-      data-testid="mock-editor"
-      onChange={(e) =>
-        onChange(
-          [{ content: [{ text: e.target.value }] }],
-          e.target.value,
-        )
-      }
-      value={initialContent?.[0]?.content?.[0]?.text || ""}
-    />
-  ),
+  MarkdownEditor: ({
+    onChange,
+    initialContent,
+    onEditorReady,
+    onFocusChange,
+    placeholder,
+  }: {
+    onChange: (content: unknown[], markdown: string) => void;
+    initialContent?: Array<{
+      content?: Array<{ text?: string }>;
+    }>;
+    onEditorReady?: (editor: {
+      focus: () => void;
+      isFocused: () => boolean;
+    }) => void;
+    onFocusChange?: (isFocused: boolean) => void;
+    placeholder?: string;
+  }) => {
+    const focusedRef = React.useRef(false);
+
+    React.useEffect(() => {
+      onEditorReady?.({
+        focus: () => {
+          focusedRef.current = true;
+          onFocusChange?.(true);
+        },
+        isFocused: () => focusedRef.current,
+      });
+
+      return () => {
+        focusedRef.current = false;
+        onFocusChange?.(false);
+      };
+      // Match the real editor lifecycle: ready registration happens on mount.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    return (
+      <textarea
+        data-testid="mock-editor"
+        defaultValue={initialContent?.[0]?.content?.[0]?.text || ""}
+        placeholder={placeholder}
+        onFocus={() => {
+          focusedRef.current = true;
+          onFocusChange?.(true);
+        }}
+        onBlur={() => {
+          focusedRef.current = false;
+          onFocusChange?.(false);
+        }}
+        onChange={(e) =>
+          onChange(
+            [{ content: [{ text: e.target.value }] }],
+            e.target.value,
+          )
+        }
+      />
+    );
+  },
 }));
 
 // We need to mock debounce to execute immediately or wait
@@ -166,6 +219,34 @@ vi.mock("lodash/debounce", () => ({
 
 describe("EntryCreator", () => {
   let queryClient: QueryClient;
+
+  const triggerShortcut = (matcher: {
+    key: string;
+    metaKey?: boolean;
+    shiftKey?: boolean;
+  }) => {
+    const registeredShortcuts =
+      mockUseKeyboard.mock.calls.at(-1)?.[0] ?? [];
+    const shortcut = registeredShortcuts.find(
+      (candidate: {
+        key: string;
+        metaKey?: boolean;
+        shiftKey?: boolean;
+        handler: (event: KeyboardEvent) => void;
+      }) =>
+        candidate.key === matcher.key &&
+        Boolean(candidate.metaKey) === Boolean(matcher.metaKey) &&
+        Boolean(candidate.shiftKey) === Boolean(matcher.shiftKey),
+    );
+
+    if (!shortcut) {
+      throw new Error(`Shortcut not registered: ${matcher.key}`);
+    }
+
+    const preventDefault = vi.fn();
+    shortcut.handler({ preventDefault } as unknown as KeyboardEvent);
+    return preventDefault;
+  };
 
   beforeEach(() => {
     queryClient = new QueryClient();
@@ -254,5 +335,57 @@ describe("EntryCreator", () => {
     await waitFor(() => {
       expect(commitBtn).toBeEnabled();
     });
+  });
+
+  it("toggles the focused markdown section into fullscreen with Cmd+Shift+Enter", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    const editor = await screen.findByTestId("mock-editor");
+    fireEvent.focus(editor);
+
+    triggerShortcut({ key: "Enter", metaKey: true, shiftKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByTitle("Exit fullscreen editor")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByTitle("Toggle fullscreen: Cmd+Shift+Enter"),
+    ).toBeInTheDocument();
+
+    const fullscreenEditor = screen.getAllByTestId("mock-editor").at(-1);
+    if (!fullscreenEditor) {
+      throw new Error("Fullscreen editor not found");
+    }
+    fireEvent.focus(fullscreenEditor);
+
+    triggerShortcut({ key: "Enter", metaKey: true, shiftKey: true });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTitle("Exit fullscreen editor"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("ignores the fullscreen shortcut when no markdown editor is focused", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    await screen.findByTestId("mock-editor");
+
+    triggerShortcut({ key: "Enter", metaKey: true, shiftKey: true });
+
+    expect(screen.queryByTitle("Exit fullscreen editor")).not.toBeInTheDocument();
   });
 });

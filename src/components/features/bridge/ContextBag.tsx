@@ -102,7 +102,7 @@ export function ContextBag({
   const isLoadingEntries = isEntriesLoading;
 
   return (
-    <div className="mb-6 border border-border-default/50 bg-surface-subtle/20 p-5">
+    <div className="mb-6 border border-border-default bg-surface-subtle p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-text-default">Context Bag</h3>
         <span className=" bg-surface-subtle px-2.5 py-1 text-[10px] font-bold tracking-wider text-text-muted">
@@ -186,7 +186,7 @@ export function ContextBag({
             Clear
           </button>
         </div>
-        <div className="max-h-56 space-y-3 overflow-y-auto border border-border-default/50 bg-surface-default/50 p-3 text-xs">
+        <div className="max-h-56 space-y-3 overflow-y-auto border border-border-default bg-surface-default p-3 text-xs">
           {isLoadingEntries ? (
             <div className="text-text-muted animate-pulse">
               Loading entries...

@@ -29,12 +29,17 @@ import {
   Settings,
   Paperclip,
   Type,
+  Expand,
   GitBranch,
   GitCommitHorizontal,
+  Info,
+  Minimize2,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { useAuth } from "@/lib/hooks/useAuth";
 import {
+  Dialog,
+  DialogPanel,
   Menu,
   MenuButton,
   MenuItem,
@@ -358,6 +363,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const [importModalFiles, setImportModalFiles] = useState<
     Array<{ file: File; hash?: string }>
   >([]);
+  const [dragOverAttachmentInstanceId, setDragOverAttachmentInstanceId] =
+    useState<string | null>(null);
   const [parsedPreview, setParsedPreview] = useState<{
     documentId: string;
     title: string;
@@ -378,12 +385,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   );
   const [personaManagerOpen, setPersonaManagerOpen] = useState(false);
   const [clearSectionsDialogOpen, setClearSectionsDialogOpen] = useState(false);
-  const [duplicateCheck, setDuplicateCheck] = useState<{
-    file: File;
-    hash: string;
-    existingDoc: DocumentWithLatestJob;
-    instanceId: string;
-  } | null>(null);
+  const [sectionToRemove, setSectionToRemove] = useState<string | null>(null);
+  const [focusedPersonaInstanceId, setFocusedPersonaInstanceId] = useState<
+    string | null
+  >(null);
+  const [lastFocusedPersonaInstanceId, setLastFocusedPersonaInstanceId] =
+    useState<string | null>(null);
+  const [fullscreenSectionId, setFullscreenSectionId] = useState<string | null>(
+    null,
+  );
   const [headerCloudStatus, setHeaderCloudStatus] = useState<
     "idle" | "syncing" | "synced" | "error"
   >("idle");
@@ -465,7 +475,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const editorReadyAtRef = useRef<Record<string, number>>({});
   const userEditedRef = useRef<Record<string, boolean>>({});
 
-  const focusEditorForInstance = (instanceId: string) => {
+  const focusEditorForInstance = useCallback((instanceId: string) => {
     let attempts = 0;
     const maxAttempts = 10;
 
@@ -484,7 +494,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
     // Delay one tick so focus wins after menu close/focus restoration.
     window.setTimeout(tryFocus, 0);
-  };
+  }, []);
 
   // Draft System Hook
   const {
@@ -506,17 +516,24 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     parentEntryId: currentBranchHeadId,
   });
 
-  const hasCommitableContent = sections.some((section) => {
-    if (section.kind === "FILE_ATTACHMENT") {
-      const attachmentDraft = getFileAttachmentDraft(section.instanceId);
-      return (
-        section.attachments.length > 0 ||
-        (attachmentDraft?.attachments?.length ?? 0) > 0 ||
-        section.note.trim().length > 0
-      );
-    }
+  const sectionHasItems = useCallback(
+    (section: SectionState): boolean => {
+      if (section.kind === "FILE_ATTACHMENT") {
+        const attachmentDraft = getFileAttachmentDraft(section.instanceId);
+        return (
+          section.attachments.length > 0 ||
+          (attachmentDraft?.attachments?.length ?? 0) > 0 ||
+          section.note.trim().length > 0
+        );
+      }
 
-    return hasMeaningfulDraftContent(getDraftContent(section.instanceId));
+      return hasMeaningfulDraftContent(getDraftContent(section.instanceId));
+    },
+    [getDraftContent, getFileAttachmentDraft],
+  );
+
+  const hasCommitableContent = sections.some((section) => {
+    return sectionHasItems(section);
   });
 
   const isCommitDisabled =
@@ -615,6 +632,29 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         .sort(comparePersonaNames),
     [personas],
   );
+  const fullscreenPersonaSections = useMemo(
+    () =>
+      sections.flatMap((section, sectionIndex) => {
+        if (section.kind !== "PERSONA") return [];
+
+        return [
+          {
+            instanceId: section.instanceId,
+            persona: personas?.find((p) => p.id === section.personaId) ?? null,
+            personaId: section.personaId,
+            sectionIndex,
+          },
+        ];
+      }),
+    [personas, sections],
+  );
+  const activeFullscreenSection = useMemo(
+    () =>
+      fullscreenPersonaSections.find(
+        (section) => section.instanceId === fullscreenSectionId,
+      ) ?? null,
+    [fullscreenPersonaSections, fullscreenSectionId],
+  );
 
   const updateVisibleQuickPersonas = useCallback(() => {
     const strip = quickPersonaStripRef.current;
@@ -680,6 +720,27 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     quickPersonas.length - visibleQuickPersonaCount,
     0,
   );
+
+  useEffect(() => {
+    if (!fullscreenSectionId) return;
+
+    const fullscreenSectionStillExists = fullscreenPersonaSections.some(
+      (section) => section.instanceId === fullscreenSectionId,
+    );
+
+    if (!fullscreenSectionStillExists) {
+      setFullscreenSectionId(fullscreenPersonaSections[0]?.instanceId ?? null);
+      return;
+    }
+
+    const focusTimeout = window.setTimeout(() => {
+      focusEditorForInstance(fullscreenSectionId);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(focusTimeout);
+    };
+  }, [focusEditorForInstance, fullscreenPersonaSections, fullscreenSectionId]);
 
   const trackPersonaUsage = (personaId: string) => {
     setPersonaUsageCounts((prev) => ({
@@ -981,6 +1042,246 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     };
   }, [streamId, clearDraft, saveDraft, saveFileAttachmentDraft]);
 
+  const openFullscreenEditor = useCallback((instanceId: string) => {
+    setLastFocusedPersonaInstanceId(instanceId);
+    setFullscreenSectionId(instanceId);
+  }, []);
+
+  const closeFullscreenEditor = useCallback(() => {
+    const targetInstanceId = fullscreenSectionId ?? lastFocusedPersonaInstanceId;
+    setFullscreenSectionId(null);
+    if (!targetInstanceId) return;
+    window.setTimeout(() => {
+      focusEditorForInstance(targetInstanceId);
+    }, 0);
+  }, [focusEditorForInstance, fullscreenSectionId, lastFocusedPersonaInstanceId]);
+
+  const handlePersonaEditorFocusChange = useCallback(
+    (instanceId: string, isFocused: boolean) => {
+      if (isFocused) {
+        setFocusedPersonaInstanceId(instanceId);
+        setLastFocusedPersonaInstanceId(instanceId);
+        return;
+      }
+
+      setFocusedPersonaInstanceId((current) =>
+        current === instanceId ? null : current,
+      );
+    },
+    [],
+  );
+
+  const handlePersonaEditorReady = useCallback(
+    (instanceId: string, editor: MarkdownEditorHandle) => {
+      editorReadyAtRef.current[instanceId] = Date.now();
+      editorRefs.current[instanceId] = editor;
+      userEditedRef.current[instanceId] = false;
+      if (pendingFocusInstanceIdRef.current === instanceId) {
+        pendingFocusInstanceIdRef.current = null;
+        focusEditorForInstance(instanceId);
+      }
+    },
+    [focusEditorForInstance],
+  );
+
+  const handlePersonaEditorChange = useCallback(
+    (
+      instanceId: string,
+      personaId: string,
+      personaName: string | null | undefined,
+      content: PartialBlock[],
+      markdown: string,
+    ) => {
+      const existingContent = getDraftContent(instanceId);
+      const existingMarkdown = getDraftMarkdown(instanceId);
+      const readyAt = editorReadyAtRef.current[instanceId];
+      const withinHydrationWindow =
+        readyAt === undefined || Date.now() - readyAt < 500;
+      hasMeaningfulDraftContent(content);
+      hasMeaningfulDraftContent(existingContent);
+      const editorFocused = focusedPersonaInstanceId === instanceId;
+      const incomingText = blocksToPlainText(content);
+      const existingText = blocksToPlainText(existingContent);
+      const contentChanged =
+        JSON.stringify(content) !== JSON.stringify(existingContent);
+      const markdownChanged = markdown !== existingMarkdown;
+
+      if (
+        editorFocused &&
+        !withinHydrationWindow &&
+        (contentChanged || markdownChanged)
+      ) {
+        userEditedRef.current[instanceId] = true;
+        setHeaderDirty(true);
+        setHeaderCloudStatus("idle");
+      }
+
+      try {
+        const incomingTextLen = incomingText.length;
+        const existingTextLen = existingText.length;
+        console.log(
+          `[EntryCreator] saveDraft -> instance=${instanceId} stream=${streamId}`,
+          {
+            personaId,
+            incomingTextLen,
+            existingTextLen,
+            editorFocused,
+          },
+        );
+      } catch {
+        // swallow logging errors
+      }
+
+      if (!contentChanged && !markdownChanged) return;
+      saveDraft(
+        instanceId,
+        personaId,
+        content,
+        personaName ?? "",
+        false,
+        markdown,
+      );
+      debouncedSave();
+    },
+    [
+      debouncedSave,
+      focusedPersonaInstanceId,
+      getDraftContent,
+      getDraftMarkdown,
+      saveDraft,
+      streamId,
+    ],
+  );
+
+  const renderPersonaEditor = useCallback(
+    (instanceId: string, personaId: string, personaName: string | null) => (
+      <div className="section-editor-surface">
+        <MarkdownEditor
+          initialContent={getDraftContent(instanceId)}
+          initialMarkdown={getDraftMarkdown(instanceId)}
+          onChange={(content, markdown) => {
+            handlePersonaEditorChange(
+              instanceId,
+              personaId,
+              personaName,
+              content,
+              markdown,
+            );
+          }}
+          placeholder={`What would ${personaName || "they"} say?`}
+          onEditorReady={(editor) => {
+            handlePersonaEditorReady(instanceId, editor);
+          }}
+          onFocusChange={(isFocused) => {
+            handlePersonaEditorFocusChange(instanceId, isFocused);
+          }}
+        />
+      </div>
+    ),
+    [
+      getDraftContent,
+      getDraftMarkdown,
+      handlePersonaEditorChange,
+      handlePersonaEditorFocusChange,
+      handlePersonaEditorReady,
+    ],
+  );
+
+  function renderAddPersonaMenu({
+    wrapperClassName,
+    buttonClassName,
+    buttonTitle,
+    compact = false,
+  }: {
+    wrapperClassName: string;
+    buttonClassName: string;
+    buttonTitle: string;
+    compact?: boolean;
+  }) {
+    return (
+      <Menu as="div" className={wrapperClassName}>
+        <MenuButton className={buttonClassName} title={buttonTitle}>
+          <Plus className="h-3 w-3 text-text-subtle" />
+          {!compact && <span className="text-text-default">Add Persona</span>}
+        </MenuButton>
+
+        <Transition
+          as={Fragment}
+          enter="transition ease-out duration-100"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="transition ease-in duration-75"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <MenuItems
+            anchor={{ to: "bottom start", gap: 4 }}
+            portal
+            className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 focus:"
+          >
+            <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+              Add Author Section
+            </div>
+            {globalPersonas.length > 0 && (
+              <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
+                Available Everywhere
+              </div>
+            )}
+            {globalPersonas.map((persona) => (
+              <MenuItem key={persona.id}>
+                {({ active }) => (
+                  <PersonaItem
+                    persona={persona}
+                    role="global"
+                    focus={active}
+                    showMeta={false}
+                    onClick={() => addPersona(persona.id)}
+                  />
+                )}
+              </MenuItem>
+            ))}
+            {localPersonas.length > 0 && (
+              <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                Local To This Stream
+              </div>
+            )}
+            {localPersonas.map((persona) => (
+              <MenuItem key={persona.id}>
+                {({ active }) => (
+                  <PersonaItem
+                    persona={persona}
+                    role="local"
+                    focus={active}
+                    showMeta={false}
+                    onClick={() => addPersona(persona.id)}
+                  />
+                )}
+              </MenuItem>
+            ))}
+            <MenuItem>
+              <div className="my-1 border-t border-border-default" />
+            </MenuItem>
+            <MenuItem>
+              {({ active }) => (
+                <button
+                  onClick={() => setPersonaManagerOpen(true)}
+                  className={`${
+                    active
+                      ? "bg-surface-subtle text-text-default"
+                      : "text-text-subtle"
+                  } group flex w-full items-center px-2 py-1.5 text-xs transition-colors`}
+                >
+                  <Settings className="mr-2 h-3 w-3" />
+                  Manage Personas
+                </button>
+              )}
+            </MenuItem>
+          </MenuItems>
+        </Transition>
+      </Menu>
+    );
+  }
+
   // Keyboard shortcuts
   useKeyboard([
     {
@@ -1003,6 +1304,34 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       handler: (e) => {
         e.preventDefault();
         handleCommit();
+      },
+    },
+    {
+      key: "Enter",
+      metaKey: true,
+      shiftKey: true,
+      description: "Toggle Fullscreen Editor",
+      handler: (e) => {
+        const activeEditorInstanceId =
+          focusedPersonaInstanceId &&
+          sections.some(
+            (section) =>
+              section.kind === "PERSONA" &&
+              section.instanceId === focusedPersonaInstanceId,
+          )
+            ? focusedPersonaInstanceId
+            : null;
+
+        if (!activeEditorInstanceId) return;
+
+        e.preventDefault();
+
+        if (fullscreenSectionId) {
+          closeFullscreenEditor();
+          return;
+        }
+
+        openFullscreenEditor(activeEditorInstanceId);
       },
     },
   ]);
@@ -1054,6 +1383,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
       // Reset to empty state (no auto-default persona)
       setSections([]);
+      setFullscreenSectionId(null);
+      setFocusedPersonaInstanceId(null);
+      setLastFocusedPersonaInstanceId(null);
       editorRefs.current = {};
       pendingFocusInstanceIdRef.current = null;
     } catch (e) {
@@ -1118,6 +1450,24 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   };
 
+  const requestRemoveSection = (instanceId: string) => {
+    const section = sections.find((s) => s.instanceId === instanceId);
+    if (!section) return;
+
+    if (!sectionHasItems(section)) {
+      removeSection(instanceId);
+      return;
+    }
+
+    setSectionToRemove(instanceId);
+  };
+
+  const confirmRemoveSection = () => {
+    if (!sectionToRemove) return;
+    removeSection(sectionToRemove);
+    setSectionToRemove(null);
+  };
+
   const toggleSectionKind = (instanceId: string) => {
     const section = sections.find((s) => s.instanceId === instanceId);
     if (!section) return;
@@ -1180,6 +1530,9 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   const confirmClearSections = () => {
     setSections([]);
+    setFullscreenSectionId(null);
+    setFocusedPersonaInstanceId(null);
+    setLastFocusedPersonaInstanceId(null);
     void clearDraft();
     setClearSectionsDialogOpen(false);
   };
@@ -1336,6 +1689,29 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       return prev;
     });
   };
+
+  const queueFilesForAttachmentSection = useCallback(
+    async (instanceId: string, fileList: FileList | File[]) => {
+      const files = Array.from(fileList).filter((file) => file instanceof File);
+      if (files.length === 0) return;
+
+      const queuedFiles = await Promise.all(
+        files.map(async (file) => {
+          try {
+            const hash = await calculateFileHash(file);
+            return { file, hash };
+          } catch (error) {
+            console.error("Hash error:", error);
+            return { file };
+          }
+        }),
+      );
+
+      setImportModalFiles(queuedFiles);
+      setFilePickerTargetInstanceId(instanceId);
+    },
+    [],
+  );
 
   const removeFileAttachment = (
     instanceId: string,
@@ -1508,12 +1884,12 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
         <ThreadFrame
-          frameClassName="border-border-default/55 bg-surface-default"
-          bodyClassName="bg-surface-default/55"
+          frameClassName="border-border-default bg-surface-default"
+          bodyClassName="bg-surface-default"
         >
           <div className="flex flex-col">
           {/* Persona picker */}
-          <div className="flex items-center gap-1.5 border-b border-border-default/35 bg-action-primary-bg/10 p-1">
+          <div className="entry-creator__topbar flex items-center gap-1.5 p-1">
             <div
               ref={quickPersonaStripRef}
               className="relative flex min-w-0 flex-1 items-center overflow-hidden"
@@ -1535,7 +1911,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   />
                 ))}
                 {hiddenQuickPersonaCount > 0 && (
-                  <div className="shrink-0 border border-border-default/35 bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted">
+                  <div className="shrink-0 border border-border-subtle bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted">
                     +{hiddenQuickPersonaCount}
                   </div>
                 )}
@@ -1564,98 +1940,24 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 ))}
                 <div
                   ref={quickPersonaOverflowMeasureRef}
-                  className="shrink-0 border border-border-default/35 bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted"
+                  className="shrink-0 border border-border-subtle bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted"
                 >
                   +{quickPersonas.length}
                 </div>
               </div>
             </div>
 
-            <Menu as="div" className="relative z-30 shrink-0">
-              <MenuButton className="flex items-center gap-1 border border-border-default/35 px-1.5 py-1 text-[11px] font-medium transition-colors hover:bg-surface-subtle focus:">
-                <Plus className="h-3 w-3 text-text-subtle" />
-                <span className="text-text-default">Add Persona</span>
-              </MenuButton>
-
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-100"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="transition ease-in duration-75"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-              >
-                <MenuItems
-                  anchor={{ to: "bottom start", gap: 4 }}
-                  portal
-                  className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 focus:"
-                >
-                  <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
-                    Add Author Section
-                  </div>
-                  {globalPersonas.length > 0 && (
-                    <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
-                      Available Everywhere
-                    </div>
-                  )}
-                  {globalPersonas.map((persona) => (
-                    <MenuItem key={persona.id}>
-                      {({ active }) => (
-                        <PersonaItem
-                          persona={persona}
-                          role="global"
-                          focus={active}
-                          showMeta={false}
-                          onClick={() => addPersona(persona.id)}
-                        />
-                      )}
-                    </MenuItem>
-                  ))}
-                  {localPersonas.length > 0 && (
-                    <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
-                      Local To This Stream
-                    </div>
-                  )}
-                  {localPersonas.map((persona) => (
-                    <MenuItem key={persona.id}>
-                      {({ active }) => (
-                        <PersonaItem
-                          persona={persona}
-                          role="local"
-                          focus={active}
-                          showMeta={false}
-                          onClick={() => addPersona(persona.id)}
-                        />
-                      )}
-                    </MenuItem>
-                  ))}
-                  <MenuItem>
-                    <div className="border-t border-border-default my-1" />
-                  </MenuItem>
-                  <MenuItem>
-                    {({ active }) => (
-                      <button
-                        onClick={() => setPersonaManagerOpen(true)}
-                        className={`${
-                          active
-                            ? "bg-surface-subtle text-text-default"
-                            : "text-text-subtle"
-                        } group flex w-full items-center  px-2 py-1.5 text-xs transition-colors`}
-                      >
-                        <Settings className="h-3 w-3 mr-2" />
-                        Manage Personas
-                      </button>
-                    )}
-                  </MenuItem>
-                </MenuItems>
-              </Transition>
-            </Menu>
+            {renderAddPersonaMenu({
+              wrapperClassName: "relative z-30 shrink-0",
+              buttonClassName:
+                "entry-creator__topbar-button flex items-center gap-1 border px-1.5 py-1 text-[11px] font-medium transition-colors focus:",
+              buttonTitle: "Add Persona",
+            })}
 
             {sections.length > 0 && (
               <button
                 onClick={requestClearSections}
-                className="ml-auto border border-border-default/35 p-1 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
+                className="entry-creator__topbar-button entry-creator__topbar-button--icon ml-auto border p-1 text-text-muted transition-colors"
                 title="Delete all sections"
               >
                 <X className="h-4 w-4" />
@@ -1664,29 +1966,30 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           </div>
 
           {sections.length === 0 && (
-            <div className="bg-surface-default/55 px-2 py-4 text-center text-xs text-text-muted">
+            <div className="bg-surface-default px-2 py-8 text-center text-xs text-text-muted">
               Add a persona or attach a file to start building this entry.
             </div>
           )}
 
           {/* Editor sections */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={sections.map((s) => s.instanceId)}
-              strategy={verticalListSortingStrategy}
+          {!fullscreenSectionId && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              <div className="flex flex-col gap-2">
-                {sections.map((section, sectionIndex) => {
-                  const { instanceId } = section;
-                  const isAttachment = section.kind === "FILE_ATTACHMENT";
-                  const isPersona = section.kind === "PERSONA";
-                  const persona = section.personaId
-                    ? personas?.find((p) => p.id === section.personaId)
-                    : null;
+              <SortableContext
+                items={sections.map((s) => s.instanceId)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="flex flex-col gap-2">
+                  {sections.map((section, sectionIndex) => {
+                    const { instanceId } = section;
+                    const isAttachment = section.kind === "FILE_ATTACHMENT";
+                    const isPersona = section.kind === "PERSONA";
+                    const persona = section.personaId
+                      ? personas?.find((p) => p.id === section.personaId)
+                      : null;
 
                   let attachmentDraft:
                     | ReturnType<typeof getFileAttachmentDraft>
@@ -1729,166 +2032,106 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                   // Allow persona-less PERSONA sections to render so recovered
                   // drafts without an assigned persona are visible to the user.
 
-                  return (
-                    <SortableSection key={instanceId} id={instanceId}>
-                      {(dragHandleProps) => (
-                        <SectionPreset
-                          persona={persona || null}
-                          isAttachment={isAttachment}
-                          nestedConnector={
-                            sections.length === 1
-                              ? "single"
-                              : sectionIndex === 0
-                                ? "first"
-                                : sectionIndex === sections.length - 1
-                                  ? "last"
-                                  : "middle"
-                          }
-                          className="flex flex-col"
-                          headerClassName="bg-surface-subtle/50"
-                          bodyClassName="bg-surface-default/55"
-                          leftHeader={
-                            <div className="flex items-center gap-2">
-                              <button
-                                className={`cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
-                                aria-label="Drag to reorder"
-                                {...dragHandleProps}
-                              >
-                                <GripVertical className="h-3 w-3" />
-                              </button>
-                              <div className="inline-flex items-center gap-1 border border-border-default/55 bg-surface-default/80 px-1 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-                                <span className="text-text-default/80">
-                                  S{sectionIndex + 1}
-                                </span>
-                                <span className="h-px w-1.5 bg-border-strong" />
-                                <span>{isAttachment ? "Attachment" : "Message"}</span>
-                              </div>
-                            </div>
-                          }
-                          centerHeader={
-                            <PersonaItem
-                              persona={persona ?? null}
-                              menuProps={{
-                                currentPersona: persona || null,
-                                isAttachment: isAttachment,
-                                filePersonaName: attachmentSection?.personaName ?? undefined,
-                                globalPersonas: globalPersonas,
-                                localPersonas: localPersonas,
-                                onSelect: (pId: string) => changePersona(instanceId, pId),
-                              }}
-                            />
-                          }
-                          rightHeader={
-                            <>
-                              {persona && !isLocalPersona(persona) && (
+                    return (
+                      <SortableSection key={instanceId} id={instanceId}>
+                        {(dragHandleProps) => (
+                          <SectionPreset
+                            persona={persona || null}
+                            isAttachment={isAttachment}
+                            nestedConnector={
+                              sections.length === 1
+                                ? "single"
+                                : sectionIndex === 0
+                                  ? "first"
+                                  : sectionIndex === sections.length - 1
+                                    ? "last"
+                                    : "middle"
+                            }
+                            className="flex flex-col"
+                            headerClassName="entry-creator__section-header"
+                            bodyClassName="bg-surface-default"
+                            leftHeader={
+                              <div className="flex items-center gap-2">
                                 <button
-                                  onClick={() => toggleSectionKind(instanceId)}
-                                  className="mr-1 p-0.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
-                                  title={
-                                    isAttachment
-                                      ? "Switch to Text Editor"
-                                      : "Switch to Attachments"
-                                  }
+                                  className={`entry-creator__icon-button cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
+                                  aria-label="Drag to reorder"
+                                  {...dragHandleProps}
                                 >
-                                  {isAttachment ? (
-                                    <Type className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <Paperclip className="h-3.5 w-3.5" />
-                                  )}
+                                  <GripVertical className="h-3 w-3" />
                                 </button>
-                              )}
-
-                              <button
-                                onClick={() => removeSection(instanceId)}
-                                className="p-0.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
-                                title="Remove this section"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </>
-                          }
-                          contentClassName="space-y-1"
-                        >
-                          {/* BODY CONTENT */}
-                          {isPersona ? (
-                            /* Markdown editor */
-                            <div className="section-editor-surface">
-                              <MarkdownEditor
-                                initialContent={getDraftContent(instanceId)}
-                                initialMarkdown={getDraftMarkdown(instanceId)}
-                                onChange={(content, markdown) => {
-                                  const existingContent = getDraftContent(instanceId);
-                                  const existingMarkdown = getDraftMarkdown(instanceId);
-                                  const readyAt = editorReadyAtRef.current[instanceId];
-                                  const withinHydrationWindow =
-                                    readyAt === undefined || Date.now() - readyAt < 500;
-                                  // determine if incoming/existing drafts have meaningful text
-                                  // (kept for potential future use)
-                                  hasMeaningfulDraftContent(content);
-                                  hasMeaningfulDraftContent(existingContent);
-                                  const editorFocused =
-                                    editorRefs.current[instanceId]?.isFocused?.() ?? false;
-                                  const incomingText = blocksToPlainText(content);
-                                  const existingText = blocksToPlainText(existingContent);
-                                  const contentChanged =
-                                    JSON.stringify(content) !==
-                                    JSON.stringify(existingContent);
-                                  const markdownChanged = markdown !== existingMarkdown;
-
-                                  if (
-                                    editorFocused &&
-                                    !withinHydrationWindow &&
-                                    (contentChanged || markdownChanged)
-                                  ) {
-                                    userEditedRef.current[instanceId] = true;
-                                    setHeaderDirty(true);
-                                    setHeaderCloudStatus("idle");
-                                  }
-
-                                  
-
-                                  try {
-                                    const incomingTextLen = incomingText.length;
-                                    const existingTextLen = existingText.length;
-                                    console.log(`[EntryCreator] saveDraft -> instance=${instanceId} stream=${streamId}`, {
-                                      personaId: section.personaId,
-                                      incomingTextLen,
-                                      existingTextLen,
-                                      editorFocused,
-                                    });
-                                  } catch {
-                                    // swallow logging errors
-                                  }
-
-                                  if (!contentChanged && !markdownChanged) return;
-                                  saveDraft(
-                                    instanceId,
-                                    section.personaId,
-                                    content,
-                                    persona?.name || "",
-                                    false,
-                                    markdown,
-                                  );
-                                  debouncedSave();
-                                }}
-                                placeholder={`What would ${persona?.name || "they"} say?`}
-                                onEditorReady={(editor) => {
-                                  editorReadyAtRef.current[instanceId] = Date.now();
-                                  editorRefs.current[instanceId] = editor;
-                                  userEditedRef.current[instanceId] = false;
-                                  if (
-                                    pendingFocusInstanceIdRef.current ===
-                                    instanceId
-                                  ) {
-                                    pendingFocusInstanceIdRef.current = null;
-                                    focusEditorForInstance(instanceId);
-                                  }
+                                <div className="entry-creator__section-label inline-flex items-center gap-1 border px-1 py-px text-[9px] font-semibold uppercase tracking-[0.16em]">
+                                  <span className="entry-creator__section-label-index">
+                                    S{sectionIndex + 1}
+                                  </span>
+                                  <span className="entry-creator__section-label-divider h-px w-1.5" />
+                                  <span>{isAttachment ? "Attachment" : "Message"}</span>
+                                </div>
+                              </div>
+                            }
+                            centerHeader={
+                              <PersonaItem
+                                persona={persona ?? null}
+                                menuProps={{
+                                  currentPersona: persona || null,
+                                  isAttachment: isAttachment,
+                                  filePersonaName: attachmentSection?.personaName ?? undefined,
+                                  globalPersonas: globalPersonas,
+                                  localPersonas: localPersonas,
+                                  onSelect: (pId: string) => changePersona(instanceId, pId),
                                 }}
                               />
-                            </div>
-                          ) : (
-                            /* FILE ATTACHMENTS BLOCK */
-                            <div className="space-y-2">
+                            }
+                            rightHeader={
+                              <>
+                                {isPersona && (
+                                  <button
+                                    onClick={() => openFullscreenEditor(instanceId)}
+                                    className="entry-creator__icon-button mr-1 p-0.5 text-text-muted transition-colors"
+                                    title="Open fullscreen editor"
+                                  >
+                                    <Expand className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+
+                                {persona && !isLocalPersona(persona) && (
+                                  <button
+                                    onClick={() => toggleSectionKind(instanceId)}
+                                    className="entry-creator__icon-button mr-1 p-0.5 text-text-muted transition-colors"
+                                    title={
+                                      isAttachment
+                                        ? "Switch to Text Editor"
+                                        : "Switch to Attachments"
+                                    }
+                                  >
+                                    {isAttachment ? (
+                                      <Type className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <Paperclip className="h-3.5 w-3.5" />
+                                    )}
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => requestRemoveSection(instanceId)}
+                                  className="entry-creator__icon-button entry-creator__icon-button--danger p-0.5 text-text-muted transition-colors"
+                                  title="Remove this section"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </>
+                            }
+                            contentClassName="space-y-1"
+                          >
+                            {/* BODY CONTENT */}
+                            {isPersona ? (
+                              renderPersonaEditor(
+                                instanceId,
+                                section.personaId,
+                                persona?.name ?? null,
+                              )
+                            ) : (
+                              /* FILE ATTACHMENTS BLOCK */
+                              <div className="space-y-2">
                               <div className="flex flex-wrap items-center gap-2">
                                 <label className="inline-flex cursor-pointer items-center gap-1.5 border border-border-default bg-surface-subtle px-2 py-1 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
                                   <Upload className="h-3 w-3" />
@@ -1896,44 +2139,17 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   <input
                                     type="file"
                                     accept="*/*"
+                                    multiple
                                     className="hidden"
                                     onChange={async (e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file) return;
+                                      const files = e.target.files;
 
                                       e.target.value = ""; // Clear file
-
-                                      try {
-                                        const hash =
-                                          await calculateFileHash(file);
-                                        const existingDoc =
-                                          importedDocuments.find(
-                                            (d) =>
-                                              (
-                                                d.source_metadata as Record<
-                                                  string,
-                                                  unknown
-                                                >
-                                              )?.fileHash === hash,
-                                          );
-
-                                        if (existingDoc) {
-                                          setDuplicateCheck({
-                                            file,
-                                            hash,
-                                            existingDoc,
-                                            instanceId,
-                                          });
-                                          return;
-                                        }
-
-                                        setImportModalFiles([{ file, hash }]);
-                                      } catch (error) {
-                                        console.error("Hash error:", error);
-                                        setImportModalFiles([{ file }]);
-                                      }
-
-                                      setFilePickerTargetInstanceId(instanceId);
+                                      if (!files || files.length === 0) return;
+                                      await queueFilesForAttachmentSection(
+                                        instanceId,
+                                        files,
+                                      );
                                     }}
                                   />
                                 </label>
@@ -1957,14 +2173,58 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   </span>
                                 )}
                               </div>
-                              {effectiveAttachments.length === 0 ? (
-                                <div className="border border-dashed border-border-default bg-surface-subtle/30 px-2 py-3 text-center text-xs text-text-muted">
-                                  Drop or attach one or more files to start
-                                  building this section.
-                                </div>
-                              ) : (
-                                <div className="space-y-2">
-                                  {effectiveAttachments.map(
+                              <div
+                                className={`space-y-2 rounded-sm border border-dashed px-2 py-2 transition-colors ${
+                                  dragOverAttachmentInstanceId === instanceId
+                                    ? "border-action-primary-bg bg-primary-950"
+                                    : effectiveAttachments.length === 0
+                                      ? "border-border-default bg-surface-subtle"
+                                      : "border-transparent"
+                                }`}
+                                onDragEnter={(event) => {
+                                  if (event.dataTransfer.types.includes("Files")) {
+                                    setDragOverAttachmentInstanceId(instanceId);
+                                  }
+                                }}
+                                onDragOver={(event) => {
+                                  if (!event.dataTransfer.types.includes("Files")) return;
+                                  event.preventDefault();
+                                  event.dataTransfer.dropEffect = "copy";
+                                  if (dragOverAttachmentInstanceId !== instanceId) {
+                                    setDragOverAttachmentInstanceId(instanceId);
+                                  }
+                                }}
+                                onDragLeave={(event) => {
+                                  if (
+                                    event.currentTarget.contains(
+                                      event.relatedTarget as Node | null,
+                                    )
+                                  ) {
+                                    return;
+                                  }
+                                  setDragOverAttachmentInstanceId((current) =>
+                                    current === instanceId ? null : current,
+                                  );
+                                }}
+                                onDrop={async (event) => {
+                                  if (!event.dataTransfer.files.length) return;
+                                  event.preventDefault();
+                                  setDragOverAttachmentInstanceId((current) =>
+                                    current === instanceId ? null : current,
+                                  );
+                                  await queueFilesForAttachmentSection(
+                                    instanceId,
+                                    event.dataTransfer.files,
+                                  );
+                                }}
+                              >
+                                {effectiveAttachments.length === 0 ? (
+                                  <div className="px-2 py-3 text-center text-xs text-text-muted">
+                                    Drop or attach one or more files to start
+                                    building this section.
+                                  </div>
+                                ) : (
+                                  effectiveAttachments.map(
                                     (attachment, attachmentIndex) => {
                                       const docDetail = attachment.documentId
                                         ? attachedDocDetails.get(
@@ -2047,29 +2307,30 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                         />
                                       );
                                     },
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </SectionPreset>
-                      )}
-                    </SortableSection>
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
+                                  )
+                                )}
+                              </div>
+                              </div>
+                            )}
+                          </SectionPreset>
+                        )}
+                      </SortableSection>
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
 
           {/* Footer — commit action */}
-          {sections.length > 0 && (
-            <div className="flex items-center justify-between border-t border-border-default/35 bg-action-primary-bg/10 p-1">
+          {sections.length > 0 && !fullscreenSectionId && (
+            <div className="entry-creator__footer flex items-center justify-between p-1">
               <div className="flex min-w-0 items-center gap-2 text-[10px] text-text-muted">
-                <kbd className="border border-border-default bg-surface-subtle px-1 py-0.5 text-[9px] font-mono">
+                  <kbd className="entry-creator__shortcut border px-1 py-0.5 text-[9px] font-mono">
                   ⌘+Enter
                 </kbd>
                 <span className="text-border-default">→</span>
-                <span className="inline-flex min-w-0 items-center gap-1 border border-sky-500/25 bg-sky-500/10 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">
+                <span className="entry-creator__branch-pill inline-flex min-w-0 items-center gap-1 border px-1.5 py-0.5">
                   <GitBranch className="h-3 w-3 shrink-0" />
                   <span className="truncate font-medium">
                     {selectedBranch || "main"}
@@ -2085,7 +2346,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 </span>
               </div>
               {commitBlockedByFileAttachmentStatus && (
-                <div className="inline-flex items-center gap-2 ml-3 border border-border-default/30 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700">
+                <div className="entry-creator__warning inline-flex items-center gap-2 ml-3 border px-2 py-0.5 text-[11px]">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-3 w-3 shrink-0"
@@ -2123,6 +2384,78 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           )}
           </div>
         </ThreadFrame>
+
+        <Dialog
+          open={Boolean(activeFullscreenSection)}
+          onClose={closeFullscreenEditor}
+          className="relative z-[120]"
+        >
+          <div className="fixed inset-0 bg-surface-overlay" />
+          <div className="fixed inset-0">
+            <DialogPanel className="entry-creator-fullscreen flex h-full w-full flex-col overflow-hidden bg-surface-dark text-text-default">
+              <div className="entry-creator-fullscreen__chrome flex items-center gap-2 px-3 pt-2">
+                <div className="entry-creator-fullscreen__tabs scrollbar-hide flex min-w-0 flex-1 items-end gap-1 overflow-x-auto">
+                  {fullscreenPersonaSections.map((section) => {
+                    const isActive = section.instanceId === activeFullscreenSection?.instanceId;
+                    return (
+                      <button
+                        key={section.instanceId}
+                        type="button"
+                        onClick={() => setFullscreenSectionId(section.instanceId)}
+                        className={`entry-creator-fullscreen__tab group min-w-[9rem] border border-b-0 px-3 py-2 text-left transition-colors ${
+                          isActive
+                            ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
+                            : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                        }`}
+                      >
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                          Section {section.sectionIndex + 1}
+                        </div>
+                        <div className="truncate text-xs font-medium">
+                          {section.persona?.name ?? "Untitled"}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {renderAddPersonaMenu({
+                    wrapperClassName: "relative shrink-0 self-center",
+                    buttonClassName:
+                      "entry-creator-fullscreen__tab entry-creator-fullscreen__tab--compact flex h-[2.125rem] w-[2.125rem] min-w-[2.125rem] items-center justify-center border border-b-0 border-transparent bg-surface-hover p-0 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default",
+                    buttonTitle: "Add section",
+                    compact: true,
+                  })}
+                </div>
+                <button
+                  type="button"
+                  className="entry-creator__topbar-button entry-creator__topbar-button--icon shrink-0 border p-2 text-text-muted transition-colors"
+                  title="Toggle fullscreen: Cmd+Shift+Enter"
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={closeFullscreenEditor}
+                  className="entry-creator__topbar-button entry-creator__topbar-button--icon shrink-0 border p-2 text-text-muted transition-colors"
+                  title="Exit fullscreen editor"
+                >
+                  <Minimize2 className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="entry-creator-fullscreen__body min-h-0 flex-1">
+                {activeFullscreenSection ? (
+                  <div className="entry-creator-fullscreen__editor-shell h-full w-full bg-surface-default p-1">
+                    {renderPersonaEditor(
+                      activeFullscreenSection.instanceId,
+                      activeFullscreenSection.personaId,
+                      activeFullscreenSection.persona?.name ?? null,
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </DialogPanel>
+          </div>
+        </Dialog>
 
         <DocumentImportModal
           isOpen={!!filePickerTargetInstanceId}
@@ -2171,31 +2504,14 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         onConfirm={confirmClearSections}
       />
       <ConfirmDialog
-        open={!!duplicateCheck}
-        title="File Already Imported"
-        description={
-          duplicateCheck
-            ? `The file "${duplicateCheck.file.name}" has already been processed as "${duplicateCheck.existingDoc.title}". Would you like to use the existing document instead of re-uploading?`
-            : ""
-        }
-        confirmLabel="Use Existing"
-        cancelLabel="Upload Anyway"
-        onCancel={() => {
-          if (!duplicateCheck) return;
-          setImportModalFiles([
-            { file: duplicateCheck.file, hash: duplicateCheck.hash },
-          ]);
-          setFilePickerTargetInstanceId(duplicateCheck.instanceId);
-          setDuplicateCheck(null);
-        }}
-        onConfirm={() => {
-          if (!duplicateCheck) return;
-          void attachDocumentToFileAttachmentSection(
-            duplicateCheck.instanceId,
-            duplicateCheck.existingDoc,
-          );
-          setDuplicateCheck(null);
-        }}
+        open={!!sectionToRemove}
+        title="Delete this section?"
+        description="This removes the current section and cannot be undone."
+        confirmLabel="Delete section"
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setSectionToRemove(null)}
+        onConfirm={confirmRemoveSection}
       />
     </>
   );

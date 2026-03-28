@@ -786,7 +786,7 @@ export function CommitGraph({
   return (
     <div className="relative h-full overflow-y-auto overflow-x-hidden bg-surface-default">
       {orderedBranches.length > 0 && (
-        <div className="sticky top-0 z-20 border-b border-border-default/50 bg-surface-default/95 px-3 py-2 backdrop-blur-sm">
+        <div className="sticky top-0 z-20 border-b border-border-default bg-surface-default px-3 py-2 backdrop-blur-sm">
           <div className="flex gap-1.5 overflow-x-auto">
             {orderedBranches.map((branch) => {
               const virtualMainNode =
@@ -817,8 +817,8 @@ export function CommitGraph({
                   }}
                   className={`grid min-w-[124px] grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
                     currentBranch === branch.name
-                      ? "border-action-primary-bg/35 bg-action-primary-bg/10"
-                      : "border-border-default/50 bg-surface-default hover:bg-surface-hover"
+                      ? "border-primary-800 bg-primary-950"
+                      : "border-border-default bg-surface-default hover:bg-surface-hover"
                   }`}
                   style={{ boxShadow: `inset 3px 0 0 ${branch.color}` }}
                   onClick={() => {
@@ -845,7 +845,7 @@ export function CommitGraph({
                     role="button"
                     tabIndex={0}
                     aria-label={`Branch actions for ${branch.name}`}
-                    className="col-start-2 row-start-1 inline-flex h-5 w-5 items-center justify-center border border-transparent text-text-muted transition-colors hover:border-border-default/50 hover:bg-surface-subtle hover:text-text-default"
+                    className="col-start-2 row-start-1 inline-flex h-5 w-5 items-center justify-center border border-transparent text-text-muted transition-colors hover:border-border-default hover:bg-surface-subtle hover:text-text-default"
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -1096,7 +1096,7 @@ export function CommitGraph({
                 <div />
 
                 <div
-                  className="relative border border-border-default/60 bg-surface-default px-4 py-3 transition-all duration-150 hover:bg-surface-hover"
+                  className="relative border border-border-default bg-surface-default px-4 py-3 transition-all duration-150 hover:bg-surface-hover"
                   style={{
                     boxShadow: isHovered
                       ? `0 0 0 1px ${toRgba(accent, 0.2)}`
@@ -1119,27 +1119,27 @@ export function CommitGraph({
                         </code>
 
                         {node.isHead && (
-                          <span className="inline-flex items-center gap-1 border border-action-primary-bg/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-action-primary-bg">
+                          <span className="inline-flex items-center gap-1 border border-primary-800 bg-primary-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-action-primary-bg">
                             HEAD
                           </span>
                         )}
 
                         {node.tag && (
-                          <span className="inline-flex items-center gap-1 border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
+                          <span className="inline-flex items-center gap-1 border border-amber-800 bg-amber-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
                             <TagIcon className="h-3 w-3" />
                             {node.tag}
                           </span>
                         )}
 
                         {node.nodeType === "canvas_snapshot" && (
-                          <span className="inline-flex items-center gap-1 border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-500">
+                          <span className="inline-flex items-center gap-1 border border-violet-800 bg-violet-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-500">
                             <Camera className="h-3 w-3" />
                             canvas
                           </span>
                         )}
 
                         {node.entryKind === "merge" && (
-                          <span className="inline-flex items-center gap-1 border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                          <span className="inline-flex items-center gap-1 border border-emerald-800 bg-emerald-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
                             <GitMerge className="h-3 w-3" />
                             merge
                           </span>
@@ -1148,7 +1148,7 @@ export function CommitGraph({
                         {refs.map((ref) => (
                           <span
                             key={ref.id}
-                            className="inline-flex items-center gap-1 border border-border-default/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                            className="inline-flex items-center gap-1 border border-border-default px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                             style={{
                               color: ref.color,
                               backgroundColor: toRgba(ref.color, 0.1),

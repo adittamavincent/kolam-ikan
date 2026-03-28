@@ -79,9 +79,9 @@ export function CanvasSnapshotCard({
 
   return (
     <>
-      <div className="relative group border border-dashed border-violet-500/30 bg-violet-500/6 overflow-hidden transition-all ">
+      <div className="relative group border border-dashed border-violet-800 bg-violet-950 overflow-hidden transition-all ">
         {/* Header */}
-        <div className="flex items-center px-2.5 py-1.5 bg-violet-500/10 border-b border-dashed border-violet-500/25">
+        <div className="flex items-center px-2.5 py-1.5 bg-violet-950 border-b border-dashed border-violet-800">
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
               <Camera className="h-3 w-3 text-violet-500" />
@@ -89,7 +89,7 @@ export function CanvasSnapshotCard({
                 Canvas Snapshot
               </span>
               {isAIGenerated ? (
-                <span className="inline-flex items-center gap-0.5 border border-violet-500/35 bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-violet-500">
+                <span className="inline-flex items-center gap-0.5 border border-violet-800 bg-violet-950 px-1.5 py-0.5 text-[9px] font-semibold text-violet-500">
                   <Sparkles className="h-2.5 w-2.5" />
                   AI
                 </span>
@@ -160,7 +160,7 @@ export function CanvasSnapshotCard({
 
       {isCompareOpen && (
         <div
-          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/50"
+          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
           onClick={() => setIsCompareOpen(false)}
         >
           <div

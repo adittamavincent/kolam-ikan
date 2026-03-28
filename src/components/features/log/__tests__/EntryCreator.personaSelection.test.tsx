@@ -427,7 +427,7 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     ).toBeInTheDocument();
   });
 
-  it("should remove section when X button is clicked (if multiple sections)", async () => {
+  it("should remove an empty section immediately when X button is clicked", async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <EntryCreator streamId="stream-1" />
@@ -460,6 +460,8 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     // Click first X button
     fireEvent.click(xButtons[0]);
 
+    expect(screen.queryByText("Delete this section?")).not.toBeInTheDocument();
+
     // Wait for section to be removed from UI
     await waitFor(() => {
       const remainingEditors = screen.getAllByTestId(/^editor-\d+$/);
@@ -468,6 +470,45 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     });
 
     expect(screen.getAllByTestId(/^editor-\d+$/).length).toBe(1);
+  });
+
+  it("should confirm before removing a section that has content", async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => screen.getByText("Add Persona"));
+
+    await openAddPersonaMenu();
+    clickPersonaInOpenMenu("Persona A");
+
+    await waitFor(() =>
+      screen.getByPlaceholderText("What would Persona A say?"),
+    );
+
+    await openAddPersonaMenu();
+    clickPersonaInOpenMenu("Persona B");
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId(/^editor-\d+$/).length).toBe(2);
+    });
+
+    const editorInputs = screen.getAllByTestId("editor-input");
+    fireEvent.change(editorInputs[0], { target: { value: "Filled section" } });
+
+    const xButtons = screen.getAllByTitle("Remove this section");
+    fireEvent.click(xButtons[0]);
+
+    expect(screen.getByText("Delete this section?")).toBeInTheDocument();
+    expect(screen.getByText(/removes the current section/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete section" }));
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId(/^editor-\d+$/).length).toBe(1);
+    });
   });
 
   it("should not commit if no content is present", async () => {

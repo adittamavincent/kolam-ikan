@@ -157,7 +157,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
 
   if (variant === "log") {
     return (
-      <div className="group/log-pdf flex items-start justify-between gap-3 border border-border-default/55 bg-surface-elevated/65 px-3 py-2 transition-colors hover:bg-surface-elevated/80">
+      <div className="group/log-pdf flex items-start justify-between gap-3 border border-border-default bg-surface-elevated px-3 py-2 transition-colors hover:bg-surface-elevated">
         <div className="flex items-start gap-2 min-w-0 flex-1">
           <FileAttachmentThumbnail
             url={previewUrl}
@@ -171,7 +171,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="border border-border-default/45 bg-surface-default/70 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+              <span className="border border-border-default bg-surface-default px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
                 File
               </span>
               <div className="truncate text-xs font-medium text-text-default">
@@ -205,13 +205,13 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
   // Creator variant
   return (
     <div
-      className="relative overflow-hidden border border-border-default bg-surface-default/85 px-3 py-2 transition-colors cursor-default"
+      className="relative overflow-hidden border border-border-default bg-surface-default px-3 py-2 transition-colors cursor-default"
       title={isProcessing ? "Processing Docling..." : "Attachment actions"}
     >
       {/* Progress bar background */}
       {isProcessing && (
         <div
-          className="absolute bottom-0 left-0 h-0.5 bg-action-primary-bg/30 transition-all duration-500 ease-out"
+          className="absolute bottom-0 left-0 h-0.5 bg-primary-950 transition-all duration-500 ease-out"
           style={{ width: `${progressPercent}%` }}
         />
       )}
@@ -232,7 +232,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="border border-border-default/45 bg-surface-subtle/80 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+              <span className="border border-border-default bg-surface-hover px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
                 File
               </span>
               <div className="text-xs font-medium text-text-default">

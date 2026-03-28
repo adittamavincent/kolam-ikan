@@ -157,7 +157,7 @@ export function EditDomainModal({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -223,7 +223,7 @@ export function EditDomainModal({
                             onClick={() => setIcon(option)}
                             className={`flex items-center justify-center  border p-2 transition-colors ${
                               icon === option
-                                ? "border-border-default bg-action-primary-bg/10 text-action-primary-bg"
+                                ? "border-border-default bg-primary-950 text-action-primary-bg"
                                 : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
                             }`}
                             aria-label={`Select ${option} icon`}
@@ -248,7 +248,7 @@ export function EditDomainModal({
                         type="button"
                         onClick={handleDelete}
                         disabled={isMutating}
-                        className="inline-flex items-center justify-center gap-2 border border-status-error-text/40 px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg/30 focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-2 border border-status-error-text px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {deleteDomain.isPending ? (
                           <>

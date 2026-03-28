@@ -90,12 +90,12 @@ export function ThreadFrame({
       )}
 
       <div
-        className={`relative z-10 border border-border-default/50 bg-surface-default ${frameClassName}`.trim()}
+        className={`relative z-10 border border-border-default bg-surface-default ${frameClassName}`.trim()}
         style={frameStyle}
       >
         {header && (
           <div
-            className={`${hideBody ? "" : "border-b border-border-default/35"} px-0.75 ${headerClassName}`.trim()}
+            className={`${hideBody ? "" : "border-b border-border-subtle"} px-0.75 ${headerClassName}`.trim()}
             style={headerStyle}
           >
             {header}
@@ -110,7 +110,7 @@ export function ThreadFrame({
 
         {footer && (
           <div
-            className={`border-t border-border-default/35 p-1 ${footerClassName}`.trim()}
+            className={`border-t border-border-subtle p-1 ${footerClassName}`.trim()}
             style={footerStyle}
           >
             {footer}
@@ -174,7 +174,7 @@ export function SectionPreset({
       nested
       nestedConnector={nestedConnector}
       className={`group ${className}`.trim()}
-      frameClassName={isAttachment ? "bg-surface-subtle/25" : ""}
+      frameClassName={isAttachment ? "bg-surface-subtle" : ""}
       headerClassName={headerClassName}
       bodyClassName={bodyClassName}
       frameStyle={frameStyle}

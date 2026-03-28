@@ -188,7 +188,7 @@ export function MainHeader() {
     (logState?.commitCount ?? 0) + (logState?.canvasCommitCount ?? 0);
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
   const headerButtonClass =
-    "inline-flex h-7 w-7 items-center justify-center border border-border-default/50 bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 disabled:cursor-not-allowed disabled:opacity-40";
+    "inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 disabled:cursor-not-allowed disabled:opacity-40";
   const cloudStatusLabel =
     cloudStatus === "saving"
       ? "Cloud syncing"
@@ -208,9 +208,10 @@ export function MainHeader() {
       ? "Domain context"
       : "Prompt workspace";
   const summaryPillClass =
-    "inline-flex h-7 items-center gap-1.5 border border-border-default/50 bg-surface-default px-2 text-[10px] font-mono text-text-subtle";
+    "inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-subtle";
+  const toolbarLeadGroupClass = "flex items-center gap-1";
   const toolbarGroupClass =
-    "flex items-center gap-1 border-l border-border-default/60 pl-2";
+    "flex items-center gap-1 border-l border-border-default pl-2";
   const normalizedDescription = useMemo(() => {
     const value = descriptionDraft.trim();
     return value.length > 0 ? value : null;
@@ -259,7 +260,7 @@ export function MainHeader() {
             {domainId && !sidebarVisible && (
               <button
                 onClick={showSidebar}
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default/50 bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70"
                 title="Expand navigator"
               >
                 <PanelLeft className="h-4 w-4" />
@@ -295,7 +296,7 @@ export function MainHeader() {
                         onKeyDown={(event) => void handleDescriptionKeyDown(event)}
                         placeholder="Add a description"
                         autoFocus
-                        className="mt-1 w-full max-w-2xl border-0 bg-transparent px-0 py-0 text-xs leading-5 text-text-subtle placeholder:text-text-muted/80 focus:outline-none"
+                        className="mt-1 w-full max-w-2xl border-0 bg-transparent px-0 py-0 text-xs leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
                       />
                     ) : (
                       <button
@@ -305,7 +306,7 @@ export function MainHeader() {
                           setIsEditingDescription(true);
                         }}
                         className={`mt-1 block max-w-2xl text-left text-xs leading-5 transition-colors hover:text-text-default ${
-                          hasDescription ? "text-text-subtle" : "text-text-muted/80"
+                          hasDescription ? "text-text-subtle" : "text-text-muted"
                         }`}
                       >
                         {stream?.description?.trim() || "Add a description"}
@@ -318,19 +319,19 @@ export function MainHeader() {
           </div>
 
           {streamId && (
-            <div className="flex flex-col items-start gap-1.5 border-t border-border-default/60 pt-2 xl:items-end xl:border-t-0 xl:pt-0">
+            <div className="flex flex-col items-start gap-1.5 border-t border-border-default pt-2 xl:items-end xl:border-t-0 xl:pt-0">
               {logState && (
                 <>
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className={toolbarGroupClass}>
+                    <div className={toolbarLeadGroupClass}>
                     <span
                       className={`${headerButtonClass} pointer-events-none ${
                         cloudStatus === "saving"
-                          ? "border-amber-500/40 text-amber-300"
+                          ? "border-amber-800 text-amber-300"
                           : cloudStatus === "error"
-                            ? "border-red-500/40 text-red-300"
+                            ? "border-red-800 text-red-300"
                             : cloudStatus === "saved"
-                              ? "border-emerald-500/40 text-emerald-300"
+                              ? "border-emerald-800 text-emerald-300"
                               : ""
                       }`}
                       aria-label={cloudStatusLabel}
@@ -356,7 +357,7 @@ export function MainHeader() {
                       disabled={!hasEntries}
                       className={`${headerButtonClass} relative ${
                         collapseAllActive
-                          ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg"
+                          ? "border-primary-800 bg-primary-950 text-action-primary-bg"
                           : collapsedEntryCount > 0
                             ? "text-text-default"
                             : ""
@@ -381,7 +382,7 @@ export function MainHeader() {
 
                     <button
                       onClick={() => setIsSearchOpen((prev) => !prev)}
-                      className={`${headerButtonClass} ${isSearchOpen ? "border-action-primary-bg/35 bg-action-primary-bg/10 text-action-primary-bg" : ""}`}
+                      className={`${headerButtonClass} ${isSearchOpen ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
                       title={isSearchOpen ? "Hide search" : "Show search"}
                     >
                       <Search className="h-4 w-4" />
@@ -389,7 +390,7 @@ export function MainHeader() {
 
                     <button
                       onClick={() => emit("kolam_header_log_toggle_stash")}
-                      className={`${headerButtonClass} ${logState.showStash ? "border-amber-500/40 bg-amber-500/12 text-amber-500" : ""}`}
+                      className={`${headerButtonClass} ${logState.showStash ? "border-amber-800 bg-amber-950 text-amber-500" : ""}`}
                       title={
                         logState.showStash
                           ? "Hide stashed entries"
@@ -411,7 +412,7 @@ export function MainHeader() {
 
                     <button
                       onClick={() => emit("kolam_header_log_toggle_graph")}
-                      className={`${headerButtonClass} ${logState.graphView ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg" : ""}`}
+                      className={`${headerButtonClass} ${logState.graphView ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
                       title={
                         logState.graphView
                           ? "Back to commit list"
@@ -433,7 +434,7 @@ export function MainHeader() {
                             emit("kolam_header_log_search_term", { term });
                           }}
                           placeholder="Search commits..."
-                          className="w-full border border-border-default bg-surface-default/80 py-2 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
+                          className="w-full border border-border-default bg-surface-default py-2 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
                         />
                       </div>
                     )}
@@ -467,7 +468,7 @@ export function MainHeader() {
 
                     <div className={toolbarGroupClass}>
                     <Menu as="div" className="relative hidden md:block">
-                      <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default/50 bg-surface-default px-2 text-[10px] font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
+                      <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
                         <GitBranch className="h-3 w-3" />
                         {logState.currentBranch ?? "main"}
                         <ChevronDown className="h-3 w-3" />
@@ -556,12 +557,12 @@ export function MainHeader() {
                 <div className="flex flex-wrap items-center gap-2">
                   <div className={toolbarGroupClass}>
                     <span
-                      className="inline-flex h-7 w-7 items-center justify-center border border-border-default/50 bg-surface-default text-text-muted"
+                      className="inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted"
                       title="Canvas active"
                     >
                       <Blocks className="h-4 w-4" />
                     </span>
-                    <span className="inline-flex h-7 items-center border border-border-default/50 bg-surface-default px-2 text-[10px] font-mono text-text-muted">
+                    <span className="inline-flex h-7 items-center border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-muted">
                       Snapshot live
                     </span>
                   </div>

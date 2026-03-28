@@ -31,7 +31,6 @@ import {
   EditorView,
   WidgetType,
   drawSelection,
-  highlightActiveLine,
   keymap,
   placeholder as placeholderExtension,
 } from "@codemirror/view";
@@ -3104,6 +3103,7 @@ export default function BaseEditor({
   editable = true,
   placeholder,
   onEditorReady,
+  onFocusChange,
   highlightTerm: _highlightTerm,
 }: BaseEditorProps) {
   void _highlightTerm;
@@ -3119,6 +3119,7 @@ export default function BaseEditor({
   const markdownRef = useRef(markdownValue);
   const focusRef = useRef(false);
   const changeRef = useRef(onChange);
+  const focusChangeRef = useRef(onFocusChange);
   const [editableCompartment] = useState(() => new Compartment());
   const [readOnlyCompartment] = useState(() => new Compartment());
   const [placeholderCompartment] = useState(() => new Compartment());
@@ -3131,6 +3132,10 @@ export default function BaseEditor({
   useEffect(() => {
     changeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    focusChangeRef.current = onFocusChange;
+  }, [onFocusChange]);
 
   useEffect(() => {
     markdownRef.current = markdownValue;
@@ -3156,7 +3161,12 @@ export default function BaseEditor({
         ...searchKeymap,
       ]),
       EditorView.updateListener.of((update) => {
-        focusRef.current = update.view.hasFocus;
+        if (update.focusChanged) {
+          focusRef.current = update.view.hasFocus;
+          focusChangeRef.current?.(focusRef.current);
+        } else {
+          focusRef.current = update.view.hasFocus;
+        }
 
         if (!update.docChanged) {
           return;
@@ -3182,10 +3192,6 @@ export default function BaseEditor({
       ),
     ];
 
-    if (editable) {
-      extensions.push(highlightActiveLine());
-    }
-
     const view = new EditorView({
       state: EditorState.create({
         doc: markdownRef.current,
@@ -3195,9 +3201,12 @@ export default function BaseEditor({
     });
 
     focusRef.current = view.hasFocus;
+    focusChangeRef.current?.(focusRef.current);
     viewRef.current = view;
 
     return () => {
+      focusRef.current = false;
+      focusChangeRef.current?.(false);
       view.destroy();
       viewRef.current = null;
     };

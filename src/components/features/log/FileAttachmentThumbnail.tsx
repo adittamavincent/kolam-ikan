@@ -163,7 +163,7 @@ export function FileAttachmentThumbnail({
 
   const showPlaceholder = previewKind === "none" || imageFailed;
   const showOverlay = showError || showProcessing || showQueued || showPlaceholder;
-  const overlayBg = hasPreview ? "bg-black/25" : "bg-surface-subtle";
+  const overlayBg = hasPreview ? "bg-surface-dark" : "bg-surface-subtle";
 
   return (
     <div className="relative h-16 w-12 overflow-hidden border border-border-default bg-surface-subtle">

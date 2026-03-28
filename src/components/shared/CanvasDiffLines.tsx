@@ -15,10 +15,10 @@ function formatSegmentText(text: string, showWhitespace: boolean): string {
 
 function rowClasses(type: DiffLine["type"]): string {
   if (type === "add") {
-    return "bg-emerald-500/8 text-emerald-600 dark:text-emerald-400";
+    return "bg-emerald-950 text-emerald-600 dark:text-emerald-400";
   }
   if (type === "del") {
-    return "bg-rose-500/8 text-rose-600 dark:text-rose-400";
+    return "bg-rose-950 text-rose-600 dark:text-rose-400";
   }
   return "text-text-subtle";
 }
@@ -26,10 +26,10 @@ function rowClasses(type: DiffLine["type"]): string {
 function segmentClasses(type: DiffLine["type"], changed: boolean): string {
   if (!changed) return "";
   if (type === "add") {
-    return "bg-emerald-500/20 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200";
+    return "bg-emerald-950 text-emerald-700 dark:bg-emerald-500/25 dark:text-emerald-200";
   }
   if (type === "del") {
-    return "bg-rose-500/20 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200";
+    return "bg-rose-950 text-rose-700 dark:bg-rose-500/25 dark:text-rose-200";
   }
   return "";
 }

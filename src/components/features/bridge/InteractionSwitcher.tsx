@@ -218,7 +218,7 @@ export function InteractionSwitcher({
   return (
     <div className="flex flex-wrap items-center gap-4">
       {/* Interaction Mode Toggle */}
-      <div className="flex w-full max-w-sm bg-surface-subtle/50 p-1 border border-border-default/30 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm bg-surface-hover p-1 border border-border-subtle backdrop-blur-sm">
         {(["ASK", "GO", "BOTH"] as const).map((mode) => (
           <button
             key={mode}
@@ -226,7 +226,7 @@ export function InteractionSwitcher({
             className={`relative flex-1  py-2.5 text-xs font-bold tracking-widest transition-all duration-300 ease-out ${
               value === mode
                 ? "bg-surface-elevated text-action-primary-bg   z-10"
-                : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
+                : "text-text-muted hover:text-text-default hover:bg-surface-hover"
             }`}
           >
             {mode}
@@ -236,7 +236,7 @@ export function InteractionSwitcher({
 
       {/* Token Indicator */}
       <div
-        className={`flex items-center gap-3 px-3 py-1.5  border transition-all ${overLimit ? "bg-status-error-bg/5 border-border-default/30" : "bg-surface-subtle/30 border-border-default/30"}`}
+        className={`flex items-center gap-3 px-3 py-1.5  border transition-all ${overLimit ? "bg-status-error-bg/5 border-border-subtle" : "bg-surface-subtle border-border-subtle"}`}
       >
         <div className="flex flex-col">
           <span className="text-[10px] font-bold text-text-muted uppercase leading-none tracking-tight">
@@ -266,7 +266,7 @@ export function InteractionSwitcher({
 
       {/* Action Shortcuts */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-surface-subtle/30 p-1 border border-border-default/30">
+        <div className="flex items-center gap-1 bg-surface-subtle p-1 border border-border-subtle">
           <button
             onClick={onCopy}
             title="Copy Generated XML"
@@ -288,7 +288,7 @@ export function InteractionSwitcher({
           </button>
         </div>
 
-        <div className="flex items-center gap-1 bg-surface-subtle/30 p-1 border border-border-default/30">
+        <div className="flex items-center gap-1 bg-surface-subtle p-1 border border-border-subtle">
           <button
             onClick={onParse}
             disabled={!status.canParse}
@@ -307,7 +307,7 @@ export function InteractionSwitcher({
             title="Apply Changes"
             className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
               status.canApply
-                ? "bg-action-primary-bg/10 text-action-primary-bg hover:bg-action-primary-bg hover:text-white"
+                ? "bg-primary-950 text-action-primary-bg hover:bg-action-primary-bg hover:text-white"
                 : "text-text-muted hover:bg-surface-hover"
             }`}
           >
@@ -320,18 +320,18 @@ export function InteractionSwitcher({
           <button
             onClick={onReset}
             title="Clear & Reset"
-            className="flex items-center justify-center p-1.5 text-text-muted hover:bg-status-error-bg/20 hover:text-status-error-text transition-all"
+            className="flex items-center justify-center p-1.5 text-text-muted hover:bg-status-error-bg hover:text-status-error-text transition-all"
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
         </div>
 
         {overLimit && (
-          <div className="flex items-center gap-1 bg-status-error-bg/10 p-1 border border-border-default/30">
+          <div className="flex items-center gap-1 bg-status-error-bg p-1 border border-border-subtle">
             <button
               onClick={onReduceSelection}
               title="Select Last 5 Entries"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg/20 transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg transition-all"
             >
               <RotateCcw className="h-3 w-3" />
               <span>Reduce</span>
@@ -339,7 +339,7 @@ export function InteractionSwitcher({
             <button
               onClick={onAutoSummarize}
               title="Exclude Canvas"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg/20 transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg transition-all"
             >
               <Zap className="h-3 w-3" />
               <span>Drop Canvas</span>

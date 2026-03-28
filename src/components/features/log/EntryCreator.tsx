@@ -455,6 +455,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   // Draft System Hook
   const {
     status,
+    localStatus,
     saveDraft,
     saveFileAttachmentDraft,
     commitDraft,
@@ -742,14 +743,6 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     const ids = sections.map((section) => section.instanceId);
     console.log(`[EntryCreator] syncing active instances for ${streamId}:`, ids);
     setActiveInstances(ids);
-    const localStatus =
-      status === "error"
-        ? "error"
-        : status === "saving"
-          ? "saving"
-          : hasCommitableContent
-            ? "saved"
-            : "idle";
     const syncStatus = status === "error" ? "error" : headerCloudStatus;
     
     window.dispatchEvent(
@@ -769,7 +762,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     isLoading,
     streamId,
     status,
-    hasCommitableContent,
+    localStatus,
     headerDirty,
     headerCloudStatus,
   ]);

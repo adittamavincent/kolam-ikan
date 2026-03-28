@@ -252,6 +252,7 @@ function shouldHydrateFromLocalSnapshot(): boolean {
 
 export function useDraftSystem({ streamId }: UseDraftSystemProps) {
   const [status, setStatus] = useState<SaveStatus>("idle");
+  const [localStatus, setLocalStatus] = useState<SaveStatus>("idle");
   const [initialDrafts, setInitialDrafts] = useState<
     Record<string, DraftContent>
   >({});
@@ -280,10 +281,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       updatedAt: Date.now(),
     };
     const didPersist = writeLocalDraft(streamId, draftStateRef.current);
-    setStatus((prev) => {
-      if (prev === "saving") return prev;
-      return didPersist ? "saved" : "error";
-    });
+    setLocalStatus(didPersist ? "saved" : "error");
   }, [streamId]);
 
   // 1. Initial Load and Legacy Cleanup
@@ -291,6 +289,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
     setIsLoading(true);
     setInitialDrafts({});
     setStatus("idle");
+    setLocalStatus("idle");
     draftStateRef.current = {
       sections: {},
       sectionOrder: [],
@@ -339,7 +338,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         });
         setInitialDrafts(loaded);
         if (Object.keys(loaded).length > 0) {
-          setStatus("saved");
+          setLocalStatus("saved");
         }
       }
       setIsLoading(false);
@@ -375,7 +374,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         const didPersist = hasSections
           ? writeLocalDraft(streamId, draftStateRef.current)
           : removeLocalDraft(streamId);
-        setStatus(didPersist ? (hasSections ? "saved" : "idle") : "error");
+        setLocalStatus(didPersist ? (hasSections ? "saved" : "idle") : "error");
         return;
       }
 
@@ -393,7 +392,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       }
       draftStateRef.current.updatedAt = Date.now();
       const didPersist = writeLocalDraft(streamId, draftStateRef.current);
-      setStatus(didPersist ? "saved" : "error");
+      setLocalStatus(didPersist ? "saved" : "error");
     },
     [streamId],
   );
@@ -428,7 +427,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
         const didPersist = hasSections
           ? writeLocalDraft(streamId, draftStateRef.current)
           : removeLocalDraft(streamId);
-        setStatus(didPersist ? (hasSections ? "saved" : "idle") : "error");
+        setLocalStatus(didPersist ? (hasSections ? "saved" : "idle") : "error");
         return;
       }
 
@@ -449,7 +448,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       }
       draftStateRef.current.updatedAt = Date.now();
       const didPersist = writeLocalDraft(streamId, draftStateRef.current);
-      setStatus(didPersist ? "saved" : "error");
+      setLocalStatus(didPersist ? "saved" : "error");
     },
     [streamId],
   );
@@ -463,7 +462,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       updatedAt: Date.now(),
     };
     setInitialDrafts({});
-    setStatus(didPersist ? "idle" : "error");
+    setLocalStatus(didPersist ? "idle" : "error");
   }, [streamId]);
 
   // 4. Content Retriever
@@ -660,6 +659,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
       };
       setInitialDrafts({});
       setStatus("idle");
+      setLocalStatus("idle");
 
       // Refresh dependent data views
       queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
@@ -726,6 +726,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
   return {
     status,
+    localStatus,
     saveDraft,
     saveFileAttachmentDraft,
     commitDraft,

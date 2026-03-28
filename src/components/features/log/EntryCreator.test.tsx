@@ -121,6 +121,7 @@ vi.mock("@/lib/hooks/useKeyboard", () => ({
 vi.mock("@/lib/hooks/useDraftSystem", () => ({
   useDraftSystem: () => ({
     status: "idle",
+    localStatus: "idle",
     saveDraft: mockSaveDraft,
     saveFileAttachmentDraft: vi.fn(),
     commitDraft: mockCommitDraft,

@@ -21,7 +21,6 @@ import {
   Archive,
   ArrowUpDown,
   Network,
-  Save,
   GitBranch,
   GitCommitHorizontal,
   Check,
@@ -30,8 +29,6 @@ import {
   Plus,
   CloudOff,
   RefreshCw,
-  CheckCircle2,
-  AlertCircle,
   Blocks,
 } from "lucide-react";
 
@@ -149,34 +146,20 @@ export function MainHeader() {
     return "idle";
   };
 
-  // Local sync = localStorage/Cache persistence (Log drafts & Canvas live content)
-  const getLocalSyncStatus = () => {
-    const isSaving =
-      logState?.localStatus === "saving" ||
-      logState?.status === "saving" ||
-      canvasState?.localStatus === "saving";
-    const isError =
-      logState?.localStatus === "error" ||
-      logState?.status === "error" ||
-      canvasState?.localStatus === "error";
-    const isDirty =
-      logState?.localStatus === "dirty" ||
-      canvasState?.localStatus === "dirty" ||
-      Boolean(logState?.isDirty || canvasState?.isDirty);
-    
-    if (isSaving) return "saving";
-    if (isError) return "error";
-    if (isDirty) return "dirty";
-    return "saved";
-  };
-
   const cloudStatus = getCloudSyncStatus();
-  const localStatus = getLocalSyncStatus();
   const collapsedEntryCount = logState?.collapsedEntryCount ?? 0;
   const hasEntries = (logState?.commitCount ?? 0) > 0;
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
   const headerButtonClass =
     "inline-flex h-8 w-8 items-center justify-center border border-border-default/60 bg-surface-subtle text-text-muted shadow-sm transition-all duration-200 hover:border-border-default hover:bg-surface-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 disabled:cursor-not-allowed disabled:opacity-40";
+  const cloudStatusLabel =
+    cloudStatus === "saving"
+      ? "Cloud syncing"
+      : cloudStatus === "error"
+        ? "Cloud error"
+        : cloudStatus === "saved"
+          ? "Cloud saved"
+          : "Cloud idle";
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-default px-3">
@@ -208,39 +191,20 @@ export function MainHeader() {
               </span>
             )}
             
-            {/* 2-Row Sync Badge */}
-            <div className="ml-4 flex flex-col justify-center border-l border-border-default/40 pl-3">
-              {/* Cloud Row */}
-              <div className="flex items-center gap-1.5 group">
-                {cloudStatus === "saving" ? (
-                  <RefreshCw className="h-2.5 w-2.5 animate-spin text-text-muted/60" />
-                ) : cloudStatus === "error" ? (
-                  <CloudOff className="h-2.5 w-2.5 text-red-500" />
-                ) : cloudStatus === "saved" ? (
-                  <Check className="h-2.5 w-2.5 text-emerald-500/80" />
-                ) : (
-                  <div className="h-2.5 w-2.5 border border-border-default/50" />
-                )}
-                <span className={`text-[8px] font-bold uppercase tracking-widest ${cloudStatus === 'error' ? 'text-red-500' : 'text-text-muted/50'}`}>
-                  {cloudStatus === 'saving' ? 'Syncing' : cloudStatus === 'error' ? 'Cloud Error' : 'Database'}
-                </span>
-              </div>
-              
-              {/* Local Row */}
-              <div className="mt-0.5 flex items-center gap-1.5 group">
-                {localStatus === "saving" ? (
-                  <Save className="h-2.5 w-2.5 animate-pulse text-text-muted/60" />
-                ) : localStatus === "dirty" ? (
-                  <CloudOff className="h-2.5 w-2.5 text-amber-500/80" />
-                ) : localStatus === "error" ? (
-                  <AlertCircle className="h-2.5 w-2.5 text-red-500" />
-                ) : (
-                  <CheckCircle2 className="h-2.5 w-2.5 text-emerald-500/80" />
-                )}
-                <span className={`text-[9px] font-black uppercase tracking-tighter ${localStatus === 'dirty' ? 'text-amber-500' : 'text-text-muted/80'}`}>
-                  {localStatus === 'saving' ? 'Saving' : localStatus === 'dirty' ? 'Unsaved' : 'Local Cache'}
-                </span>
-              </div>
+            <div
+              className="ml-4 flex items-center border-l border-border-default/40 pl-3"
+              aria-label={cloudStatusLabel}
+              title={cloudStatusLabel}
+            >
+              {cloudStatus === "saving" ? (
+                <RefreshCw className="h-3 w-3 animate-spin text-text-muted/60" />
+              ) : cloudStatus === "error" ? (
+                <CloudOff className="h-3 w-3 text-red-500" />
+              ) : cloudStatus === "saved" ? (
+                <Check className="h-3 w-3 text-emerald-500/80" />
+              ) : (
+                <div className="h-3 w-3 border border-border-default/50" />
+              )}
             </div>
           </div>
         )}

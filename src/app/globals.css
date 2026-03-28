@@ -495,6 +495,202 @@ body {
   table-layout: fixed;
 }
 
+.kolam-codemirror-root .cm-kolam-table-shell {
+  --kolam-table-gutter-left: 1.4rem;
+  --kolam-table-gutter-top: 1.35rem;
+  --kolam-table-gutter-right: 1.35rem;
+  --kolam-table-gutter-bottom: 1.35rem;
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  padding: var(--kolam-table-gutter-top) var(--kolam-table-gutter-right)
+    var(--kolam-table-gutter-bottom) var(--kolam-table-gutter-left);
+}
+
+.kolam-codemirror-root .cm-kolam-table-shell > .cm-kolam-table-preview-block {
+  position: relative;
+  z-index: 1;
+}
+
+.kolam-codemirror-root .cm-kolam-table-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.kolam-codemirror-root .cm-kolam-table-top-rail {
+  position: absolute;
+  top: 0;
+  left: var(--kolam-table-gutter-left);
+  right: var(--kolam-table-gutter-right);
+  height: var(--kolam-table-gutter-top);
+  display: grid;
+  align-items: center;
+  z-index: 2;
+}
+
+.kolam-codemirror-root .cm-kolam-table-left-rail {
+  position: absolute;
+  top: var(--kolam-table-gutter-top);
+  left: 0;
+  bottom: var(--kolam-table-gutter-bottom);
+  width: var(--kolam-table-gutter-left);
+  display: grid;
+  justify-items: center;
+  z-index: 2;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle {
+  pointer-events: auto;
+  align-self: stretch;
+  justify-self: stretch;
+  width: 100%;
+  height: 100%;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 140ms ease, background 140ms ease, box-shadow 140ms ease,
+    color 140ms ease;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle:hover {
+  background: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 14%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 36%, transparent);
+  color: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 88%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle:active {
+  cursor: grabbing;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle.is-dragging {
+  opacity: 1;
+  background: color-mix(in srgb, var(--interactive-accent, #8b5cf6) 84%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+  color: var(--background-primary);
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle .cm-kolam-table-grip-dots {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 0.2rem;
+  background-image: radial-gradient(currentColor 30%, transparent 31%);
+  background-size: 33% 33%;
+  background-position: center;
+  opacity: 0.92;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle.is-row .cm-kolam-table-grip-dots {
+  transform: rotate(90deg);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone {
+  pointer-events: auto;
+  position: absolute;
+  border: 1px dashed color-mix(in srgb, var(--text-normal) 16%, transparent);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--background-primary) 90%, black);
+  color: color-mix(in srgb, var(--text-normal) 74%, transparent);
+  opacity: 0;
+  touch-action: none;
+  transition: opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+  z-index: 2;
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone::before {
+  content: "+";
+  position: absolute;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone[data-intent]:not([data-intent=""])::after {
+  content: "+" attr(data-intent);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -160%);
+  border-radius: 999px;
+  padding: 0.06rem 0.4rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--background-primary);
+  background: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 80%, #8b5cf6 20%);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone.is-right {
+  top: var(--kolam-table-gutter-top);
+  right: 0;
+  bottom: var(--kolam-table-gutter-bottom);
+  width: var(--kolam-table-gutter-right);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone.is-bottom {
+  left: var(--kolam-table-gutter-left);
+  right: var(--kolam-table-gutter-right);
+  bottom: 0;
+  height: var(--kolam-table-gutter-bottom);
+}
+
+.kolam-codemirror-root .cm-kolam-table-shell:hover .cm-kolam-table-handle,
+.kolam-codemirror-root .cm-kolam-table-shell:hover .cm-kolam-table-add-zone,
+.kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-handle,
+.kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-add-zone {
+  opacity: 1;
+}
+
+.kolam-codemirror-root .cm-kolam-table-shell:hover .cm-kolam-table-handle,
+.kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-handle {
+  background: color-mix(in srgb, var(--background-primary) 78%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone:hover,
+.kolam-codemirror-root .cm-kolam-table-shell.is-table-control-active .cm-kolam-table-add-zone {
+  border-color: color-mix(in srgb, var(--interactive-accent, var(--text-normal)) 56%, transparent);
+  background: color-mix(in srgb, var(--background-primary) 84%, black);
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--interactive-accent, #8b5cf6) 88%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent, #8b5cf6) 56%, transparent),
+    0 0 16px color-mix(in srgb, var(--interactive-accent, #8b5cf6) 28%, transparent);
+  transition: opacity 120ms ease;
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-visible {
+  opacity: 1;
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-column {
+  width: 0.28rem;
+  transform: translateX(-50%);
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-row {
+  height: 0.28rem;
+  transform: translateY(-50%);
+}
+
 .kolam-codemirror-root .cm-kolam-rule-preview-block {
   display: block;
   margin: 0 !important;
@@ -533,6 +729,58 @@ body {
 .kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-cell {
   background: color-mix(in srgb, var(--text-selection) 20%, transparent);
   box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--text-normal) 45%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source {
+  background: color-mix(in srgb, var(--interactive-accent, #8b5cf6) 14%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-column {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset -3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-column.cm-kolam-table-drag-edge-start {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset -3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-column.cm-kolam-table-drag-edge-end {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset -3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-column.cm-kolam-table-drag-edge-start.cm-kolam-table-drag-edge-end {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset -3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-row {
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-row.cm-kolam-table-drag-edge-start {
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-row.cm-kolam-table-drag-edge-end {
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset -3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-drag-source-row.cm-kolam-table-drag-edge-start.cm-kolam-table-drag-edge-end {
+  box-shadow: inset 0 3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset 3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent),
+    inset -3px 0 0 color-mix(in srgb, var(--interactive-accent, #8b5cf6) 92%, transparent);
 }
 
 .kolam-properties-panel {

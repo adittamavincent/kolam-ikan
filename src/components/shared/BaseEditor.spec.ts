@@ -8,6 +8,7 @@ import {
   resolveVisibleOffsetFromMeasuredCharacters,
   shouldIgnoreOrderedListExtraSpace,
   shouldAutoInsertOrderedListSpace,
+  shouldTriggerTableEnterForPosition,
 } from "@/components/shared/BaseEditor";
 
 describe("computeMarkdownListContinuation", () => {
@@ -244,5 +245,26 @@ describe("pickRectIndexFromAxis", () => {
         100,
       ),
     ).toBe(1);
+  });
+});
+
+describe("shouldTriggerTableEnterForPosition", () => {
+  const tableLines = [
+    "| cl1 | cl2 |",
+    "| --- | --- |",
+    "| x | y |",
+  ];
+
+  it("does not trigger when the cursor is before the first table pipe", () => {
+    expect(shouldTriggerTableEnterForPosition(tableLines, 0, 0)).toBe(false);
+  });
+
+  it("triggers when the cursor is inside a rendered table cell", () => {
+    expect(shouldTriggerTableEnterForPosition(tableLines, 0, 2)).toBe(true);
+    expect(shouldTriggerTableEnterForPosition(tableLines, 2, 5)).toBe(true);
+  });
+
+  it("does not trigger from the delimiter row", () => {
+    expect(shouldTriggerTableEnterForPosition(tableLines, 1, 4)).toBe(false);
   });
 });

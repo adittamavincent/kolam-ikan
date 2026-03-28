@@ -6,6 +6,7 @@ import {
   EditorSelection,
   EditorState,
   RangeSetBuilder,
+  StateEffect,
   StateField,
   type Extension,
   type StateCommand,
@@ -334,6 +335,94 @@ type AxisRect = {
   end: number;
   start: number;
 };
+
+type LivePreviewRevealRange = {
+  from: number;
+  to: number;
+};
+
+const livePreviewRevealEffect = StateEffect.define<LivePreviewRevealRange | null>({
+  map: (value, changes) =>
+    value
+      ? {
+          from: changes.mapPos(value.from),
+          to: changes.mapPos(value.to),
+        }
+      : null,
+});
+
+function selectionIntersectsRange(
+  selection: EditorSelection,
+  from: number,
+  to: number,
+) {
+  return selection.ranges.some((range) => {
+    if (range.empty) {
+      return range.from >= from && range.from <= to;
+    }
+
+    return range.from <= to && range.to >= from;
+  });
+}
+
+function rangesOverlap(
+  leftFrom: number,
+  leftTo: number,
+  rightFrom: number,
+  rightTo: number,
+) {
+  return leftFrom <= rightTo && leftTo >= rightFrom;
+}
+
+const livePreviewRevealField = StateField.define<LivePreviewRevealRange | null>({
+  create: () => null,
+  update: (value, transaction) => {
+    let next = value
+      ? {
+          from: transaction.changes.mapPos(value.from),
+          to: transaction.changes.mapPos(value.to),
+        }
+      : null;
+    let didExplicitReveal = false;
+
+    for (const effect of transaction.effects) {
+      if (effect.is(livePreviewRevealEffect)) {
+        next = effect.value;
+        didExplicitReveal = true;
+      }
+    }
+
+    if (!next || next.from >= next.to) {
+      return null;
+    }
+
+    if (didExplicitReveal) {
+      return next;
+    }
+
+    return selectionIntersectsRange(transaction.state.selection, next.from, next.to)
+      ? next
+      : null;
+  },
+});
+
+function dispatchPreviewSelection(
+  view: EditorView,
+  anchor: number,
+  previewRange: LivePreviewRevealRange | null,
+) {
+  if (previewRange) {
+    view.dispatch({
+      effects: livePreviewRevealEffect.of(previewRange),
+    });
+  }
+
+  view.dispatch({
+    scrollIntoView: true,
+    selection: EditorSelection.cursor(anchor),
+  });
+  view.focus();
+}
 
 export function resolveTableCellSourceOffset(
   cell: Pick<MarkdownTableCellModel, "content" | "paddingLeft" | "rawEnd" | "rawStart">,
@@ -743,10 +832,632 @@ function applyTableHitFeedback(
   });
 }
 
-function attachTableSelection(
+function clearTableHitFeedback(table: HTMLTableElement) {
+  table
+    .querySelectorAll(".cm-kolam-table-hit-cell, .cm-kolam-table-hit-row, .cm-kolam-table-hit-col")
+    .forEach((node) => {
+      node.classList.remove(
+        "cm-kolam-table-hit-cell",
+        "cm-kolam-table-hit-row",
+        "cm-kolam-table-hit-col",
+      );
+    });
+}
+
+function getRenderedTableRows(table: HTMLTableElement) {
+  return Array.from(table.querySelectorAll("tr")).filter(
+    (row): row is HTMLTableRowElement => row.children.length > 0,
+  );
+}
+
+function getAverageAxisSize(values: number[]) {
+  if (values.length === 0) {
+    return 40;
+  }
+
+  const total = values.reduce((sum, value) => sum + value, 0);
+  return Math.max(24, total / values.length);
+}
+
+function getBindingByCell(bindings: TableCellBinding[]) {
+  return new Map(bindings.map((binding) => [binding.element, binding]));
+}
+
+function findEditorViewFromElement(element: HTMLElement | null) {
+  let current: HTMLElement | null = element;
+
+  while (current) {
+    const view = EditorView.findFromDOM(current);
+    if (view) {
+      return view;
+    }
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
+function getPreviewRangeForLineSpan(
+  view: EditorView,
+  startLineNumber: number,
+  endLineNumber: number,
+): LivePreviewRevealRange | null {
+  if (
+    !Number.isFinite(startLineNumber) ||
+    !Number.isFinite(endLineNumber) ||
+    startLineNumber < 1 ||
+    endLineNumber < startLineNumber ||
+    endLineNumber > view.state.doc.lines
+  ) {
+    return null;
+  }
+
+  return {
+    from: view.state.doc.line(startLineNumber).from,
+    to: view.state.doc.line(endLineNumber).to,
+  };
+}
+
+function getPreviewRangeFromShell(
+  view: EditorView,
+  shell: HTMLElement | null,
+) {
+  if (!shell) {
+    return null;
+  }
+
+  const startLineNumber = Number.parseInt(
+    shell.dataset.kolamPreviewStartLine ?? "",
+    10,
+  );
+  const endLineNumber = Number.parseInt(
+    shell.dataset.kolamPreviewEndLine ?? "",
+    10,
+  );
+
+  return getPreviewRangeForLineSpan(view, startLineNumber, endLineNumber);
+}
+
+function setCursorToBinding(
+  table: HTMLTableElement,
+  binding: TableCellBinding,
+) {
+  const view = findEditorViewFromElement(table);
+  if (!view) return null;
+
+  const line = view.state.doc.line(binding.lineNumber);
+  const bounds = getTableCellContentBounds(binding.cell);
+  const anchor = line.from + binding.cell.rawStart + bounds.start;
+  const previewRange = getPreviewRangeFromShell(
+    view,
+    table.closest<HTMLElement>(".cm-kolam-table-shell"),
+  );
+
+  dispatchPreviewSelection(
+    view,
+    Math.max(line.from, Math.min(anchor, line.to)),
+    previewRange,
+  );
+  return view;
+}
+
+function runCommandAtBinding(
+  table: HTMLTableElement,
+  binding: TableCellBinding,
+  action: (editor: TableEditor) => void,
+) {
+  const view = setCursorToBinding(table, binding);
+  if (!view) return false;
+  return runTableEditorCommand(view, action);
+}
+
+function getRowBindingAtIndex(
+  rows: HTMLTableRowElement[],
+  rowIndex: number,
+  bindingByCell: Map<HTMLTableCellElement, TableCellBinding>,
+) {
+  const row = rows[rowIndex];
+  if (!row) return null;
+
+  const firstCell = Array.from(row.children).find(
+    (cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+  );
+  if (!firstCell) return null;
+
+  return bindingByCell.get(firstCell) ?? null;
+}
+
+function getColumnBindingAtIndex(
+  rows: HTMLTableRowElement[],
+  columnIndex: number,
+  bindingByCell: Map<HTMLTableCellElement, TableCellBinding>,
+) {
+  for (const row of rows) {
+    const candidate = row.children.item(columnIndex);
+    if (candidate instanceof HTMLTableCellElement) {
+      const binding = bindingByCell.get(candidate);
+      if (binding) {
+        return binding;
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildTableControls(
+  shell: HTMLDivElement,
   table: HTMLTableElement,
   bindings: TableCellBinding[],
 ) {
+  const topRail = document.createElement("div");
+  topRail.className = "cm-kolam-table-top-rail";
+  const leftRail = document.createElement("div");
+  leftRail.className = "cm-kolam-table-left-rail";
+
+  const rightAddZone = document.createElement("button");
+  rightAddZone.className = "cm-kolam-table-add-zone is-right";
+  rightAddZone.type = "button";
+  rightAddZone.setAttribute("aria-label", "Add column to the right");
+
+  const bottomAddZone = document.createElement("button");
+  bottomAddZone.className = "cm-kolam-table-add-zone is-bottom";
+  bottomAddZone.type = "button";
+  bottomAddZone.setAttribute("aria-label", "Add row to the bottom");
+
+  const reorderIndicator = document.createElement("div");
+  reorderIndicator.className = "cm-kolam-table-drop-indicator";
+  reorderIndicator.setAttribute("aria-hidden", "true");
+
+  shell.append(topRail, leftRail, rightAddZone, bottomAddZone, reorderIndicator);
+
+  const bindingByCell = getBindingByCell(bindings);
+
+  const makeGripDots = () => {
+    const dots = document.createElement("span");
+    dots.className = "cm-kolam-table-grip-dots";
+    dots.setAttribute("aria-hidden", "true");
+    return dots;
+  };
+
+  const clearReorderSourceHighlight = () => {
+    table
+      .querySelectorAll(
+        ".cm-kolam-table-drag-source, .cm-kolam-table-drag-source-column, .cm-kolam-table-drag-source-row, .cm-kolam-table-drag-edge-start, .cm-kolam-table-drag-edge-end",
+      )
+      .forEach((node) => {
+        node.classList.remove(
+          "cm-kolam-table-drag-source",
+          "cm-kolam-table-drag-source-column",
+          "cm-kolam-table-drag-source-row",
+          "cm-kolam-table-drag-edge-start",
+          "cm-kolam-table-drag-edge-end",
+        );
+      });
+  };
+
+  const clearReorderIndicator = () => {
+    reorderIndicator.classList.remove("is-column", "is-row", "is-visible");
+    reorderIndicator.style.removeProperty("height");
+    reorderIndicator.style.removeProperty("left");
+    reorderIndicator.style.removeProperty("top");
+    reorderIndicator.style.removeProperty("width");
+  };
+
+  const applyReorderSourceHighlight = (
+    axis: "row" | "column",
+    startIndex: number,
+    rows: HTMLTableRowElement[],
+  ) => {
+    clearReorderSourceHighlight();
+
+    if (axis === "column") {
+      rows.forEach((row, rowIndex) => {
+        const cell = row.children.item(startIndex);
+        if (!(cell instanceof HTMLTableCellElement)) {
+          return;
+        }
+
+        cell.classList.add(
+          "cm-kolam-table-drag-source",
+          "cm-kolam-table-drag-source-column",
+        );
+        if (rowIndex === 0) {
+          cell.classList.add("cm-kolam-table-drag-edge-start");
+        }
+        if (rowIndex === rows.length - 1) {
+          cell.classList.add("cm-kolam-table-drag-edge-end");
+        }
+      });
+      return;
+    }
+
+    const row = rows[startIndex];
+    if (!row) {
+      return;
+    }
+
+    const cells = Array.from(row.children).filter(
+      (cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+    );
+    cells.forEach((cell, cellIndex) => {
+      cell.classList.add(
+        "cm-kolam-table-drag-source",
+        "cm-kolam-table-drag-source-row",
+      );
+      if (cellIndex === 0) {
+        cell.classList.add("cm-kolam-table-drag-edge-start");
+      }
+      if (cellIndex === cells.length - 1) {
+        cell.classList.add("cm-kolam-table-drag-edge-end");
+      }
+    });
+  };
+
+  const updateReorderIndicator = (
+    axis: "row" | "column",
+    startIndex: number,
+    destinationIndex: number,
+    rows: HTMLTableRowElement[],
+  ) => {
+    clearReorderIndicator();
+
+    if (destinationIndex === startIndex || rows.length === 0) {
+      return;
+    }
+
+    const tableRect = table.getBoundingClientRect();
+    const shellRect = shell.getBoundingClientRect();
+
+    reorderIndicator.classList.add(
+      "is-visible",
+      axis === "column" ? "is-column" : "is-row",
+    );
+
+    if (axis === "column") {
+      const cells = Array.from(rows[0]?.children ?? []).filter(
+        (cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+      );
+      const targetCell = cells[destinationIndex];
+      if (!targetCell) {
+        clearReorderIndicator();
+        return;
+      }
+
+      const rect = targetCell.getBoundingClientRect();
+      const boundary = destinationIndex > startIndex ? rect.right : rect.left;
+
+      reorderIndicator.style.left = `${boundary - shellRect.left}px`;
+      reorderIndicator.style.top = `${tableRect.top - shellRect.top}px`;
+      reorderIndicator.style.height = `${tableRect.height}px`;
+      return;
+    }
+
+    const targetRow = rows[destinationIndex];
+    if (!targetRow) {
+      clearReorderIndicator();
+      return;
+    }
+
+    const rect = targetRow.getBoundingClientRect();
+    const boundary = destinationIndex > startIndex ? rect.bottom : rect.top;
+
+    reorderIndicator.style.left = `${tableRect.left - shellRect.left}px`;
+    reorderIndicator.style.top = `${boundary - shellRect.top}px`;
+    reorderIndicator.style.width = `${tableRect.width}px`;
+  };
+
+  const beginDragInsert = (
+    axis: "row" | "column",
+    sourceEvent: PointerEvent,
+  ) => {
+    sourceEvent.preventDefault();
+    sourceEvent.stopPropagation();
+
+    shell.classList.add("is-table-control-active");
+    const pointerId = sourceEvent.pointerId;
+    const target = sourceEvent.currentTarget;
+    if (target instanceof HTMLElement) {
+      target.setPointerCapture(pointerId);
+    }
+
+    const rows = getRenderedTableRows(table);
+    const columnCount = Math.max(
+      1,
+      rows[0]?.children.length ?? 1,
+    );
+    const widths = Array.from({ length: columnCount }, (_, index) => {
+      for (const row of rows) {
+        const cell = row.children.item(index);
+        if (cell instanceof HTMLTableCellElement) {
+          return cell.getBoundingClientRect().width;
+        }
+      }
+      return 0;
+    });
+    const heights = rows.map((row) => row.getBoundingClientRect().height);
+    const unit =
+      axis === "column"
+        ? getAverageAxisSize(widths)
+        : getAverageAxisSize(heights);
+
+    const start = axis === "column" ? sourceEvent.clientX : sourceEvent.clientY;
+    let intent = 1;
+
+    const updateIntent = (event: PointerEvent) => {
+      const current = axis === "column" ? event.clientX : event.clientY;
+      const delta = Math.max(0, current - start);
+      intent = 1 + Math.floor(delta / Math.max(1, unit));
+
+      const host = axis === "column" ? rightAddZone : bottomAddZone;
+      host.dataset.intent = String(intent);
+    };
+
+    const cleanup = () => {
+      if (target instanceof HTMLElement && target.hasPointerCapture(pointerId)) {
+        target.releasePointerCapture(pointerId);
+      }
+      rightAddZone.dataset.intent = "";
+      bottomAddZone.dataset.intent = "";
+      shell.classList.remove("is-table-control-active");
+      window.removeEventListener("pointermove", updateIntent);
+      window.removeEventListener("pointerup", applyIntent);
+      window.removeEventListener("pointercancel", cancelIntent);
+    };
+
+    const applyIntent = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) {
+        return;
+      }
+
+      cleanup();
+      const renderedRows = getRenderedTableRows(table);
+      if (renderedRows.length === 0) return;
+
+      if (axis === "column") {
+        const columnIndex = Math.max(0, renderedRows[0].children.length - 1);
+        const anchor = getColumnBindingAtIndex(renderedRows, columnIndex, bindingByCell);
+        if (!anchor) return;
+
+        runCommandAtBinding(table, anchor, (editor) => {
+          for (let index = 0; index < intent; index += 1) {
+            editor.insertColumn(MARKDOWN_TABLE_OPTIONS);
+            editor.moveColumn(9999, MARKDOWN_TABLE_OPTIONS);
+          }
+        });
+        return;
+      }
+
+      const rowIndex = Math.max(0, renderedRows.length - 1);
+      const anchor = getRowBindingAtIndex(renderedRows, rowIndex, bindingByCell);
+      if (!anchor) return;
+
+      runCommandAtBinding(table, anchor, (editor) => {
+        for (let index = 0; index < intent; index += 1) {
+          editor.insertRow(MARKDOWN_TABLE_OPTIONS);
+          editor.moveRow(9999, MARKDOWN_TABLE_OPTIONS);
+        }
+      });
+    };
+
+    const cancelIntent = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) {
+        return;
+      }
+
+      cleanup();
+    };
+
+    window.addEventListener("pointermove", updateIntent);
+    window.addEventListener("pointerup", applyIntent);
+    window.addEventListener("pointercancel", cancelIntent);
+    updateIntent(sourceEvent);
+  };
+
+  const beginReorder = (
+    axis: "row" | "column",
+    startIndex: number,
+    sourceEvent: PointerEvent,
+  ) => {
+    sourceEvent.preventDefault();
+    sourceEvent.stopPropagation();
+
+    shell.classList.add("is-table-control-active");
+    const pointerId = sourceEvent.pointerId;
+    const target = sourceEvent.currentTarget;
+    if (target instanceof HTMLElement) {
+      target.setPointerCapture(pointerId);
+    }
+
+    let destinationIndex = startIndex;
+    const rows = getRenderedTableRows(table);
+
+    applyReorderSourceHighlight(axis, startIndex, rows);
+    if (target instanceof HTMLElement) {
+      target.classList.add("is-dragging");
+    }
+
+    const updateDestination = (event: PointerEvent) => {
+      const rows = getRenderedTableRows(table);
+      if (rows.length === 0) {
+        destinationIndex = startIndex;
+        clearReorderIndicator();
+        return;
+      }
+
+      if (axis === "row") {
+        destinationIndex = pickRectIndexFromAxis(
+          rows.map((row) => {
+            const rect = row.getBoundingClientRect();
+            return {
+              end: rect.bottom,
+              start: rect.top,
+            };
+          }),
+          event.clientY,
+        );
+      } else {
+        const firstRow = rows[0];
+        const cells = Array.from(firstRow.children).filter(
+          (cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+        );
+
+        destinationIndex = pickRectIndexFromAxis(
+          cells.map((cell) => {
+            const rect = cell.getBoundingClientRect();
+            return {
+              end: rect.right,
+              start: rect.left,
+            };
+          }),
+          event.clientX,
+        );
+      }
+
+      if (destinationIndex < 0) {
+        destinationIndex = startIndex;
+      }
+
+      updateReorderIndicator(axis, startIndex, destinationIndex, rows);
+    };
+
+    const cleanup = () => {
+      if (target instanceof HTMLElement && target.hasPointerCapture(pointerId)) {
+        target.releasePointerCapture(pointerId);
+      }
+      if (target instanceof HTMLElement) {
+        target.classList.remove("is-dragging");
+      }
+      clearReorderSourceHighlight();
+      clearReorderIndicator();
+      shell.classList.remove("is-table-control-active");
+      window.removeEventListener("pointermove", updateDestination);
+      window.removeEventListener("pointerup", applyReorder);
+      window.removeEventListener("pointercancel", cancelReorder);
+    };
+
+    const applyReorder = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) {
+        return;
+      }
+
+      cleanup();
+      if (destinationIndex === startIndex) {
+        return;
+      }
+
+      const rows = getRenderedTableRows(table);
+      if (rows.length === 0) {
+        return;
+      }
+
+      const offset = destinationIndex - startIndex;
+      if (offset === 0) {
+        return;
+      }
+
+      if (axis === "column") {
+        const anchor = getColumnBindingAtIndex(rows, startIndex, bindingByCell);
+        if (!anchor) return;
+
+        runCommandAtBinding(table, anchor, (editor) => {
+          editor.moveColumn(offset, MARKDOWN_TABLE_OPTIONS);
+        });
+        return;
+      }
+
+      const anchor = getRowBindingAtIndex(rows, startIndex, bindingByCell);
+      if (!anchor) return;
+      runCommandAtBinding(table, anchor, (editor) => {
+        editor.moveRow(offset, MARKDOWN_TABLE_OPTIONS);
+      });
+    };
+
+    const cancelReorder = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) {
+        return;
+      }
+
+      cleanup();
+    };
+
+    window.addEventListener("pointermove", updateDestination);
+    window.addEventListener("pointerup", applyReorder);
+    window.addEventListener("pointercancel", cancelReorder);
+    updateDestination(sourceEvent);
+  };
+
+  const rebuildRails = () => {
+    topRail.replaceChildren();
+    leftRail.replaceChildren();
+
+    const rows = getRenderedTableRows(table);
+    if (rows.length === 0) return;
+
+    const firstRowCells = Array.from(rows[0].children).filter(
+      (cell): cell is HTMLTableCellElement => cell instanceof HTMLTableCellElement,
+    );
+    const columnWidths = firstRowCells.map((cell) =>
+      Math.max(1, Math.round(cell.getBoundingClientRect().width)),
+    );
+    const rowHeights = rows.map((row) =>
+      Math.max(1, Math.round(row.getBoundingClientRect().height)),
+    );
+
+    topRail.style.gridTemplateColumns = columnWidths.map((width) => `${width}px`).join(" ");
+    leftRail.style.gridTemplateRows = rowHeights.map((height) => `${height}px`).join(" ");
+
+    firstRowCells.forEach((_, columnIndex) => {
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = "cm-kolam-table-handle is-column";
+      handle.setAttribute("aria-label", `Reorder column ${columnIndex + 1}`);
+      handle.dataset.index = String(columnIndex);
+      handle.appendChild(makeGripDots());
+      handle.addEventListener("pointerdown", (event) => {
+        beginReorder("column", columnIndex, event);
+      });
+      topRail.appendChild(handle);
+    });
+
+    rows.forEach((_, rowIndex) => {
+      const handle = document.createElement("button");
+      handle.type = "button";
+      handle.className = "cm-kolam-table-handle is-row";
+      handle.setAttribute("aria-label", `Reorder row ${rowIndex + 1}`);
+      handle.dataset.index = String(rowIndex);
+      handle.appendChild(makeGripDots());
+      handle.addEventListener("pointerdown", (event) => {
+        beginReorder("row", rowIndex, event);
+      });
+      leftRail.appendChild(handle);
+    });
+  };
+
+  rightAddZone.addEventListener("pointerdown", (event) => {
+    beginDragInsert("column", event);
+  });
+
+  bottomAddZone.addEventListener("pointerdown", (event) => {
+    beginDragInsert("row", event);
+  });
+
+  shell.addEventListener("pointerenter", rebuildRails);
+  rebuildRails();
+}
+
+function attachTableSelection(
+  shell: HTMLDivElement,
+  table: HTMLTableElement,
+  bindings: TableCellBinding[],
+) {
+  shell.addEventListener("pointerleave", () => {
+    if (shell.classList.contains("is-table-control-active")) {
+      return;
+    }
+    clearTableHitFeedback(table);
+  });
+
   table.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) {
       return;
@@ -765,7 +1476,7 @@ function attachTableSelection(
       return;
     }
 
-    const view = EditorView.findFromDOM(table);
+    const view = findEditorViewFromElement(table);
     if (!view) return;
 
     const line = view.state.doc.line(binding.lineNumber);
@@ -793,17 +1504,19 @@ function attachTableSelection(
               visibleOffset,
             );
     const anchor = line.from + binding.cell.rawStart + sourceOffset;
+    const previewRange = getPreviewRangeFromShell(view, shell);
 
-    view.dispatch({
-      selection: EditorSelection.cursor(
-        Math.max(line.from, Math.min(anchor, line.to)),
-      ),
-      scrollIntoView: true,
-    });
-    view.focus();
+    dispatchPreviewSelection(
+      view,
+      Math.max(line.from, Math.min(anchor, line.to)),
+      previewRange,
+    );
 
     applyTableHitFeedback(table, binding.element);
   });
+
+  // Keep table text-selection interaction available even if control rendering fails.
+  buildTableControls(shell, table, bindings);
 }
 
 function attachHorizontalRuleSelection(
@@ -818,7 +1531,7 @@ function attachHorizontalRuleSelection(
 
     event.preventDefault();
 
-    const view = EditorView.findFromDOM(root);
+    const view = findEditorViewFromElement(root);
     if (!view) return;
 
     const line = view.state.doc.line(lineNumber);
@@ -827,14 +1540,13 @@ function attachHorizontalRuleSelection(
     const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / width));
     const lineLength = Math.max(1, line.length);
     const anchor = line.from + Math.round(ratio * lineLength);
+    const previewRange = getPreviewRangeForLineSpan(view, lineNumber, lineNumber);
 
-    view.dispatch({
-      selection: EditorSelection.cursor(
-        Math.max(line.from, Math.min(anchor, line.to)),
-      ),
-      scrollIntoView: true,
-    });
-    view.focus();
+    dispatchPreviewSelection(
+      view,
+      Math.max(line.from, Math.min(anchor, line.to)),
+      previewRange,
+    );
   });
 }
 
@@ -876,6 +1588,13 @@ class TableBlockWidget extends WidgetType {
   }
 
   toDOM() {
+    const shell = document.createElement("div");
+    shell.className = "cm-kolam-table-shell";
+    shell.dataset.kolamPreviewStartLine = String(this.startLineNumber);
+    shell.dataset.kolamPreviewEndLine = String(
+      this.startLineNumber + this.rows.length - 1,
+    );
+
     const table = document.createElement("table");
     table.className = "kolam-table cm-kolam-table-preview-block";
     const bindings: TableCellBinding[] = [];
@@ -918,11 +1637,13 @@ class TableBlockWidget extends WidgetType {
       table.appendChild(tbody);
     }
 
+    shell.appendChild(table);
+
     if (this.interactive && bindings.length > 0) {
-      attachTableSelection(table, bindings);
+      attachTableSelection(shell, table, bindings);
     }
 
-    return table;
+    return shell;
   }
 }
 
@@ -1111,13 +1832,7 @@ function intersectsSelection(
   const rangeFrom = expandToLine ? state.doc.lineAt(from).from : from;
   const rangeTo = expandToLine ? state.doc.lineAt(to).to : to;
 
-  return state.selection.ranges.some((selection) => {
-    if (selection.empty) {
-      return selection.from >= rangeFrom && selection.from <= rangeTo;
-    }
-
-    return selection.from <= rangeTo && selection.to >= rangeFrom;
-  });
+  return selectionIntersectsRange(state.selection, rangeFrom, rangeTo);
 }
 
 function decorateDelimitedToken(
@@ -1344,6 +2059,8 @@ function buildLivePreviewDecorations(
       : 0;
   const orderedListPattern = /^(\s*)(\d+[.)])\s+/;
   const tableLineNumbers = new Set<number>();
+  const explicitlyRevealedRange =
+    state.field(livePreviewRevealField, false) ?? null;
 
   if (
     frontmatter.rangeEnd > 0 &&
@@ -1479,14 +2196,26 @@ function buildLivePreviewDecorations(
     }
 
     const firstLine = state.doc.line(block.start + 1);
+    const lastLine = state.doc.line(block.start + block.model.rows.length);
+    const explicitlyRevealed =
+      explicitlyRevealedRange !== null &&
+      rangesOverlap(
+        explicitlyRevealedRange.from,
+        explicitlyRevealedRange.to,
+        firstLine.from,
+        lastLine.to,
+      );
+
+    if (explicitlyRevealed) {
+      return;
+    }
+
     const widget = new TableBlockWidget(
       block.model.rows,
       block.model.alignments,
       block.start + 1,
       revealSelection,
     );
-
-    const lastLine = state.doc.line(block.start + block.model.rows.length);
 
     addDecoration(
       builder,
@@ -1509,6 +2238,18 @@ function buildLivePreviewDecorations(
     }
 
     if (!isActiveLine && isMarkdownHorizontalRule(line.text)) {
+      const explicitlyRevealed =
+        explicitlyRevealedRange !== null &&
+        rangesOverlap(
+          explicitlyRevealedRange.from,
+          explicitlyRevealedRange.to,
+          line.from,
+          line.to,
+        );
+      if (explicitlyRevealed) {
+        continue;
+      }
+
       addDecoration(
         builder,
         line.from,
@@ -1652,21 +2393,24 @@ function createLivePreviewExtension({
 }: {
   revealSelection?: boolean;
 } = {}) {
-  return StateField.define<DecorationSet>({
-    create: (state) => buildLivePreviewDecorations(state, revealSelection),
-    update: (decorations, transaction) => {
-      if (
-        transaction.docChanged ||
-        transaction.selection ||
-        transaction.effects.length > 0
-      ) {
-        return buildLivePreviewDecorations(transaction.state, revealSelection);
-      }
+  return [
+    livePreviewRevealField,
+    StateField.define<DecorationSet>({
+      create: (state) => buildLivePreviewDecorations(state, revealSelection),
+      update: (decorations, transaction) => {
+        if (
+          transaction.docChanged ||
+          transaction.selection ||
+          transaction.effects.length > 0
+        ) {
+          return buildLivePreviewDecorations(transaction.state, revealSelection);
+        }
 
-      return decorations.map(transaction.changes);
-    },
-    provide: (field) => EditorView.decorations.from(field),
-  });
+        return decorations.map(transaction.changes);
+      },
+      provide: (field) => EditorView.decorations.from(field),
+    }),
+  ];
 }
 
 function formatSelection(
@@ -1929,6 +2673,72 @@ function exitMarkdownTable(): StateCommand {
   };
 }
 
+function deleteToLineStart(): StateCommand {
+  return ({ state, dispatch }) => {
+    const selection = state.selection.main;
+    if (!selection.empty) {
+      return false;
+    }
+
+    const line = state.doc.lineAt(selection.from);
+    if (selection.from <= line.from) {
+      return false;
+    }
+
+    dispatch(
+      state.update({
+        changes: {
+          from: line.from,
+          insert: "",
+          to: selection.from,
+        },
+        selection: EditorSelection.cursor(line.from),
+        scrollIntoView: true,
+        userEvent: "delete.backward",
+      }),
+    );
+
+    return true;
+  };
+}
+
+export function shouldTriggerTableEnterForPosition(
+  lines: string[],
+  lineIndex: number,
+  cursorOffset: number,
+) {
+  const block = findMarkdownTableBlocks(lines).find(
+    (candidate) => lineIndex >= candidate.start && lineIndex < candidate.end,
+  );
+
+  if (!block) {
+    return false;
+  }
+
+  const row = block.model.rows[lineIndex - block.start];
+  if (!row || row.isDelimiter) {
+    return false;
+  }
+
+  return row.cells.some(
+    (cell) => cursorOffset >= cell.rawStart && cursorOffset <= cell.rawEnd,
+  );
+}
+
+function shouldTriggerTableEnter(view: EditorView) {
+  const selection = view.state.selection.main;
+  if (!selection.empty) {
+    return false;
+  }
+
+  const line = view.state.doc.lineAt(selection.from);
+  return shouldTriggerTableEnterForPosition(
+    getDocumentLines(view.state.doc),
+    line.number - 1,
+    selection.from - line.from,
+  );
+}
+
 function orderedListInputHandler() {
   return EditorView.inputHandler.of((view, from, to, text) => {
     if (!view.state.selection.main.empty || from !== to) return false;
@@ -1981,12 +2791,18 @@ const kolamEditorKeymap = [
   {
     key: "Enter",
     run: (target: EditorView) =>
-      runTableEditorCommand(target, (editor) => editor.nextRow(MARKDOWN_TABLE_OPTIONS)) ||
+      (shouldTriggerTableEnter(target) &&
+        runTableEditorCommand(target, (editor) => editor.nextRow(MARKDOWN_TABLE_OPTIONS))) ||
       continueMarkdownList()(target),
   },
   {
     key: "Shift-Enter",
     run: (target: EditorView) => exitMarkdownTable()(target),
+  },
+  {
+    key: "Mod-Backspace",
+    run: (target: EditorView) => deleteToLineStart()(target),
+    preventDefault: true,
   },
   { key: "Mod-b", run: formatSelection("**") },
   { key: "Mod-i", run: formatSelection("*") },

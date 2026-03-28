@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MainHeader } from "./MainHeader";
 
@@ -32,7 +33,13 @@ describe("MainHeader", () => {
   });
 
   it("renders a cloud-only syncing indicator when the stream is dirty", () => {
-    render(<MainHeader />);
+    const queryClient = new QueryClient();
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MainHeader />
+      </QueryClientProvider>,
+    );
 
     act(() => {
       window.dispatchEvent(

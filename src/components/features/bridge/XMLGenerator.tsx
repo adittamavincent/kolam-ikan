@@ -289,7 +289,7 @@ ${userInput}
         </p>
       </div>
 
-      <div className="relative group border border-border-default/50 bg-[#0d1117] shadow-inner overflow-hidden">
+      <div className="relative group border border-border-default/50 bg-[#0d1117] overflow-hidden">
         <textarea
           readOnly
           rows={6}

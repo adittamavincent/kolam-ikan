@@ -1685,7 +1685,7 @@ export function WhatsAppImportModal({
               leaveFrom="opacity-100 scale-100 translate-y-0"
               leaveTo="opacity-0 translate-y-4"
             >
-              <DialogPanel className="flex w-full max-w-xl flex-col border border-border-default/70 bg-surface-default shadow-2xl transition-all">
+              <DialogPanel className="flex w-full max-w-xl flex-col border border-border-default/70 bg-surface-default transition-all">
             {/* ─── Header ────────────────────────────────────────────────── */}
             <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
               <div className="flex items-center gap-2">
@@ -2415,7 +2415,7 @@ export function WhatsAppImportModal({
                   top: tooltipPos.top,
                   width: tooltipPos.width,
                 }}
-                className="fixed z-50 border border-border-default bg-surface-default p-2 text-xs text-text-default shadow-lg"
+                className="fixed z-50 border border-border-default bg-surface-default p-2 text-xs text-text-default"
               >
                 <div className="whitespace-pre-wrap wrap-break-word text-[12px]">
                   {tooltipContent}

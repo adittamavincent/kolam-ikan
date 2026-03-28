@@ -897,7 +897,7 @@ export const ResponseParser = forwardRef<
               </div>
             </div>
 
-            <div className="divide-y divide-border-subtle/30 overflow-hidden border border-border-default/50 bg-surface-default shadow-sm">
+            <div className="divide-y divide-border-subtle/30 overflow-hidden border border-border-default/50 bg-surface-default">
               {changes.map((change) => (
                 <div
                   key={change.id}
@@ -946,7 +946,7 @@ export const ResponseParser = forwardRef<
                       title="Accept"
                       className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
                         change.decision === "accept"
-                          ? "bg-action-primary-bg text-action-primary-text shadow-sm"
+                          ? "bg-action-primary-bg text-action-primary-text"
                           : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
                       }`}
                     >
@@ -958,7 +958,7 @@ export const ResponseParser = forwardRef<
                         title="Keep both"
                         className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
                           change.decision === "both"
-                            ? "bg-action-primary-bg text-action-primary-text shadow-sm"
+                            ? "bg-action-primary-bg text-action-primary-text"
                             : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
                         }`}
                       >
@@ -970,7 +970,7 @@ export const ResponseParser = forwardRef<
                       title="Reject"
                       className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
                         change.decision === "reject"
-                          ? "bg-action-primary-bg text-action-primary-text shadow-sm"
+                          ? "bg-action-primary-bg text-action-primary-text"
                           : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
                       }`}
                     >

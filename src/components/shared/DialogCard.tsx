@@ -27,7 +27,7 @@ export const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>(
     return (
       <Dialog.Panel
         ref={ref}
-        className={`w-full max-w-lg border border-border-default bg-surface-default p-6 text-left shadow-2xl ${panelClassName}`.trim()}
+        className={`w-full max-w-lg border border-border-default bg-surface-default p-6 text-left ${panelClassName}`.trim()}
       >
         <div className="flex items-start gap-3">
           {icon ? (

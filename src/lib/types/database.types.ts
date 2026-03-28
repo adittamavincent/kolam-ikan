@@ -832,6 +832,7 @@ export type Database = {
           cabinet_id: string | null
           created_at: string | null
           deleted_at: string | null
+          description: string | null
           domain_id: string
           id: string
           name: string
@@ -843,6 +844,7 @@ export type Database = {
           cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          description?: string | null
           domain_id: string
           id?: string
           name: string
@@ -854,6 +856,7 @@ export type Database = {
           cabinet_id?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          description?: string | null
           domain_id?: string
           id?: string
           name?: string

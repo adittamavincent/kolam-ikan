@@ -900,7 +900,7 @@ export function CommitGraph({
           createPortal(
             <div
               ref={branchMenuRef}
-              className="fixed z-40 w-56 overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl"
+              className="fixed z-40 w-56 overflow-hidden border border-border-default bg-surface-elevated p-1"
               style={{
                 left: branchMenuPosition.left,
                 top: branchMenuPosition.top,

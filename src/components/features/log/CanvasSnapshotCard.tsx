@@ -164,7 +164,7 @@ export function CanvasSnapshotCard({
           onClick={() => setIsCompareOpen(false)}
         >
           <div
-            className="relative w-full max-w-3xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default shadow-2xl"
+            className="relative w-full max-w-3xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">

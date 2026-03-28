@@ -63,7 +63,7 @@ export function StreamView({ streamId }: { streamId: string }) {
         onClick={() => {
           setIsBridgeOpen(true);
         }}
-        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-action-primary-bg px-4 py-2 text-action-primary-text hover:opacity-90 transition-opacity"
+        className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-action-primary-bg px-4 py-2 text-action-primary-text transition-[opacity,box-shadow] hover:opacity-90 hover:shadow-lg"
       >
         <Sparkles className="h-4 w-4" />
         <span className="font-medium">Bridge</span>

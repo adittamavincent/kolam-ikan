@@ -1,9 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSidebar } from "@/lib/hooks/useSidebar";
 import { useStream } from "@/lib/hooks/useStream";
+import { createClient } from "@/lib/supabase/client";
 import {
   Menu,
   MenuButton,
@@ -13,7 +15,6 @@ import {
 } from "@headlessui/react";
 import {
   PanelLeft,
-  Globe,
   Search,
   Download,
   FileUp,
@@ -37,6 +38,7 @@ type LogHeaderState = {
   currentBranch: string;
   currentBranchHeadId?: string | null;
   commitCount: number;
+  canvasCommitCount?: number;
   showStash: boolean;
   stashCount: number;
   graphView: boolean;
@@ -64,6 +66,7 @@ type CanvasHeaderState = {
 export function MainHeader() {
   const pathname = usePathname();
   const { visible: sidebarVisible, show: showSidebar } = useSidebar();
+  const queryClient = useQueryClient();
 
   // Extract streamId from pathname if we are on a stream page
   const parts = pathname?.split("/").filter(Boolean) || [];
@@ -73,6 +76,8 @@ export function MainHeader() {
   const { stream } = useStream(streamId || "");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState("");
   const [logState, setLogState] = useState<LogHeaderState | null>(null);
   const [canvasState, setCanvasState] = useState<CanvasHeaderState | null>(
     null,
@@ -126,7 +131,35 @@ export function MainHeader() {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent(eventName, { detail }));
   };
-    
+
+  const updateDescriptionMutation = useMutation({
+    mutationFn: async (description: string | null) => {
+      if (!streamId) return null;
+      const supabase = createClient();
+
+      const { data, error } = await supabase
+        .from("streams")
+        .update({
+          description,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", streamId)
+        .select("*, domain:domains(*), cabinet:cabinets(*)")
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      if (!streamId) return;
+      queryClient.setQueryData(["stream", streamId], data);
+      if (domainId) {
+        queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+    },
+  });
+
   // Cloud sync = database persistence (mostly for Canvas)
   const getCloudSyncStatus = () => {
     const hasError =
@@ -151,9 +184,11 @@ export function MainHeader() {
   const cloudStatus = getCloudSyncStatus();
   const collapsedEntryCount = logState?.collapsedEntryCount ?? 0;
   const hasEntries = (logState?.commitCount ?? 0) > 0;
+  const totalCommitCount =
+    (logState?.commitCount ?? 0) + (logState?.canvasCommitCount ?? 0);
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
   const headerButtonClass =
-    "inline-flex h-8 w-8 items-center justify-center border border-border-default/60 bg-surface-subtle text-text-muted shadow-sm transition-all duration-200 hover:border-border-default hover:bg-surface-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 disabled:cursor-not-allowed disabled:opacity-40";
+    "inline-flex h-7 w-7 items-center justify-center border border-border-default/50 bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70 disabled:cursor-not-allowed disabled:opacity-40";
   const cloudStatusLabel =
     cloudStatus === "saving"
       ? "Cloud syncing"
@@ -162,251 +197,380 @@ export function MainHeader() {
         : cloudStatus === "saved"
           ? "Cloud saved"
           : "Cloud idle";
+  const workspaceTitle = streamId
+    ? stream?.name ?? "Untitled stream"
+    : domainId
+      ? "Domain workspace"
+      : "Kolam Ikan";
+  const workspaceParent = streamId
+    ? stream?.cabinet?.name ?? "Cabinet"
+    : domainId
+      ? "Domain context"
+      : "Prompt workspace";
+  const summaryPillClass =
+    "inline-flex h-7 items-center gap-1.5 border border-border-default/50 bg-surface-default px-2 text-[10px] font-mono text-text-subtle";
+  const toolbarGroupClass =
+    "flex items-center gap-1 border-l border-border-default/60 pl-2";
+  const normalizedDescription = useMemo(() => {
+    const value = descriptionDraft.trim();
+    return value.length > 0 ? value : null;
+  }, [descriptionDraft]);
+  const hasDescription = Boolean(stream?.description?.trim());
+
+  const saveDescription = async () => {
+    if (!streamId) return;
+
+    const currentValue = stream?.description?.trim() || null;
+    if (normalizedDescription === currentValue) {
+      setIsEditingDescription(false);
+      setDescriptionDraft(stream?.description ?? "");
+      return;
+    }
+
+    try {
+      await updateDescriptionMutation.mutateAsync(normalizedDescription);
+      setIsEditingDescription(false);
+    } catch {
+      setDescriptionDraft(stream?.description ?? "");
+      setIsEditingDescription(false);
+    }
+  };
+
+  const handleDescriptionKeyDown = async (
+    event: KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      await saveDescription();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setDescriptionDraft(stream?.description ?? "");
+      setIsEditingDescription(false);
+    }
+  };
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-default px-3">
-      <div className="flex min-w-0 items-center gap-3">
-        {domainId && !sidebarVisible && (
-          <button
-            onClick={showSidebar}
-            className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
-            title="Expand navigator"
-          >
-            <PanelLeft className="h-4 w-4" />
-          </button>
-        )}
-
-        {streamId && stream && (
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-medium text-text-default">
-              {stream.cabinet?.name}
-            </span>
-            <span className="text-text-muted">/</span>
-            <span className="truncate text-sm font-semibold text-text-default">
-              {stream.name}
-            </span>
-
-            {stream.stream_kind === "GLOBAL" && (
-              <span className="ml-1 inline-flex items-center gap-1 border border-border-default/30 bg-action-primary-bg/10 px-2 py-0.5 text-[11px] font-semibold text-action-primary-bg">
-                <Globe className="h-3 w-3" />
-                Global
-              </span>
+    <header className="shrink-0 border-b border-border-default bg-surface-default px-3 py-2">
+      <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex min-w-0 items-start gap-2">
+            {domainId && !sidebarVisible && (
+              <button
+                onClick={showSidebar}
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default/50 bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70"
+                title="Expand navigator"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </button>
             )}
-            
-            <div
-              className="ml-4 flex items-center border-l border-border-default/40 pl-3"
-              aria-label={cloudStatusLabel}
-              title={cloudStatusLabel}
-            >
-              {cloudStatus === "saving" ? (
-                <RefreshCw className="h-3 w-3 animate-spin text-text-muted/60" />
-              ) : cloudStatus === "error" ? (
-                <CloudOff className="h-3 w-3 text-red-500" />
-              ) : cloudStatus === "saved" ? (
-                <Check className="h-3 w-3 text-emerald-500/80" />
-              ) : (
-                <div className="h-3 w-3 border border-border-default/50" />
-              )}
+
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] font-mono text-text-muted">
+                <span>{workspaceParent}</span>
+                <span>/</span>
+                <span>Active thread</span>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="truncate text-[15px] font-semibold text-text-default md:text-base">
+                    {workspaceTitle}
+                  </span>
+                  {streamId && (
+                      <span className="text-[10px] font-mono text-text-muted">
+                        {streamId}
+                      </span>
+                    )}
+                </div>
+
+                {streamId && (
+                  <>
+                    {isEditingDescription ? (
+                      <input
+                        value={descriptionDraft}
+                        onChange={(event) => setDescriptionDraft(event.target.value)}
+                        onBlur={() => void saveDescription()}
+                        onKeyDown={(event) => void handleDescriptionKeyDown(event)}
+                        placeholder="Add a description"
+                        autoFocus
+                        className="mt-1 w-full max-w-2xl border-0 bg-transparent px-0 py-0 text-xs leading-5 text-text-subtle placeholder:text-text-muted/80 focus:outline-none"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDescriptionDraft(stream?.description ?? "");
+                          setIsEditingDescription(true);
+                        }}
+                        className={`mt-1 block max-w-2xl text-left text-xs leading-5 transition-colors hover:text-text-default ${
+                          hasDescription ? "text-text-subtle" : "text-text-muted/80"
+                        }`}
+                      >
+                        {stream?.description?.trim() || "Add a description"}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        )}
-      </div>
 
-      {streamId && (
-        <div className="flex items-center gap-2">
-          {logState && (
-            <div className="flex items-center gap-1 border border-border-default/60 bg-surface-subtle/60 p-1">
-              <button
-                onClick={() =>
-                  emit("kolam_header_log_toggle_compact_all", {
-                    collapsed: !collapseAllActive,
-                  })
-                }
-                disabled={!hasEntries}
-                className={`${headerButtonClass} relative ${
-                  collapseAllActive
-                    ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg"
-                    : collapsedEntryCount > 0
-                      ? "text-text-default"
-                      : ""
-                }`}
-                title={
-                  collapseAllActive
-                    ? "Expand all commits"
-                    : "Compact all commits"
-                }
-              >
-                {collapseAllActive ? (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                )}
-                {collapsedEntryCount > 0 && (
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
-                    {collapsedEntryCount}
-                  </span>
-                )}
-              </button>
+          {streamId && (
+            <div className="flex flex-col items-start gap-1.5 border-t border-border-default/60 pt-2 xl:items-end xl:border-t-0 xl:pt-0">
+              {logState && (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className={toolbarGroupClass}>
+                    <span
+                      className={`${headerButtonClass} pointer-events-none ${
+                        cloudStatus === "saving"
+                          ? "border-amber-500/40 text-amber-300"
+                          : cloudStatus === "error"
+                            ? "border-red-500/40 text-red-300"
+                            : cloudStatus === "saved"
+                              ? "border-emerald-500/40 text-emerald-300"
+                              : ""
+                      }`}
+                      aria-label={cloudStatusLabel}
+                      title={cloudStatusLabel}
+                    >
+                      {cloudStatus === "saving" ? (
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      ) : cloudStatus === "error" ? (
+                        <CloudOff className="h-3.5 w-3.5" />
+                      ) : cloudStatus === "saved" ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <div className="h-3 w-3 border border-current" />
+                      )}
+                    </span>
 
-              <button
-                onClick={() => setIsSearchOpen((prev) => !prev)}
-                className={`${headerButtonClass} ${isSearchOpen ? "border-action-primary-bg/35 bg-action-primary-bg/10 text-action-primary-bg" : ""}`}
-                title={isSearchOpen ? "Hide search" : "Show search"}
-              >
-                <Search className="h-4 w-4" />
-              </button>
+                    <button
+                      onClick={() =>
+                        emit("kolam_header_log_toggle_compact_all", {
+                          collapsed: !collapseAllActive,
+                        })
+                      }
+                      disabled={!hasEntries}
+                      className={`${headerButtonClass} relative ${
+                        collapseAllActive
+                          ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg"
+                          : collapsedEntryCount > 0
+                            ? "text-text-default"
+                            : ""
+                      }`}
+                      title={
+                        collapseAllActive
+                          ? "Expand all commits"
+                          : "Compact all commits"
+                      }
+                    >
+                      {collapseAllActive ? (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                      {collapsedEntryCount > 0 && (
+                        <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
+                          {collapsedEntryCount}
+                        </span>
+                      )}
+                    </button>
 
-              {isSearchOpen && (
-                <div className="relative w-48">
-                  <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(event) => {
-                      const term = event.target.value;
-                      setSearchTerm(term);
-                      emit("kolam_header_log_search_term", { term });
-                    }}
-                    placeholder="Search commits..."
-                    className="w-full border border-border-default bg-surface-subtle py-1 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
-                  />
-                </div>
+                    <button
+                      onClick={() => setIsSearchOpen((prev) => !prev)}
+                      className={`${headerButtonClass} ${isSearchOpen ? "border-action-primary-bg/35 bg-action-primary-bg/10 text-action-primary-bg" : ""}`}
+                      title={isSearchOpen ? "Hide search" : "Show search"}
+                    >
+                      <Search className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      onClick={() => emit("kolam_header_log_toggle_stash")}
+                      className={`${headerButtonClass} ${logState.showStash ? "border-amber-500/40 bg-amber-500/12 text-amber-500" : ""}`}
+                      title={
+                        logState.showStash
+                          ? "Hide stashed entries"
+                          : `Show stash (${logState.stashCount ?? 0})`
+                      }
+                    >
+                      <Archive className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      onClick={() => emit("kolam_header_log_toggle_sort")}
+                      className={headerButtonClass}
+                      title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
+                    >
+                      <ArrowUpDown
+                        className={`h-4 w-4 transition-transform ${logState.sortOrder === "oldest" ? "rotate-180" : ""}`}
+                      />
+                    </button>
+
+                    <button
+                      onClick={() => emit("kolam_header_log_toggle_graph")}
+                      className={`${headerButtonClass} ${logState.graphView ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg" : ""}`}
+                      title={
+                        logState.graphView
+                          ? "Back to commit list"
+                          : "Show commit graph"
+                      }
+                    >
+                      <Network className="h-4 w-4" />
+                    </button>
+
+                    {isSearchOpen && (
+                      <div className="relative ml-1 w-full min-w-[180px] max-w-xs">
+                        <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
+                        <input
+                          type="text"
+                          value={searchTerm}
+                          onChange={(event) => {
+                            const term = event.target.value;
+                            setSearchTerm(term);
+                            emit("kolam_header_log_search_term", { term });
+                          }}
+                          placeholder="Search commits..."
+                          className="w-full border border-border-default bg-surface-default/80 py-2 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
+                        />
+                      </div>
+                    )}
+                    </div>
+
+                    <div className={toolbarGroupClass}>
+                    <button
+                      onClick={() => emit("kolam_header_whatsapp_import")}
+                      className={headerButtonClass}
+                      title="Import WhatsApp Chat"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      onClick={() => emit("kolam_header_documents_import")}
+                      className={headerButtonClass}
+                      title="Import PDF"
+                    >
+                      <FileUp className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      onClick={() => emit("kolam_header_log_export")}
+                      className={headerButtonClass}
+                      title="Export to Markdown"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                    </div>
+
+                    <div className={toolbarGroupClass}>
+                    <Menu as="div" className="relative hidden md:block">
+                      <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default/50 bg-surface-default px-2 text-[10px] font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
+                        <GitBranch className="h-3 w-3" />
+                        {logState.currentBranch ?? "main"}
+                        <ChevronDown className="h-3 w-3" />
+                      </MenuButton>
+                      <Transition
+                        as={Fragment}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <MenuItems
+                          anchor={{ to: "bottom end", gap: 6 }}
+                          portal
+                          className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+                        >
+                          <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+                            Checkout Branch
+                          </div>
+                          {logState.branchNames?.map((branchName) => (
+                            <MenuItem key={branchName}>
+                              {({ active }) => (
+                                <button
+                                  onClick={() =>
+                                    emit("kolam_header_log_set_branch", {
+                                      branchName,
+                                    })
+                                  }
+                                  className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 text-xs transition-all duration-200`}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <GitBranch className="h-3 w-3" />
+                                    {branchName}
+                                  </span>
+                                  {logState.currentBranch === branchName && (
+                                    <Check className="h-3 w-3 text-action-primary-bg" />
+                                  )}
+                                </button>
+                              )}
+                            </MenuItem>
+                          ))}
+                          <div className="my-1 h-px bg-border-subtle" />
+                          <button
+                            onClick={() => {
+                              emit("kolam_header_log_open_create_branch", {
+                                defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
+                              });
+                            }}
+                            className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                          >
+                            <Plus className="h-3 w-3" />
+                            New branch
+                          </button>
+                        </MenuItems>
+                      </Transition>
+                    </Menu>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5 xl:justify-end">
+                    <span className={summaryPillClass}>
+                      <GitBranch className="h-3 w-3" />
+                      {logState.currentBranch ?? "main"}
+                    </span>
+                    <span className={summaryPillClass}>
+                      <GitCommitHorizontal className="h-3 w-3" />
+                      {totalCommitCount} commits
+                    </span>
+                    <span className={summaryPillClass}>
+                      <Archive className="h-3 w-3" />
+                      {logState.stashCount ?? 0} stashed
+                    </span>
+                    {canvasState?.hasCanvas && (
+                      <span className={summaryPillClass}>
+                        <Blocks className="h-3 w-3" />
+                        Canvas active
+                      </span>
+                    )}
+                  </div>
+                </>
               )}
 
-              <button
-                onClick={() => emit("kolam_header_whatsapp_import")}
-                className={headerButtonClass}
-                title="Import WhatsApp Chat"
-              >
-                <MessageSquare className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={() => emit("kolam_header_documents_import")}
-                className={headerButtonClass}
-                title="Import PDF"
-              >
-                <FileUp className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={() => emit("kolam_header_log_export")}
-                className={headerButtonClass}
-                title="Export to Markdown"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={() => emit("kolam_header_log_toggle_stash")}
-                className={`${headerButtonClass} ${logState.showStash ? "border-amber-500/40 bg-amber-500/12 text-amber-500" : ""}`}
-                title={
-                  logState.showStash
-                    ? "Hide stashed entries"
-                    : `Show stash (${logState.stashCount ?? 0})`
-                }
-              >
-                <Archive className="h-4 w-4" />
-              </button>
-
-              <button
-                onClick={() => emit("kolam_header_log_toggle_sort")}
-                className={headerButtonClass}
-                title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
-              >
-                <ArrowUpDown
-                  className={`h-4 w-4 transition-transform ${logState.sortOrder === "oldest" ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              <button
-                onClick={() => emit("kolam_header_log_toggle_graph")}
-                className={`${headerButtonClass} ${logState.graphView ? "border-action-primary-bg/40 bg-action-primary-bg/12 text-action-primary-bg" : ""}`}
-                title={
-                  logState.graphView ? "Back to commit list" : "Show commit graph"
-                }
-              >
-                <Network className="h-4 w-4" />
-              </button>
-
-              <Menu as="div" className="relative hidden md:block">
-                <MenuButton className="inline-flex h-8 items-center gap-1.5 border border-border-default/60 bg-surface-default px-2.5 text-[10px] font-mono text-text-muted shadow-sm transition-all duration-200 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
-                  <GitBranch className="h-3 w-3" />
-                  {logState.currentBranch ?? "main"}
-                  <ChevronDown className="h-3 w-3" />
-                </MenuButton>
-                <Transition
-                  as={Fragment}
-                  enter="transition ease-out duration-100"
-                  enterFrom="transform opacity-0 scale-95"
-                  enterTo="transform opacity-100 scale-100"
-                  leave="transition ease-in duration-75"
-                  leaveFrom="transform opacity-100 scale-100"
-                  leaveTo="transform opacity-0 scale-95"
-                >
-                  <MenuItems
-                    anchor={{ to: "bottom end", gap: 6 }}
-                    portal
-                    className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
-                  >
-                    <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
-                      Checkout Branch
-                    </div>
-                    {logState.branchNames?.map((branchName) => (
-                      <MenuItem key={branchName}>
-                        {({ active }) => (
-                          <button
-                            onClick={() =>
-                              emit("kolam_header_log_set_branch", { branchName })
-                            }
-                            className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between  px-2 py-1.5 text-xs transition-all duration-200`}
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <GitBranch className="h-3 w-3" />
-                              {branchName}
-                            </span>
-                            {logState.currentBranch === branchName && (
-                              <Check className="h-3 w-3 text-action-primary-bg" />
-                            )}
-                          </button>
-                        )}
-                      </MenuItem>
-                    ))}
-                    <div className="my-1 h-px bg-border-subtle" />
-                    <button
-                      onClick={() => {
-                        emit("kolam_header_log_open_create_branch", {
-                          defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
-                        });
-                      }}
-                      className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              {canvasState?.hasCanvas && !logState && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className={toolbarGroupClass}>
+                    <span
+                      className="inline-flex h-7 w-7 items-center justify-center border border-border-default/50 bg-surface-default text-text-muted"
+                      title="Canvas active"
                     >
-                      <Plus className="h-3 w-3" />
-                      New branch
-                    </button>
-                  </MenuItems>
-                </Transition>
-              </Menu>
-
-              <span className="hidden h-8 items-center gap-1 border border-border-default/60 bg-surface-default px-2.5 text-[10px] font-mono text-text-muted shadow-sm md:inline-flex">
-                <GitCommitHorizontal className="h-3 w-3" />
-                {logState.commitCount ?? 0}
-              </span>
-            </div>
-          )}
-
-          {canvasState?.hasCanvas && !logState && (
-            <div className="flex items-center gap-1 border border-border-default/60 bg-surface-subtle/60 p-1">
-              <span
-                className="inline-flex h-8 w-8 items-center justify-center border border-border-default/60 bg-surface-default text-text-muted shadow-sm"
-                title="Canvas active"
-              >
-                <Blocks className="h-4 w-4" />
-              </span>
+                      <Blocks className="h-4 w-4" />
+                    </span>
+                    <span className="inline-flex h-7 items-center border border-border-default/50 bg-surface-default px-2 text-[10px] font-mono text-text-muted">
+                      Snapshot live
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+      </div>
     </header>
   );
 }

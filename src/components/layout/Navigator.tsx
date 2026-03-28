@@ -2139,7 +2139,7 @@ export function Navigator({}: NavigatorProps) {
             onClick={() => setContextMenu(null)}
           >
             <div
-              className="absolute w-48 border border-border-default bg-surface-elevated p-1 shadow-2xl z-100"
+              className="absolute w-48 border border-border-default bg-surface-elevated p-1 z-100"
               style={{
                 top: Math.min(
                   contextMenu.y,

@@ -621,7 +621,7 @@ export function DocumentImportModal({
             >
           <DialogPanel
             ref={dialogPanelRef}
-            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3 border border-border-default/70 bg-surface-default/95 p-3 shadow-[0_20px_60px_-24px_rgba(0,0,0,0.32)] backdrop-blur-xl transition-all"
+            className="my-auto flex min-h-0 w-full max-w-6xl flex-col gap-3 border border-border-default/70 bg-surface-default/95 p-3 backdrop-blur-xl transition-all"
           >
             <div className="grid min-h-0 gap-3 xl:grid-cols-[minmax(0,1.6fr)_360px] xl:items-start">
               <form

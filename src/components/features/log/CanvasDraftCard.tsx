@@ -249,7 +249,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
           onClick={() => setIsCompareOpen(false)}
         >
           <div
-            className="relative flex max-h-[80vh] w-full max-w-3xl flex-col border border-border-default bg-surface-default shadow-2xl"
+            className="relative flex max-h-[80vh] w-full max-w-3xl flex-col border border-border-default bg-surface-default"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-border-default px-4 py-3">

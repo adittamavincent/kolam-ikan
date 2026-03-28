@@ -74,7 +74,7 @@ export function FileAttachmentPreviewDialog({
             leaveFrom="opacity-100 scale-100 translate-y-0"
             leaveTo="opacity-0 scale-95 translate-y-4"
           >
-            <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-border-default bg-surface-default shadow-2xl transition-all">
+            <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-border-default bg-surface-default transition-all">
           <div className="flex items-start justify-between gap-3 border-b border-border-default px-4 py-3">
             <div className="min-w-0 flex-1">
               <DialogTitle className="truncate text-sm font-semibold text-text-default">

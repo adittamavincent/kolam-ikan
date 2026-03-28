@@ -73,7 +73,7 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0"
             >
-              <DialogPanel className="w-full max-w-2xl transform overflow-hidden bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
+              <DialogPanel className="w-full max-w-2xl transform overflow-hidden bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
                 <div className="flex items-start justify-between">
                   <DialogTitle as="h3" className="text-lg font-semibold leading-6 text-text-default flex items-center gap-2">
                     <Paperclip className="h-5 w-5" />

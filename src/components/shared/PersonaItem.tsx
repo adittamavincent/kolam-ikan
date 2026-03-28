@@ -18,6 +18,7 @@ interface PersonaButtonDisplayProps {
   nameClass?: string;
   showChevron?: boolean;
   showMeta?: boolean;
+  showTypeBadge?: boolean;
 }
 
 function PersonaButtonDisplay({
@@ -28,6 +29,7 @@ function PersonaButtonDisplay({
   nameClass = "",
   showChevron = true,
   showMeta = false,
+  showTypeBadge = true,
 }: PersonaButtonDisplayProps) {
   const personaTypeLabel = getPersonaTypeLabel(persona?.type ?? "") || "Unknown";
 
@@ -70,9 +72,11 @@ function PersonaButtonDisplay({
             >
               {persona.name}
             </span>
-            <span className="shrink-0 border border-border-default/50 bg-surface-subtle px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-              {personaTypeLabel}
-            </span>
+            {showTypeBadge && (
+              <span className="shrink-0 border border-border-default/50 bg-surface-subtle px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                {personaTypeLabel}
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -91,6 +95,7 @@ interface PersonaItemProps {
   className?: string;
   style?: React.CSSProperties;
   title?: string;
+  showTypeBadge?: boolean;
   // when provided, render as a selector control using these menu props
   menuProps?: {
     currentPersona: Persona | null;
@@ -113,6 +118,7 @@ export function PersonaItem({
   className = "",
   style,
   title,
+  showTypeBadge = true,
   menuProps = null,
 }: PersonaItemProps) {
   const sharedClass = `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 px-2 py-1.5 text-xs transition-colors hover:bg-surface-subtle hover:text-text-default`;
@@ -170,7 +176,7 @@ export function PersonaItem({
           >
             <MenuItems
               anchor={{ to: "bottom start", gap: 4 }}
-              className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 shadow-2xl"
+              className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1"
             >
               <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                 Switch to...
@@ -230,6 +236,7 @@ export function PersonaItem({
         nameClass={nameClass}
         showChevron={false}
         showMeta={resolvedShowMeta}
+        showTypeBadge={showTypeBadge}
       />
     </button>
   );

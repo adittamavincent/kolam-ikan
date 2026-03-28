@@ -5,6 +5,7 @@ import React, {
   useRef,
   Fragment,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useCallback,
 } from "react";
@@ -32,6 +33,7 @@ import {
   GitCommitHorizontal,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
+import { useAuth } from "@/lib/hooks/useAuth";
 import {
   Menu,
   MenuButton,
@@ -79,6 +81,21 @@ function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
 
 function shortHash(id: string): string {
   return id.replace(/-/g, "").slice(0, 7);
+}
+
+function comparePersonaNames(a: { name: string }, b: { name: string }) {
+  return a.name.localeCompare(b.name);
+}
+
+function comparePersonaCreatedAt(
+  a: { created_at: string | null; name: string },
+  b: { created_at: string | null; name: string },
+) {
+  const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+  const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+
+  if (timeA !== timeB) return timeA - timeB;
+  return a.name.localeCompare(b.name);
 }
 
 function textToBlockContent(text: string) {
@@ -280,13 +297,14 @@ interface EntryCreatorProps {
 export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { personas } = usePersonas({
     streamId,
     includeLocal: true,
   });
-  const personaUsageStorageKey = `entry-creator:persona-usage:${streamId}`;
+  const personaUsageStorageKey = `entry-creator:persona-usage:${user?.id ?? "anonymous"}:${streamId}`;
 
-  const getInitialPersonaUsage = () => {
+  const getPersonaUsageFromStorage = useCallback(() => {
     if (typeof window === "undefined") return {} as Record<string, number>;
     try {
       const stored = window.localStorage.getItem(personaUsageStorageKey);
@@ -295,7 +313,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     } catch {
       return {} as Record<string, number>;
     }
-  };
+  }, [personaUsageStorageKey]);
 
   interface FileAttachmentState {
     documentId?: string;
@@ -332,7 +350,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const [sections, setSections] = useState<SectionState[]>([]);
   const [personaUsageCounts, setPersonaUsageCounts] = useState<
     Record<string, number>
-  >(getInitialPersonaUsage);
+  >(getPersonaUsageFromStorage);
+  const [visibleQuickPersonaCount, setVisibleQuickPersonaCount] = useState(0);
   const [filePickerTargetInstanceId, setFilePickerTargetInstanceId] = useState<
     string | null
   >(null);
@@ -372,6 +391,11 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const cloudSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const quickPersonaStripRef = useRef<HTMLDivElement | null>(null);
+  const quickPersonaMeasureRefs = useRef<Record<string, HTMLDivElement | null>>(
+    {},
+  );
+  const quickPersonaOverflowMeasureRef = useRef<HTMLDivElement | null>(null);
 
   const selectedBranch = currentBranch ?? "main";
 
@@ -545,6 +569,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   }, [personaUsageCounts, personaUsageStorageKey]);
 
+  useEffect(() => {
+    setPersonaUsageCounts(getPersonaUsageFromStorage());
+  }, [getPersonaUsageFromStorage]);
+
   // Clean up persona usage counts for deleted personas
   useEffect(() => {
     if (personas) {
@@ -561,20 +589,97 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     }
   }, [personas]);
 
-  const quickPersonas = (() => {
+  const quickPersonas = useMemo(() => {
     if (!personas?.length) return [];
-    return [...personas]
-      .sort((a, b) => {
-        const countA = personaUsageCounts[a.id] ?? 0;
-        const countB = personaUsageCounts[b.id] ?? 0;
-        if (countA !== countB) return countB - countA;
-        return a.name.localeCompare(b.name);
-      })
-      .slice(0, 3);
-  })();
 
-  const globalPersonas = (personas ?? []).filter((p) => !isLocalPersona(p));
-  const localPersonas = (personas ?? []).filter((p) => isLocalPersona(p));
+    return [...personas].sort((a, b) => {
+      const countA = personaUsageCounts[a.id] ?? 0;
+      const countB = personaUsageCounts[b.id] ?? 0;
+
+      if (countA !== countB) return countB - countA;
+      return comparePersonaCreatedAt(a, b);
+    });
+  }, [personas, personaUsageCounts]);
+
+  const globalPersonas = useMemo(
+    () =>
+      (personas ?? [])
+        .filter((p) => !isLocalPersona(p))
+        .sort(comparePersonaNames),
+    [personas],
+  );
+  const localPersonas = useMemo(
+    () =>
+      (personas ?? [])
+        .filter((p) => isLocalPersona(p))
+        .sort(comparePersonaNames),
+    [personas],
+  );
+
+  const updateVisibleQuickPersonas = useCallback(() => {
+    const strip = quickPersonaStripRef.current;
+
+    if (!strip || quickPersonas.length === 0) {
+      setVisibleQuickPersonaCount(0);
+      return;
+    }
+
+    const availableWidth = strip.clientWidth;
+    const gapWidth = 6;
+    const overflowWidth = quickPersonaOverflowMeasureRef.current?.offsetWidth ?? 0;
+    const itemWidths = quickPersonas.map(
+      (persona) => quickPersonaMeasureRefs.current[persona.id]?.offsetWidth ?? 0,
+    );
+
+    if (availableWidth <= 0 || itemWidths.some((width) => width <= 0)) {
+      setVisibleQuickPersonaCount(quickPersonas.length);
+      return;
+    }
+
+    const widthForFirstItems = (count: number) =>
+      itemWidths.slice(0, count).reduce((total, width, index) => {
+        return total + width + (index > 0 ? gapWidth : 0);
+      }, 0);
+
+    let nextVisibleCount = 0;
+
+    for (let count = quickPersonas.length; count >= 0; count -= 1) {
+      const hiddenCount = quickPersonas.length - count;
+      const itemsWidth = widthForFirstItems(count);
+      const counterWidth =
+        hiddenCount > 0 ? overflowWidth + (count > 0 ? gapWidth : 0) : 0;
+
+      if (itemsWidth + counterWidth <= availableWidth) {
+        nextVisibleCount = count;
+        break;
+      }
+    }
+
+    setVisibleQuickPersonaCount(nextVisibleCount);
+  }, [quickPersonas]);
+
+  useLayoutEffect(() => {
+    updateVisibleQuickPersonas();
+
+    const strip = quickPersonaStripRef.current;
+    if (!strip || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      updateVisibleQuickPersonas();
+    });
+
+    observer.observe(strip);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [updateVisibleQuickPersonas]);
+
+  const visibleQuickPersonas = quickPersonas.slice(0, visibleQuickPersonaCount);
+  const hiddenQuickPersonaCount = Math.max(
+    quickPersonas.length - visibleQuickPersonaCount,
+    0,
+  );
 
   const trackPersonaUsage = (personaId: string) => {
     setPersonaUsageCounts((prev) => ({
@@ -1408,23 +1513,65 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         >
           <div className="flex flex-col">
           {/* Persona picker */}
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-border-default/35 bg-action-primary-bg/10 p-1">
-            {quickPersonas.map((persona) => (
-              <PersonaItem
-                key={`quick-persona-${persona.id}`}
-                persona={persona}
-                compact
-                title={`Quick add ${persona.name}`}
-                className="border text-text-default hover:brightness-[0.98]"
-                style={getPersonaTintStyle(persona, {
-                  backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
-                  borderAlpha: 0.24,
-                })}
-                onClick={() => addPersona(persona.id)}
-              />
-            ))}
+          <div className="flex items-center gap-1.5 border-b border-border-default/35 bg-action-primary-bg/10 p-1">
+            <div
+              ref={quickPersonaStripRef}
+              className="relative flex min-w-0 flex-1 items-center overflow-hidden"
+            >
+              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                {visibleQuickPersonas.map((persona) => (
+                  <PersonaItem
+                    key={`quick-persona-${persona.id}`}
+                    persona={persona}
+                    compact
+                    showTypeBadge={false}
+                    title={`Quick add ${persona.name}`}
+                    className="shrink-0 border text-text-default hover:brightness-[0.98]"
+                    style={getPersonaTintStyle(persona, {
+                      backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
+                      borderAlpha: 0.24,
+                    })}
+                    onClick={() => addPersona(persona.id)}
+                  />
+                ))}
+                {hiddenQuickPersonaCount > 0 && (
+                  <div className="shrink-0 border border-border-default/35 bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted">
+                    +{hiddenQuickPersonaCount}
+                  </div>
+                )}
+              </div>
 
-            <Menu as="div" className="relative z-30">
+              <div className="pointer-events-none absolute left-0 top-0 -z-10 flex items-center gap-1.5 opacity-0">
+                {quickPersonas.map((persona) => (
+                  <div
+                    key={`quick-persona-measure-${persona.id}`}
+                    ref={(node) => {
+                      quickPersonaMeasureRefs.current[persona.id] = node;
+                    }}
+                    className="shrink-0"
+                  >
+                    <PersonaItem
+                      persona={persona}
+                      compact
+                      showTypeBadge={false}
+                      className="border text-text-default"
+                      style={getPersonaTintStyle(persona, {
+                        backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
+                        borderAlpha: 0.24,
+                      })}
+                    />
+                  </div>
+                ))}
+                <div
+                  ref={quickPersonaOverflowMeasureRef}
+                  className="shrink-0 border border-border-default/35 bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted"
+                >
+                  +{quickPersonas.length}
+                </div>
+              </div>
+            </div>
+
+            <Menu as="div" className="relative z-30 shrink-0">
               <MenuButton className="flex items-center gap-1 border border-border-default/35 px-1.5 py-1 text-[11px] font-medium transition-colors hover:bg-surface-subtle focus:">
                 <Plus className="h-3 w-3 text-text-subtle" />
                 <span className="text-text-default">Add Persona</span>
@@ -1442,7 +1589,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                 <MenuItems
                   anchor={{ to: "bottom start", gap: 4 }}
                   portal
-                  className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 shadow-2xl focus:"
+                  className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 focus:"
                 >
                   <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
                     Add Author Section

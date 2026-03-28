@@ -124,7 +124,7 @@ export function DomainSwitcher({
   return (
     <div
       ref={switcherRef}
-      className="relative flex h-full w-12 flex-col items-center bg-surface-default border-r border-border-default shadow-sm z-50"
+      className="relative flex h-full w-12 flex-col items-center bg-surface-default border-r border-border-default z-50"
     >
       {/* Home / Root */}
       <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-border-default">
@@ -135,12 +135,12 @@ export function DomainSwitcher({
           }}
           className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
             pathname === "/"
-              ? "bg-action-primary-bg text-white shadow-md"
+              ? "bg-action-primary-bg text-white"
               : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
           }`}
         >
           <Home className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
             Home
           </div>
         </button>
@@ -153,7 +153,7 @@ export function DomainSwitcher({
           title="Global Search (⌘⇧K)"
         >
           <Search className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
             Global Search
           </div>
         </button>
@@ -164,7 +164,7 @@ export function DomainSwitcher({
           title="Manage Personas"
         >
           <Users className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
             Personas
           </div>
         </button>
@@ -175,7 +175,7 @@ export function DomainSwitcher({
           title="Attachments"
         >
           <Paperclip className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
             Attachments
           </div>
         </button>
@@ -211,7 +211,7 @@ export function DomainSwitcher({
             aria-label={domain.name}
             className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
               currentDomainId === domain.id
-                ? "bg-action-primary-bg text-white shadow-md"
+                ? "bg-action-primary-bg text-white"
                 : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
             }`}
           >
@@ -235,7 +235,7 @@ export function DomainSwitcher({
           className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-action-primary-bg/10 hover:text-action-primary-bg"
         >
           <Plus className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap shadow-lg">
+          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
             Add Domain
           </div>
         </button>
@@ -243,7 +243,7 @@ export function DomainSwitcher({
 
       {hoveredDomainTooltip && (
         <div
-          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-surface-dark px-2 py-1 text-[10px] font-medium text-white shadow-lg"
+          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-surface-dark px-2 py-1 text-[10px] font-medium text-white"
           style={{ top: hoveredDomainTooltip.top }}
         >
           {hoveredDomainTooltip.name}
@@ -255,7 +255,7 @@ export function DomainSwitcher({
         <Menu as="div" className="relative">
           <MenuButton
             id={`${profileMenuIdBase}-button`}
-            className="flex h-8 w-8 items-center justify-center border border-border-default bg-surface-default text-text-default transition hover:bg-surface-subtle focus: focus: focus: overflow-hidden shadow-sm"
+            className="flex h-8 w-8 items-center justify-center border border-border-default bg-surface-default text-text-default transition hover:bg-surface-subtle focus: focus: focus: overflow-hidden"
           >
             {avatarUrl ? (
               <Image
@@ -283,7 +283,7 @@ export function DomainSwitcher({
           >
             <MenuItems
               id={`${profileMenuIdBase}-items`}
-              className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 border border-border-default bg-surface-default p-1 shadow-lg focus:"
+              className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 border border-border-default bg-surface-default p-1 focus:"
             >
               <div className="px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
@@ -377,7 +377,7 @@ export function DomainSwitcher({
                 leaveFrom="opacity-100 scale-100"
                 leaveTo="opacity-0"
               >
-                <DialogPanel className="w-full max-w-md transform overflow-hidden bg-surface-default p-6 text-left align-middle shadow-xl transition-all border border-border-default">
+                <DialogPanel className="w-full max-w-md transform overflow-hidden bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
                   <DialogTitle
                     as="h3"
                     className="text-lg font-semibold leading-6 text-text-default"

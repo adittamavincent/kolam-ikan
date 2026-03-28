@@ -220,7 +220,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-2xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default shadow-2xl"
+        className="relative w-full max-w-2xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -307,7 +307,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-xs border border-border-default bg-surface-default p-5 shadow-2xl"
+        className="relative w-full max-w-xs border border-border-default bg-surface-default p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-3">
@@ -1488,6 +1488,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const visibleEntries = showStash
     ? branchEntries
     : branchEntries.filter((e) => !stashedIds.has(e.id));
+  const branchCanvasCommitCount = useMemo(
+    () =>
+      branchTimelineItems.filter((item) => item.type === "canvas_snapshot")
+        .length,
+    [branchTimelineItems],
+  );
   const visibleEntryIds = useMemo(
     () => visibleEntries.map((entry) => entry.id),
     [visibleEntries],
@@ -1742,6 +1748,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           streamId,
           currentBranch,
           commitCount: visibleEntries.length,
+          canvasCommitCount: branchCanvasCommitCount,
           collapsedEntryCount: collapsedVisibleCount,
           allEntriesCollapsed: allVisibleCollapsed,
           showStash,
@@ -1758,6 +1765,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     streamId,
     currentBranch,
     visibleEntries.length,
+    branchCanvasCommitCount,
     collapsedVisibleCount,
     allVisibleCollapsed,
     showStash,
@@ -1939,7 +1947,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     <code className="cursor-help text-[10px] font-mono text-action-primary-bg/80">
                                       {hash}
                                     </code>
-                                    <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 border border-border-default bg-surface-elevated p-2 text-[10px] font-mono text-text-default shadow-xl group-hover/hash:block">
+                                    <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 border border-border-default bg-surface-elevated p-2 text-[10px] font-mono text-text-default group-hover/hash:block">
                                       <div className="mb-1 text-[9px] uppercase tracking-wider text-text-muted">
                                         Commit Metadata
                                       </div>
@@ -2175,7 +2183,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         createPortal(
           <div
             ref={contextMenuRef}
-            className="fixed z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto border border-border-default bg-surface-elevated p-1.5 shadow-2xl "
+            className="fixed z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto border border-border-default bg-surface-elevated p-1.5 "
             style={{
               top: contextMenuPosition.top,
               left: contextMenuPosition.left,

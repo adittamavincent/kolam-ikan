@@ -102,7 +102,7 @@ export function ContextBag({
   const isLoadingEntries = isEntriesLoading;
 
   return (
-    <div className="mb-6 border border-border-default/50 bg-surface-subtle/20 p-5 shadow-sm">
+    <div className="mb-6 border border-border-default/50 bg-surface-subtle/20 p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-text-default">Context Bag</h3>
         <span className=" bg-surface-subtle px-2.5 py-1 text-[10px] font-bold tracking-wider text-text-muted">
@@ -168,25 +168,25 @@ export function ContextBag({
           <button
             onClick={selectAll}
             disabled={disableSelectAll || isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated disabled:opacity-50 transition-all shadow-sm"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated disabled:opacity-50 transition-all"
           >
             Select All
           </button>
           <button
             onClick={selectLastFive}
             disabled={isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated disabled:opacity-50 transition-all shadow-sm"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated disabled:opacity-50 transition-all"
           >
             Last 5
           </button>
           <button
             onClick={clearAll}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated transition-all shadow-sm"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated transition-all"
           >
             Clear
           </button>
         </div>
-        <div className="max-h-56 space-y-3 overflow-y-auto border border-border-default/50 bg-surface-default/50 p-3 text-xs shadow-inner">
+        <div className="max-h-56 space-y-3 overflow-y-auto border border-border-default/50 bg-surface-default/50 p-3 text-xs">
           {isLoadingEntries ? (
             <div className="text-text-muted animate-pulse">
               Loading entries...

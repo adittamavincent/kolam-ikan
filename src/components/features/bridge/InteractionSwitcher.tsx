@@ -218,14 +218,14 @@ export function InteractionSwitcher({
   return (
     <div className="flex flex-wrap items-center gap-4">
       {/* Interaction Mode Toggle */}
-      <div className="flex w-full max-w-sm bg-surface-subtle/50 p-1 shadow-inner border border-border-default/30 backdrop-blur-sm">
+      <div className="flex w-full max-w-sm bg-surface-subtle/50 p-1 border border-border-default/30 backdrop-blur-sm">
         {(["ASK", "GO", "BOTH"] as const).map((mode) => (
           <button
             key={mode}
             onClick={() => onChange(mode)}
             className={`relative flex-1  py-2.5 text-xs font-bold tracking-widest transition-all duration-300 ease-out ${
               value === mode
-                ? "bg-surface-elevated text-action-primary-bg shadow-sm   z-10"
+                ? "bg-surface-elevated text-action-primary-bg   z-10"
                 : "text-text-muted hover:text-text-default hover:bg-surface-hover/50"
             }`}
           >
@@ -236,7 +236,7 @@ export function InteractionSwitcher({
 
       {/* Token Indicator */}
       <div
-        className={`flex items-center gap-3 px-3 py-1.5  border shadow-xs transition-all ${overLimit ? "bg-status-error-bg/5 border-border-default/30" : "bg-surface-subtle/30 border-border-default/30"}`}
+        className={`flex items-center gap-3 px-3 py-1.5  border transition-all ${overLimit ? "bg-status-error-bg/5 border-border-default/30" : "bg-surface-subtle/30 border-border-default/30"}`}
       >
         <div className="flex flex-col">
           <span className="text-[10px] font-bold text-text-muted uppercase leading-none tracking-tight">

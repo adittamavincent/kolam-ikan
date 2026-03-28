@@ -253,7 +253,7 @@ export function MainHeader() {
   };
 
   return (
-    <header className="shrink-0 border-b border-border-default bg-surface-default px-3 py-2">
+    <header className="shrink-0 border-b border-border-default bg-surface-default px-3 pt-2 pb-1">
       <div className="flex flex-col gap-2">
         <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex min-w-0 items-start gap-2">
@@ -284,7 +284,7 @@ export function MainHeader() {
                         {streamId}
                       </span>
                     )}
-                </div>
+                </div>  
 
                 {streamId && (
                   <>
@@ -305,7 +305,7 @@ export function MainHeader() {
                           setDescriptionDraft(stream?.description ?? "");
                           setIsEditingDescription(true);
                         }}
-                        className={`mt-1 block max-w-2xl text-left text-xs leading-5 transition-colors hover:text-text-default ${
+                        className={`block max-w-2xl text-left text-xs leading-5 transition-colors hover:text-text-default ${
                           hasDescription ? "text-text-subtle" : "text-text-muted"
                         }`}
                       >

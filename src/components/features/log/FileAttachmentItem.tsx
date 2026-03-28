@@ -232,9 +232,6 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="border border-border-default bg-surface-hover px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.18em] text-text-muted">
-                File
-              </span>
               <div className="text-xs font-medium text-text-default">
                 {title}
               </div>

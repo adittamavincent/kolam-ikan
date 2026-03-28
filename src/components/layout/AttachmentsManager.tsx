@@ -6,18 +6,32 @@ import { Paperclip, Trash2, Download, X } from "lucide-react";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
 import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
 import { useDocuments } from "@/lib/hooks/useDocuments";
+import type { DocumentWithLatestJob } from "@/lib/types";
 
 interface AttachmentsManagerProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
+  onSelectDocument?: (document: DocumentWithLatestJob) => void;
 }
 
-export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManagerProps) {
+export function AttachmentsManager({
+  isOpen,
+  onClose,
+  userId,
+  onSelectDocument,
+}: AttachmentsManagerProps) {
   const { documents, isLoading, deleteDocument } = useDocuments(userId);
   const [docImportOpen, setDocImportOpen] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const attachments = documents ?? [];
+
+  const handleAttach = (document: DocumentWithLatestJob) => {
+    if (!onSelectDocument) return;
+    onSelectDocument(document);
+    setRemoveError(null);
+    onClose();
+  };
 
   const handleRemove = async (id: string, usageCount: number) => {
     if (usageCount > 0) {
@@ -120,6 +134,8 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                         const name = att.title || att.original_filename || "Document";
                         const usageCount = att.usageCount ?? 0;
                         const isInUse = usageCount > 0;
+                        const status = att.latestJob?.status ?? att.import_status;
+                        const canAttach = status === "completed";
                         return (
                         <li key={att.id} className="flex items-center justify-between gap-2 p-2 hover:bg-surface-subtle">
                           <div className="flex items-center gap-3">
@@ -148,6 +164,25 @@ export function AttachmentsManager({ isOpen, onClose, userId }: AttachmentsManag
                           </div>
 
                           <div className="flex items-center gap-2">
+                            {onSelectDocument && (
+                              <button
+                                type="button"
+                                onClick={() => handleAttach(att)}
+                                disabled={!canAttach}
+                                title={
+                                  canAttach
+                                    ? "Attach this file"
+                                    : "Only completed files can be attached"
+                                }
+                                className={`border border-border-default px-2 py-1 text-[11px] font-semibold transition-colors ${
+                                  canAttach
+                                    ? "bg-action-primary-bg text-action-primary-text hover:opacity-90"
+                                    : "cursor-not-allowed bg-surface-subtle text-text-muted"
+                                }`}
+                              >
+                                Attach
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDownload(att.fileUrl ?? null, name)}
                               className="text-text-muted hover:text-text-default"

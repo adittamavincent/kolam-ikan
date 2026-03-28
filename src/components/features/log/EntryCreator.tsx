@@ -53,6 +53,7 @@ import { getPersonaHoverClass } from "@/components/shared/getPersonaHoverClass";
 
 import { FileAttachmentItem } from "./FileAttachmentItem";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
+import AttachmentsManager from "@/components/layout/AttachmentsManager";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
@@ -360,6 +361,8 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const [filePickerTargetInstanceId, setFilePickerTargetInstanceId] = useState<
     string | null
   >(null);
+  const [attachmentManagerTargetInstanceId, setAttachmentManagerTargetInstanceId] =
+    useState<string | null>(null);
   const [importModalFiles, setImportModalFiles] = useState<
     Array<{ file: File; hash?: string }>
   >([]);
@@ -2131,7 +2134,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                               )
                             ) : (
                               /* FILE ATTACHMENTS BLOCK */
-                              <div className="space-y-2">
+                              <div className="p-2">
                               <div className="flex flex-wrap items-center gap-2">
                                 <label className="inline-flex cursor-pointer items-center gap-1.5 border border-border-default bg-surface-subtle px-2 py-1 text-xs font-medium text-text-default transition-colors hover:bg-surface-default">
                                   <Upload className="h-3 w-3" />
@@ -2158,8 +2161,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                   type="button"
                                   className="inline-flex items-center gap-1.5 border border-border-default bg-surface-subtle px-2 py-1 text-xs font-medium text-text-default transition-colors hover:bg-surface-default"
                                   onClick={() => {
-                                    setImportModalFiles([]);
-                                    setFilePickerTargetInstanceId(instanceId);
+                                    setAttachmentManagerTargetInstanceId(instanceId);
                                   }}
                                 >
                                   <FileText className="h-3 w-3" />
@@ -2174,7 +2176,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                                 )}
                               </div>
                               <div
-                                className={`space-y-2 rounded-sm border border-dashed px-2 py-2 transition-colors ${
+                                className={`rounded-sm border border-dashed pt-2 transition-colors ${
                                   dragOverAttachmentInstanceId === instanceId
                                     ? "border-action-primary-bg bg-primary-950"
                                     : effectiveAttachments.length === 0
@@ -2472,6 +2474,20 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
             );
           }}
           initialQueuedFiles={importModalFiles}
+        />
+
+        <AttachmentsManager
+          isOpen={!!attachmentManagerTargetInstanceId}
+          onClose={() => setAttachmentManagerTargetInstanceId(null)}
+          userId={streamId}
+          onSelectDocument={(document) => {
+            if (!attachmentManagerTargetInstanceId) return;
+            void attachDocumentToFileAttachmentSection(
+              attachmentManagerTargetInstanceId,
+              document,
+            );
+            setAttachmentManagerTargetInstanceId(null);
+          }}
         />
 
         <FileAttachmentPreviewDialog

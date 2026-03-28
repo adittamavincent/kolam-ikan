@@ -22,7 +22,7 @@ interface LogSectionProps {
   section: SectionWithPersona;
   streamId: string;
   sectionIndex?: number;
-  isLastSection?: boolean;
+  totalSections?: number;
   highlightTerm?: string;
   editable?: boolean;
   currentEditedContent?: PartialBlock[];
@@ -40,7 +40,7 @@ export function LogSection({
   section,
   streamId,
   sectionIndex = 0,
-  isLastSection = false,
+  totalSections = 1,
   highlightTerm,
   editable = false,
   currentEditedContent,
@@ -169,12 +169,20 @@ export function LogSection({
   const isAttachmentSection = section.section_type === "FILE_ATTACHMENT";
   const sectionLabel = isAttachmentSection ? "Attachment" : "Message";
   const SectionIcon = isAttachmentSection ? Paperclip : FileText;
+  const nestedConnector =
+    totalSections === 1
+      ? "single"
+      : sectionIndex === 0
+        ? "first"
+        : sectionIndex === totalSections - 1
+          ? "last"
+          : "middle";
 
   return (
     <SectionPreset
       persona={currentPersona || null}
       isAttachment={isAttachmentSection}
-      nestedConnector={isLastSection ? "last" : "branch"}
+      nestedConnector={nestedConnector}
       className="flex flex-col"
       headerClassName="bg-surface-subtle/55"
       bodyClassName="bg-surface-default/55"

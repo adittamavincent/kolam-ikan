@@ -440,7 +440,7 @@ function renderMarkdownBody(
     }
 
     nodes.push(
-      <p className="kolam-paragraph" key={`paragraph-${start}`}>
+      <p className="kolam-paragraph p-1" key={`paragraph-${start}`}>
         {renderInline(paragraphLines.join(" "))}
       </p>,
     );

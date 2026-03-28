@@ -14,7 +14,7 @@ interface ThreadFrameProps {
   children?: React.ReactNode;
   hideBody?: boolean;
   nested?: boolean;
-  nestedConnector?: "branch" | "last";
+  nestedConnector?: "single" | "first" | "middle" | "last";
   className?: string;
   frameClassName?: string;
   headerClassName?: string;
@@ -32,7 +32,7 @@ export function ThreadFrame({
   children,
   hideBody = false,
   nested = false,
-  nestedConnector = "branch",
+  nestedConnector = "single",
   className = "",
   frameClassName = "",
   headerClassName = "",
@@ -43,27 +43,54 @@ export function ThreadFrame({
   bodyStyle,
   footerStyle,
 }: ThreadFrameProps) {
-  const connectorTopClass = "top-[0.875rem]";
+  const connectorJointTop = "0.875rem";
+  const connectorGapBleed = "0.5rem";
+  const showTopSegment =
+    nestedConnector === "first" ||
+    nestedConnector === "middle" ||
+    nestedConnector === "last" ||
+    nestedConnector === "single";
+  const showBottomSegment =
+    nestedConnector === "first" || nestedConnector === "middle";
+  const topSegmentStyle =
+    nestedConnector === "first" || nestedConnector === "single"
+      ? {
+          top: "0",
+          height: connectorJointTop,
+        }
+      : {
+          top: `calc(-1 * ${connectorGapBleed})`,
+          height: `calc(${connectorJointTop} + ${connectorGapBleed})`,
+        };
 
   return (
     <div className={`${nested ? "relative pl-5" : ""} ${className}`.trim()}>
       {nested && (
         <>
+          {showTopSegment && (
+            <div
+              className="pointer-events-none absolute left-2 z-0 w-px bg-border-default"
+              style={topSegmentStyle}
+            />
+          )}
+          {showBottomSegment && (
+            <div
+              className="pointer-events-none absolute left-2 z-0 w-px bg-border-default"
+              style={{
+                top: connectorJointTop,
+                bottom: `calc(-1 * ${connectorGapBleed})`,
+              }}
+            />
+          )}
           <div
-            className={`pointer-events-none absolute left-2 w-px bg-border-default/35 ${
-              nestedConnector === "last"
-                ? `top-0 ${connectorTopClass}`
-                : "bottom-0 top-0"
-            }`}
-          />
-          <div
-            className={`pointer-events-none absolute ${connectorTopClass} left-2 h-px w-[0.6875rem] bg-border-default/35`}
+            className="pointer-events-none absolute left-2 z-0 h-px bg-border-default"
+            style={{ top: connectorJointTop, width: "0.6875rem" }}
           />
         </>
       )}
 
       <div
-        className={`relative border border-border-default/50 bg-surface-default ${frameClassName}`.trim()}
+        className={`relative z-10 border border-border-default/50 bg-surface-default ${frameClassName}`.trim()}
         style={frameStyle}
       >
         {header && (
@@ -76,7 +103,7 @@ export function ThreadFrame({
         )}
 
         {children && !hideBody && (
-          <div className={`p-1 ${bodyClassName}`.trim()} style={bodyStyle}>
+          <div className={`${bodyClassName}`.trim()} style={bodyStyle}>
             {children}
           </div>
         )}
@@ -97,7 +124,7 @@ export function ThreadFrame({
 interface SectionPresetProps {
   persona: Persona | null;
   isAttachment?: boolean;
-  nestedConnector?: "branch" | "last";
+  nestedConnector?: "single" | "first" | "middle" | "last";
   leftHeader?: React.ReactNode;
   centerHeader: React.ReactNode;
   rightHeader?: React.ReactNode;
@@ -111,7 +138,7 @@ interface SectionPresetProps {
 export function SectionPreset({
   persona,
   isAttachment = false,
-  nestedConnector = "branch",
+  nestedConnector = "single",
   leftHeader,
   centerHeader,
   rightHeader,

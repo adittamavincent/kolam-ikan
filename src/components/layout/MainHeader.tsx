@@ -35,6 +35,7 @@ import {
 type LogHeaderState = {
   streamId: string;
   currentBranch: string;
+  currentBranchHeadId?: string | null;
   commitCount: number;
   showStash: boolean;
   stashCount: number;
@@ -66,6 +67,7 @@ export function MainHeader() {
 
   // Extract streamId from pathname if we are on a stream page
   const parts = pathname?.split("/").filter(Boolean) || [];
+  const domainId = parts.length >= 1 ? parts[0] : null;
   const streamId = parts.length === 2 ? parts[1] : null;
 
   const { stream } = useStream(streamId || "");
@@ -164,11 +166,11 @@ export function MainHeader() {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border-default bg-surface-default px-3">
       <div className="flex min-w-0 items-center gap-3">
-        {streamId && !sidebarVisible && (
+        {domainId && !sidebarVisible && (
           <button
             onClick={showSidebar}
             className=" p-1.5 text-text-muted transition-all duration-200 hover:bg-surface-subtle hover:text-text-default focus-visible: focus-visible: focus-visible:"
-            title="Show sidebar"
+            title="Expand navigator"
           >
             <PanelLeft className="h-4 w-4" />
           </button>
@@ -373,17 +375,9 @@ export function MainHeader() {
                     <div className="my-1 h-px bg-border-subtle" />
                     <button
                       onClick={() => {
-                        const requested = window.prompt(
-                          "Branch name",
-                          `${logState.currentBranch ?? "main"}-new`,
-                        );
-                        if (requested === null) return;
-                        const branchName = requested.trim();
-                        if (!branchName) {
-                          window.alert("Branch name is required.");
-                          return;
-                        }
-                        emit("kolam_header_log_create_branch", { branchName });
+                        emit("kolam_header_log_open_create_branch", {
+                          defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
+                        });
                       }}
                       className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
                     >

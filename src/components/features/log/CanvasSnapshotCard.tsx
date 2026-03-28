@@ -8,7 +8,6 @@ import {
   GitCompare,
   RotateCcw,
   Sparkles,
-  User,
   X,
 } from "lucide-react";
 import { useCanvas } from "@/lib/hooks/useCanvas";
@@ -80,26 +79,21 @@ export function CanvasSnapshotCard({
 
   return (
     <>
-      <div className="relative group border border-dashed border-border-default/40 bg-action-primary-bg/3 overflow-hidden transition-all ">
+      <div className="relative group border border-dashed border-violet-500/30 bg-violet-500/6 overflow-hidden transition-all ">
         {/* Header */}
-        <div className="flex items-center px-2.5 py-1.5 bg-action-primary-bg/5 border-b border-dashed border-border-default/20">
+        <div className="flex items-center px-2.5 py-1.5 bg-violet-500/10 border-b border-dashed border-violet-500/25">
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
-              <Camera className="h-3 w-3 text-action-primary-bg" />
-              <span className="text-[10px] font-semibold text-action-primary-bg">
+              <Camera className="h-3 w-3 text-violet-500" />
+              <span className="text-[10px] font-semibold text-violet-500">
                 Canvas Snapshot
               </span>
               {isAIGenerated ? (
-                <span className="inline-flex items-center gap-0.5 border border-border-default/30 bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-semibold text-action-primary-bg">
+                <span className="inline-flex items-center gap-0.5 border border-violet-500/35 bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-violet-500">
                   <Sparkles className="h-2.5 w-2.5" />
                   AI
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-0.5 border border-border-default/60 bg-surface-subtle px-1.5 py-0.5 text-[9px] font-semibold text-text-muted">
-                  <User className="h-2.5 w-2.5" />
-                  Manual
-                </span>
-              )}
+              ) : null}
             </div>
             <span className="text-[10px] font-medium text-text-subtle font-mono">
               {new Date(version.created_at || "").toLocaleString(undefined, {

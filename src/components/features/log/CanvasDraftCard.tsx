@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
+import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
 import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
 import { contentToDiffText, lineDiff } from "@/lib/utils/canvasPreview";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
@@ -30,6 +31,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const [snapshotName, setSnapshotName] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const { currentBranch, currentBranchHeadId } = useLogBranchContext(streamId);
   // Local override that represents the most-recently committed snapshot
   // This helps the UI immediately compare against the newly created
   // snapshot before the server-side `latestCanvasVersion` has refetched.
@@ -125,6 +127,8 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
+        branch_name: currentBranch,
+        source_entry_id: currentBranchHeadId,
         ...buildStoredContentPayload(
           liveContent ?? canvasBlocks,
           liveMarkdown || canvasMarkdown,

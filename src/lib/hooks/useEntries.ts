@@ -33,6 +33,7 @@ interface AmendEntryInput {
 
 const ENTRIES_SELECT_FULL = `
  id, stream_id, is_draft, created_at, updated_at, deleted_at,
+ entry_kind, merge_source_commit_id, merge_source_branch_name, merge_target_branch_name,
  sections!inner (
  id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format,
  section_type, file_display_mode, sort_order, updated_at,
@@ -48,6 +49,7 @@ const ENTRIES_SELECT_FULL = `
 
 const ENTRIES_SELECT_LEGACY=`
  id, stream_id, is_draft, created_at, updated_at, deleted_at,
+ entry_kind, merge_source_commit_id, merge_source_branch_name, merge_target_branch_name,
  sections!inner (
  id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format,
  sort_order, updated_at,

@@ -1,13 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowUpRight,
+  Camera,
   Clock3,
+  Copy,
   GitBranch,
   GitCommitHorizontal,
+  GitMerge,
+  MoreHorizontal,
+  PencilLine,
   Tag as TagIcon,
 } from "lucide-react";
 
@@ -16,8 +29,16 @@ interface GraphNode {
   row: number;
   date: Date;
   shortHash: string;
+  nodeType: "entry" | "canvas_snapshot";
+  commitId: string | null;
+  sourceEntryId: string | null;
+  snapshotName: string | null;
+  snapshotBranchName: string | null;
   isHead: boolean;
   tag?: string;
+  entryKind: string;
+  mergeSourceCommitId: string | null;
+  mergeSourceBranchName: string | null;
   parentCommitId: string | null;
   lane: number;
   color: string;
@@ -32,9 +53,13 @@ interface BranchRef {
 
 interface CommitGraphProps {
   currentStreamId: string;
+  currentBranch: string;
   tags: Record<string, string>;
   latestEntryId: string | null;
   onEntryClick?: (streamId: string, entryId: string) => void;
+  onBranchCheckout?: (branchName: string) => void;
+  onBranchMergeIntoCurrent?: (branchName: string) => void;
+  onBranchRename?: (branchId: string, branchName: string) => void;
 }
 
 const ROW_H = 82;
@@ -101,6 +126,7 @@ function toRgba(hex: string, alpha: number): string {
 
 interface GraphEdge {
   key: string;
+  kind: "parent" | "merge";
   fromLane: number;
   toLane: number;
   fromRow: number;
@@ -128,19 +154,39 @@ function buildEdgePath(edge: GraphEdge): string {
     return `M ${x1} ${y1} L ${x2} ${y2}`;
   }
 
+  if (edge.kind === "merge") {
+    const mergeBendY = Math.min(y2 - 12, y1 + ROW_H * 0.8);
+    const curveMidY = y1 + (mergeBendY - y1) * 0.6;
+    return `M ${x1} ${y1} C ${x1} ${curveMidY}, ${x2} ${curveMidY}, ${x2} ${mergeBendY} L ${x2} ${y2}`;
+  }
+
   const midY = y1 + (y2 - y1) / 2;
   return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
 }
 
 export function CommitGraph({
   currentStreamId,
+  currentBranch,
   tags,
   latestEntryId,
   onEntryClick,
+  onBranchCheckout,
+  onBranchMergeIntoCurrent,
+  onBranchRename,
 }: CommitGraphProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [branchMenu, setBranchMenu] = useState<{
+    branch: BranchRef;
+    x: number;
+    y: number;
+  } | null>(null);
+  const [branchMenuPosition, setBranchMenuPosition] = useState({
+    left: 0,
+    top: 0,
+  });
+  const branchMenuRef = useRef<HTMLDivElement | null>(null);
 
   const { data: branches } = useQuery({
     queryKey: ["graph-branches", currentStreamId],
@@ -179,7 +225,9 @@ export function CommitGraph({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("entries")
-        .select("id, created_at, parent_commit_id")
+        .select(
+          "id, created_at, parent_commit_id, entry_kind, merge_source_commit_id, merge_source_branch_name",
+        )
         .eq("stream_id", currentStreamId)
         .eq("is_draft", false)
         .is("deleted_at", null)
@@ -190,6 +238,31 @@ export function CommitGraph({
         id: string;
         created_at: string | null;
         parent_commit_id: string | null;
+        entry_kind: string | null;
+        merge_source_commit_id: string | null;
+        merge_source_branch_name: string | null;
+      }>;
+    },
+    enabled: !!currentStreamId,
+    refetchOnMount: "always",
+  });
+
+  const { data: rawCanvasVersions } = useQuery({
+    queryKey: ["graph-canvas-versions", currentStreamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("canvas_versions")
+        .select("id, created_at, name, branch_name, source_entry_id")
+        .eq("stream_id", currentStreamId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        created_at: string | null;
+        name: string | null;
+        branch_name: string | null;
+        source_entry_id: string | null;
       }>;
     },
     enabled: !!currentStreamId,
@@ -227,6 +300,21 @@ export function CommitGraph({
           queryClient.invalidateQueries({
             queryKey: ["graph-branches", currentStreamId],
           });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "canvas_versions" },
+        (payload) => {
+          const next =
+            (payload.new as { stream_id?: string } | null) ??
+            (payload.old as { stream_id?: string } | null);
+
+          if (next?.stream_id === currentStreamId) {
+            queryClient.invalidateQueries({
+              queryKey: ["graph-canvas-versions", currentStreamId],
+            });
+          }
         },
       )
       .on(
@@ -285,9 +373,31 @@ export function CommitGraph({
       return { nodes: [] as GraphNode[], edges: [] as GraphEdge[], laneCount: 1 };
     }
 
+    const graphRows = [
+      ...rawEntries.map((entry) => ({
+        nodeType: "entry" as const,
+        graphId: `entry:${entry.id}`,
+        rawId: entry.id,
+        createdAt: entry.created_at,
+      })),
+      ...(rawCanvasVersions ?? []).map((snapshot) => ({
+        nodeType: "canvas_snapshot" as const,
+        graphId: `canvas:${snapshot.id}`,
+        rawId: snapshot.id,
+        createdAt: snapshot.created_at,
+      })),
+    ].sort((a, b) => {
+      const dateA = new Date(a.createdAt ?? 0).getTime();
+      const dateB = new Date(b.createdAt ?? 0).getTime();
+      if (dateA !== dateB) return dateB - dateA;
+      return b.rawId.localeCompare(a.rawId);
+    });
+
     const entryById = new Map(rawEntries.map((entry) => [entry.id, entry]));
-    const rowById = new Map(rawEntries.map((entry, index) => [entry.id, index]));
-    const laneByCommitId = new Map<string, number>();
+    const snapshotById = new Map(
+      (rawCanvasVersions ?? []).map((snapshot) => [snapshot.id, snapshot]),
+    );
+    const rowById = new Map(graphRows.map((row, index) => [row.graphId, index]));
     const colorByCommitId = new Map<string, string>();
 
     const effectiveBranches = [...orderedBranches];
@@ -301,57 +411,169 @@ export function CommitGraph({
       });
     }
 
-    effectiveBranches.forEach((branch, lane) => {
+    // Build a stable color hint by tracing each branch ancestry, independent of lane layout.
+    effectiveBranches.forEach((branch) => {
       let cursor = branch.head_commit_id ?? null;
 
       while (cursor) {
-        if (laneByCommitId.has(cursor)) break;
-
-        laneByCommitId.set(cursor, lane);
-        colorByCommitId.set(cursor, branch.color);
+        if (!colorByCommitId.has(cursor)) {
+          colorByCommitId.set(cursor, branch.color);
+        }
         cursor = entryById.get(cursor)?.parent_commit_id ?? null;
       }
     });
 
+    const activeCommitByLane: Array<string | null> = [];
     const nextNodes: GraphNode[] = [];
     const nextEdges: GraphEdge[] = [];
-    let maxLaneCount = Math.max(effectiveBranches.length, 1);
+    let maxLaneCount = 1;
 
-    rawEntries.forEach((entry, row) => {
-      const refs = branchRefsByCommitId.get(entry.id) ?? [];
-      const lane = laneByCommitId.get(entry.id) ?? 0;
+    graphRows.forEach((graphRow, row) => {
+      const entry =
+        graphRow.nodeType === "entry"
+          ? entryById.get(graphRow.rawId) ?? null
+          : null;
+      const snapshot =
+        graphRow.nodeType === "canvas_snapshot"
+          ? snapshotById.get(graphRow.rawId) ?? null
+          : null;
+
+      const desiredCommitId =
+        graphRow.nodeType === "entry"
+          ? `entry:${graphRow.rawId}`
+          : snapshot?.source_entry_id
+            ? `entry:${snapshot.source_entry_id}`
+            : null;
+
+      let lane =
+        desiredCommitId
+          ? activeCommitByLane.findIndex((commitId) => commitId === desiredCommitId)
+          : -1;
+      if (lane === -1) {
+        lane = activeCommitByLane.findIndex((commitId) => commitId === null);
+      }
+      if (lane === -1) {
+        lane = activeCommitByLane.length;
+        activeCommitByLane.push(desiredCommitId);
+      } else {
+        activeCommitByLane[lane] = desiredCommitId;
+      }
+
+      const refs = entry ? branchRefsByCommitId.get(entry.id) ?? [] : [];
       const color =
         refs[0]?.color ??
-        colorByCommitId.get(entry.id) ??
+        (entry ? colorByCommitId.get(entry.id) : undefined) ??
+        (graphRow.nodeType === "canvas_snapshot" ? "#a855f7" : undefined) ??
         BRANCH_COLORS[lane % BRANCH_COLORS.length];
 
       nextNodes.push({
-        id: entry.id,
+        id: graphRow.graphId,
         row,
-        date: new Date(entry.created_at ?? 0),
-        shortHash: shortHash(entry.id),
-        isHead: entry.id === latestEntryId,
-        tag: tags[entry.id],
-        parentCommitId: entry.parent_commit_id,
+        date: new Date(graphRow.createdAt ?? 0),
+        shortHash: shortHash(graphRow.rawId),
+        nodeType: graphRow.nodeType,
+        commitId: entry?.id ?? null,
+        sourceEntryId: snapshot?.source_entry_id ?? null,
+        snapshotName: snapshot?.name ?? null,
+        snapshotBranchName: snapshot?.branch_name ?? null,
+        isHead: entry?.id === latestEntryId,
+        tag: entry ? tags[entry.id] : undefined,
+        entryKind:
+          graphRow.nodeType === "entry" ? entry?.entry_kind ?? "commit" : "canvas_snapshot",
+        mergeSourceCommitId: entry?.merge_source_commit_id ?? null,
+        mergeSourceBranchName: entry?.merge_source_branch_name ?? null,
+        parentCommitId: entry?.parent_commit_id ?? null,
         lane,
         color,
       });
 
-      if (entry.parent_commit_id) {
-        const parentRow = rowById.get(entry.parent_commit_id);
-        if (parentRow !== undefined) {
-          const parentLane = laneByCommitId.get(entry.parent_commit_id) ?? 0;
-          nextEdges.push({
-            key: `parent-${entry.id}`,
-            fromLane: lane,
-            toLane: parentLane,
-            fromRow: row,
-            toRow: parentRow,
-            color,
-          });
-          maxLaneCount = Math.max(maxLaneCount, lane + 1, parentLane + 1);
+      const primaryParentId =
+        graphRow.nodeType === "entry"
+          ? (entry?.parent_commit_id ?? null)
+          : (snapshot?.source_entry_id ?? null);
+      if (primaryParentId) {
+        const parentGraphId = `entry:${primaryParentId}`;
+        const parentRow = rowById.get(parentGraphId);
+        if (parentRow === undefined) {
+          activeCommitByLane[lane] = null;
+        } else {
+        const existingParentLane = activeCommitByLane.findIndex(
+          (commitId, laneIndex) => laneIndex !== lane && commitId === parentGraphId,
+        );
+        const parentLane = existingParentLane >= 0 ? existingParentLane : lane;
+
+        nextEdges.push({
+          key: `parent-${graphRow.graphId}`,
+          kind: "parent",
+          fromLane: lane,
+          toLane: parentLane,
+          fromRow: row,
+          toRow: parentRow,
+          color,
+        });
+
+        if (existingParentLane >= 0) {
+          activeCommitByLane[lane] = null;
+        } else {
+          activeCommitByLane[lane] = parentGraphId;
+        }
+        }
+      } else {
+        activeCommitByLane[lane] = null;
+      }
+
+      if (entry?.merge_source_commit_id) {
+        const mergeSourceGraphId = `entry:${entry.merge_source_commit_id}`;
+        const mergeSourceRow = rowById.get(mergeSourceGraphId);
+        if (mergeSourceRow === undefined) {
+          // Merge source outside loaded set; skip edge for this viewport.
+        } else {
+        const existingMergeLane = activeCommitByLane.findIndex(
+          (commitId) => commitId === mergeSourceGraphId,
+        );
+
+        let mergeSourceLane = existingMergeLane;
+        if (mergeSourceLane === -1) {
+          mergeSourceLane = activeCommitByLane.findIndex(
+            (commitId, laneIndex) => commitId === null && laneIndex > lane,
+          );
+        }
+        if (mergeSourceLane === -1) {
+          mergeSourceLane = activeCommitByLane.findIndex((commitId) => commitId === null);
+        }
+        if (mergeSourceLane === -1) {
+          mergeSourceLane = activeCommitByLane.length;
+          activeCommitByLane.push(mergeSourceGraphId);
+        } else if (activeCommitByLane[mergeSourceLane] === null) {
+          activeCommitByLane[mergeSourceLane] = mergeSourceGraphId;
+        }
+
+        const mergeSourceRefs = branchRefsByCommitId.get(entry.merge_source_commit_id) ?? [];
+        const mergeSourceColor =
+          mergeSourceRefs[0]?.color ??
+          colorByCommitId.get(entry.merge_source_commit_id) ??
+          BRANCH_COLORS[mergeSourceLane % BRANCH_COLORS.length];
+
+        nextEdges.push({
+          key: `merge-${graphRow.graphId}-${entry.merge_source_commit_id}`,
+          kind: "merge",
+          fromLane: lane,
+          toLane: mergeSourceLane,
+          fromRow: row,
+          toRow: mergeSourceRow,
+          color: mergeSourceColor,
+        });
         }
       }
+
+      while (
+        activeCommitByLane.length > 0 &&
+        activeCommitByLane[activeCommitByLane.length - 1] === null
+      ) {
+        activeCommitByLane.pop();
+      }
+
+      maxLaneCount = Math.max(maxLaneCount, activeCommitByLane.length, lane + 1);
     });
 
     return {
@@ -359,10 +581,198 @@ export function CommitGraph({
       edges: nextEdges,
       laneCount: maxLaneCount,
     };
-  }, [branchRefsByCommitId, latestEntryId, orderedBranches, rawEntries, tags]);
+  }, [
+    branchRefsByCommitId,
+    latestEntryId,
+    orderedBranches,
+    rawCanvasVersions,
+    rawEntries,
+    tags,
+  ]);
 
   const graphWidth = Math.max(72, GRAPH_PAD_X * 2 + (laneCount - 1) * LANE_GAP);
   const graphHeight = Math.max(nodes.length * ROW_H, ROW_H);
+
+  const onlyMainBranchMode =
+    orderedBranches.length === 1 && orderedBranches[0]?.name === "main";
+  const useVirtualMainRef = onlyMainBranchMode && nodes.length > 0;
+
+  const virtualRefsByNodeId = useMemo(() => {
+    const map = new Map<string, BranchRef[]>();
+    if (!useVirtualMainRef) return map;
+
+    const mainBranch = orderedBranches[0] ?? null;
+    const latestNode = nodes[0] ?? null;
+    if (!latestNode) return map;
+
+    map.set(latestNode.id, [
+      {
+        id: mainBranch?.id ?? "__main__",
+        name: "main",
+        color: mainBranch?.color ?? BRANCH_COLORS[0],
+        headCommitId:
+          latestNode.commitId ?? latestNode.sourceEntryId ?? latestEntryId ?? "",
+      },
+    ]);
+
+    return map;
+  }, [latestEntryId, nodes, orderedBranches, useVirtualMainRef]);
+
+  const getNodeRefs = useCallback(
+    (node: GraphNode) => {
+      const commitRefs = node.commitId
+        ? branchRefsByCommitId.get(node.commitId) ?? []
+        : [];
+      const filteredCommitRefs = useVirtualMainRef
+        ? commitRefs.filter((ref) => ref.name !== "main")
+        : commitRefs;
+      const virtualRefs = virtualRefsByNodeId.get(node.id) ?? [];
+
+      if (virtualRefs.length === 0) return filteredCommitRefs;
+      if (filteredCommitRefs.length === 0) return virtualRefs;
+
+      const merged = [...filteredCommitRefs];
+      for (const ref of virtualRefs) {
+        if (!merged.some((item) => item.name === ref.name)) {
+          merged.push(ref);
+        }
+      }
+      return merged;
+    },
+    [branchRefsByCommitId, useVirtualMainRef, virtualRefsByNodeId],
+  );
+
+  const clampMenuPosition = useCallback(
+    (x: number, y: number, menuWidth: number, menuHeight: number) => {
+      if (typeof window === "undefined") return { left: x, top: y };
+
+      const VIEWPORT_PADDING = 8;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      let nextLeft = x;
+      let nextTop = y;
+
+      if (nextLeft + menuWidth + VIEWPORT_PADDING > viewportWidth) {
+        nextLeft = viewportWidth - menuWidth - VIEWPORT_PADDING;
+      }
+
+      if (nextTop + menuHeight + VIEWPORT_PADDING > viewportHeight) {
+        nextTop = viewportHeight - menuHeight - VIEWPORT_PADDING;
+      }
+
+      return {
+        left: Math.max(VIEWPORT_PADDING, nextLeft),
+        top: Math.max(VIEWPORT_PADDING, nextTop),
+      };
+    },
+    [],
+  );
+
+  const recalculateBranchMenuPosition = useCallback(() => {
+    if (!branchMenu || typeof window === "undefined" || !branchMenuRef.current) {
+      return;
+    }
+
+    const menuRect = branchMenuRef.current.getBoundingClientRect();
+    const next = clampMenuPosition(
+      branchMenu.x,
+      branchMenu.y,
+      menuRect.width,
+      menuRect.height,
+    );
+
+    setBranchMenuPosition((prev) =>
+      prev.left === next.left && prev.top === next.top ? prev : next,
+    );
+  }, [branchMenu, clampMenuPosition]);
+
+  useLayoutEffect(() => {
+    if (!branchMenu) return;
+    recalculateBranchMenuPosition();
+  }, [branchMenu, recalculateBranchMenuPosition]);
+
+  useEffect(() => {
+    if (!branchMenu || typeof window === "undefined") return;
+
+    const handleViewportChange = () => {
+      recalculateBranchMenuPosition();
+    };
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!branchMenuRef.current) return;
+      const targetNode = event.target as Node | null;
+      if (targetNode && !branchMenuRef.current.contains(targetNode)) {
+        setBranchMenu(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setBranchMenu(null);
+      }
+    };
+
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [branchMenu, recalculateBranchMenuPosition]);
+
+  const openBranchMenu = useCallback(
+    (event: Pick<MouseEvent, "clientX" | "clientY">, branch: BranchRef) => {
+      const estimated = clampMenuPosition(event.clientX, event.clientY, 220, 190);
+      setBranchMenuPosition(estimated);
+      setBranchMenu({ branch, x: event.clientX, y: event.clientY });
+    },
+    [clampMenuPosition],
+  );
+
+  const handleBranchMenuAction = useCallback(
+    async (action: "open" | "checkout" | "merge" | "rename" | "copy-sha") => {
+      if (!branchMenu) return;
+
+      const {
+        branch: { headCommitId, id, name },
+      } = branchMenu;
+      setBranchMenu(null);
+
+      switch (action) {
+        case "open":
+          if (headCommitId) onEntryClick?.(currentStreamId, headCommitId);
+          return;
+        case "checkout":
+          onBranchCheckout?.(name);
+          return;
+        case "merge":
+          onBranchMergeIntoCurrent?.(name);
+          return;
+        case "rename":
+          onBranchRename?.(id, name);
+          return;
+        case "copy-sha":
+          if (headCommitId) {
+            await navigator.clipboard.writeText(headCommitId);
+          }
+          return;
+      }
+    },
+    [
+      branchMenu,
+      currentStreamId,
+      onBranchCheckout,
+      onBranchMergeIntoCurrent,
+      onBranchRename,
+      onEntryClick,
+    ],
+  );
 
   if (!nodes.length) {
     return (
@@ -377,36 +787,105 @@ export function CommitGraph({
     <div className="relative h-full overflow-y-auto overflow-x-hidden bg-surface-default">
       {orderedBranches.length > 0 && (
         <div className="sticky top-0 z-20 border-b border-border-default/50 bg-surface-default/95 px-3 py-2 backdrop-blur-sm">
-          <div className="flex gap-2 overflow-x-auto">
+          <div className="flex gap-1.5 overflow-x-auto">
             {orderedBranches.map((branch) => {
-              const headCommitId = branch.head_commit_id ?? null;
-              const headHash = headCommitId ? shortHash(headCommitId) : "------";
+              const virtualMainNode =
+                useVirtualMainRef && branch.name === "main" ? nodes[0] : null;
+              const headCommitId =
+                virtualMainNode?.commitId ??
+                virtualMainNode?.sourceEntryId ??
+                branch.head_commit_id ??
+                null;
+              const headHash = virtualMainNode
+                ? virtualMainNode.shortHash
+                : headCommitId
+                  ? shortHash(headCommitId)
+                  : "------";
 
               return (
                 <button
                   key={branch.id}
                   type="button"
-                  className="inline-flex min-w-fit items-center gap-2 border border-border-default/50 bg-surface-default px-2.5 py-1.5 text-left transition-colors hover:bg-surface-hover"
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    openBranchMenu(event.nativeEvent, {
+                      id: branch.id,
+                      name: branch.name,
+                      color: branch.color,
+                      headCommitId: headCommitId ?? "",
+                    });
+                  }}
+                  className={`grid min-w-[124px] grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
+                    currentBranch === branch.name
+                      ? "border-action-primary-bg/35 bg-action-primary-bg/10"
+                      : "border-border-default/50 bg-surface-default hover:bg-surface-hover"
+                  }`}
                   style={{ boxShadow: `inset 3px 0 0 ${branch.color}` }}
                   onClick={() => {
-                    if (headCommitId) {
-                      onEntryClick?.(currentStreamId, headCommitId);
+                    if (branch.name !== currentBranch) {
+                      onBranchCheckout?.(branch.name);
                     }
                   }}
                   title={
-                    headCommitId
-                      ? `Open ${branch.name} head`
-                      : `${branch.name} has no head commit`
+                    branch.name === currentBranch
+                      ? `${branch.name} is checked out`
+                      : `Checkout ${branch.name}`
                   }
                 >
-                  <span
-                    className="h-2.5 w-2.5 shrink-0"
-                    style={{ backgroundColor: branch.color }}
-                  />
-                  <span className="text-[11px] font-semibold text-text-default">
-                    {branch.name}
+                  <span className="col-start-1 row-start-1 inline-flex min-w-0 items-center gap-1.5">
+                    <span
+                      className="h-2.5 w-2.5 shrink-0"
+                      style={{ backgroundColor: branch.color }}
+                    />
+                    <span className="truncate text-[11px] font-semibold text-text-default">
+                      {branch.name}
+                    </span>
                   </span>
-                  <code className="bg-surface-subtle px-1.5 py-0.5 text-[10px] text-text-muted">
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Branch actions for ${branch.name}`}
+                    className="col-start-2 row-start-1 inline-flex h-5 w-5 items-center justify-center border border-transparent text-text-muted transition-colors hover:border-border-default/50 hover:bg-surface-subtle hover:text-text-default"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      openBranchMenu(
+                        {
+                          clientX: rect.right,
+                          clientY: rect.bottom + 4,
+                        },
+                        {
+                          id: branch.id,
+                          name: branch.name,
+                          color: branch.color,
+                          headCommitId: headCommitId ?? "",
+                        },
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      openBranchMenu(
+                        {
+                          clientX: rect.right,
+                          clientY: rect.bottom + 4,
+                        },
+                        {
+                          id: branch.id,
+                          name: branch.name,
+                          color: branch.color,
+                          headCommitId: headCommitId ?? "",
+                        },
+                      );
+                    }}
+                    title={`Open branch actions for ${branch.name}`}
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </span>
+                  <code className="col-span-2 col-start-1 row-start-2 w-fit bg-surface-subtle px-1 py-0.5 text-[9px] text-text-muted">
                     {headHash}
                   </code>
                 </button>
@@ -417,6 +896,69 @@ export function CommitGraph({
       )}
 
       <div className="relative w-full min-w-0">
+        {branchMenu &&
+          createPortal(
+            <div
+              ref={branchMenuRef}
+              className="fixed z-40 w-56 overflow-hidden border border-border-default bg-surface-elevated p-1 shadow-2xl"
+              style={{
+                left: branchMenuPosition.left,
+                top: branchMenuPosition.top,
+              }}
+            >
+              <div className="border-b border-border-subtle px-2 py-1.5">
+                <div className="flex items-center gap-2 text-xs font-semibold text-text-default">
+                  <GitBranch className="h-3.5 w-3.5" />
+                  {branchMenu.branch.name}
+                </div>
+                <code className="mt-1 block text-[10px] text-text-muted">
+                  {branchMenu.branch.headCommitId
+                    ? shortHash(branchMenu.branch.headCommitId)
+                    : "no head"}
+                </code>
+              </div>
+              <button
+                onClick={() => void handleBranchMenuAction("open")}
+                disabled={!branchMenu.branch.headCommitId}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ArrowUpRight className="h-3.5 w-3.5 text-text-muted" />
+                Open head commit
+              </button>
+              <button
+                onClick={() => void handleBranchMenuAction("checkout")}
+                disabled={branchMenu.branch.name === currentBranch}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <GitBranch className="h-3.5 w-3.5 text-text-muted" />
+                Checkout branch
+              </button>
+              <button
+                onClick={() => void handleBranchMenuAction("merge")}
+                disabled={branchMenu.branch.name === currentBranch}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <GitMerge className="h-3.5 w-3.5 text-text-muted" />
+                Merge into {currentBranch}
+              </button>
+              <button
+                onClick={() => void handleBranchMenuAction("rename")}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+              >
+                <PencilLine className="h-3.5 w-3.5 text-text-muted" />
+                Rename branch
+              </button>
+              <button
+                onClick={() => void handleBranchMenuAction("copy-sha")}
+                disabled={!branchMenu.branch.headCommitId}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Copy className="h-3.5 w-3.5 text-text-muted" />
+                Copy head SHA
+              </button>
+            </div>,
+            document.body,
+          )}
         <svg
           className="pointer-events-none absolute left-0 top-0"
           width={graphWidth}
@@ -460,7 +1002,7 @@ export function CommitGraph({
           {nodes.map((node) => {
             const y = node.row * ROW_H + ROW_H / 2;
             const isHovered = hoveredId === node.id;
-            const refs = branchRefsByCommitId.get(node.id) ?? [];
+            const refs = getNodeRefs(node);
             const nodeColor = refs[0]?.color ?? node.color;
             const x = laneX(node.lane);
 
@@ -519,7 +1061,7 @@ export function CommitGraph({
 
         <div className="relative">
           {nodes.map((node) => {
-            const refs = branchRefsByCommitId.get(node.id) ?? [];
+            const refs = getNodeRefs(node);
             const isHovered = hoveredId === node.id;
             const accent = refs[0]?.color ?? "#568af2";
 
@@ -533,10 +1075,23 @@ export function CommitGraph({
                   gridTemplateColumns: `${graphWidth}px minmax(0, 1fr)`,
                   opacity: hoveredId && !isHovered ? 0.78 : 1,
                 }}
-                onClick={() => onEntryClick?.(currentStreamId, node.id)}
+                onClick={() => {
+                  if (node.commitId) {
+                    onEntryClick?.(currentStreamId, node.commitId);
+                    return;
+                  }
+
+                  if (node.sourceEntryId) {
+                    onEntryClick?.(currentStreamId, node.sourceEntryId);
+                  }
+                }}
                 onMouseEnter={() => setHoveredId(node.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                title={`Open commit ${node.shortHash}`}
+                title={
+                  node.nodeType === "entry"
+                    ? `Open commit ${node.shortHash}`
+                    : "Open linked commit in commit list"
+                }
               >
                 <div />
 
@@ -576,6 +1131,20 @@ export function CommitGraph({
                           </span>
                         )}
 
+                        {node.nodeType === "canvas_snapshot" && (
+                          <span className="inline-flex items-center gap-1 border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-500">
+                            <Camera className="h-3 w-3" />
+                            canvas
+                          </span>
+                        )}
+
+                        {node.entryKind === "merge" && (
+                          <span className="inline-flex items-center gap-1 border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
+                            <GitMerge className="h-3 w-3" />
+                            merge
+                          </span>
+                        )}
+
                         {refs.map((ref) => (
                           <span
                             key={ref.id}
@@ -593,11 +1162,29 @@ export function CommitGraph({
 
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-muted">
                         <span className="inline-flex items-center gap-1">
-                          <GitCommitHorizontal className="h-3.5 w-3.5" />
-                          {refs.length > 0
-                            ? `${refs.length} branch ref${refs.length === 1 ? "" : "s"} point here`
-                            : "Stream history commit"}
+                          {node.nodeType === "canvas_snapshot" ? (
+                            <Camera className="h-3.5 w-3.5" />
+                          ) : (
+                            <GitCommitHorizontal className="h-3.5 w-3.5" />
+                          )}
+                          {node.nodeType === "canvas_snapshot"
+                            ? node.snapshotName || "Canvas snapshot"
+                            : refs.length > 0
+                              ? `${refs.length} branch ref${refs.length === 1 ? "" : "s"} point here`
+                              : "Stream history commit"}
                         </span>
+                        {node.nodeType === "canvas_snapshot" && node.snapshotBranchName && (
+                          <span className="inline-flex items-center gap-1">
+                            <GitBranch className="h-3.5 w-3.5" />
+                            on {node.snapshotBranchName}
+                          </span>
+                        )}
+                        {node.entryKind === "merge" && node.mergeSourceBranchName && (
+                          <span className="inline-flex items-center gap-1">
+                            <GitMerge className="h-3.5 w-3.5" />
+                            merged from {node.mergeSourceBranchName}
+                          </span>
+                        )}
                         <span className="inline-flex items-center gap-1">
                           <Clock3 className="h-3.5 w-3.5" />
                           {formatAbsoluteDate(node.date)}
@@ -610,7 +1197,9 @@ export function CommitGraph({
                         {relativeTime(node.date)}
                       </div>
                       <div className="mt-2 inline-flex items-center gap-1 text-[11px] text-text-muted">
-                        Open in commit list
+                        {node.nodeType === "canvas_snapshot"
+                          ? "Open linked commit in commit list"
+                          : "Open in commit list"}
                         <ArrowUpRight className="h-3.5 w-3.5" />
                       </div>
                     </div>

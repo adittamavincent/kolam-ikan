@@ -14,6 +14,7 @@ import { z } from "zod";
 import { BlockSchema } from "@/lib/validation/entry";
 import { Json } from "@/lib/types/database.types";
 import { buildStoredContentPayload } from "@/lib/content-protocol";
+import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
 
 interface ResponseParserProps {
   streamId?: string;
@@ -366,6 +367,7 @@ export const ResponseParser = forwardRef<
     const [usePlainText, setUsePlainText] = useState(false);
 
     const supabase = createClient();
+    const { currentBranch, currentBranchHeadId } = useLogBranchContext(streamId ?? "");
     const queryClient = useQueryClient();
 
     const reset = () => {
@@ -734,6 +736,8 @@ export const ResponseParser = forwardRef<
             await supabase.from("canvas_versions").insert({
               canvas_id: canvas.id,
               stream_id: streamId,
+              branch_name: currentBranch,
+              source_entry_id: currentBranchHeadId,
               ...buildStoredContentPayload(mergedBlocks),
               name: "AI Bridge Update",
               summary: summaryText,

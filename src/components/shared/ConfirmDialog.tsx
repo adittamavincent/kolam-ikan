@@ -3,6 +3,7 @@
 import { Fragment, ReactNode, useEffect, useRef } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { AlertTriangle, Loader2 } from "lucide-react";
+import { DialogCard } from "@/components/shared/DialogCard";
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -90,32 +91,20 @@ export function ConfirmDialog({
 
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Transition.Child
-            as={Fragment}
-            enter="ease-out duration-200"
-            enterFrom="opacity-0 translate-y-2"
-            enterTo="opacity-100 translate-y-0 scale-100"
-            leave="ease-in duration-150"
-            leaveFrom="opacity-100 translate-y-0 scale-100"
-            leaveTo="opacity-0 translate-y-2"
-          >
-            <Dialog.Panel className="w-full max-w-lg border border-border-default bg-surface-default p-6 text-left shadow-2xl">
-              <div className="flex items-start gap-3">
-                <div className=" border border-border-default bg-surface-subtle/80 p-2">
-                  {contentIcon}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <Dialog.Title className="text-base font-semibold text-text-default">
-                    {title}
-                  </Dialog.Title>
-                  {description && (
-                    <Dialog.Description as="div" className="text-sm text-text-muted">
-                      {description}
-                    </Dialog.Description>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-6 flex items-center justify-end gap-2">
+          as={Fragment}
+          enter="ease-out duration-200"
+          enterFrom="opacity-0 translate-y-2"
+          enterTo="opacity-100 translate-y-0 scale-100"
+          leave="ease-in duration-150"
+          leaveFrom="opacity-100 translate-y-0 scale-100"
+          leaveTo="opacity-0 translate-y-2"
+        >
+            <DialogCard
+              title={title}
+              description={description}
+              icon={contentIcon}
+              actions={
+                <>
                 {!hideCancel && (
                   <button
                     type="button"
@@ -140,8 +129,9 @@ export function ConfirmDialog({
                   )}
                   {confirmLabel}
                 </button>
-              </div>
-            </Dialog.Panel>
+                </>
+              }
+            />
           </Transition.Child>
         </div>
       </Dialog>

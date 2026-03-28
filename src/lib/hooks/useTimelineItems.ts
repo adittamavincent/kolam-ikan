@@ -11,6 +11,12 @@ interface UseTimelineItemsOptions {
   sortOrder?: "newest" | "oldest";
 }
 
+function parseTimestamp(value: string | null | undefined): number {
+  if (!value) return 0;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
 export function useTimelineItems(
   streamId: string,
   entries: EntryWithSections[],
@@ -51,9 +57,18 @@ export function useTimelineItems(
     const merged = [...entryItems, ...snapshotItems];
 
     merged.sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+      const dateA = parseTimestamp(a.created_at);
+      const dateB = parseTimestamp(b.created_at);
+
+      if (dateA !== dateB) {
+        return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+      }
+
+      const idA = a.data.id;
+      const idB = b.data.id;
+      return sortOrder === "newest"
+        ? idB.localeCompare(idA)
+        : idA.localeCompare(idB);
     });
 
     return merged;

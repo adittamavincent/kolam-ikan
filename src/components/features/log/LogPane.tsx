@@ -19,6 +19,7 @@ import {
 } from "./FileAttachmentPreviewDialog";
 import { CanvasSnapshotCard } from "./CanvasSnapshotCard";
 import { CanvasDraftCard } from "./CanvasDraftCard";
+import { MergeCommitCard } from "./MergeCommitCard";
 import { useStream } from "@/lib/hooks/useStream";
 import { useTimelineItems } from "@/lib/hooks/useTimelineItems";
 import { CommitGraph } from "./CommitGraph";
@@ -46,12 +47,16 @@ import {
 import { createPortal } from "react-dom";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
 import { EntryWithSections, SectionFileAttachmentWithDocument } from "@/lib/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { PartialBlock } from "@/lib/types/editor";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { TextInputDialog } from "@/components/shared/TextInputDialog";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
-import { storedContentToMarkdown } from "@/lib/content-protocol";
+import {
+  cloneStoredContentFields,
+  storedContentToMarkdown,
+} from "@/lib/content-protocol";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -103,6 +108,47 @@ function compareBranchNames(a: string, b: string): number {
 }
 
 type EntryConfirmType = "reset" | "delete";
+type BranchRecord = {
+  id: string;
+  name: string;
+  head_commit_id: string | null;
+};
+type MergeSourceEntry = Pick<EntryWithSections, "id" | "created_at"> & {
+  sections: Array<
+    Pick<
+      EntryWithSections["sections"][number],
+      | "id"
+      | "persona_id"
+      | "persona_name_snapshot"
+      | "content_json"
+      | "raw_markdown"
+      | "content_format"
+      | "section_type"
+      | "file_display_mode"
+      | "sort_order"
+      | "section_attachments"
+    >
+  >;
+};
+type BranchDialogState =
+  | {
+      mode: "create";
+      title: string;
+      description: string;
+      confirmLabel: string;
+      initialName: string;
+      targetHeadCommitId: string | null;
+      switchToCreatedBranch?: boolean;
+    }
+  | {
+      mode: "rename";
+      title: string;
+      description: string;
+      confirmLabel: string;
+      initialName: string;
+      branchId: string;
+      currentName: string;
+    };
 
 function isParsedReadyStatus(status?: string | null): boolean {
   return status === "completed" || status === "done";
@@ -209,7 +255,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
         <div className="overflow-y-auto flex-1 font-mono text-[11px] ">
           {!prevEntry && (
             <div className="px-4 py-3 text-text-muted text-xs italic border-b border-border-default">
-              No previous entry — showing full content as additions
+              No parent commit found. Showing the full commit content as additions.
             </div>
           )}
           {diffs.length === 0 ? (
@@ -323,9 +369,16 @@ interface LogPaneProps {
   forceWidth?: number;
 }
 
+function parseTimestamp(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const ts = new Date(value).getTime();
+  return Number.isFinite(ts) ? ts : null;
+}
+
 // ─── LogPane ─────────────────────────────────────────────────────────────────
 
 export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
+  const queryClient = useQueryClient();
   const supabase = createClient();
   const [hasHydrated, setHasHydrated] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -376,6 +429,16 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
     null,
   );
+  const [branchDialog, setBranchDialog] = useState<BranchDialogState | null>(null);
+  const [branchDialogName, setBranchDialogName] = useState("");
+  const [branchDialogError, setBranchDialogError] = useState<string | null>(null);
+  const [branchDialogLoading, setBranchDialogLoading] = useState(false);
+  const [mergeConfirm, setMergeConfirm] = useState<{
+    sourceBranchName: string;
+    targetBranchName: string;
+    sourceHeadId: string;
+    mode: "fast-forward" | "commit";
+  } | null>(null);
   useEffect(() => {
     setHasHydrated(true);
   }, []);
@@ -599,7 +662,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("entries")
-        .select("id,parent_commit_id,created_at")
+        .select("id,parent_commit_id,merge_source_commit_id,created_at")
         .eq("stream_id", streamId)
         .eq("is_draft", false)
         .is("deleted_at", null);
@@ -617,7 +680,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const entryLineageById = useMemo(() => {
     const map = new Map<
       string,
-      { id: string; parent_commit_id: string | null; created_at: string | null }
+      {
+        id: string;
+        parent_commit_id: string | null;
+        merge_source_commit_id: string | null;
+        created_at: string | null;
+      }
     >();
 
     for (const entry of entryLineage ?? []) {
@@ -635,13 +703,452 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     ? entryLineageById.get(currentBranchHeadId) ?? null
     : null;
 
+  const isCommitAncestorOf = useCallback(
+    (ancestorId: string | null, descendantId: string | null) => {
+      if (!ancestorId || !descendantId) return false;
+
+      const visited = new Set<string>();
+      const stack: string[] = [descendantId];
+
+      while (stack.length > 0) {
+        const cursor = stack.pop() ?? null;
+        if (!cursor || visited.has(cursor)) continue;
+        if (cursor === ancestorId) return true;
+
+        visited.add(cursor);
+        const entry = entryLineageById.get(cursor);
+        if (entry?.parent_commit_id) stack.push(entry.parent_commit_id);
+        if (entry?.merge_source_commit_id) stack.push(entry.merge_source_commit_id);
+      }
+
+      return false;
+    },
+    [entryLineageById],
+  );
+
+  const refreshBranchState = useCallback(async () => {
+    await Promise.all([
+      refetchBranches(),
+      queryClient.invalidateQueries({ queryKey: ["graph-branches", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] }),
+    ]);
+  }, [queryClient, refetchBranches, streamId]);
+
+  const handleCheckoutBranch = useCallback(
+    (branchName: string) => {
+      setCurrentBranch(branchName);
+    },
+    [setCurrentBranch],
+  );
+
+  const openCreateBranchDialog = useCallback(
+    (options?: {
+      initialName?: string;
+      targetHeadCommitId?: string | null;
+      switchToCreatedBranch?: boolean;
+    }) => {
+      const initialName =
+        options?.initialName?.trim() || `${currentBranch || "main"}-new`;
+      setBranchDialog({
+        mode: "create",
+        title: "Create branch",
+        description: "Create a new branch pointer from the selected commit.",
+        confirmLabel: "Create branch",
+        initialName,
+        targetHeadCommitId:
+          options?.targetHeadCommitId === undefined
+            ? currentBranchHeadId
+            : options.targetHeadCommitId,
+        switchToCreatedBranch: options?.switchToCreatedBranch ?? true,
+      });
+      setBranchDialogName(initialName);
+      setBranchDialogError(null);
+    },
+    [currentBranch, currentBranchHeadId],
+  );
+
+  const openRenameBranchDialog = useCallback((branchId: string, branchName: string) => {
+    setBranchDialog({
+      mode: "rename",
+      title: "Rename branch",
+      description: "Update the branch name shown across the log and graph.",
+      confirmLabel: "Rename branch",
+      initialName: branchName,
+      branchId,
+      currentName: branchName,
+    });
+    setBranchDialogName(branchName);
+    setBranchDialogError(null);
+  }, []);
+
+  const closeBranchDialog = useCallback(() => {
+    if (branchDialogLoading) return;
+    setBranchDialog(null);
+    setBranchDialogName("");
+    setBranchDialogError(null);
+  }, [branchDialogLoading]);
+
+  const handleSubmitBranchDialog = useCallback(async () => {
+    if (!branchDialog) return;
+
+    const nextName = branchDialogName.trim();
+    if (!nextName) {
+      setBranchDialogError("Branch name is required.");
+      return;
+    }
+
+    setBranchDialogLoading(true);
+    setBranchDialogError(null);
+
+    try {
+      if (branchDialog.mode === "create") {
+        const existingBranch =
+          branches?.find((branch) => branch.name === nextName) ?? null;
+
+        if (existingBranch) {
+          if (branchDialog.switchToCreatedBranch !== false) {
+            setCurrentBranch(existingBranch.name);
+          }
+          setBranchDialog(null);
+          setBranchDialogName("");
+          setBranchDialogError(null);
+          return;
+        }
+
+        const { error } = await supabase.from("branches").insert({
+          stream_id: streamId,
+          name: nextName,
+          head_commit_id: branchDialog.targetHeadCommitId,
+        });
+
+        if (error) throw error;
+
+        await refreshBranchState();
+        if (branchDialog.switchToCreatedBranch !== false) {
+          setCurrentBranch(nextName);
+        }
+      } else {
+        const existingBranch =
+          branches?.find(
+            (branch) =>
+              branch.name === nextName && branch.id !== branchDialog.branchId,
+          ) ?? null;
+
+        if (existingBranch) {
+          setBranchDialogError(`Branch "${nextName}" already exists.`);
+          return;
+        }
+
+        if (nextName !== branchDialog.currentName) {
+          const { error } = await supabase
+            .from("branches")
+            .update({ name: nextName })
+            .eq("id", branchDialog.branchId);
+
+          if (error) throw error;
+
+          await refreshBranchState();
+          if (currentBranch === branchDialog.currentName) {
+            setCurrentBranch(nextName);
+          }
+        }
+      }
+
+      setBranchDialog(null);
+      setBranchDialogName("");
+      setBranchDialogError(null);
+    } catch (error) {
+      const message = getSupabaseErrorMessage(error);
+      console.error("Failed to save branch dialog:", message, error);
+      setBranchDialogError(message);
+    } finally {
+      setBranchDialogLoading(false);
+    }
+  }, [
+    branchDialog,
+    branchDialogName,
+    branches,
+    currentBranch,
+    refreshBranchState,
+    streamId,
+    supabase,
+  ]);
+
+  const handleRenameBranch = useCallback(
+    async (branchId: string, branchName: string) => {
+      openRenameBranchDialog(branchId, branchName);
+    },
+    [openRenameBranchDialog],
+  );
+
+  const invalidateAfterMergeCommit = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["latest-entry-id", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      }),
+      queryClient.invalidateQueries({ queryKey: ["graph-entries", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["branches", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["graph-branches", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] }),
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] }),
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] }),
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] }),
+    ]);
+  }, [queryClient, streamId]);
+
+  const loadEntryForMerge = useCallback(
+    async (entryId: string) => {
+      const { data, error } = await supabase
+        .from("entries")
+        .select(
+          `
+            id,
+            created_at,
+            sections (
+              id,
+              persona_id,
+              persona_name_snapshot,
+              content_json,
+              raw_markdown,
+              content_format,
+              section_type,
+              file_display_mode,
+              sort_order,
+              section_attachments (
+                document_id,
+                sort_order,
+                title_snapshot,
+                annotation_text,
+                referenced_persona_id,
+                referenced_page
+              )
+            )
+          `,
+        )
+        .eq("id", entryId)
+        .single();
+
+      if (error) throw error;
+
+      const sourceEntry = data as MergeSourceEntry;
+      sourceEntry.sections = [...(sourceEntry.sections ?? [])].sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0),
+      );
+
+      return sourceEntry;
+    },
+    [supabase],
+  );
+
+  const createMergedCommitFromSource = useCallback(
+    async (sourceEntry: MergeSourceEntry, sourceBranchName: string) => {
+      const { data: newEntry, error: entryError } = await supabase
+        .from("entries")
+        .insert({
+          stream_id: streamId,
+          parent_commit_id: currentBranchHeadId,
+          entry_kind: "merge",
+          merge_source_commit_id: sourceEntry.id,
+          merge_source_branch_name: sourceBranchName,
+          merge_target_branch_name: currentBranch,
+        })
+        .select("id")
+        .single();
+
+      if (entryError || !newEntry) {
+        throw entryError ?? new Error("Failed to create merge commit entry");
+      }
+
+      const sectionsToInsert = (sourceEntry.sections ?? []).map((section, index) => ({
+        entry_id: newEntry.id,
+        ...cloneStoredContentFields(section),
+        persona_id: section.persona_id,
+        persona_name_snapshot: section.persona_name_snapshot,
+        section_type: section.section_type,
+        file_display_mode: section.file_display_mode,
+        sort_order: index,
+      }));
+
+      let insertedSections: Array<{ id: string; sort_order: number | null }> = [];
+
+      if (sectionsToInsert.length > 0) {
+        const { data, error: sectionsError } = await supabase
+          .from("sections")
+          .insert(sectionsToInsert)
+          .select("id, sort_order");
+
+        if (sectionsError) throw sectionsError;
+        insertedSections = data ?? [];
+      }
+
+      const attachmentInserts = insertedSections.flatMap((insertedSection) => {
+        const sourceSection =
+          sourceEntry.sections?.[insertedSection.sort_order ?? 0] ?? null;
+        return (
+          sourceSection?.section_attachments?.map((attachment, idx) => ({
+            section_id: insertedSection.id,
+            document_id: attachment.document_id,
+            sort_order: idx,
+            title_snapshot: attachment.title_snapshot,
+            annotation_text: attachment.annotation_text,
+            referenced_persona_id: attachment.referenced_persona_id,
+            referenced_page: attachment.referenced_page,
+          })) ?? []
+        );
+      });
+
+      if (attachmentInserts.length > 0) {
+        const { error: attachmentsError } = await supabase
+          .from("section_attachments")
+          .insert(attachmentInserts);
+
+        if (attachmentsError) throw attachmentsError;
+      }
+
+      if (currentBranchRecord) {
+        const { error: branchError } = await supabase
+          .from("branches")
+          .update({ head_commit_id: newEntry.id })
+          .eq("id", currentBranchRecord.id);
+
+        if (branchError) throw branchError;
+      }
+
+      return newEntry.id;
+    },
+    [currentBranch, currentBranchHeadId, currentBranchRecord, streamId, supabase],
+  );
+
+  const handleConfirmMerge = useCallback(async () => {
+    if (!mergeConfirm) return;
+
+    if (mergeConfirm.mode === "fast-forward") {
+      const targetBranch = currentBranchRecord as BranchRecord | null;
+
+      try {
+        if (targetBranch) {
+          const { error } = await supabase
+            .from("branches")
+            .update({ head_commit_id: mergeConfirm.sourceHeadId })
+            .eq("id", targetBranch.id);
+
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("branches").insert({
+            stream_id: streamId,
+            name: currentBranch,
+            head_commit_id: mergeConfirm.sourceHeadId,
+          });
+
+          if (error) throw error;
+        }
+
+        await refreshBranchState();
+        setMergeConfirm(null);
+      } catch (error) {
+        const message = getSupabaseErrorMessage(error);
+        console.error("Failed to fast-forward branch:", message, error);
+        window.alert(`Failed to merge branch: ${message}`);
+      }
+
+      return;
+    }
+
+    try {
+      const sourceEntry = await loadEntryForMerge(mergeConfirm.sourceHeadId);
+      await createMergedCommitFromSource(
+        sourceEntry,
+        mergeConfirm.sourceBranchName,
+      );
+      await invalidateAfterMergeCommit();
+      setMergeConfirm(null);
+    } catch (error) {
+      const message = getSupabaseErrorMessage(error);
+      console.error("Failed to create merge commit:", message, error);
+      window.alert(`Failed to merge branch: ${message}`);
+    }
+  }, [
+    createMergedCommitFromSource,
+    currentBranch,
+    currentBranchRecord,
+    invalidateAfterMergeCommit,
+    loadEntryForMerge,
+    mergeConfirm,
+    refreshBranchState,
+    streamId,
+    supabase,
+  ]);
+
+  const handleMergeBranchIntoCurrent = useCallback(
+    async (sourceBranchName: string) => {
+      if (sourceBranchName === currentBranch) return;
+
+      const sourceBranch =
+        (branches?.find((branch) => branch.name === sourceBranchName) as
+          | BranchRecord
+          | undefined) ?? null;
+
+      if (!sourceBranch) {
+        window.alert(`Branch "${sourceBranchName}" was not found.`);
+        return;
+      }
+
+      const sourceHeadId = sourceBranch.head_commit_id;
+      if (!sourceHeadId) {
+        window.alert(`Branch "${sourceBranchName}" does not have a head commit yet.`);
+        return;
+      }
+
+      if (currentBranchHeadId === sourceHeadId) {
+        window.alert(`${currentBranch} is already up to date with ${sourceBranchName}.`);
+        return;
+      }
+
+      if (currentBranchHeadId && isCommitAncestorOf(sourceHeadId, currentBranchHeadId)) {
+        window.alert(`${currentBranch} already contains ${sourceBranchName}.`);
+        return;
+      }
+
+      if (currentBranchHeadId && !isCommitAncestorOf(currentBranchHeadId, sourceHeadId)) {
+        setMergeConfirm({
+          sourceBranchName,
+          targetBranchName: currentBranch,
+          sourceHeadId,
+          mode: "commit",
+        });
+        return;
+      }
+      setMergeConfirm({
+        sourceBranchName,
+        targetBranchName: currentBranch,
+        sourceHeadId,
+        mode: "fast-forward",
+      });
+    },
+    [
+      branches,
+      currentBranch,
+      currentBranchHeadId,
+      isCommitAncestorOf,
+    ],
+  );
+
   const reachableCommitIds = useMemo(() => {
     const ids = new Set<string>();
-    let cursor = currentBranchHeadId;
+    const stack = currentBranchHeadId ? [currentBranchHeadId] : [];
 
-    while (cursor && !ids.has(cursor)) {
+    while (stack.length > 0) {
+      const cursor = stack.pop() ?? null;
+      if (!cursor || ids.has(cursor)) continue;
+
       ids.add(cursor);
-      cursor = entryLineageById.get(cursor)?.parent_commit_id ?? null;
+      const entry = entryLineageById.get(cursor);
+      if (entry?.parent_commit_id) stack.push(entry.parent_commit_id);
+      if (entry?.merge_source_commit_id) stack.push(entry.merge_source_commit_id);
     }
 
     return ids;
@@ -798,7 +1305,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
     switch (action) {
       case "copy-sha":
-        await navigator.clipboard.writeText(shortHash(entry.id));
+        await navigator.clipboard.writeText(entry.id);
         break;
       case "copy-content": {
         const text = extractText(entry);
@@ -811,71 +1318,21 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       case "branch": {
         const baseBranchName = currentBranch || "main";
         const defaultBranchName = `${baseBranchName}-${shortHash(entry.id)}`;
-        const requestedName = window.prompt("Branch name", defaultBranchName);
-        if (requestedName === null) break;
-
-        const branchName = requestedName.trim();
-        if (!branchName) {
-          window.alert("Branch name is required.");
-          break;
-        }
-
-        let targetBranch =
-          branches?.find((branch) => branch.name === branchName) ?? null;
-
-        if (!targetBranch) {
-          const { data, error } = await supabase
-            .from("branches")
-            .insert({
-              stream_id: streamId,
-              name: branchName,
-              head_commit_id: entry.id,
-            })
-            .select("id,name,stream_id,created_at,updated_at,head_commit_id")
-            .single();
-
-          if (error) {
-            const message = getSupabaseErrorMessage(error);
-            console.error("Failed to create branch:", message, error);
-            window.alert(`Failed to create branch: ${message}`);
-            break;
-          }
-
-          targetBranch = data;
-        }
-
-        if (targetBranch) {
-          const { error: branchUpdateError } = await supabase
-            .from("branches")
-            .update({ head_commit_id: entry.id })
-            .eq("id", targetBranch.id);
-
-          if (branchUpdateError) {
-            const message = getSupabaseErrorMessage(branchUpdateError);
-            console.error(
-              "Failed to move branch pointer:",
-              message,
-              branchUpdateError,
-            );
-            window.alert(`Failed to move branch pointer: ${message}`);
-            break;
-          }
-
-          await refetchBranches();
-          setCurrentBranch(branchName);
-        }
-
+        openCreateBranchDialog({
+          initialName: defaultBranchName,
+          targetHeadCommitId: entry.id,
+          switchToCreatedBranch: true,
+        });
         break;
       }
       case "revert":
         revertEntry.mutate(entry);
         break;
       case "diff": {
-        // find the previous entry in the flat sorted list
-        const flatEntries = branchEntries.filter((e) => !e.is_draft);
-        const idx = flatEntries.findIndex((e) => e.id === entry.id);
-        const prevEntry =
-          idx < flatEntries.length - 1 ? flatEntries[idx + 1] : null;
+        const parentEntryId = entryLineageById.get(entry.id)?.parent_commit_id ?? null;
+        const prevEntry = parentEntryId
+          ? branchEntries.find((candidate) => candidate.id === parentEntryId) ?? null
+          : null;
         setDiffTarget({ entry, prevEntry });
         break;
       }
@@ -985,25 +1442,34 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
-  const currentBranchCutoffMs = useMemo(() => {
-    if (!currentBranchHeadEntry?.created_at) return null;
-    const ts = new Date(currentBranchHeadEntry.created_at).getTime();
-    return Number.isFinite(ts) ? ts : null;
-  }, [currentBranchHeadEntry]);
+  const currentBranchCutoffMs = useMemo(
+    () => parseTimestamp(currentBranchHeadEntry?.created_at),
+    [currentBranchHeadEntry],
+  );
 
   const branchTimelineItems = useMemo(() => {
     if (isEntryLineageLoading) return [];
-    if (!currentBranchHeadId || currentBranchCutoffMs === null) return [];
 
     return timelineItems.filter((item) => {
       if (item.type === "entry") {
-        return reachableCommitIds.has(item.data.id);
+        return currentBranchHeadId ? reachableCommitIds.has(item.data.id) : false;
       }
 
+      const snapshot = item.data;
+      if (snapshot.source_entry_id) {
+        return reachableCommitIds.has(snapshot.source_entry_id);
+      }
+
+      if (snapshot.branch_name) {
+        return snapshot.branch_name === currentBranch;
+      }
+
+      if (currentBranchCutoffMs === null) return false;
       const itemTs = new Date(item.created_at).getTime();
       return Number.isFinite(itemTs) && itemTs <= currentBranchCutoffMs;
     });
   }, [
+    currentBranch,
     currentBranchCutoffMs,
     currentBranchHeadId,
     isEntryLineageLoading,
@@ -1193,37 +1659,16 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       }
     };
 
-    const onCreateBranch = async (event: Event) => {
-      const detail = (event as CustomEvent<{ branchName?: string }>).detail;
-      const branchName = detail?.branchName?.trim();
-      if (!branchName) return;
+    const onOpenCreateBranch = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ defaultBranchName?: string; targetHeadCommitId?: string | null }>
+      ).detail;
 
-      const existingBranch = branches?.find(
-        (branch) => branch.name === branchName,
-      );
-      if (existingBranch) {
-        setCurrentBranch(existingBranch.name);
-        return;
-      }
-
-      const { data: createdBranch, error: createError } = await supabase
-        .from("branches")
-        .insert({
-          stream_id: streamId,
-          name: branchName,
-          head_commit_id: currentBranchHeadId,
-        })
-        .select("id,name,stream_id,created_at,updated_at,head_commit_id")
-        .single();
-
-      if (createError || !createdBranch) {
-        console.error("Failed to create branch:", createError);
-        window.alert("Failed to create branch. Please try another name.");
-        return;
-      }
-
-      await refetchBranches();
-      setCurrentBranch(branchName);
+      openCreateBranchDialog({
+        initialName: detail?.defaultBranchName,
+        targetHeadCommitId: detail?.targetHeadCommitId,
+        switchToCreatedBranch: true,
+      });
     };
 
     const onSearch = (event: Event) => {
@@ -1246,8 +1691,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       onSetBranch as EventListener,
     );
     window.addEventListener(
-      "kolam_header_log_create_branch",
-      onCreateBranch as EventListener,
+      "kolam_header_log_open_create_branch",
+      onOpenCreateBranch as EventListener,
     );
     window.addEventListener(
       "kolam_header_log_search_term",
@@ -1274,8 +1719,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         onSetBranch as EventListener,
       );
       window.removeEventListener(
-        "kolam_header_log_create_branch",
-        onCreateBranch as EventListener,
+        "kolam_header_log_open_create_branch",
+        onOpenCreateBranch as EventListener,
       );
       window.removeEventListener(
         "kolam_header_log_search_term",
@@ -1284,12 +1729,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     };
   }, [
     handleExport,
-    branches,
-    branchEntries,
-    currentBranchHeadId,
-    supabase,
-    streamId,
-    refetchBranches,
+    openCreateBranchDialog,
     allVisibleCollapsed,
     setVisibleEntriesCollapsed,
   ]);
@@ -1310,6 +1750,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           sortOrder,
           searchTerm,
           branchNames,
+          currentBranchHeadId,
         },
       }),
     );
@@ -1325,6 +1766,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     sortOrder,
     searchTerm,
     branchNames,
+    currentBranchHeadId,
   ]);
 
   return (
@@ -1339,6 +1781,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           <div className="flex-1 overflow-hidden">
             <CommitGraph
               currentStreamId={streamId}
+              currentBranch={currentBranch}
               tags={tags}
               latestEntryId={latestEntryId ?? null}
               onEntryClick={(_streamId, entryId) => {
@@ -1350,6 +1793,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     ref.scrollIntoView({ behavior: "smooth", block: "center" });
                 }, 150);
               }}
+              onBranchCheckout={handleCheckoutBranch}
+              onBranchMergeIntoCurrent={handleMergeBranchIntoCurrent}
+              onBranchRename={handleRenameBranch}
             />
           </div>
         ) : (
@@ -1415,6 +1861,26 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                         hour: "numeric",
                         minute: "2-digit",
                       });
+
+                      if (entry.entry_kind === "merge") {
+                        return (
+                          <div
+                            key={entry.id}
+                            ref={(node) => {
+                              entryRefs.current[entry.id] = node;
+                            }}
+                            className={isStashed ? "opacity-50" : undefined}
+                          >
+                            <MergeCommitCard
+                              entry={entry}
+                              sourceHash={shortHash(entry.merge_source_commit_id ?? entry.id)}
+                              targetHash={shortHash(entry.parent_commit_id ?? entry.id)}
+                              createdAtText={createdAtText}
+                              onOpenInGraph={() => setGraphView(true)}
+                            />
+                          </div>
+                        );
+                      }
 
                       return (
                         <div
@@ -1585,10 +2051,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                         handleStartAmend(entry);
                                       }}
                                       className="inline-flex items-center gap-1 border border-border-default px-1 py-px text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
-                                      title="git commit --amend"
+                                      title="Amend commit"
                                     >
                                       <PencilLine className="h-3 w-3" />
-                                      --amend
+                                      Amend commit
                                     </button>
                                   ) : null}
                                 </div>
@@ -1613,9 +2079,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                       section={section}
                                       streamId={streamId}
                                       sectionIndex={sectionIndex}
-                                      isLastSection={
-                                        sectionIndex === entry.sections.length - 1
-                                      }
+                                      totalSections={entry.sections.length}
                                       onPreviewAttachment={openAttachmentPreview}
                                       editable={isAmending}
                                       currentEditedContent={
@@ -1749,21 +2213,21 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <Copy className="h-3.5 w-3.5 text-text-muted" />
-              Copy SHA
+              Copy commit SHA
             </button>
             <button
               onClick={() => handleContextAction("copy-content")}
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <Eye className="h-3.5 w-3.5 text-text-muted" />
-              Copy content
+              Copy commit content
             </button>
             <button
               onClick={() => handleContextAction("diff")}
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <GitCompare className="h-3.5 w-3.5 text-text-muted" />
-              Diff with previous
+              Compare with parent
             </button>
 
             <div className="my-1 h-px bg-border-subtle" />
@@ -1777,21 +2241,21 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <RotateCcw className="h-3.5 w-3.5 text-text-muted rotate-180" />
-              cherry-pick
+              Cherry-pick commit
             </button>
             <button
               onClick={() => handleContextAction("branch")}
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <GitBranch className="h-3.5 w-3.5 text-text-muted" />
-              branch from here
+              Create branch here
             </button>
             <button
               onClick={() => handleContextAction("revert")}
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <Undo2 className="h-3.5 w-3.5 text-text-muted" />
-              revert
+              Revert this commit
             </button>
             <button
               onClick={() => handleContextAction("tag")}
@@ -1799,8 +2263,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             >
               <Tag className="h-3.5 w-3.5 text-text-muted" />
               {tags[contextMenu.entry.id]
-                ? `tag: ${tags[contextMenu.entry.id]}`
-                : "tag"}
+                ? `Edit tag (${tags[contextMenu.entry.id]})`
+                : "Add tag"}
             </button>
             <button
               onClick={() => handleContextAction("stash")}
@@ -1810,13 +2274,13 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 <>
                   <EyeOff className="h-3.5 w-3.5 text-amber-500" />
                   <span className="text-amber-600 dark:text-amber-400">
-                    stash pop
+                    Unstash commit
                   </span>
                 </>
               ) : (
                 <>
                   <Archive className="h-3.5 w-3.5 text-text-muted" />
-                  stash
+                  Stash commit
                 </>
               )}
             </button>
@@ -1832,14 +2296,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
               <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-              reset --hard
+              Reset branch to this commit
             </button>
             <button
               onClick={() => handleContextAction("delete")}
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              rm (delete)
+              Delete commit
             </button>
           </div>,
           document.body,
@@ -1868,6 +2332,63 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           document.body,
         )}
     </div>
+      <ConfirmDialog
+        open={Boolean(mergeConfirm)}
+        title={
+          mergeConfirm
+            ? mergeConfirm.mode === "fast-forward"
+              ? `Fast-forward ${mergeConfirm.targetBranchName}?`
+              : `Merge ${mergeConfirm.sourceBranchName} into ${mergeConfirm.targetBranchName}?`
+            : ""
+        }
+        description={
+          mergeConfirm ? (
+            mergeConfirm.mode === "fast-forward" ? (
+              <div className="space-y-1">
+                <p className="text-xs font-mono text-text-default">
+                  {mergeConfirm.targetBranchName} {"->"} {shortHash(mergeConfirm.sourceHeadId)}
+                </p>
+                <p className="text-sm text-text-muted">
+                  This will move the current branch pointer forward without creating a new commit.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <p className="text-xs font-mono text-text-default">
+                  merge {mergeConfirm.sourceBranchName} into {mergeConfirm.targetBranchName}
+                </p>
+                <p className="text-sm text-text-muted">
+                  This app will create a new commit on {mergeConfirm.targetBranchName} using the source branch head content.
+                </p>
+              </div>
+            )
+          ) : null
+        }
+        confirmLabel={
+          mergeConfirm?.mode === "fast-forward" ? "Fast-forward" : "Create merge commit"
+        }
+        cancelLabel="Cancel"
+        onCancel={() => setMergeConfirm(null)}
+        onConfirm={() => void handleConfirmMerge()}
+      />
+      <TextInputDialog
+        open={Boolean(branchDialog)}
+        title={branchDialog?.title ?? ""}
+        description={branchDialog?.description}
+        value={branchDialogName}
+        label="Branch name"
+        placeholder="feature/new-branch"
+        confirmLabel={branchDialog?.confirmLabel ?? "Save"}
+        cancelLabel="Cancel"
+        loading={branchDialogLoading}
+        error={branchDialogError}
+        onChange={(value) => {
+          setBranchDialogName(value);
+          if (branchDialogError) setBranchDialogError(null);
+        }}
+        onCancel={closeBranchDialog}
+        onConfirm={() => void handleSubmitBranchDialog()}
+      />
       <ConfirmDialog
         open={Boolean(entryConfirm)}
         title={

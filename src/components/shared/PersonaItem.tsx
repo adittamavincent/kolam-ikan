@@ -7,7 +7,6 @@ import { ChevronDown, FileText } from "lucide-react";
 // PersonaIcon removed from this file (unused import)
 import { getPersonaHoverClass } from "./getPersonaHoverClass";
 import {
-  getPersonaScopeDescription,
   getPersonaTypeLabel,
 } from "@/lib/personas";
 
@@ -30,6 +29,8 @@ function PersonaButtonDisplay({
   showChevron = true,
   showMeta = false,
 }: PersonaButtonDisplayProps) {
+  const personaTypeLabel = getPersonaTypeLabel(persona?.type ?? "") || "Unknown";
+
   if (!persona) {
     return (
       <>
@@ -59,15 +60,20 @@ function PersonaButtonDisplay({
               {persona.name}
             </div>
             <div className="truncate text-[10px] text-text-muted">
-              {getPersonaTypeLabel(persona.type)} • {getPersonaScopeDescription(persona)}
+              {getPersonaTypeLabel(persona.type)}
             </div>
           </div>
         ) : (
-          <span
-            className={`${nameClass} truncate ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}
-          >
-            {persona.name}
-          </span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span
+              className={`${nameClass} truncate ${persona.is_shadow ? "text-amber-700 dark:text-amber-400" : ""}`.trim()}
+            >
+              {persona.name}
+            </span>
+            <span className="shrink-0 border border-border-default/50 bg-surface-subtle px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+              {personaTypeLabel}
+            </span>
+          </div>
         )}
       </div>
       {showChevron && <ChevronDown className="h-3 w-3 text-text-muted opacity-50 ml-2" />}
@@ -109,7 +115,7 @@ export function PersonaItem({
   title,
   menuProps = null,
 }: PersonaItemProps) {
-  const sharedClass = `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 px-2 py-1.5 text-xs transition-colors`;
+  const sharedClass = `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 px-2 py-1.5 text-xs transition-colors hover:bg-surface-subtle hover:text-text-default`;
   const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} text-left ${className}`;
   const nameClass = role === "local" ? "text-amber-700 dark:text-amber-400" : "";
   const resolvedShowMeta = showMeta ?? !compact;

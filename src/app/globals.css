@@ -284,6 +284,10 @@ body {
   min-height: 0;
 }
 
+.entry-creator .kolam-codemirror-root {
+  padding: 0.25rem;
+}
+
 .entry-creator .kolam-codemirror-root .cm-scroller {
   overflow: hidden;
 }

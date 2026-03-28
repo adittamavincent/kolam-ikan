@@ -159,6 +159,7 @@ export type Database = {
       }
       canvas_versions: {
         Row: {
+          branch_name: string | null
           canvas_id: string
           content_format: string
           content_json: Json
@@ -167,10 +168,12 @@ export type Database = {
           id: string
           name: string | null
           raw_markdown: string
+          source_entry_id: string | null
           stream_id: string
           summary: string | null
         }
         Insert: {
+          branch_name?: string | null
           canvas_id: string
           content_format?: string
           content_json?: Json
@@ -179,10 +182,12 @@ export type Database = {
           id?: string
           name?: string | null
           raw_markdown?: string
+          source_entry_id?: string | null
           stream_id: string
           summary?: string | null
         }
         Update: {
+          branch_name?: string | null
           canvas_id?: string
           content_format?: string
           content_json?: Json
@@ -191,6 +196,7 @@ export type Database = {
           id?: string
           name?: string | null
           raw_markdown?: string
+          source_entry_id?: string | null
           stream_id?: string
           summary?: string | null
         }
@@ -200,6 +206,13 @@ export type Database = {
             columns: ["canvas_id"]
             isOneToOne: false
             referencedRelation: "canvases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_versions_source_entry_id_fkey"
+            columns: ["source_entry_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
             referencedColumns: ["id"]
           },
           {
@@ -567,8 +580,12 @@ export type Database = {
         Row: {
           created_at: string | null
           deleted_at: string | null
+          entry_kind: string
           id: string
           is_draft: boolean
+          merge_source_branch_name: string | null
+          merge_source_commit_id: string | null
+          merge_target_branch_name: string | null
           parent_commit_id: string | null
           stream_id: string
           updated_at: string | null
@@ -576,8 +593,12 @@ export type Database = {
         Insert: {
           created_at?: string | null
           deleted_at?: string | null
+          entry_kind?: string
           id?: string
           is_draft?: boolean
+          merge_source_branch_name?: string | null
+          merge_source_commit_id?: string | null
+          merge_target_branch_name?: string | null
           parent_commit_id?: string | null
           stream_id: string
           updated_at?: string | null
@@ -585,13 +606,24 @@ export type Database = {
         Update: {
           created_at?: string | null
           deleted_at?: string | null
+          entry_kind?: string
           id?: string
           is_draft?: boolean
+          merge_source_branch_name?: string | null
+          merge_source_commit_id?: string | null
+          merge_target_branch_name?: string | null
           parent_commit_id?: string | null
           stream_id?: string
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "entries_merge_source_commit_id_fkey"
+            columns: ["merge_source_commit_id"]
+            isOneToOne: false
+            referencedRelation: "entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "entries_parent_commit_id_fkey"
             columns: ["parent_commit_id"]

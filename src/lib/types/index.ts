@@ -26,6 +26,7 @@ export const STREAM_KIND = {
 export type Entry = Database["public"]["Tables"]["entries"]["Row"];
 export type EntryInsert = Database["public"]["Tables"]["entries"]["Insert"];
 export type EntryUpdate = Database["public"]["Tables"]["entries"]["Update"];
+export type EntryKind = "commit" | "merge";
 
 export type Document = Database["public"]["Tables"]["documents"]["Row"];
 export type DocumentInsert =

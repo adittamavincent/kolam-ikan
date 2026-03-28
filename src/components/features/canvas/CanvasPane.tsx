@@ -4,6 +4,7 @@ import { useLayout } from "@/lib/hooks/useLayout";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasScroll } from "@/lib/hooks/useCanvasScroll";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
+import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
 import {
   MarkdownEditor,
   type MarkdownEditorHandle,
@@ -61,6 +62,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const [previewSession, setPreviewSession] = useState<PreviewSession | null>(null);
   const [editorSeed, setEditorSeed] = useState(0);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
+  const { currentBranch, currentBranchHeadId } = useLogBranchContext(streamId);
   const supabase = createClient();
   const queryClient = useQueryClient();
   const debouncedUpdateRef = useRef<
@@ -277,6 +279,8 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       const { error } = await supabase.from("canvas_versions").insert({
         canvas_id: canvas.id,
         stream_id: streamId,
+        branch_name: currentBranch,
+        source_entry_id: currentBranchHeadId,
         ...buildStoredContentPayload(
           liveContent ?? canvasBlocks,
           liveMarkdown || canvasMarkdown,

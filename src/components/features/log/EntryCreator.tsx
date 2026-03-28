@@ -1517,7 +1517,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           </div>
 
           {sections.length === 0 && (
-            <div className="border-b border-border-default/35 bg-surface-default/55 px-2 py-4 text-center text-xs text-text-muted">
+            <div className="bg-surface-default/55 px-2 py-4 text-center text-xs text-text-muted">
               Add a persona or attach a file to start building this entry.
             </div>
           )}
@@ -1589,9 +1589,13 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
                           persona={persona || null}
                           isAttachment={isAttachment}
                           nestedConnector={
-                            sectionIndex === sections.length - 1
-                              ? "last"
-                              : "branch"
+                            sections.length === 1
+                              ? "single"
+                              : sectionIndex === 0
+                                ? "first"
+                                : sectionIndex === sections.length - 1
+                                  ? "last"
+                                  : "middle"
                           }
                           className="flex flex-col"
                           headerClassName="bg-surface-subtle/50"

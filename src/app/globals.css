@@ -269,6 +269,38 @@ body {
   min-height: 8rem;
 }
 
+.entry-creator .kolam-codemirror-root .cm-editor {
+  height: auto;
+  min-height: calc(1.65em + 2px);
+}
+
+.entry-creator .kolam-codemirror-frame,
+.entry-creator .kolam-codemirror-root,
+.entry-creator .kolam-codemirror-root .cm-scroller {
+  height: auto;
+  min-height: 0;
+}
+
+.entry-creator .kolam-codemirror-root .cm-scroller {
+  overflow: hidden;
+}
+
+.log-pane .markdown-editor-readonly .kolam-codemirror-frame,
+.log-pane .markdown-editor-readonly .kolam-codemirror-root,
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-editor,
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-scroller {
+  height: auto;
+  min-height: 0;
+}
+
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-editor {
+  overflow: visible;
+}
+
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-scroller {
+  overflow: hidden;
+}
+
 .kolam-codemirror-root .cm-scroller {
   overflow: auto;
 }

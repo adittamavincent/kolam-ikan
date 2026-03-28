@@ -3,7 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { PartialBlock } from "@/lib/types/editor";
 import { SectionFileAttachmentInsert } from "@/lib/types";
-import { buildStoredContentPayload } from "@/lib/content-protocol";
+import {
+  buildStoredContentPayload,
+  blocksToStoredMarkdown,
+  storedContentToBlocks,
+  trimEmptyOuterMarkdownLines,
+} from "@/lib/content-protocol";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -561,6 +566,20 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
 
       for (let index = 0; index < meaningfulSections.length; index += 1) {
         const { draft } = meaningfulSections[index];
+        const normalizedMarkdown =
+          draft.sectionType === "PERSONA"
+            ? trimEmptyOuterMarkdownLines(
+                typeof draft.rawMarkdown === "string"
+                  ? draft.rawMarkdown
+                  : blocksToStoredMarkdown(draft.content),
+              )
+            : typeof draft.rawMarkdown === "string"
+              ? draft.rawMarkdown
+              : undefined;
+        const normalizedContent =
+          draft.sectionType === "PERSONA"
+            ? storedContentToBlocks({ raw_markdown: normalizedMarkdown })
+            : draft.content;
 
         let { data: insertedSection, error: sectionError } = await supabase
           .from("sections")
@@ -568,7 +587,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
             entry_id: newEntryId,
             persona_id: draft.personaId,
             persona_name_snapshot: draft.personaName ?? null,
-            ...buildStoredContentPayload(draft.content, draft.rawMarkdown),
+            ...buildStoredContentPayload(normalizedContent, normalizedMarkdown),
             sort_order: index,
             section_type: draft.sectionType,
             file_display_mode: draft.fileDisplayMode ?? "inline",
@@ -598,7 +617,7 @@ export function useDraftSystem({ streamId }: UseDraftSystemProps) {
                 entry_id: newEntryId,
                 persona_id: draft.personaId,
                 persona_name_snapshot: draft.personaName,
-                ...buildStoredContentPayload(draft.content, draft.rawMarkdown),
+                ...buildStoredContentPayload(normalizedContent, normalizedMarkdown),
                 sort_order: index,
               })
               .select("id")

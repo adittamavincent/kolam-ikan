@@ -15,6 +15,13 @@ function normalizeMarkdown(value: string | null | undefined): string {
   return typeof value === "string" ? value.replace(/\r\n?/g, "\n") : "";
 }
 
+export function trimEmptyOuterMarkdownLines(
+  value: string | null | undefined,
+): string {
+  const normalized = normalizeMarkdown(value);
+  return normalized.replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g, "");
+}
+
 function toTextContent(text: string) {
   return text.length > 0 ? [{ type: "text" as const, text, styles: {} }] : [];
 }

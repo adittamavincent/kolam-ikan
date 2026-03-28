@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BaseEditor from "@/components/shared/BaseEditor";
 import { findMarkdownTableBlocks } from "@/lib/markdownTables";
+import { EditorView } from "@codemirror/view";
 
 function createRect(left: number, top: number, width: number, height: number): DOMRect {
   return {
@@ -215,5 +216,52 @@ describe("BaseEditor live table interactions", () => {
     ) as HTMLElement | null;
     expect(indicator).not.toBeNull();
     expect(indicator?.style.left).toBeTruthy();
+  });
+
+  it("preserves the editor scroll position when reordering columns from the live table controls", async () => {
+    const scrollSnapshotSpy = vi.spyOn(EditorView.prototype, "scrollSnapshot");
+    const handleChange = vi.fn();
+    const { container } = render(
+      <BaseEditor
+        initialMarkdown={initialMarkdown}
+        onChange={handleChange}
+      />,
+    );
+    const firstHandle = container.querySelector(
+      '.cm-kolam-table-handle.is-column[data-index="0"]',
+    ) as HTMLButtonElement | null;
+
+    if (!firstHandle) {
+      throw new Error("Expected a column reorder handle");
+    }
+
+    mockRenderedTableGeometry(container);
+
+    fireEvent.pointerDown(firstHandle, {
+      button: 0,
+      clientX: 96,
+      clientY: 10,
+      pointerId: 34,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerMove(window, {
+      clientX: 280,
+      clientY: 10,
+      pointerId: 34,
+      pointerType: "mouse",
+    });
+    fireEvent.pointerUp(window, {
+      clientX: 280,
+      clientY: 10,
+      pointerId: 34,
+      pointerType: "mouse",
+    });
+
+    await waitFor(() => {
+      expect(handleChange).toHaveBeenCalled();
+    });
+
+    expect(scrollSnapshotSpy).toHaveBeenCalled();
+    scrollSnapshotSpy.mockRestore();
   });
 });

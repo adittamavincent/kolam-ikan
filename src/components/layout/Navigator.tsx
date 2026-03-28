@@ -23,6 +23,7 @@ import {
   useState,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useTransition,
 } from "react";
@@ -39,6 +40,7 @@ import {
 } from "@/lib/types";
 import { useSidebar } from "@/lib/hooks/useSidebar";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useNavigatorPreferences } from "@/lib/hooks/useNavigatorPreferences";
 import {
   applyOptimisticCabinetCreation,
   applyOptimisticStreamCreation,
@@ -736,6 +738,11 @@ export function Navigator({}: NavigatorProps) {
   const { hide: hideSidebar } = useSidebar();
   const { user } = useAuth();
   const userId = user?.id;
+  const {
+    expandedCabinetIds,
+    addExpandedCabinet,
+    toggleExpandedCabinet,
+  } = useNavigatorPreferences(domainId);
 
   const [draggedItem, setDraggedItem] = useState<{
     id: string;
@@ -744,9 +751,9 @@ export function Navigator({}: NavigatorProps) {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const autoExpandTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Track expanded cabinets
-  const [expandedCabinets, setExpandedCabinets] = useState<Set<string>>(
-    new Set(),
+  const expandedCabinets = useMemo(
+    () => new Set(expandedCabinetIds),
+    [expandedCabinetIds],
   );
   const [manualActiveNode, setManualActiveNode] = useState<{
     id: string;
@@ -818,7 +825,9 @@ export function Navigator({}: NavigatorProps) {
 
       if (id && !expandedCabinets.has(id)) {
         autoExpandTimerRef.current = setTimeout(() => {
-          setExpandedCabinets((prev) => new Set(prev).add(id));
+          if (domainId) {
+            addExpandedCabinet(domainId, id);
+          }
           autoExpandTimerRef.current = null;
         }, 200);
       }
@@ -873,8 +882,9 @@ export function Navigator({}: NavigatorProps) {
         id,
         updates: { parent_id: finalTargetId || null },
       });
-      if (finalTargetId)
-        setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
+      if (finalTargetId && domainId) {
+        addExpandedCabinet(domainId, finalTargetId);
+      }
     } else {
       if (isCabinetOnly && finalTargetId === null) return;
       const draggedStream = streams?.find((stream) => stream.id === id);
@@ -888,8 +898,9 @@ export function Navigator({}: NavigatorProps) {
         id,
         updates: { cabinet_id: finalTargetId || null },
       });
-      if (finalTargetId)
-        setExpandedCabinets((prev) => new Set(prev).add(finalTargetId));
+      if (finalTargetId && domainId) {
+        addExpandedCabinet(domainId, finalTargetId);
+      }
     }
     setDraggedItem(null);
   };
@@ -1067,19 +1078,15 @@ export function Navigator({}: NavigatorProps) {
         if (activeStream?.cabinet_id) {
           lastAutoExpandedStreamRef.current = activeStreamId;
           const frame = requestAnimationFrame(() => {
-            setExpandedCabinets((prev) => {
-              const next = new Set(prev);
-              if (activeStream.cabinet_id) {
-                next.add(activeStream.cabinet_id);
-              }
-              return next;
-            });
+            if (domainId && activeStream.cabinet_id) {
+              addExpandedCabinet(domainId, activeStream.cabinet_id);
+            }
           });
           return () => cancelAnimationFrame(frame);
         }
       }
     }
-  }, [activeStreamId, streams]);
+  }, [activeStreamId, addExpandedCabinet, domainId, streams]);
 
   const updateCabinetMutation = useMutation({
     mutationFn: async ({
@@ -1362,10 +1369,8 @@ export function Navigator({}: NavigatorProps) {
       );
 
       setJustCreatedStreamId(optimisticStream.id);
-      if (optimisticStream.cabinet_id) {
-        setExpandedCabinets((prev) =>
-          new Set(prev).add(optimisticStream.cabinet_id as string),
-        );
+      if (optimisticStream.cabinet_id && domainId) {
+        addExpandedCabinet(domainId, optimisticStream.cabinet_id as string);
       }
 
       return { previousStreams, optimisticId: optimisticStream.id };
@@ -1374,9 +1379,7 @@ export function Navigator({}: NavigatorProps) {
       if (!domainId || !data) return;
       setJustCreatedStreamId(data.id);
       if (data.cabinet_id) {
-        setExpandedCabinets((prev) =>
-          new Set(prev).add(data.cabinet_id as string),
-        );
+        addExpandedCabinet(domainId, data.cabinet_id as string);
       }
       router.push(`/${domainId}/${data.id}`);
     },
@@ -1401,15 +1404,9 @@ export function Navigator({}: NavigatorProps) {
   });
 
   const toggleCabinet = (cabinetId: string) => {
-    setExpandedCabinets((prev) => {
-      const next = new Set(prev);
-      if (next.has(cabinetId)) {
-        next.delete(cabinetId);
-      } else {
-        next.add(cabinetId);
-      }
-      return next;
-    });
+    if (domainId) {
+      toggleExpandedCabinet(domainId, cabinetId);
+    }
   };
 
   // Organize cabinets into a tree
@@ -1568,7 +1565,7 @@ export function Navigator({}: NavigatorProps) {
     }
 
     if (parentCabinetId) {
-      setExpandedCabinets((prev) => new Set(prev).add(parentCabinetId));
+      addExpandedCabinet(domainId, parentCabinetId);
     }
 
     setCreatingItem({ type: "cabinet", parentId: parentCabinetId ?? null });
@@ -1597,7 +1594,7 @@ export function Navigator({}: NavigatorProps) {
 
     if (targetCabinetId) {
       if (!cabinets?.some((cabinet) => cabinet.id === targetCabinetId)) return;
-      setExpandedCabinets((prev) => new Set(prev).add(targetCabinetId));
+      addExpandedCabinet(domainId, targetCabinetId);
     }
 
     setCreatingItem({ type: "stream", parentId: targetCabinetId ?? null });
@@ -1765,8 +1762,8 @@ export function Navigator({}: NavigatorProps) {
         id: moveTarget.id,
         updates: { parent_id: normalizedTarget },
       });
-      if (normalizedTarget) {
-        setExpandedCabinets((prev) => new Set(prev).add(normalizedTarget));
+      if (normalizedTarget && domainId) {
+        addExpandedCabinet(domainId, normalizedTarget);
       }
     } else {
       if (isCabinetOnly && normalizedTarget === null) {
@@ -1782,8 +1779,8 @@ export function Navigator({}: NavigatorProps) {
         id: moveTarget.id,
         updates: { cabinet_id: normalizedTarget },
       });
-      if (normalizedTarget) {
-        setExpandedCabinets((prev) => new Set(prev).add(normalizedTarget));
+      if (normalizedTarget && domainId) {
+        addExpandedCabinet(domainId, normalizedTarget);
       }
     }
     closeMoveDialog();

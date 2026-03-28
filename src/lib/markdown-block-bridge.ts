@@ -94,10 +94,14 @@ export function blocksToBridgeMarkdown(
   if (!Array.isArray(blocks)) return "";
 
   const guard = createTimeoutGuard(options.timeoutMs);
-  const out: string[] = [];
   const seen = new Set<MarkdownBlock>();
+  const segments: { markdown: string; type: string }[] = [];
 
-  function renderBlock(block: MarkdownBlock, indent = 0) {
+  function renderBlock(
+    block: MarkdownBlock,
+    target: string[],
+    indent = 0,
+  ) {
     guard();
 
     if (seen.has(block)) {
@@ -114,62 +118,58 @@ export function blocksToBridgeMarkdown(
         null) as Record<string, unknown> | null;
 
       if (block.type === "bulletListItem") {
-        out.push(`${indentStr}- ${wrapWithMeta(text, meta)}`);
+        target.push(`${indentStr}- ${wrapWithMeta(text, meta)}`);
         if (Array.isArray(block.children) && block.children.length > 0) {
-          for (const child of block.children) renderBlock(child, indent + 2);
+          for (const child of block.children) renderBlock(child, target, indent + 2);
         }
         return;
       }
 
       if (block.type === "numberedListItem") {
-        out.push(`${indentStr}1. ${wrapWithMeta(text, meta)}`);
+        target.push(`${indentStr}1. ${wrapWithMeta(text, meta)}`);
         if (Array.isArray(block.children) && block.children.length > 0) {
-          for (const child of block.children) renderBlock(child, indent + 2);
+          for (const child of block.children) renderBlock(child, target, indent + 2);
         }
         return;
       }
 
       if (block.type === "heading") {
         const level = (block.props && (block.props.level as number)) || 1;
-        out.push(`${indentStr}${"#".repeat(level)} ${text}`);
+        target.push(`${indentStr}${"#".repeat(level)} ${text}`);
         return;
       }
 
-      out.push(`${indentStr}${wrapWithMeta(text, meta)}`);
+      target.push(`${indentStr}${wrapWithMeta(text, meta)}`);
       if (Array.isArray(block.children) && block.children.length > 0) {
-        for (const child of block.children) renderBlock(child, indent + 2);
+        for (const child of block.children) renderBlock(child, target, indent + 2);
       }
     } finally {
       seen.delete(block);
     }
   }
 
-  for (const block of blocks) renderBlock(block, 0);
-
-  const joined: string[] = [];
-  let idx = 0;
-  while (idx < out.length) {
-    guard();
-
-    if (/^\s*([-\d]+\.|-)\s+/.test(out[idx])) {
-      const group: string[] = [];
-      while (
-        idx < out.length &&
-        (/^\s*([-\d]+\.|-)\s+/.test(out[idx]) || /^\s+$/.test(out[idx]))
-      ) {
-        guard();
-        group.push(out[idx]);
-        idx += 1;
-      }
-      joined.push(group.join("\n"));
-      continue;
-    }
-
-    joined.push(out[idx]);
-    idx += 1;
+  for (const block of blocks) {
+    const lines: string[] = [];
+    renderBlock(block, lines, 0);
+    segments.push({
+      markdown: lines.join("\n"),
+      type: block.type,
+    });
   }
 
-  return joined.join("\n\n");
+  return segments
+    .map((segment, index) => {
+      if (index === 0) return segment.markdown;
+
+      const previous = segments[index - 1];
+      const separator =
+        previous.type === "paragraph" && segment.type === "paragraph"
+          ? "\n\n"
+          : "\n";
+
+      return `${separator}${segment.markdown}`;
+    })
+    .join("");
 }
 
 // Parse a markdown string produced by `blocksToBridgeMarkdown` into simple MarkdownBlock[].

@@ -44,6 +44,7 @@ import { tags } from "@lezer/highlight";
 import { blocksToStoredMarkdown, storedContentToBlocks } from "@/lib/content-protocol";
 import {
   MARKDOWN_TABLE_OPTIONS,
+  buildMarkdownTableFromHeaderLine,
   findMarkdownTableBlocks,
   isMarkdownHorizontalRule,
   type MarkdownTableCellModel,
@@ -53,6 +54,7 @@ import {
 import {
   extractFrontmatter,
   normalizeFrontmatterKey,
+  default as KolamRenderedMarkdown,
 } from "@/components/shared/KolamRenderedMarkdown";
 import type {
   MarkdownEditorProps,
@@ -410,15 +412,23 @@ function dispatchPreviewSelection(
   view: EditorView,
   anchor: number,
   previewRange: LivePreviewRevealRange | null,
+  options: {
+    preserveScroll?: boolean;
+    scrollIntoView?: boolean;
+  } = {},
 ) {
+  const { preserveScroll = false, scrollIntoView = true } = options;
+  const effects = [];
   if (previewRange) {
-    view.dispatch({
-      effects: livePreviewRevealEffect.of(previewRange),
-    });
+    effects.push(livePreviewRevealEffect.of(previewRange));
+  }
+  if (preserveScroll) {
+    effects.push(view.scrollSnapshot());
   }
 
   view.dispatch({
-    scrollIntoView: true,
+    effects,
+    scrollIntoView: preserveScroll ? false : scrollIntoView,
     selection: EditorSelection.cursor(anchor),
   });
   view.focus();
@@ -921,6 +931,9 @@ function getPreviewRangeFromShell(
 function setCursorToBinding(
   table: HTMLTableElement,
   binding: TableCellBinding,
+  options: {
+    preserveScroll?: boolean;
+  } = {},
 ) {
   const view = findEditorViewFromElement(table);
   if (!view) return null;
@@ -937,6 +950,7 @@ function setCursorToBinding(
     view,
     Math.max(line.from, Math.min(anchor, line.to)),
     previewRange,
+    options,
   );
   return view;
 }
@@ -945,8 +959,11 @@ function runCommandAtBinding(
   table: HTMLTableElement,
   binding: TableCellBinding,
   action: (editor: TableEditor) => void,
+  options: {
+    preserveScroll?: boolean;
+  } = {},
 ) {
-  const view = setCursorToBinding(table, binding);
+  const view = setCursorToBinding(table, binding, options);
   if (!view) return false;
   return runTableEditorCommand(view, action);
 }
@@ -1219,12 +1236,17 @@ function buildTableControls(
         const anchor = getColumnBindingAtIndex(renderedRows, columnIndex, bindingByCell);
         if (!anchor) return;
 
-        runCommandAtBinding(table, anchor, (editor) => {
-          for (let index = 0; index < intent; index += 1) {
-            editor.insertColumn(MARKDOWN_TABLE_OPTIONS);
-            editor.moveColumn(9999, MARKDOWN_TABLE_OPTIONS);
-          }
-        });
+        runCommandAtBinding(
+          table,
+          anchor,
+          (editor) => {
+            for (let index = 0; index < intent; index += 1) {
+              editor.insertColumn(MARKDOWN_TABLE_OPTIONS);
+              editor.moveColumn(9999, MARKDOWN_TABLE_OPTIONS);
+            }
+          },
+          { preserveScroll: true },
+        );
         return;
       }
 
@@ -1232,12 +1254,17 @@ function buildTableControls(
       const anchor = getRowBindingAtIndex(renderedRows, rowIndex, bindingByCell);
       if (!anchor) return;
 
-      runCommandAtBinding(table, anchor, (editor) => {
-        for (let index = 0; index < intent; index += 1) {
-          editor.insertRow(MARKDOWN_TABLE_OPTIONS);
-          editor.moveRow(9999, MARKDOWN_TABLE_OPTIONS);
-        }
-      });
+      runCommandAtBinding(
+        table,
+        anchor,
+        (editor) => {
+          for (let index = 0; index < intent; index += 1) {
+            editor.insertRow(MARKDOWN_TABLE_OPTIONS);
+            editor.moveRow(9999, MARKDOWN_TABLE_OPTIONS);
+          }
+        },
+        { preserveScroll: true },
+      );
     };
 
     const cancelIntent = (event: PointerEvent) => {
@@ -1360,17 +1387,27 @@ function buildTableControls(
         const anchor = getColumnBindingAtIndex(rows, startIndex, bindingByCell);
         if (!anchor) return;
 
-        runCommandAtBinding(table, anchor, (editor) => {
-          editor.moveColumn(offset, MARKDOWN_TABLE_OPTIONS);
-        });
+        runCommandAtBinding(
+          table,
+          anchor,
+          (editor) => {
+            editor.moveColumn(offset, MARKDOWN_TABLE_OPTIONS);
+          },
+          { preserveScroll: true },
+        );
         return;
       }
 
       const anchor = getRowBindingAtIndex(rows, startIndex, bindingByCell);
       if (!anchor) return;
-      runCommandAtBinding(table, anchor, (editor) => {
-        editor.moveRow(offset, MARKDOWN_TABLE_OPTIONS);
-      });
+      runCommandAtBinding(
+        table,
+        anchor,
+        (editor) => {
+          editor.moveRow(offset, MARKDOWN_TABLE_OPTIONS);
+        },
+        { preserveScroll: true },
+      );
     };
 
     const cancelReorder = (event: PointerEvent) => {
@@ -2493,10 +2530,28 @@ function formatSelection(
 }
 
 type MarkdownListContinuation = {
+  exitList?: boolean;
   from: number;
   nextMarker: string;
   replacement: string;
 };
+
+function shouldExitEmptyListItem(
+  lineText: string,
+  cursorOffset: number,
+  markerPrefixLength: number,
+  itemContent: string,
+) {
+  if (itemContent.trim().length > 0) {
+    return false;
+  }
+
+  if (cursorOffset < markerPrefixLength) {
+    return false;
+  }
+
+  return lineText.slice(cursorOffset).trim().length === 0;
+}
 
 export function shouldAutoInsertOrderedListSpace(
   lineText: string,
@@ -2534,18 +2589,26 @@ export function computeMarkdownListContinuation(
       taskMatch[3].length +
       3 +
       taskMatch[5].length;
-    if (cursorOffset < prefixLength) return null;
+    const markerPrefixLength =
+      taskMatch[1].length + taskMatch[2].length + taskMatch[3].length + 3;
 
     if (
-      taskMatch[6].trim().length === 0 &&
-      cursorOffset === lineText.length
+      shouldExitEmptyListItem(
+        lineText,
+        cursorOffset,
+        markerPrefixLength,
+        taskMatch[6],
+      )
     ) {
       return {
+        exitList: true,
         from: 0,
         nextMarker: taskMatch[1],
         replacement: taskMatch[1],
       };
     }
+
+    if (cursorOffset < prefixLength) return null;
 
     return {
       from: cursorOffset,
@@ -2560,18 +2623,26 @@ export function computeMarkdownListContinuation(
       orderedMatch[2].length +
       orderedMatch[3].length +
       orderedMatch[4].length;
-    if (cursorOffset < prefixLength) return null;
+    const markerPrefixLength =
+      orderedMatch[1].length + orderedMatch[2].length + orderedMatch[3].length;
 
     if (
-      orderedMatch[5].trim().length === 0 &&
-      cursorOffset === lineText.length
+      shouldExitEmptyListItem(
+        lineText,
+        cursorOffset,
+        markerPrefixLength,
+        orderedMatch[5],
+      )
     ) {
       return {
+        exitList: true,
         from: 0,
         nextMarker: orderedMatch[1],
         replacement: orderedMatch[1],
       };
     }
+
+    if (cursorOffset < prefixLength) return null;
 
     const nextMarker = `${orderedMatch[1]}${Number.parseInt(orderedMatch[2], 10) + 1}${orderedMatch[3]} `;
     return {
@@ -2584,18 +2655,25 @@ export function computeMarkdownListContinuation(
   if (bulletMatch) {
     const prefixLength =
       bulletMatch[1].length + bulletMatch[2].length + bulletMatch[3].length;
-    if (cursorOffset < prefixLength) return null;
+    const markerPrefixLength = bulletMatch[1].length + bulletMatch[2].length;
 
     if (
-      bulletMatch[4].trim().length === 0 &&
-      cursorOffset === lineText.length
+      shouldExitEmptyListItem(
+        lineText,
+        cursorOffset,
+        markerPrefixLength,
+        bulletMatch[4],
+      )
     ) {
       return {
+        exitList: true,
         from: 0,
         nextMarker: bulletMatch[1],
         replacement: bulletMatch[1],
       };
     }
+
+    if (cursorOffset < prefixLength) return null;
 
     const nextMarker = `${bulletMatch[1]}${bulletMatch[2]} `;
     return {
@@ -2608,7 +2686,7 @@ export function computeMarkdownListContinuation(
   return null;
 }
 
-function continueMarkdownList(): StateCommand {
+export function continueMarkdownListCommand(): StateCommand {
   return ({ state, dispatch }) => {
     const selection = state.selection.main;
     if (!selection.empty) return false;
@@ -2617,6 +2695,26 @@ function continueMarkdownList(): StateCommand {
     const cursorOffset = selection.from - line.from;
     const continuation = computeMarkdownListContinuation(line.text, cursorOffset);
     if (!continuation) return false;
+
+    if (continuation.exitList && line.from >= 2) {
+      const precedingText = state.doc.sliceString(line.from - 2, line.from);
+      if (precedingText === "\n\n") {
+        dispatch(
+          state.update({
+            changes: {
+              from: line.from - 1,
+              to: line.to,
+              insert: "",
+            },
+            selection: EditorSelection.cursor(line.from - 1),
+            scrollIntoView: true,
+            userEvent: "input",
+          }),
+        );
+
+        return true;
+      }
+    }
 
     dispatch(
       state.update({
@@ -2739,6 +2837,52 @@ function shouldTriggerTableEnter(view: EditorView) {
   );
 }
 
+export function shouldAutoCreateMarkdownTable(
+  lineText: string,
+  cursorOffset: number,
+) {
+  return cursorOffset === lineText.length && buildMarkdownTableFromHeaderLine(lineText) !== null;
+}
+
+function autoCreateMarkdownTable(): StateCommand {
+  return ({ state, dispatch }) => {
+    const selection = state.selection.main;
+    if (!selection.empty) {
+      return false;
+    }
+
+    const line = state.doc.lineAt(selection.from);
+    const cursorOffset = selection.from - line.from;
+    const table = buildMarkdownTableFromHeaderLine(line.text);
+
+    if (!table || !shouldAutoCreateMarkdownTable(line.text, cursorOffset)) {
+      return false;
+    }
+
+    const insert = table.lines.join("\n");
+    const cursorLineOffset = table.lines
+      .slice(0, table.cursorLineIndex)
+      .reduce((total, currentLine) => total + currentLine.length + 1, 0);
+
+    dispatch(
+      state.update({
+        changes: {
+          from: line.from,
+          to: line.to,
+          insert,
+        },
+        selection: EditorSelection.cursor(
+          line.from + cursorLineOffset + table.cursorColumn,
+        ),
+        scrollIntoView: true,
+        userEvent: "input",
+      }),
+    );
+
+    return true;
+  };
+}
+
 function orderedListInputHandler() {
   return EditorView.inputHandler.of((view, from, to, text) => {
     if (!view.state.selection.main.empty || from !== to) return false;
@@ -2793,7 +2937,8 @@ const kolamEditorKeymap = [
     run: (target: EditorView) =>
       (shouldTriggerTableEnter(target) &&
         runTableEditorCommand(target, (editor) => editor.nextRow(MARKDOWN_TABLE_OPTIONS))) ||
-      continueMarkdownList()(target),
+      autoCreateMarkdownTable()(target) ||
+      continueMarkdownListCommand()(target),
   },
   {
     key: "Shift-Enter",
@@ -2999,7 +3144,6 @@ export default function BaseEditor({
       syntaxHighlighting(kolamHighlightStyle),
       EditorView.lineWrapping,
       drawSelection(),
-      highlightActiveLine(),
       history(),
       autocompletion(),
       markdown({ base: markdownLanguage, codeLanguages: languages }),
@@ -3037,6 +3181,10 @@ export default function BaseEditor({
         placeholder ? placeholderExtension(placeholder) : [],
       ),
     ];
+
+    if (editable) {
+      extensions.push(highlightActiveLine());
+    }
 
     const view = new EditorView({
       state: EditorState.create({
@@ -3141,6 +3289,24 @@ export default function BaseEditor({
       nextMarkdown,
     );
   };
+
+  if (!editable) {
+    return (
+      <div className="kolam-editor-shell">
+        {frontmatter.properties.length > 0 ? (
+          <PropertiesPanel
+            editable={false}
+            markdown={markdownValue}
+            onChange={handleMarkdownChange}
+          />
+        ) : null}
+
+        <div className="kolam-codemirror-frame is-readonly">
+          <KolamRenderedMarkdown source={frontmatter.body} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="kolam-editor-shell">

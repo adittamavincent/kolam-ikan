@@ -3,6 +3,7 @@ import {
   buildStoredContentPayload,
   storedContentToBlocks,
   storedContentToMarkdown,
+  trimEmptyOuterMarkdownLines,
 } from "@/lib/content-protocol";
 import bridge from "@/lib/markdown-block-bridge";
 
@@ -84,5 +85,12 @@ describe("content protocol", () => {
         content: [{ type: "text", text: "Item", styles: {} }],
       },
     ]);
+  });
+
+  it("trims only empty outer markdown lines", () => {
+    expect(trimEmptyOuterMarkdownLines("\n\n# Title\n\nBody\n\n\n")).toBe(
+      "# Title\n\nBody",
+    );
+    expect(trimEmptyOuterMarkdownLines("1.  item  ")).toBe("1.  item  ");
   });
 });

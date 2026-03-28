@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   computeMarkdownListContinuation,
+  continueMarkdownListCommand,
   getTableCellContentBounds,
   pickRectIndexFromAxis,
   resolveMeasuredTextPositionFromMeasuredCharacters,
   resolveTableCellSourceOffset,
   resolveVisibleOffsetFromMeasuredCharacters,
+  shouldAutoCreateMarkdownTable,
   shouldIgnoreOrderedListExtraSpace,
   shouldAutoInsertOrderedListSpace,
   shouldTriggerTableEnterForPosition,
 } from "@/components/shared/BaseEditor";
+import { EditorSelection, EditorState } from "@codemirror/state";
 
 describe("computeMarkdownListContinuation", () => {
   it("continues ordered lists with incremented numbering", () => {
@@ -32,6 +35,16 @@ describe("computeMarkdownListContinuation", () => {
 
   it("exits an empty ordered list item instead of repeating the marker", () => {
     expect(computeMarkdownListContinuation("1. ", "1. ".length)).toEqual({
+      exitList: true,
+      from: 0,
+      nextMarker: "",
+      replacement: "",
+    });
+  });
+
+  it("exits an empty ordered list item when the caret lands before the trailing space", () => {
+    expect(computeMarkdownListContinuation("2. ", 2)).toEqual({
+      exitList: true,
       from: 0,
       nextMarker: "",
       replacement: "",
@@ -50,6 +63,26 @@ describe("computeMarkdownListContinuation", () => {
 
   it("ignores cursors inside the list marker prefix", () => {
     expect(computeMarkdownListContinuation("7. Item", 1)).toBeNull();
+  });
+});
+
+describe("continueMarkdownListCommand", () => {
+  it("collapses a preceding blank line when exiting an empty ordered list item", () => {
+    const state = EditorState.create({
+      doc: ["1. one", "", "2. "].join("\n"),
+      selection: EditorSelection.cursor(["1. one", "", "2. "].join("\n").length),
+    });
+
+    let nextState: EditorState | null = null;
+    const handled = continueMarkdownListCommand()({
+      state,
+      dispatch: (transaction) => {
+        nextState = transaction.state;
+      },
+    });
+
+    expect(handled).toBe(true);
+    expect(nextState?.doc.toString()).toBe("1. one\n");
   });
 });
 
@@ -80,6 +113,24 @@ describe("shouldIgnoreOrderedListExtraSpace", () => {
 
   it("does not block spaces once list content has started", () => {
     expect(shouldIgnoreOrderedListExtraSpace("1. hello", 3)).toBe(false);
+  });
+});
+
+describe("shouldAutoCreateMarkdownTable", () => {
+  it("triggers at the end of a pipe-style header row", () => {
+    expect(
+      shouldAutoCreateMarkdownTable(
+        "| oke | okeeee |",
+        "| oke | okeeee |".length,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not trigger in the middle of a line or for plain text", () => {
+    expect(shouldAutoCreateMarkdownTable("| oke | okeeee |", 5)).toBe(false);
+    expect(shouldAutoCreateMarkdownTable("just text", "just text".length)).toBe(
+      false,
+    );
   });
 });
 

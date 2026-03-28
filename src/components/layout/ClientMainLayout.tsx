@@ -223,10 +223,17 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const isHomeRoute = pathname === "/";
 
   // ---------- Route-based auto-show / auto-hide ----------
-  const prevPathRef = useRef(pathname);
+  const prevPathRef = useRef<string | null>(null);
   useEffect(() => {
     const prev = prevPathRef.current;
     prevPathRef.current = pathname;
+
+    if (prev === null) {
+      if (isHomeRoute) {
+        setSidebarVisible(false);
+      }
+      return;
+    }
 
     if (isHomeRoute) {
       if (prev !== "/") {
@@ -234,7 +241,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       } else {
         setSidebarVisible(false);
       }
-    } else {
+    } else if (prev === "/") {
       showSidebar();
     }
   }, [pathname, isHomeRoute, showSidebar, hideSidebar, setSidebarVisible]);

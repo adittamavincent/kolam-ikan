@@ -1,7 +1,7 @@
 "use client";
 
-import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
+import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 
 interface SidebarState {
   /** Whether the sidebar (Navigator) is visible */
@@ -22,23 +22,17 @@ interface SidebarState {
   setIsResizing: (isResizing: boolean) => void;
 }
 
-export const useSidebar = create<SidebarState>()(
-  persist(
-    (set) => ({
-      visible: false,
-      width: 256,
-      isResizing: false,
-
-      show: () => set({ visible: true }),
-      hide: () => set({ visible: false }),
-      setVisible: (visible) => set({ visible }),
-      setWidth: (width) => set({ width }),
-      setIsResizing: (isResizing) => set({ isResizing }),
-    }),
-    {
-      name: "sidebar-storage",
-      partialize: (state) => ({ width: state.width, visible: state.visible }),
-      skipHydration: true,
-    },
-  ),
-);
+export function useSidebar(): SidebarState {
+  return useUiPreferencesStore(
+    useShallow((state) => ({
+      visible: state.sidebarVisible,
+      width: state.sidebarWidths[state.deviceClass],
+      isResizing: state.isSidebarResizing,
+      show: state.showSidebar,
+      hide: state.hideSidebar,
+      setVisible: state.setSidebarVisible,
+      setWidth: state.setSidebarWidth,
+      setIsResizing: state.setSidebarResizing,
+    })),
+  );
+}

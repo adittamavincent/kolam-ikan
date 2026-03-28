@@ -74,6 +74,12 @@ export type SectionFileAttachmentUpdate =
 export type Canvas = Database["public"]["Tables"]["canvases"]["Row"];
 export type CanvasInsert = Database["public"]["Tables"]["canvases"]["Insert"];
 export type CanvasUpdate = Database["public"]["Tables"]["canvases"]["Update"];
+export type UserUiPreferences =
+  Database["public"]["Tables"]["user_ui_preferences"]["Row"];
+export type UserUiPreferencesInsert =
+  Database["public"]["Tables"]["user_ui_preferences"]["Insert"];
+export type UserUiPreferencesUpdate =
+  Database["public"]["Tables"]["user_ui_preferences"]["Update"];
 
 export type CanvasVersion =
   Database["public"]["Tables"]["canvas_versions"]["Row"];

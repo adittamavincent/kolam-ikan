@@ -39,6 +39,12 @@ export type MarkdownTableBlock = {
   start: number;
 };
 
+export type MarkdownTableAutoCreateResult = {
+  cursorColumn: number;
+  cursorLineIndex: number;
+  lines: string[];
+};
+
 export const MARKDOWN_TABLE_OPTIONS: Options = optionsWithDefaults({});
 
 const TABLE_DELIMITER_PATTERN =
@@ -255,4 +261,40 @@ export function findMarkdownTableBlocks(lines: string[]) {
   }
 
   return blocks;
+}
+
+export function buildMarkdownTableFromHeaderLine(
+  line: string,
+): MarkdownTableAutoCreateResult | null {
+  if (
+    !line.includes("|") ||
+    isMarkdownTableDelimiter(line) ||
+    isMarkdownHorizontalRule(line)
+  ) {
+    return null;
+  }
+
+  try {
+    const formatted = formatTable(
+      completeTable(
+        readTable([line, "| |"], MARKDOWN_TABLE_OPTIONS),
+        MARKDOWN_TABLE_OPTIONS,
+      ).table,
+      MARKDOWN_TABLE_OPTIONS,
+    ).table;
+    const lines = formatted.getRows().map((row) => row.toText());
+    const model = buildMarkdownTableModel(lines);
+
+    if (!model || model.columnCount < 2 || model.rows.length < 3) {
+      return null;
+    }
+
+    return {
+      cursorColumn: model.rows[2]?.cells[0]?.rawStart ?? 0,
+      cursorLineIndex: 2,
+      lines,
+    };
+  } catch {
+    return null;
+  }
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildMarkdownTableFromHeaderLine,
   buildMarkdownTableModel,
   findMarkdownTableBlocks,
   isMarkdownHorizontalRule,
@@ -75,6 +76,25 @@ describe("findMarkdownTableBlocks", () => {
     expect(blocks).toHaveLength(1);
     expect(blocks[0]?.start).toBe(0);
     expect(blocks[0]?.end).toBe(3);
+  });
+});
+
+describe("buildMarkdownTableFromHeaderLine", () => {
+  it("creates a full markdown table from a single header row", () => {
+    expect(buildMarkdownTableFromHeaderLine("| oke | okeeee |")).toEqual({
+      cursorColumn: 1,
+      cursorLineIndex: 2,
+      lines: [
+        "| oke | okeeee |",
+        "| --- | ------ |",
+        "|     |        |",
+      ],
+    });
+  });
+
+  it("ignores delimiter rows and non-table input", () => {
+    expect(buildMarkdownTableFromHeaderLine("| --- | --- |")).toBeNull();
+    expect(buildMarkdownTableFromHeaderLine("plain text")).toBeNull();
   });
 });
 

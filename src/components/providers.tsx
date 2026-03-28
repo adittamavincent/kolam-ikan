@@ -2,9 +2,13 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useLayoutEffect, useState } from "react";
-import { useSidebar } from "@/lib/hooks/useSidebar";
-import { useLayout } from "@/lib/hooks/useLayout";
+import { useState } from "react";
+import { useUiPreferencesSync } from "@/lib/hooks/useUiPreferencesSync";
+
+function UiPreferencesBootstrap() {
+  useUiPreferencesSync();
+  return null;
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -30,17 +34,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   );
-
-  useLayoutEffect(() => {
-    // Restore persisted UI state
-    try {
-      useSidebar.persist.rehydrate();
-      useLayout.persist.rehydrate();
-    } catch {}
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
+      <UiPreferencesBootstrap />
       {children}
       {process.env.NODE_ENV === "development" && (
         <ReactQueryDevtools

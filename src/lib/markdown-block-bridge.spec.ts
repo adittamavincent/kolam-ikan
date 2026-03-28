@@ -72,6 +72,30 @@ describe("markdown block bridge", () => {
     );
   });
 
+  it("does not insert blank lines between consecutive headings and body text", () => {
+    const markdown = blocksToBridgeMarkdown([
+      {
+        id: "heading-1",
+        type: "heading",
+        props: { level: 1 },
+        content: [{ type: "text", text: "misal", styles: {} }],
+      },
+      {
+        id: "heading-2",
+        type: "heading",
+        props: { level: 2 },
+        content: [{ type: "text", text: "nya", styles: {} }],
+      },
+      {
+        id: "paragraph-1",
+        type: "paragraph",
+        content: [{ type: "text", text: "satu", styles: {} }],
+      },
+    ] as MarkdownBlock[]);
+
+    expect(markdown).toBe("# misal\n## nya\nsatu");
+  });
+
   it("fails fast with a timeout instead of getting stuck in a long parse", () => {
     expect(() => bridgeMarkdownToBlocks("1. Item", { timeoutMs: 0 })).toThrow(
       MarkdownBridgeTimeoutError,

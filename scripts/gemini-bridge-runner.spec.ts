@@ -18,12 +18,16 @@ describe("gemini bridge runner", () => {
     delete process.env.BRIDGE_RUNNER_HEADLESS;
     delete process.env.BRIDGE_RUNNER_BROWSER_CHANNEL;
     delete process.env.BRIDGE_RUNNER_BROWSER_PATH;
+    delete process.env.BRIDGE_RUNNER_BROWSER_WIDTH;
+    delete process.env.BRIDGE_RUNNER_BROWSER_HEIGHT;
   });
 
   afterEach(() => {
     delete process.env.BRIDGE_RUNNER_HEADLESS;
     delete process.env.BRIDGE_RUNNER_BROWSER_CHANNEL;
     delete process.env.BRIDGE_RUNNER_BROWSER_PATH;
+    delete process.env.BRIDGE_RUNNER_BROWSER_WIDTH;
+    delete process.env.BRIDGE_RUNNER_BROWSER_HEIGHT;
   });
 
   it("removes stale Chrome singleton files from the profile directory", async () => {
@@ -100,6 +104,25 @@ describe("gemini bridge runner", () => {
         headless: false,
         ignoreDefaultArgs: ["--enable-automation"],
         args: ["--disable-blink-features=AutomationControlled"],
+      }),
+    );
+  });
+
+  it("uses a smaller default viewport and honors browser size overrides", async () => {
+    process.env.BRIDGE_RUNNER_BROWSER_WIDTH = "1100";
+    process.env.BRIDGE_RUNNER_BROWSER_HEIGHT = "720";
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "gemini-runner-"));
+    const profileDir = path.join(tempDir, "profile");
+    const fakeContext = { close: vi.fn() };
+    launchPersistentContext.mockResolvedValueOnce(fakeContext);
+
+    const { launchRunnerContext } = await import("./gemini-bridge-runner.mjs");
+    await launchRunnerContext(profileDir);
+
+    expect(launchPersistentContext).toHaveBeenCalledWith(
+      profileDir,
+      expect.objectContaining({
+        viewport: { width: 1100, height: 720 },
       }),
     );
   });

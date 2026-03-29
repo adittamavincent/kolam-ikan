@@ -41,6 +41,7 @@ npm run bridge:runner
 ```
 
 The runner can now poll multiple providers through `BRIDGE_RUNNER_PROVIDERS` and can pin provider-specific default models with `BRIDGE_RUNNER_MODEL_CHATGPT`, `BRIDGE_RUNNER_MODEL_GEMINI`, and `BRIDGE_RUNNER_MODEL_CLAUDE`.
+If the headed browser window feels too large, set `BRIDGE_RUNNER_BROWSER_WIDTH` and `BRIDGE_RUNNER_BROWSER_HEIGHT` to override the default `1280x820` viewport.
 
 Start local Supabase:
 

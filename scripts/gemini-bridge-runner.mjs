@@ -28,6 +28,8 @@ const POLL_MS = Number(process.env.BRIDGE_RUNNER_POLL_INTERVAL_MS || "3000");
 const HEADLESS = process.env.BRIDGE_RUNNER_HEADLESS === "true";
 const RUNNER_BROWSER_CHANNEL = process.env.BRIDGE_RUNNER_BROWSER_CHANNEL || "chrome";
 const RUNNER_BROWSER_PATH = process.env.BRIDGE_RUNNER_BROWSER_PATH || "";
+const RUNNER_BROWSER_WIDTH = Number(process.env.BRIDGE_RUNNER_BROWSER_WIDTH || "1280");
+const RUNNER_BROWSER_HEIGHT = Number(process.env.BRIDGE_RUNNER_BROWSER_HEIGHT || "820");
 const CHROME_SINGLETON_FILES = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
 
 if (!RUNNER_SECRET) {
@@ -199,7 +201,10 @@ export async function backupProfileDir(userDataDir) {
 function buildLaunchOptions({ useConfiguredBrowser = true } = {}) {
   const launchOptions = {
     headless: HEADLESS,
-    viewport: { width: 1440, height: 960 },
+    viewport: {
+      width: Number.isFinite(RUNNER_BROWSER_WIDTH) ? RUNNER_BROWSER_WIDTH : 1280,
+      height: Number.isFinite(RUNNER_BROWSER_HEIGHT) ? RUNNER_BROWSER_HEIGHT : 820,
+    },
     ignoreDefaultArgs: ["--enable-automation"],
     args: ["--disable-blink-features=AutomationControlled"],
   };

@@ -1,10 +1,15 @@
 import { z } from "zod";
+import {
+  BRIDGE_JOB_PROVIDERS,
+  DEFAULT_BRIDGE_JOB_PROVIDER,
+} from "@/lib/bridge/providers";
 
 export const BridgePayloadVariantSchema = z.enum(["full", "followup"]);
+export const BridgeJobProviderSchema = z.enum(BRIDGE_JOB_PROVIDERS);
 
 export const CreateBridgeJobSchema = z.object({
   streamId: z.string().uuid(),
-  provider: z.literal("gemini"),
+  provider: BridgeJobProviderSchema,
   payload: z.string().trim().min(1),
   payloadVariant: BridgePayloadVariantSchema,
   sessionKey: z.string().trim().min(1).max(255),
@@ -12,7 +17,7 @@ export const CreateBridgeJobSchema = z.object({
 });
 
 export const ClaimBridgeJobSchema = z.object({
-  provider: z.literal("gemini").default("gemini"),
+  provider: BridgeJobProviderSchema.default(DEFAULT_BRIDGE_JOB_PROVIDER),
   runnerId: z.string().trim().min(1).max(255).optional(),
 });
 

@@ -4,11 +4,12 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BridgeJobStatus } from "@/lib/types";
 import type { BridgeRunnerStatus } from "@/lib/bridge/bridge-jobs";
+import type { BridgeJobProvider } from "@/lib/bridge/providers";
 
 export type UiDeviceClass = "mobile" | "tablet" | "desktop";
 export type UiSyncStatus = "idle" | "syncing" | "synced" | "error";
 export type LayoutMode = "log-only" | "balanced" | "canvas-only";
-export type BridgeProviderId = "chatgpt" | "gemini" | "claude";
+export type BridgeProviderId = BridgeJobProvider;
 export type BridgeInteractionMode = "ASK" | "GO" | "BOTH";
 export type BridgeQuickPresetId = "recommended";
 
@@ -27,6 +28,7 @@ export interface BridgeStreamSession {
   lastUsedAt: string | null;
   isExternalSessionActive: boolean;
   externalSessionLoadedAt: string | null;
+  externalSessionUrl: string | null;
   automationSessionKey: string | null;
   automationStatus: BridgeRunnerStatus;
   lastJobId: string | null;
@@ -157,6 +159,7 @@ function createDefaultBridgeSession(): BridgeStreamSession {
     lastUsedAt: null,
     isExternalSessionActive: false,
     externalSessionLoadedAt: null,
+    externalSessionUrl: null,
     automationSessionKey: null,
     automationStatus: "idle",
     lastJobId: null,
@@ -192,6 +195,8 @@ function normalizeBridgeSession(
       session?.isExternalSessionActive ?? base.isExternalSessionActive,
     externalSessionLoadedAt:
       session?.externalSessionLoadedAt ?? base.externalSessionLoadedAt,
+    externalSessionUrl:
+      session?.externalSessionUrl ?? base.externalSessionUrl,
     automationSessionKey:
       session?.automationSessionKey ?? base.automationSessionKey,
     automationStatus: session?.automationStatus ?? base.automationStatus,
@@ -687,6 +692,9 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
             isExternalSessionActive: active,
             externalSessionLoadedAt: active
               ? new Date().toISOString()
+              : null,
+            externalSessionUrl: active
+              ? current?.externalSessionUrl ?? null
               : null,
           });
 

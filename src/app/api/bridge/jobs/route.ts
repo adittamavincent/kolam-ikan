@@ -25,7 +25,8 @@ export async function POST(request: Request) {
   }
 
   const input = parsed.data;
-  const sessionKey = input.sessionKey || buildBridgeSessionKey(input.streamId, "gemini");
+  const sessionKey =
+    input.sessionKey || buildBridgeSessionKey(input.streamId, input.provider);
 
   const { data: existingJob, error: existingJobError } = await supabase
     .from("bridge_jobs")
@@ -64,8 +65,15 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
+    const providerConstraintError = error.message?.includes(
+      "bridge_jobs_provider_check",
+    );
     return NextResponse.json(
-      { error: error.message ?? "Failed to queue bridge job" },
+      {
+        error: providerConstraintError
+          ? "Bridge provider is not enabled in the database yet. Run the latest bridge_jobs migration."
+          : error.message ?? "Failed to queue bridge job",
+      },
       { status: 400 },
     );
   }

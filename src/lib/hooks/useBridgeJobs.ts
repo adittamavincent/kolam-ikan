@@ -6,14 +6,23 @@ import { createClient } from "@/lib/supabase/client";
 import type { BridgeJob, BridgeJobProvider, BridgePayloadVariant } from "@/lib/types";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { deriveBridgeSessionPatchFromJob } from "@/lib/bridge/bridge-jobs";
+import { BRIDGE_JOB_PROVIDERS } from "@/lib/bridge/providers";
 
-export const latestBridgeJobQueryKey = (streamId: string) => [
+export const latestBridgeJobQueryKey = (
+  streamId: string,
+  provider: BridgeJobProvider,
+) => [
   "bridge-jobs",
   "latest",
   streamId,
+  provider,
 ] as const;
 
-export function useLatestBridgeJob(streamId: string, refetchInterval = 4_000) {
+export function useLatestBridgeJob(
+  streamId: string,
+  provider: BridgeJobProvider,
+  refetchInterval = 4_000,
+) {
   const supabase = createClient();
   const bridgeSession = useUiPreferencesStore(
     (state) => state.bridgeSessionsByStream[streamId],
@@ -23,12 +32,13 @@ export function useLatestBridgeJob(streamId: string, refetchInterval = 4_000) {
   );
 
   const query = useQuery({
-    queryKey: latestBridgeJobQueryKey(streamId),
+    queryKey: latestBridgeJobQueryKey(streamId, provider),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bridge_jobs")
         .select("*")
         .eq("stream_id", streamId)
+        .eq("provider", provider)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -52,6 +62,7 @@ export function useLatestBridgeJob(streamId: string, refetchInterval = 4_000) {
   }, [
     bridgeSession?.isExternalSessionActive,
     query.data,
+    provider,
     streamId,
     upsertBridgeSession,
   ]);
@@ -100,7 +111,11 @@ export function useCreateBridgeJob(streamId: string) {
       return { job: payload.job, deduped: payload.deduped };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: latestBridgeJobQueryKey(streamId) });
+      for (const provider of BRIDGE_JOB_PROVIDERS) {
+        queryClient.invalidateQueries({
+          queryKey: latestBridgeJobQueryKey(streamId, provider),
+        });
+      }
     },
   });
 }

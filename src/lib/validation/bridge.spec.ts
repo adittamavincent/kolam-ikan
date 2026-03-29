@@ -8,24 +8,26 @@ import {
 
 describe("bridge validation", () => {
   it("accepts a valid bridge job request", () => {
-    const result = CreateBridgeJobSchema.safeParse({
-      streamId: "123e4567-e89b-42d3-a456-426614174000",
-      provider: "gemini",
-      payload: "<bridge />",
-      payloadVariant: "full",
-      sessionKey: "gemini:stream-1",
-    });
+    for (const provider of ["chatgpt", "gemini", "claude"] as const) {
+      const result = CreateBridgeJobSchema.safeParse({
+        streamId: "123e4567-e89b-42d3-a456-426614174000",
+        provider,
+        payload: "<bridge />",
+        payloadVariant: "full",
+        sessionKey: `${provider}:stream-1`,
+      });
 
-    expect(result.success).toBe(true);
+      expect(result.success).toBe(true);
+    }
   });
 
   it("rejects unsupported providers", () => {
     const result = CreateBridgeJobSchema.safeParse({
       streamId: "123e4567-e89b-42d3-a456-426614174000",
-      provider: "chatgpt",
+      provider: "perplexity",
       payload: "<bridge />",
       payloadVariant: "full",
-      sessionKey: "chatgpt:stream-1",
+      sessionKey: "perplexity:stream-1",
     });
 
     expect(result.success).toBe(false);

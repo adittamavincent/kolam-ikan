@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Wand2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -8,7 +8,6 @@ import { STREAM_KIND, type BridgeJobStatus } from "@/lib/types";
 import {
   buildQuickBridgePreset,
   composeBridgeInstruction,
-  getBridgeProviderPreset,
   getQuickPayloadVariant,
 } from "./bridge-config";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
@@ -56,9 +55,13 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   const [launchState, setLaunchState] = useState<QuickLaunchState>("idle");
   const [isQueueing, setIsQueueing] = useState(false);
   const [parserStatus, setParserStatus] = useState(INITIAL_PARSER_STATUS);
-  const latestBridgeJob = useLatestBridgeJob(streamId, 4_000);
   const createBridgeJob = useCreateBridgeJob(streamId);
   const parserRef = useRef<ResponseParserHandle>(null);
+  const hasHydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const { data: streamMeta } = useQuery({
     queryKey: ["bridge-stream-meta", streamId],
@@ -140,16 +143,19 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
     !currentStreamIsGlobal;
   const instruction = bridgeSession?.lastInstruction ?? "";
   const effectiveInstruction = composeBridgeInstruction(
-    instruction,
-    bridgeSession?.sessionMemory ?? "",
+    hasHydrated ? instruction : "",
+    hasHydrated ? bridgeSession?.sessionMemory ?? "" : "",
   );
-  const providerId = bridgeSession?.providerId ?? bridgeDefaults.providerId;
-  const providerPreset = getBridgeProviderPreset(providerId);
+  const providerId = hasHydrated
+    ? bridgeSession?.providerId ?? bridgeDefaults.providerId
+    : "gemini";
+  const latestBridgeJob = useLatestBridgeJob(streamId, providerId, 4_000);
   const payloadVariant = getQuickPayloadVariant(bridgeSession);
-  const isGeminiAutomation = providerId === "gemini";
-  const queueStatus = bridgeSession?.automationStatus ?? "idle";
+  const queueStatus = hasHydrated
+    ? bridgeSession?.automationStatus ?? "idle"
+    : "idle";
   const latestJob = latestBridgeJob.data;
-  const currentSessionKey = buildBridgeSessionKey(streamId, "gemini");
+  const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
   const latestJobMatchesCurrentPayload =
     latestJob?.session_key === currentSessionKey &&
     latestJob?.payload === generatedXML;
@@ -161,7 +167,8 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
     latestJob?.id !== bridgeSession?.lastAppliedJobId;
   const responseToApply = hasPendingResponse ? responseText : "";
   const isContinuing =
-    (bridgeSession?.isExternalSessionActive ?? false) || latestJob?.status === "succeeded";
+    (hasHydrated ? bridgeSession?.isExternalSessionActive ?? false : false) ||
+    latestJob?.status === "succeeded";
 
   const phase: QuickPhase =
     hasPendingResponse
@@ -201,7 +208,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
       setIsQueueing(true);
       setLaunchState("queueing");
       const result = await createBridgeJob.mutateAsync({
-        provider: "gemini",
+        provider: providerId,
         payload: generatedXML,
         payloadVariant,
         sessionKey: currentSessionKey,
@@ -238,47 +245,6 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
     }
   };
 
-  const launchManualQuickBridge = async () => {
-    if (!canRunQuick) return;
-    try {
-      setLaunchState("launching");
-      const openedWindow = window.open(
-        providerPreset.launchUrl,
-        "_blank",
-        "noopener,noreferrer",
-      );
-      let copied = true;
-      try {
-        await navigator.clipboard.writeText(generatedXML);
-      } catch {
-        copied = false;
-      }
-      setBridgeDefaults({
-        providerId,
-        quickPreset: "recommended",
-      });
-      upsertBridgeSession(streamId, {
-        providerId,
-        lastMode: quickPreset.interactionMode,
-        lastInstruction: instruction,
-        lastContextRecipe: {
-          entrySelection: "all",
-          includeCanvas,
-          includeGlobalStream,
-        },
-        lastUsedAt: new Date().toISOString(),
-        isExternalSessionActive: true,
-        externalSessionLoadedAt:
-          bridgeSession?.externalSessionLoadedAt ?? new Date().toISOString(),
-      });
-      setLaunchState(
-        openedWindow && copied ? "done" : openedWindow ? "opened" : "error",
-      );
-    } catch {
-      setLaunchState("error");
-    }
-  };
-
   const handleClick = () => {
     if (phase === "waiting" || parserStatus.isApplying) {
       return;
@@ -287,7 +253,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
       void applyQuickBridgeResponse();
       return;
     }
-    void (isGeminiAutomation ? queueQuickBridge() : launchManualQuickBridge());
+    void queueQuickBridge();
   };
 
   const label =
@@ -327,6 +293,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
     );
 
   const disabled =
+    !hasHydrated ||
     phase === "waiting" ||
     (phase === "send" && !canRunQuick) ||
     (phase === "apply" && !hasPendingResponse) ||

@@ -25,6 +25,7 @@ import {
   BRIDGE_PROVIDER_PRESETS,
   buildQuickBridgePreset,
   composeBridgeInstruction,
+  getBridgeSessionLaunchUrl,
   getQuickPayloadVariant,
   getBridgeProviderPreset,
 } from "./bridge-config";
@@ -81,7 +82,6 @@ export function QuickBridgeDialog({
   const [launchState, setLaunchState] = useState<QuickLaunchState>("idle");
   const [isResponsePreviewOpen, setIsResponsePreviewOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const latestBridgeJob = useLatestBridgeJob(streamId, isOpen ? 3_000 : 8_000);
   const createBridgeJob = useCreateBridgeJob(streamId);
   const resetBridgeSession = useResetBridgeSession(streamId);
 
@@ -169,12 +169,16 @@ export function QuickBridgeDialog({
   );
   const hasReusableInstruction = !!bridgeSession?.lastInstruction.trim();
   const providerPreset = getBridgeProviderPreset(providerId);
+  const latestBridgeJob = useLatestBridgeJob(
+    streamId,
+    providerId,
+    isOpen ? 3_000 : 8_000,
+  );
   const payloadVariant = getQuickPayloadVariant(bridgeSession);
   const isFollowupLaunch = payloadVariant === "followup";
-  const isGeminiAutomation = providerId === "gemini";
   const queueStatus = bridgeSession?.automationStatus ?? "idle";
   const latestJob = latestBridgeJob.data;
-  const currentSessionKey = buildBridgeSessionKey(streamId, "gemini");
+  const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
   const latestJobMatchesCurrentPayload =
     latestJob?.session_key === currentSessionKey && latestJob?.payload === generatedXML;
   const responseText = latestJob?.raw_response?.trim() ?? "";
@@ -192,47 +196,6 @@ export function QuickBridgeDialog({
         ? "waiting"
         : "compose";
 
-  const launchManualQuickBridge = async () => {
-    if (!payloadReady || !generatedXML.trim()) return;
-    try {
-      setLaunchState("launching");
-      const openedWindow = window.open(
-        providerPreset.launchUrl,
-        "_blank",
-        "noopener,noreferrer",
-      );
-      let copied = true;
-      try {
-        await navigator.clipboard.writeText(generatedXML);
-      } catch {
-        copied = false;
-      }
-      setBridgeDefaults({
-        providerId,
-        quickPreset: "recommended",
-      });
-      upsertBridgeSession(streamId, {
-        providerId,
-        lastMode: quickPreset.interactionMode,
-        lastInstruction: instruction,
-        lastContextRecipe: {
-          entrySelection: "all",
-          includeCanvas,
-          includeGlobalStream,
-        },
-        lastUsedAt: new Date().toISOString(),
-        isExternalSessionActive: true,
-        externalSessionLoadedAt:
-          bridgeSession?.externalSessionLoadedAt ?? new Date().toISOString(),
-      });
-      setLaunchState(
-        openedWindow && copied ? "done" : openedWindow ? "opened" : "error",
-      );
-    } catch {
-      setLaunchState("error");
-    }
-  };
-
   const queueQuickBridge = async () => {
     if (!payloadReady || !generatedXML.trim()) return;
     if (
@@ -246,7 +209,7 @@ export function QuickBridgeDialog({
     try {
       setLaunchState("queueing");
       const result = await createBridgeJob.mutateAsync({
-        provider: "gemini",
+        provider: providerId,
         payload: generatedXML,
         payloadVariant,
         sessionKey: currentSessionKey,
@@ -281,21 +244,15 @@ export function QuickBridgeDialog({
     }
   };
 
-  const waitingHeadline = isGeminiAutomation
-    ? queueStatus === "running"
-      ? "Gemini is generating a response"
-      : "Payload queued for the Gemini sidecar"
-    : launchState === "done"
-      ? `${providerPreset.label} is open and ready`
-      : `${providerPreset.label} handoff is in progress`;
+  const waitingHeadline =
+    queueStatus === "running"
+      ? `${providerPreset.label} is generating a response`
+      : `Payload queued for the ${providerPreset.label} runner`;
 
-  const waitingDescription = isGeminiAutomation
-    ? queueStatus === "running"
-      ? "The runner is inside Gemini now. You can leave this open, close it, or come back later."
-      : "Kolam Ikan has packed the payload. The local runner will claim it and start the browser work."
-    : launchState === "done"
-      ? "Paste the payload into the provider and wait for the answer before coming back."
-      : "Use the copy/open fallback below if the provider tab did not receive the prompt cleanly.";
+  const waitingDescription =
+    queueStatus === "running"
+      ? `The runner is inside ${providerPreset.label} now. You can leave this open, close it, or come back later.`
+      : "Kolam Ikan has packed the payload. The local runner will claim it and start the browser work.";
 
   const resetLocalState = () => {
     setProviderId(bridgeDefaults.providerId);
@@ -341,10 +298,7 @@ export function QuickBridgeDialog({
               ) : (
                 <Rocket className="h-4 w-4" />
               ),
-            onClick: () =>
-              void (isGeminiAutomation
-                ? queueQuickBridge()
-                : launchManualQuickBridge()),
+            onClick: () => void queueQuickBridge(),
             disabled:
               !instruction.trim() ||
               !generatedXML.trim() ||
@@ -417,13 +371,13 @@ export function QuickBridgeDialog({
 
                   {queueStatus === "needs-login" && (
                     <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
-                      Gemini needs you to log in again in the runner browser profile before Quick can continue.
+                      {providerPreset.label} needs you to log in again in the runner browser profile before Quick can continue.
                     </div>
                   )}
 
                   {queueStatus === "failed" && bridgeSession?.lastJobError && (
                     <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
-                      Last Gemini bridge job failed: {bridgeSession.lastJobError}
+                      Last {providerPreset.label} bridge job failed: {bridgeSession.lastJobError}
                     </div>
                   )}
 
@@ -499,9 +453,7 @@ export function QuickBridgeDialog({
                   </div>
 
                   <div className="border border-border-default bg-surface-default p-3 text-xs text-text-muted">
-                    {isGeminiAutomation
-                      ? "Quick will enqueue a Gemini bridge job for the local sidecar. Manual copy/open fallback stays available if you need it."
-                      : `Quick automation is Gemini-only in v1. ${providerPreset.label} still uses the manual copy/open workflow.`}
+                    Quick will enqueue a bridge job for the local runner. Manual copy/open fallback stays available if you need it.
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -562,7 +514,7 @@ export function QuickBridgeDialog({
                     <p className="text-sm text-text-muted">
                       {waitingDescription}
                     </p>
-                    {latestJob?.id && isGeminiAutomation && (
+                    {latestJob?.id && (
                       <div className="text-[11px] text-text-muted">
                         Job: {latestJob.id}
                       </div>
@@ -591,9 +543,7 @@ export function QuickBridgeDialog({
                     Waiting
                   </div>
                   <p className="mt-1 text-xs text-text-muted">
-                    {isGeminiAutomation
-                      ? "The sidecar is claiming or running the Gemini request."
-                      : "The provider tab is waiting for you to paste and send."}
+                    The local runner is claiming or running the request.
                   </p>
                 </div>
                 <div className="border border-border-default bg-surface-subtle p-4">
@@ -609,37 +559,35 @@ export function QuickBridgeDialog({
                 </div>
               </section>
 
-              {!isGeminiAutomation && (
-                <section className="border border-border-default bg-surface-subtle p-4">
-                  <div className="text-sm font-semibold text-text-default">
-                    Manual fallback
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => navigator.clipboard.writeText(generatedXML)}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
-                    >
-                      <ClipboardPaste className="h-3.5 w-3.5" />
-                      Copy payload again
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        window.open(
-                          providerPreset.launchUrl,
-                          "_blank",
-                          "noopener,noreferrer",
-                        )
-                      }
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Reopen {providerPreset.label}
-                    </button>
-                  </div>
-                </section>
-              )}
+              <section className="border border-border-default bg-surface-subtle p-4">
+                <div className="text-sm font-semibold text-text-default">
+                  Manual fallback
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard.writeText(generatedXML)}
+                    className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                  >
+                    <ClipboardPaste className="h-3.5 w-3.5" />
+                    Copy payload again
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.open(
+                        getBridgeSessionLaunchUrl(providerId, bridgeSession),
+                        "_blank",
+                        "noopener,noreferrer",
+                      )
+                    }
+                    className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Reopen {providerPreset.label}
+                  </button>
+                </div>
+              </section>
             </div>
           )}
 
@@ -685,7 +633,7 @@ export function QuickBridgeDialog({
                     Session status
                   </div>
                   <p className="mt-2 text-xs text-text-muted">
-                    The Gemini sidecar finished this run and returned the response to Kolam Ikan.
+                    The local runner finished this run and returned the response to Kolam Ikan.
                   </p>
                 </div>
                 <div className="border border-border-default bg-surface-subtle p-4">

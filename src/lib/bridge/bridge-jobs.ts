@@ -1,10 +1,14 @@
 import type { BridgeJob, BridgeJobStatus } from "@/lib/types";
 import { z } from "zod";
+import type { BridgeJobProvider } from "@/lib/bridge/providers";
 
 export const SIDE_CAR_LOGIN_ERROR_CODE = "LOGIN_REQUIRED";
 export const SIDE_CAR_SESSION_RESET_ERROR_CODE = "SESSION_RESET_REQUIRED";
 
-export function buildBridgeSessionKey(streamId: string, provider: "gemini") {
+export function buildBridgeSessionKey(
+  streamId: string,
+  provider: BridgeJobProvider,
+) {
   return `${provider}:${streamId}`;
 }
 
@@ -49,6 +53,14 @@ export function deriveBridgeSessionPatchFromJob(
     (job.error_code === SIDE_CAR_LOGIN_ERROR_CODE ||
       job.error_code === SIDE_CAR_SESSION_RESET_ERROR_CODE);
 
+  const pageUrl =
+    job.runner_details &&
+    typeof job.runner_details === "object" &&
+    !Array.isArray(job.runner_details) &&
+    typeof job.runner_details.pageUrl === "string"
+      ? job.runner_details.pageUrl
+      : null;
+
   const nextPatch = {
     automationSessionKey: job.session_key,
     automationStatus: runnerStatus,
@@ -56,6 +68,7 @@ export function deriveBridgeSessionPatchFromJob(
     lastJobStatus: jobStatus,
     lastJobError: job.error_message ?? "",
     lastJobCompletedAt: job.completed_at,
+    externalSessionUrl: pageUrl,
     isExternalSessionActive:
       jobStatus === "succeeded"
         ? true

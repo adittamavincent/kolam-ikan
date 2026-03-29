@@ -1,4 +1,5 @@
 import { Database, Json } from "./database.types";
+export type { BridgeJobProvider } from "@/lib/bridge/providers";
 
 // Table Types
 export type Persona = Database["public"]["Tables"]["personas"]["Row"];
@@ -52,7 +53,6 @@ export type BridgeJobStatus =
   | "failed"
   | "cancelled";
 
-export type BridgeJobProvider = "gemini";
 export type BridgePayloadVariant = "full" | "followup";
 
 export type DocumentChunk =

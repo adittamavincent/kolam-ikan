@@ -80,3 +80,11 @@ export function getQuickPayloadVariant(
 ): BridgePayloadVariant {
   return session?.isExternalSessionActive ? "followup" : "full";
 }
+
+export function getBridgeSessionLaunchUrl(
+  providerId: BridgeProviderId,
+  session?: BridgeStreamSession | null,
+) {
+  const provider = getBridgeProviderPreset(providerId);
+  return session?.externalSessionUrl?.trim() || provider.launchUrl;
+}

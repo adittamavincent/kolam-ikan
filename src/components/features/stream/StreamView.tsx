@@ -10,7 +10,7 @@ import { useRealtimeEntries } from "@/lib/hooks/useRealtimeEntries";
 import { useLayout } from "@/lib/hooks/useLayout";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { BRIDGE_PROVIDER_PRESETS } from "@/components/features/bridge/bridge-config";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Globe, Link2, RotateCcw, Sparkles, Wand2 } from "lucide-react";
 import { useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
@@ -27,27 +27,32 @@ export function StreamView({ streamId }: { streamId: string }) {
   const bridgeSession = useUiPreferencesStore(
     (state) => state.bridgeSessionsByStream[streamId],
   );
-  const bridgeDefaults = useUiPreferencesStore((state) => state.bridgeDefaults);
   const setBridgeDefaults = useUiPreferencesStore(
     (state) => state.setBridgeDefaults,
   );
   const upsertBridgeSession = useUiPreferencesStore(
     (state) => state.upsertBridgeSession,
   );
+  const hasHydrated = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
   useRealtimeEntries(streamId);
-  useLatestBridgeJob(streamId, 4_000);
-  const resetBridgeSession = useResetBridgeSession(streamId);
 
+  const effectiveBridgeSession = hasHydrated ? bridgeSession : undefined;
   const selectedProviderId =
-    bridgeSession?.providerId ?? bridgeDefaults.providerId;
-  const hasActiveSession = !!bridgeSession?.isExternalSessionActive;
+    effectiveBridgeSession?.providerId ?? "gemini";
+  useLatestBridgeJob(streamId, selectedProviderId, 4_000);
+  const resetBridgeSession = useResetBridgeSession(streamId);
+  const hasActiveSession = !!effectiveBridgeSession?.isExternalSessionActive;
   const hasSessionMemory =
-    !!bridgeSession?.sessionMemory.trim() ||
-    !!bridgeSession?.lastInstruction.trim();
-  const automationStatus = bridgeSession?.automationStatus ?? "idle";
+    !!effectiveBridgeSession?.sessionMemory.trim() ||
+    !!effectiveBridgeSession?.lastInstruction.trim();
+  const automationStatus = effectiveBridgeSession?.automationStatus ?? "idle";
   const shouldShowReset =
     hasSessionMemory ||
-    !!bridgeSession?.lastJobId ||
+    !!effectiveBridgeSession?.lastJobId ||
     automationStatus !== "idle" ||
     hasActiveSession;
   const queueLabel =
@@ -127,7 +132,11 @@ export function StreamView({ streamId }: { streamId: string }) {
                   ? "bg-status-error-bg text-status-error-text"
                   : "text-text-muted hover:bg-surface-hover"
           }`}
-          title="Latest local Gemini sidecar queue state"
+          title={`Latest local ${
+            BRIDGE_PROVIDER_PRESETS.find(
+              (provider) => provider.id === selectedProviderId,
+            )?.label ?? "bridge"
+          } runner state`}
         >
           <Wand2 className="h-3.5 w-3.5" />
           <span>{queueLabel}</span>
@@ -138,12 +147,9 @@ export function StreamView({ streamId }: { streamId: string }) {
           <select
             value={selectedProviderId}
             onChange={(event) => {
-              const providerId = event.target.value as
-                | "chatgpt"
-                | "gemini"
-                | "claude";
+              const providerId = event.target.value as typeof selectedProviderId;
               setBridgeDefaults({ providerId });
-              if (bridgeSession) {
+              if (effectiveBridgeSession) {
                 upsertBridgeSession(streamId, { providerId });
               }
             }}

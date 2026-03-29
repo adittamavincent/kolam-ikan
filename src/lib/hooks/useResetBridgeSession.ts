@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { latestBridgeJobQueryKey } from "@/lib/hooks/useBridgeJobs";
+import { BRIDGE_JOB_PROVIDERS } from "@/lib/bridge/providers";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 
 export function useResetBridgeSession(streamId: string) {
@@ -32,10 +33,12 @@ export function useResetBridgeSession(streamId: string) {
     },
     onSuccess: async () => {
       clearBridgeSession(streamId);
-      queryClient.setQueryData(latestBridgeJobQueryKey(streamId), null);
-      await queryClient.invalidateQueries({
-        queryKey: latestBridgeJobQueryKey(streamId),
-      });
+      for (const provider of BRIDGE_JOB_PROVIDERS) {
+        queryClient.setQueryData(latestBridgeJobQueryKey(streamId, provider), null);
+        await queryClient.invalidateQueries({
+          queryKey: latestBridgeJobQueryKey(streamId, provider),
+        });
+      }
     },
   });
 }

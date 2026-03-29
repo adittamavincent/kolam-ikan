@@ -4,10 +4,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 import {
-  GEMINI_APP_URL,
+  DEFAULT_BRIDGE_RUNNER_PROVIDERS,
+  getRequestedModel,
   LOGIN_REQUIRED_CODE,
+  PROVIDER_RUNNER_CONFIGS,
+  runBridgeJob,
   SESSION_RESET_REQUIRED_CODE,
-  runGeminiBridgeJob,
   sleep,
 } from "./gemini-bridge-runner-core.mjs";
 
@@ -19,9 +21,9 @@ const APP_URL = (process.env.BRIDGE_RUNNER_APP_URL || "http://localhost:3000").r
   "",
 );
 const RUNNER_SECRET = process.env.BRIDGE_RUNNER_SECRET || "";
-const RUNNER_ID = process.env.BRIDGE_RUNNER_ID || "local-gemini-runner";
+const RUNNER_ID = process.env.BRIDGE_RUNNER_ID || "local-bridge-runner";
 const USER_DATA_DIR =
-  process.env.BRIDGE_RUNNER_PROFILE_DIR || ".auth/gemini-sidecar-profile";
+  process.env.BRIDGE_RUNNER_PROFILE_DIR || ".auth/bridge-runner-profile";
 const POLL_MS = Number(process.env.BRIDGE_RUNNER_POLL_INTERVAL_MS || "3000");
 const HEADLESS = process.env.BRIDGE_RUNNER_HEADLESS === "true";
 const RUNNER_BROWSER_CHANNEL = process.env.BRIDGE_RUNNER_BROWSER_CHANNEL || "chrome";
@@ -32,8 +34,25 @@ if (!RUNNER_SECRET) {
   throw new Error("BRIDGE_RUNNER_SECRET is required");
 }
 
-async function runnerFetch(path, init = {}) {
-  return fetch(`${APP_URL}${path}`, {
+function parseEnabledProviders() {
+  const configured = (process.env.BRIDGE_RUNNER_PROVIDERS || "")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  const normalized = (configured.length > 0
+    ? configured
+    : DEFAULT_BRIDGE_RUNNER_PROVIDERS
+  ).filter((provider, index, values) => {
+    return provider in PROVIDER_RUNNER_CONFIGS && values.indexOf(provider) === index;
+  });
+
+  return normalized.length > 0 ? normalized : ["gemini"];
+}
+
+const ENABLED_PROVIDERS = parseEnabledProviders();
+
+async function runnerFetch(requestPath, init = {}) {
+  return fetch(`${APP_URL}${requestPath}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -60,35 +79,52 @@ async function readJsonResponse(response, context) {
   } catch (error) {
     throw new Error(
       `${context} returned invalid JSON (${response.status} ${response.statusText}). ` +
-        `Body preview: ${rawText.slice(0, 200)}. Parse error: ${error instanceof Error ? error.message : String(error)}`,
+        `Body preview: ${rawText.slice(0, 200)}. Parse error: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
     );
   }
 }
 
-async function claimNextJob() {
-  const response = await runnerFetch(
-    `/api/bridge/jobs/next?provider=gemini&runnerId=${encodeURIComponent(RUNNER_ID)}`,
-  );
-  if (!response.ok) {
+let nextProviderIndex = 0;
+
+async function claimNextJob(providers = ENABLED_PROVIDERS) {
+  for (let offset = 0; offset < providers.length; offset += 1) {
+    const providerIndex = (nextProviderIndex + offset) % providers.length;
+    const provider = providers[providerIndex];
+    const response = await runnerFetch(
+      `/api/bridge/jobs/next?provider=${provider}&runnerId=${encodeURIComponent(
+        RUNNER_ID,
+      )}`,
+    );
+    if (!response.ok) {
+      const payload = await readJsonResponse(response, "Claim bridge job");
+      throw new Error(
+        payload?.error
+          ? `Failed to claim bridge job (${response.status}): ${payload.error}`
+          : `Failed to claim bridge job (${response.status})`,
+      );
+    }
+
     const payload = await readJsonResponse(response, "Claim bridge job");
-    throw new Error(
-      payload?.error
-        ? `Failed to claim bridge job (${response.status}): ${payload.error}`
-        : `Failed to claim bridge job (${response.status})`,
-    );
+    if (payload.job) {
+      nextProviderIndex = (providerIndex + 1) % providers.length;
+      return payload.job;
+    }
   }
 
-  const payload = await readJsonResponse(response, "Claim bridge job");
-  return payload.job ?? null;
+  return null;
 }
 
-async function completeJob(jobId, rawResponse, page) {
-  const response = await runnerFetch(`/api/bridge/jobs/${jobId}/result`, {
+async function completeJob(job, rawResponse, page, provider, requestedModel) {
+  const response = await runnerFetch(`/api/bridge/jobs/${job.id}/result`, {
     method: "POST",
     body: JSON.stringify({
       rawResponse,
       runnerDetails: {
         runnerId: RUNNER_ID,
+        provider,
+        model: requestedModel || null,
         pageUrl: page.url(),
       },
     }),
@@ -104,8 +140,8 @@ async function completeJob(jobId, rawResponse, page) {
   }
 }
 
-async function failJob(jobId, error, page) {
-  const response = await runnerFetch(`/api/bridge/jobs/${jobId}/fail`, {
+async function failJob(job, error, page, provider, requestedModel) {
+  const response = await runnerFetch(`/api/bridge/jobs/${job.id}/fail`, {
     method: "POST",
     body: JSON.stringify({
       errorCode:
@@ -117,6 +153,8 @@ async function failJob(jobId, error, page) {
       errorMessage: error instanceof Error ? error.message : "Runner error",
       runnerDetails: {
         runnerId: RUNNER_ID,
+        provider,
+        model: requestedModel || null,
         pageUrl: page?.url?.() ?? null,
       },
     }),
@@ -222,7 +260,7 @@ export function installShutdownHandlers(context) {
     }
 
     shutdownPromise = (async () => {
-      console.log("[gemini-bridge-runner] shutting down", { signal });
+      console.log("[bridge-runner] shutting down", { signal });
       await closeRunnerContext(activeContext);
     })();
 
@@ -252,11 +290,14 @@ export async function launchRunnerContext(userDataDir) {
       (RUNNER_BROWSER_PATH || (!HEADLESS && RUNNER_BROWSER_CHANNEL)) &&
       isConfiguredBrowserUnavailable(error)
     ) {
-      console.warn("[gemini-bridge-runner] configured browser unavailable; falling back", {
+      console.warn("[bridge-runner] configured browser unavailable; falling back", {
         requestedChannel: RUNNER_BROWSER_PATH ? null : launchBrowserChannelLabel(),
         requestedPath: RUNNER_BROWSER_PATH || null,
       });
-      return chromium.launchPersistentContext(userDataDir, buildLaunchOptions({ useConfiguredBrowser: false }));
+      return chromium.launchPersistentContext(
+        userDataDir,
+        buildLaunchOptions({ useConfiguredBrowser: false }),
+      );
     }
 
     if (HEADLESS || !isPersistentContextLaunchFailure(error)) {
@@ -268,7 +309,7 @@ export async function launchRunnerContext(userDataDir) {
       throw error;
     }
 
-    console.warn("[gemini-bridge-runner] headed profile failed to launch; using a fresh profile", {
+    console.warn("[bridge-runner] headed profile failed to launch; using a fresh profile", {
       userDataDir,
       backupDir,
     });
@@ -277,30 +318,80 @@ export async function launchRunnerContext(userDataDir) {
   }
 }
 
+async function getProviderPage(context, provider, pagesByProvider) {
+  const current = pagesByProvider.get(provider);
+  if (current && !current.isClosed()) {
+    return current;
+  }
+
+  const config = PROVIDER_RUNNER_CONFIGS[provider];
+  const existingPage = context
+    .pages()
+    .find((page) => !page.isClosed() && page.url().startsWith(config.origin));
+
+  if (existingPage) {
+    pagesByProvider.set(provider, existingPage);
+    return existingPage;
+  }
+
+  const page = await context.newPage();
+  pagesByProvider.set(provider, page);
+  return page;
+}
+
+async function ensureProviderPageReady(context, provider, pagesByProvider) {
+  const page = await getProviderPage(context, provider, pagesByProvider);
+  const { appUrl, origin } = PROVIDER_RUNNER_CONFIGS[provider];
+
+  if (!page.url() || page.url() === "about:blank" || !page.url().startsWith(origin)) {
+    await page.goto(appUrl, { waitUntil: "domcontentloaded" }).catch(() => undefined);
+  }
+
+  return page;
+}
+
 export async function main() {
-  console.log("[gemini-bridge-runner] starting", {
+  console.log("[bridge-runner] starting", {
     appUrl: APP_URL,
     runnerId: RUNNER_ID,
     userDataDir: USER_DATA_DIR,
     headless: HEADLESS,
     pollMs: POLL_MS,
+    providers: ENABLED_PROVIDERS,
     browserChannel: RUNNER_BROWSER_PATH ? null : launchBrowserChannelLabel(),
     browserPath: RUNNER_BROWSER_PATH || null,
   });
 
   const context = await launchRunnerContext(USER_DATA_DIR);
   installShutdownHandlers(context);
-  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "https://gemini.google.com",
-  }).catch(() => undefined);
 
-  let page = context.pages()[0] ?? (await context.newPage());
-  let sessionState = {
-    currentSessionKey: null,
-  };
+  for (const provider of ENABLED_PROVIDERS) {
+    await context
+      .grantPermissions(["clipboard-read", "clipboard-write"], {
+        origin: PROVIDER_RUNNER_CONFIGS[provider].origin,
+      })
+      .catch(() => undefined);
+  }
 
-  await page.goto(GEMINI_APP_URL, { waitUntil: "domcontentloaded" });
-  console.log("[gemini-bridge-runner] browser ready", { pageUrl: page.url() });
+  const pagesByProvider = new Map();
+  const sessionStates = new Map(
+    ENABLED_PROVIDERS.map((provider) => [
+      provider,
+      { currentSessionKey: null, currentModel: null },
+    ]),
+  );
+
+  for (const provider of ENABLED_PROVIDERS) {
+    const page = await ensureProviderPageReady(context, provider, pagesByProvider);
+    console.log("[bridge-runner] provider page ready", {
+      provider,
+      pageUrl: page.url(),
+    });
+  }
+
+  console.log("[bridge-runner] browser ready", {
+    providers: ENABLED_PROVIDERS,
+  });
 
   while (true) {
     try {
@@ -310,31 +401,47 @@ export async function main() {
         continue;
       }
 
-      console.log("[gemini-bridge-runner] claimed job", {
+      const provider = job.provider;
+      const requestedModel = getRequestedModel(job, provider);
+      const page = await ensureProviderPageReady(context, provider, pagesByProvider);
+      const sessionState =
+        sessionStates.get(provider) ?? {
+          currentSessionKey: null,
+          currentModel: null,
+        };
+      sessionStates.set(provider, sessionState);
+
+      console.log("[bridge-runner] claimed job", {
         id: job.id,
+        provider,
+        model: requestedModel || null,
         payloadVariant: job.payload_variant,
         sessionKey: job.session_key,
       });
 
-      page = page.isClosed() ? await context.newPage() : page;
-
       try {
-        const response = await runGeminiBridgeJob(page, job, sessionState);
-        await completeJob(job.id, response, page);
-        console.log("[gemini-bridge-runner] completed job", { id: job.id });
+        const response = await runBridgeJob(page, job, sessionState);
+        await completeJob(job, response, page, provider, requestedModel);
+        console.log("[bridge-runner] completed job", {
+          id: job.id,
+          provider,
+          model: requestedModel || null,
+        });
       } catch (error) {
         if (error?.code === SESSION_RESET_REQUIRED_CODE) {
           sessionState.currentSessionKey = null;
         }
-        await failJob(job.id, error, page);
-        console.error("[gemini-bridge-runner] failed job", {
+        await failJob(job, error, page, provider, requestedModel);
+        console.error("[bridge-runner] failed job", {
           id: job.id,
+          provider,
+          model: requestedModel || null,
           code: error?.code ?? "RUNNER_ERROR",
           message: error instanceof Error ? error.message : String(error),
         });
       }
     } catch (error) {
-      console.error("[gemini-bridge-runner]", error);
+      console.error("[bridge-runner]", error);
       await sleep(POLL_MS);
     }
   }
@@ -350,7 +457,7 @@ function launchBrowserChannelLabel() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
-    console.error("[gemini-bridge-runner] fatal", error);
+    console.error("[bridge-runner] fatal", error);
     process.exitCode = 1;
   });
 }

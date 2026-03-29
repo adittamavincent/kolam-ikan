@@ -28,6 +28,7 @@ import type { BridgeJobStatus } from "@/lib/types";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import {
   BRIDGE_PROVIDER_PRESETS,
+  getBridgeSessionLaunchUrl,
   getBridgeProviderPreset,
 } from "./bridge-config";
 import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
@@ -79,7 +80,11 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
   const parserRef = useRef<ResponseParserHandle>(null);
   const currentProvider = getBridgeProviderPreset(providerId);
-  const latestBridgeJob = useLatestBridgeJob(streamId, isOpen ? 3_000 : 8_000);
+  const latestBridgeJob = useLatestBridgeJob(
+    streamId,
+    providerId,
+    isOpen ? 3_000 : 8_000,
+  );
   const createBridgeJob = useCreateBridgeJob(streamId);
   const resetBridgeSession = useResetBridgeSession(streamId);
 
@@ -178,7 +183,8 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
   const handleOpenProvider = () => {
     if (typeof window === "undefined") return;
-    window.open(currentProvider.launchUrl, "_blank", "noopener,noreferrer");
+    const launchUrl = getBridgeSessionLaunchUrl(providerId, bridgeSession);
+    window.open(launchUrl, "_blank", "noopener,noreferrer");
     setBridgeDefaults({
       providerId,
       quickPreset: bridgeDefaults.quickPreset,
@@ -193,6 +199,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
         includeGlobalStream,
       },
       lastUsedAt: new Date().toISOString(),
+      externalSessionUrl: launchUrl,
     });
   };
 
@@ -202,8 +209,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const automatedResponse = latestBridgeJob.data?.raw_response?.trim() ?? "";
   const effectivePastedXML = pastedXML.trim() ? pastedXML : automatedResponse;
   const responsePreviewText = effectivePastedXML;
-  const currentSessionKey = buildBridgeSessionKey(streamId, "gemini");
-  const canQueueToGemini = providerId === "gemini";
+  const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
   const latestJobMatchesCurrentPayload =
     latestBridgeJob.data?.session_key === currentSessionKey &&
     latestBridgeJob.data?.payload === generatedXML;
@@ -237,7 +243,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   };
 
   const handleQueueDetailed = async () => {
-    if (!canQueueToGemini || !payloadReady || !generatedXML.trim()) return;
+    if (!payloadReady || !generatedXML.trim()) return;
     if (
       latestJobMatchesCurrentPayload &&
       (latestBridgeJob.data?.status === "queued" ||
@@ -247,7 +253,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     }
 
     const result = await createBridgeJob.mutateAsync({
-      provider: "gemini",
+      provider: providerId,
       payload: generatedXML,
       payloadVariant: bridgeSession?.isExternalSessionActive ? "followup" : "full",
       sessionKey: currentSessionKey,
@@ -300,15 +306,12 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
       ) : (
         <Rocket className="h-4 w-4" />
       ),
-      onClick: () =>
-        void (canQueueToGemini ? handleQueueDetailed() : handleOpenProvider()),
+      onClick: () => void handleQueueDetailed(),
       disabled:
-        (canQueueToGemini &&
-          (!payloadReady ||
-            !generatedXML.trim() ||
-            createBridgeJob.isPending ||
-            resetBridgeSession.isPending)) ||
-        (!canQueueToGemini && !generatedXML.trim()),
+        !payloadReady ||
+        !generatedXML.trim() ||
+        createBridgeJob.isPending ||
+        resetBridgeSession.isPending,
       tone: "primary" as const,
     },
   ];
@@ -418,8 +421,9 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                   </label>
                 </div>
                 <div className="text-xs text-text-muted">
-                  Detailed keeps the workflow manual but remembers your
-                  destination for future Quick launches.
+                  Detailed can queue the local runner directly, and it still
+                  keeps the manual open/copy workflow available when you want
+                  it.
                 </div>
                 <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
                   <span className="border border-border-subtle bg-surface-default px-2 py-1">
@@ -492,8 +496,8 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                     Generated Payload
                   </h3>
                   <p className="mt-1 text-xs text-text-muted">
-                    Copy this into your provider, or open the provider now and
-                    paste there.
+                    Queue this to the local runner, copy it manually, or open
+                    the provider now and paste there.
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -540,8 +544,8 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                   </p>
                   {latestBridgeJob.data?.raw_response && (
                     <p className="mt-1 text-xs text-text-muted">
-                      Latest Gemini sidecar response is loaded automatically. You
-                      can still paste a different response over it.
+                      Latest runner response is loaded automatically. You can
+                      still paste a different response over it.
                     </p>
                   )}
                 </div>

@@ -34,6 +34,14 @@ Start the app:
 npm run dev
 ```
 
+Run the universal browser bridge runner:
+
+```bash
+npm run bridge:runner
+```
+
+The runner can now poll multiple providers through `BRIDGE_RUNNER_PROVIDERS` and can pin provider-specific default models with `BRIDGE_RUNNER_MODEL_CHATGPT`, `BRIDGE_RUNNER_MODEL_GEMINI`, and `BRIDGE_RUNNER_MODEL_CLAUDE`.
+
 Start local Supabase:
 
 ```bash

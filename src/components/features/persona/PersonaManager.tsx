@@ -14,7 +14,11 @@ import { Persona } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { ModalHeader, ModalShell } from "@/components/shared/ModalShell";
+import {
+  ModalFooterAction,
+  ModalHeader,
+  ModalShell,
+} from "@/components/shared/ModalShell";
 import {
   DEFAULT_PERSONA_TYPE,
   getPersonaScopeDescription,
@@ -462,20 +466,105 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
       : 0;
   const canEditPersona = (persona: Persona) =>
     !persona.is_system && persona.user_id === user?.id;
+  const isSavingPersona = createPersona.isPending || updatePersona.isPending;
+  const personaFooterActions: ModalFooterAction[] = deletingPersona
+    ? [
+        {
+          label: bulkDeleteQueue.length > 0 ? "Skip" : "Cancel",
+          onClick: () => {
+            const currentQueue = bulkDeleteQueue;
+            const skippedPersonaId = deletingPersona.id;
+
+            resetDeleteState();
+
+            if (currentQueue.length > 0) {
+              void continueBulkDeleteFlow(currentQueue, skippedPersonaId);
+            }
+          },
+          tone: "ghost",
+        },
+        ...(isPermanent
+          ? [
+              {
+                label: "Delete Permanently",
+                icon: hardDeletePersona.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : undefined,
+                onClick: () => handleDelete(true),
+                disabled:
+                  hardDeletePersona.isPending ||
+                  (deleteUsageCount > 0 && transferCandidates.length === 0),
+                tone: "danger",
+              } satisfies ModalFooterAction,
+            ]
+          : [
+              ...(deleteUsageCount === 0
+                ? [
+                    {
+                      label: "Delete Permanently",
+                      icon: hardDeletePersona.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : undefined,
+                      onClick: () => handleDelete(true),
+                      disabled: hardDeletePersona.isPending,
+                      tone: "danger",
+                    } satisfies ModalFooterAction,
+                  ]
+                : []),
+              {
+                label:
+                  deleteUsageCount > 0 ? "Delete & Transfer" : "Soft Delete",
+                icon: deletePersona.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : undefined,
+                onClick: () => handleDelete(false),
+                disabled:
+                  deletePersona.isPending ||
+                  (deleteUsageCount > 0 && transferCandidates.length === 0),
+                tone: "danger",
+              } satisfies ModalFooterAction,
+            ]),
+      ]
+    : isCreating || editingPersona
+      ? [
+          {
+            label: "Cancel",
+            onClick: () => {
+              setIsCreating(false);
+              setEditingPersona(null);
+              resetForm();
+            },
+            tone: "ghost",
+          },
+          {
+            label: "Save Persona",
+            icon: isSavingPersona ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : undefined,
+            type: "submit",
+            form: "persona-editor-form",
+            disabled: isSavingPersona,
+            tone: "primary",
+          },
+        ]
+      : [];
 
   return (
     <>
-      <ModalShell open={isOpen} onClose={onClose} panelClassName="w-full p-4">
+      <ModalShell
+        open={isOpen}
+        onClose={onClose}
+        panelClassName="w-full"
+        footerActions={personaFooterActions}
+      >
         <ModalHeader
           title="Manage Personas"
           icon={<Users className="h-5 w-5" />}
           onClose={onClose}
-          className="mb-4 px-0 pb-4 pt-0"
-          titleClassName="text-lg font-medium leading-6 text-text-default"
         />
 
         {deletingPersona ? (
-          <div className="space-y-4">
+          <div className="space-y-4 px-6 py-5">
             <div>
               <h4 className="text-sm font-medium text-text-default">
                 {isPermanent ? "Permanently Delete Persona" : "Delete Persona"}
@@ -554,73 +643,13 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                type="button"
-                onClick={() => {
-                  const currentQueue = bulkDeleteQueue;
-                  const skippedPersonaId = deletingPersona.id;
-
-                  resetDeleteState();
-
-                  if (currentQueue.length > 0) {
-                    void continueBulkDeleteFlow(currentQueue, skippedPersonaId);
-                  }
-                }}
-                className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle transition-colors"
-              >
-                {bulkDeleteQueue.length > 0 ? "Skip" : "Cancel"}
-              </button>
-              {isPermanent ? (
-                <button
-                  type="button"
-                  onClick={() => handleDelete(true)}
-                  disabled={
-                    hardDeletePersona.isPending ||
-                    (deleteUsageCount > 0 && transferCandidates.length === 0)
-                  }
-                  className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 transition-colors disabled:opacity-50 flex items-center gap-2"
-                >
-                  {hardDeletePersona.isPending && (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  )}
-                  Delete Permanently
-                </button>
-              ) : (
-                <>
-                  {deleteUsageCount === 0 && (
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(true)}
-                      disabled={hardDeletePersona.isPending}
-                      className="px-4 py-2 text-sm font-medium border border-status-error-text text-status-error-text hover:bg-status-error-bg transition-colors disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {hardDeletePersona.isPending && (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      )}
-                      Delete Permanently
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(false)}
-                    disabled={
-                      deletePersona.isPending ||
-                      (deleteUsageCount > 0 && transferCandidates.length === 0)
-                    }
-                    className="px-4 py-2 text-sm font-medium bg-status-error-bg text-status-error-text hover:opacity-90 transition-colors disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {deletePersona.isPending && (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    )}
-                    {deleteUsageCount > 0 ? "Delete & Transfer" : "Soft Delete"}
-                  </button>
-                </>
-              )}
-            </div>
           </div>
         ) : isCreating || editingPersona ? (
-          <form onSubmit={handleSave} className="space-y-4">
+          <form
+            id="persona-editor-form"
+            onSubmit={handleSave}
+            className="space-y-4 px-6 py-5"
+          >
             <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)]">
               <div className="space-y-4">
                 <div>
@@ -775,33 +804,10 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               </div>
             )}
 
-            <div className="flex justify-end gap-2 mt-6">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCreating(false);
-                  setEditingPersona(null);
-                  resetForm();
-                }}
-                className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={createPersona.isPending || updatePersona.isPending}
-                className="px-4 py-2 text-sm font-medium bg-action-primary-bg text-white hover:bg-action-primary-hover transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {(createPersona.isPending || updatePersona.isPending) && (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                )}
-                Save Persona
-              </button>
-            </div>
           </form>
         ) : (
-          <>
-            <div className="flex items-center justify-between mb-3">
+          <div className="px-6 py-5">
+            <div className="mb-3 flex items-center justify-between">
               <button
                 onClick={beginCreate}
                 className="flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
@@ -1008,7 +1014,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                 })
               )}
             </div>
-          </>
+          </div>
         )}
       </ModalShell>
       <ConfirmDialog

@@ -729,6 +729,7 @@ export function useDomains(userId: string) {
               "stream_id, content_json, raw_markdown, content_format, name, summary, created_by, created_at",
             )
             .in("stream_id", origStreamIds)
+            .is("deleted_at", null)
             .order("created_at", { ascending: true });
 
           if (versions && versions.length) {

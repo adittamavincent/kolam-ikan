@@ -14,8 +14,9 @@ export const config = {
      * - favicon.ico (favicon file)
      * - images (public images)
      * - api/storage (storage endpoints used for signed URLs/uploads)
+     * - api/bridge (runner endpoints use shared-secret auth, not browser auth)
      * Feel free to modify this pattern to include more paths.
      */
-    "/((?!_next/static|_next/image|favicon.ico|api/storage|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/storage|api/bridge|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

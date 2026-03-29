@@ -41,6 +41,20 @@ export type DocumentImportJobInsert =
 export type DocumentImportJobUpdate =
   Database["public"]["Tables"]["document_import_jobs"]["Update"];
 
+export type BridgeJob = Database["public"]["Tables"]["bridge_jobs"]["Row"];
+export type BridgeJobInsert = Database["public"]["Tables"]["bridge_jobs"]["Insert"];
+export type BridgeJobUpdate = Database["public"]["Tables"]["bridge_jobs"]["Update"];
+
+export type BridgeJobStatus =
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled";
+
+export type BridgeJobProvider = "gemini";
+export type BridgePayloadVariant = "full" | "followup";
+
 export type DocumentChunk =
   Database["public"]["Tables"]["document_chunks"]["Row"];
 export type DocumentChunkInsert =

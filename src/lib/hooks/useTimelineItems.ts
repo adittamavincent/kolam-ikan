@@ -32,6 +32,7 @@ export function useTimelineItems(
         .from("canvas_versions")
         .select("*")
         .eq("stream_id", streamId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];

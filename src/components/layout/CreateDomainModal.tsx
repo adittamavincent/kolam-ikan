@@ -95,17 +95,39 @@ export function CreateDomainModal({
   };
 
   return (
-    <ModalShell open={isOpen} onClose={onClose} panelClassName="w-full p-6">
+    <ModalShell
+      open={isOpen}
+      onClose={onClose}
+      panelClassName="w-full"
+      footerActions={[
+        {
+          label: "Cancel",
+          onClick: onClose,
+          disabled: isSubmitting,
+          tone: "ghost",
+        },
+        {
+          label: isSubmitting ? "Creating..." : "Create Domain",
+          icon: isSubmitting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          ),
+          type: "submit",
+          form: "create-domain-form",
+          disabled: !name.trim() || isSubmitting,
+          tone: "primary",
+        },
+      ]}
+    >
       <ModalHeader
         title="Create New Domain"
         description="Create a new workspace for your content."
         icon={<Globe className="h-5 w-5" />}
         onClose={onClose}
-        className="mb-4 px-0 pb-4 pt-0"
-        titleClassName="text-lg font-medium leading-6 text-text-default"
       />
 
-      <form onSubmit={handleSubmit}>
+      <form id="create-domain-form" onSubmit={handleSubmit} className="px-6 py-5">
         <div className="mt-2">
           <div className="relative">
             <input
@@ -156,33 +178,6 @@ export function CreateDomainModal({
           )}
         </div>
 
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            className="inline-flex justify-center border border-transparent px-4 py-2 text-sm font-medium text-text-subtle hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible: transition-colors"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!name.trim() || isSubmitting}
-            className="inline-flex justify-center items-center gap-2 border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" />
-                Create Domain
-              </>
-            )}
-          </button>
-        </div>
       </form>
     </ModalShell>
   );

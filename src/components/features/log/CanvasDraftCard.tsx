@@ -67,6 +67,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             .from("canvas_versions")
             .select(selectClause)
             .eq("stream_id", streamId)
+            .is("deleted_at", null)
             .order("created_at", { ascending: false })
             .limit(1)
             .maybeSingle();

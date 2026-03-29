@@ -2,6 +2,7 @@
 
 import {
   useMemo,
+  useRef,
   useState,
   useEffect,
   forwardRef,
@@ -9,18 +10,24 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { MarkdownBlock, MarkdownInlineContent } from "@/lib/types";
+import { MarkdownBlock } from "@/lib/types";
 import { z } from "zod";
 import { BlockSchema } from "@/lib/validation/entry";
 import { Json } from "@/lib/types/database.types";
-import { buildStoredContentPayload } from "@/lib/content-protocol";
+import {
+  blocksToStoredMarkdown,
+  buildStoredContentPayload,
+} from "@/lib/content-protocol";
 import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
+import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
+import type { PartialBlock } from "@/lib/types/editor";
 
 interface ResponseParserProps {
   streamId?: string;
   interactionMode?: "ASK" | "GO" | "BOTH";
   pastedXML: string;
   onPastedXMLChange: (value: string) => void;
+  onApplySuccess?: () => void;
   onStatusChange?: (status: {
     isApplying: boolean;
     canApply: boolean;
@@ -32,6 +39,7 @@ interface ResponseParserProps {
 export interface ResponseParserHandle {
   parse: () => void;
   apply: () => void;
+  quickApply: () => Promise<boolean>;
   reset: () => void;
 }
 
@@ -46,59 +54,23 @@ interface BlockChange {
   originalId?: string;
 }
 
+interface ParsedBridgeResponse {
+  ignoredTags: string[];
+  thoughtLog: string | null;
+  incomingBlocks: MarkdownBlock[] | null;
+  changes: BlockChange[];
+  conflictWarning: string | null;
+  canvasParseError: string | null;
+  warnings: string[];
+  usePlainText: boolean;
+  canvasApplyMode: "merge" | "replace";
+  mergedBlocks: MarkdownBlock[] | null;
+}
+
 const BlockArraySchema = z.array(BlockSchema);
 
 function extractBlockText(block: MarkdownBlock): string {
   return block.content?.map((c) => c.text).join("") || "";
-}
-
-function parseInlineMarkdown(text: string): MarkdownInlineContent[] {
-  const tokens: MarkdownInlineContent[] = [];
-  const pattern = /(\*\*[^*]+\*\*)|(\*[^*]+\*)|(`[^`]+`)/g;
-  let lastIndex = 0;
-
-  for (const match of text.matchAll(pattern)) {
-    if (match.index === undefined) continue;
-
-    if (match.index > lastIndex) {
-      tokens.push({
-        type: "text",
-        text: text.slice(lastIndex, match.index),
-      });
-    }
-
-    const matched = match[0];
-    if (matched.startsWith("**") && matched.endsWith("**")) {
-      tokens.push({
-        type: "text",
-        text: matched.slice(2, -2),
-        styles: { bold: true },
-      });
-    } else if (matched.startsWith("*") && matched.endsWith("*")) {
-      tokens.push({
-        type: "text",
-        text: matched.slice(1, -1),
-        styles: { italic: true },
-      });
-    } else if (matched.startsWith("`") && matched.endsWith("`")) {
-      tokens.push({
-        type: "text",
-        text: matched.slice(1, -1),
-        styles: { code: true },
-      });
-    }
-
-    lastIndex = match.index + matched.length;
-  }
-
-  if (lastIndex < text.length) {
-    tokens.push({
-      type: "text",
-      text: text.slice(lastIndex),
-    });
-  }
-
-  return tokens.length > 0 ? tokens : [{ type: "text", text }];
 }
 
 function toParagraphBlocks(text: string): MarkdownBlock[] {
@@ -121,16 +93,13 @@ function toParagraphBlocks(text: string): MarkdownBlock[] {
   const flushParagraph = () => {
     if (paragraphBuffer.length === 0) return;
 
-    const paragraphText = paragraphBuffer
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .join(" ");
+    const paragraphText = paragraphBuffer.join("\n").trim();
 
     if (paragraphText.length > 0) {
       blocks.push({
         id: crypto.randomUUID(),
         type: "paragraph",
-        content: parseInlineMarkdown(paragraphText),
+        content: [{ type: "text", text: paragraphText }],
         children: [],
       });
     }
@@ -138,12 +107,13 @@ function toParagraphBlocks(text: string): MarkdownBlock[] {
     paragraphBuffer = [];
   };
 
-  lines.forEach((rawLine) => {
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
     const line = rawLine.trim();
 
     if (!line) {
       flushParagraph();
-      return;
+      continue;
     }
 
     const headingMatch = line.match(/^(#{1,3})\s+(.+)$/);
@@ -153,10 +123,10 @@ function toParagraphBlocks(text: string): MarkdownBlock[] {
         id: crypto.randomUUID(),
         type: "heading",
         props: { level: headingMatch[1].length as unknown as Json },
-        content: parseInlineMarkdown(headingMatch[2]),
+        content: [{ type: "text", text: headingMatch[2] }],
         children: [],
       });
-      return;
+      continue;
     }
 
     const bulletMatch = line.match(/^[-*]\s+(.+)$/);
@@ -165,10 +135,10 @@ function toParagraphBlocks(text: string): MarkdownBlock[] {
       blocks.push({
         id: crypto.randomUUID(),
         type: "bulletListItem",
-        content: parseInlineMarkdown(bulletMatch[1]),
+        content: [{ type: "text", text: bulletMatch[1] }],
         children: [],
       });
-      return;
+      continue;
     }
 
     const numberedMatch = line.match(/^\d+[.)]\s+(.+)$/);
@@ -177,14 +147,44 @@ function toParagraphBlocks(text: string): MarkdownBlock[] {
       blocks.push({
         id: crypto.randomUUID(),
         type: "numberedListItem",
-        content: parseInlineMarkdown(numberedMatch[1]),
+        content: [{ type: "text", text: numberedMatch[1] }],
         children: [],
       });
-      return;
+      continue;
+    }
+
+    const quoteMatch = line.match(/^>\s?(.*)$/);
+    if (quoteMatch) {
+      flushParagraph();
+      const quoteLines = [rawLine];
+      while (index + 1 < lines.length) {
+        const nextLine = lines[index + 1]?.trim();
+        if (!nextLine?.startsWith(">")) break;
+        index += 1;
+        quoteLines.push(lines[index]);
+      }
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: "paragraph",
+        content: [{ type: "text", text: quoteLines.join("\n") }],
+        children: [],
+      });
+      continue;
+    }
+
+    if (/^-{3,}$/.test(line)) {
+      flushParagraph();
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: "paragraph",
+        content: [{ type: "text", text: line }],
+        children: [],
+      });
+      continue;
     }
 
     paragraphBuffer.push(rawLine);
-  });
+  }
 
   flushParagraph();
 
@@ -230,6 +230,18 @@ function applyDiffToBlocks(
   const result = [...currentBlocks];
   let additionsBuffer: string[] = [];
 
+  const stripDiffPrefix = (line: string) => {
+    const normalized = line.trimStart();
+    if (normalized === "+" || normalized === "+ ") return "";
+    if (normalized === "-" || normalized === "- ") return "";
+    if (normalized.startsWith("+ ")) return normalized.slice(2);
+    if (normalized.startsWith("- ")) return normalized.slice(2);
+    if (normalized.startsWith(" ")) return normalized.slice(1);
+    if (normalized.startsWith("+")) return normalized.slice(1).trimStart();
+    if (normalized.startsWith("-")) return normalized.slice(1).trimStart();
+    return normalized;
+  };
+
   const flushAdditions = () => {
     if (additionsBuffer.length === 0) return;
     const contentToAdd = additionsBuffer.join("\n");
@@ -241,9 +253,11 @@ function applyDiffToBlocks(
   lines.forEach((line) => {
     const trimmedLine = line.trim();
 
-    if (trimmedLine.startsWith("-")) {
+    if (/^-{3,}$/.test(trimmedLine)) {
+      additionsBuffer.push(trimmedLine);
+    } else if (trimmedLine.startsWith("-")) {
       flushAdditions();
-      const contentToRemove = trimmedLine.slice(1).trim();
+      const contentToRemove = stripDiffPrefix(line).trim();
       if (!contentToRemove) return;
 
       const index = result.findIndex(
@@ -253,8 +267,7 @@ function applyDiffToBlocks(
         result.splice(index, 1);
       }
     } else if (trimmedLine.startsWith("+")) {
-      const contentToAdd = line.slice(1).trimEnd();
-      additionsBuffer.push(contentToAdd || " ");
+      additionsBuffer.push(stripDiffPrefix(line));
     } else {
       flushAdditions();
     }
@@ -264,7 +277,7 @@ function applyDiffToBlocks(
   return result;
 }
 
-function resolveCanvasBlocks(
+export function resolveCanvasBlocks(
   raw: string,
   currentBlocks: MarkdownBlock[] = [],
 ): {
@@ -311,14 +324,46 @@ function resolveCanvasBlocks(
     : trimmed;
 
   const normalizedLines = normalizedText.split("\n");
-  const hasDiffMarkers = normalizedLines.some((l) => {
+  const loosenedDiffText = normalizedLines
+    .map((line, index, allLines) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return line;
+      if (
+        trimmedLine === "+" ||
+        trimmedLine === "+ " ||
+        trimmedLine.startsWith("+ ") ||
+        trimmedLine === "-" ||
+        trimmedLine === "- " ||
+        trimmedLine.startsWith("- ") ||
+        line.startsWith(" ")
+      ) {
+        return line;
+      }
+
+      const previousNonEmpty = [...allLines.slice(0, index)]
+        .reverse()
+        .find((candidate) => candidate.trim().length > 0)
+        ?.trim();
+      const nextNonEmpty = allLines
+        .slice(index + 1)
+        .find((candidate) => candidate.trim().length > 0)
+        ?.trim();
+      const nearAddition =
+        previousNonEmpty?.startsWith("+") || nextNonEmpty?.startsWith("+");
+
+      if (!nearAddition) return line;
+      return `+ ${trimmedLine}`;
+    })
+    .join("\n");
+
+  const hasDiffMarkers = loosenedDiffText.split("\n").some((l) => {
     const t = l.trim();
     return t.startsWith("+") || t.startsWith("-");
   });
 
   if (hasDiffMarkers) {
     return {
-      blocks: applyDiffToBlocks(currentBlocks, normalizedText),
+      blocks: applyDiffToBlocks(currentBlocks, loosenedDiffText),
       format: "diff",
     };
   }
@@ -333,6 +378,62 @@ function extractTagContent(text: string, tagName: string): string | null {
   return match[1].trim();
 }
 
+export function normalizeBridgeResponseText(text: string) {
+  return text
+    .trim()
+    .replace(/^```(?:xml|html|txt)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .replace(/\\([<>_/])/g, "$1")
+    .replace(/\\([.#()[\]\-!*_`])/g, "$1")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+}
+
+export function extractTagContentByAliases(text: string, tagNames: string[]) {
+  for (const tagName of tagNames) {
+    const content = extractTagContent(text, tagName);
+    if (content) return content;
+  }
+  return null;
+}
+
+function mergeChangesIntoBlocks(
+  currentBlocks: MarkdownBlock[],
+  incomingBlocks: MarkdownBlock[] | null,
+  changes: BlockChange[],
+  previewMode: "current" | "incoming" | "merged" = "merged",
+) {
+  if (!incomingBlocks) return null;
+  if (previewMode === "current") return currentBlocks;
+  if (previewMode === "incoming") return incomingBlocks;
+
+  const next = [...currentBlocks];
+  const indexById = new Map<string, number>();
+  next.forEach((block, index) => indexById.set(block.id, index));
+
+  changes.forEach((change) => {
+    if (change.type === "modify" && change.current) {
+      if (change.decision === "accept") {
+        const idx = indexById.get(change.current.id);
+        if (idx !== undefined) {
+          next[idx] = { ...change.incoming, id: change.current.id };
+        }
+      } else if (change.decision === "both") {
+        const idx = indexById.get(change.current.id);
+        if (idx !== undefined) {
+          next.splice(idx + 1, 0, change.incoming);
+        }
+      }
+    }
+    if (change.type === "add" && change.decision !== "reject") {
+      next.push(change.incoming);
+    }
+  });
+
+  return next;
+}
+
 export const ResponseParser = forwardRef<
   ResponseParserHandle,
   ResponseParserProps
@@ -343,6 +444,7 @@ export const ResponseParser = forwardRef<
       interactionMode = "ASK",
       pastedXML,
       onPastedXMLChange,
+      onApplySuccess,
       onStatusChange,
     },
     ref,
@@ -365,10 +467,19 @@ export const ResponseParser = forwardRef<
       "current" | "incoming" | "merged"
     >("merged");
     const [usePlainText, setUsePlainText] = useState(false);
+    const [canvasApplyMode, setCanvasApplyMode] = useState<"merge" | "replace">(
+      "merge",
+    );
 
     const supabase = createClient();
     const { currentBranch, currentBranchHeadId } = useLogBranchContext(streamId ?? "");
     const queryClient = useQueryClient();
+    const setLiveContent = useCanvasDraft((state) => state.setLiveContent);
+    const setLiveMarkdown = useCanvasDraft((state) => state.setLiveMarkdown);
+    const markClean = useCanvasDraft((state) => state.markClean);
+    const setSyncStatus = useCanvasDraft((state) => state.setSyncStatus);
+    const setLocalStatus = useCanvasDraft((state) => state.setLocalStatus);
+    const latestParsedRef = useRef<ParsedBridgeResponse | null>(null);
 
     const reset = () => {
       setParseError(null);
@@ -381,12 +492,15 @@ export const ResponseParser = forwardRef<
       setParseWarnings([]);
       setCanvasParseError(null);
       setUsePlainText(false);
+      setCanvasApplyMode("merge");
+      latestParsedRef.current = null;
       onPastedXMLChange("");
     };
 
     useImperativeHandle(ref, () => ({
       parse: parseResponse,
       apply: handleApply,
+      quickApply: quickApplyResponse,
       reset,
     }));
 
@@ -396,42 +510,29 @@ export const ResponseParser = forwardRef<
       interactionMode === "ASK" || interactionMode === "BOTH";
 
     const mergedBlocks = useMemo(() => {
-      if (!incomingBlocks) return null;
       const current = queryClient.getQueryData<{ content_json: Json }>([
         "canvas",
         streamId,
       ])?.content_json as unknown as MarkdownBlock[] | undefined;
       const currentBlocks = Array.isArray(current) ? current : [];
-      if (previewMode === "current") return currentBlocks;
-      if (previewMode === "incoming") return incomingBlocks;
-
-      const next = [...currentBlocks];
-      const indexById = new Map<string, number>();
-      next.forEach((block, index) => indexById.set(block.id, index));
-
-      changes.forEach((change) => {
-        if (change.type === "modify" && change.current) {
-          if (change.decision === "accept") {
-            const idx = indexById.get(change.current.id);
-            if (idx !== undefined) {
-              next[idx] = { ...change.incoming, id: change.current.id };
-            }
-          } else if (change.decision === "both") {
-            const idx = indexById.get(change.current.id);
-            if (idx !== undefined) {
-              next.splice(idx + 1, 0, change.incoming);
-            }
-          }
-        }
-        if (change.type === "add") {
-          if (change.decision !== "reject") {
-            next.push(change.incoming);
-          }
-        }
-      });
-
-      return next;
-    }, [changes, incomingBlocks, previewMode, queryClient, streamId]);
+      if (canvasApplyMode === "replace") {
+        if (!incomingBlocks) return null;
+        return previewMode === "current" ? currentBlocks : incomingBlocks;
+      }
+      return mergeChangesIntoBlocks(
+        currentBlocks,
+        incomingBlocks,
+        changes,
+        previewMode,
+      );
+    }, [
+      canvasApplyMode,
+      changes,
+      incomingBlocks,
+      previewMode,
+      queryClient,
+      streamId,
+    ]);
 
     const canApply = !isApplying && (!!thoughtLog || !!mergedBlocks);
     const canParse = !!pastedXML.trim();
@@ -446,178 +547,277 @@ export const ResponseParser = forwardRef<
       });
     }, [isApplying, canApply, canParse, hasParsed, onStatusChange]);
 
-    const parseResponse = async () => {
-      try {
-        setParseError(null);
-        setApplyError(null);
-        setIgnoredTags([]);
-        setThoughtLog(null);
-        setIncomingBlocks(null);
-        setChanges([]);
-        setConflictWarning(null);
-        setParseWarnings([]);
-        setCanvasParseError(null);
-        setUsePlainText(false);
+    const parseCurrentResponse = async (): Promise<ParsedBridgeResponse> => {
+      if (!streamId) {
+        throw new Error("Stream not available");
+      }
 
-        if (!streamId) {
-          throw new Error("Stream not available");
-        }
+      const raw = normalizeBridgeResponseText(pastedXML);
+      if (!raw) {
+        throw new Error("No response to parse");
+      }
 
-        const raw = pastedXML.trim();
-        if (!raw) {
-          throw new Error("No response to parse");
-        }
+      const nextIgnored: string[] = [];
+      const warnings: string[] = [];
+      let nextThoughtLog: string | null = null;
+      let nextIncomingBlocks: MarkdownBlock[] | null = null;
+      let nextConflictWarning: string | null = null;
+      let nextCanvasParseError: string | null = null;
+      const nextUsePlainText = false;
+      let nextCanvasApplyMode: "merge" | "replace" = "merge";
 
-        const nextIgnored: string[] = [];
-        const warnings: string[] = [];
+      const thoughtContent = extractTagContentByAliases(raw, [
+        "log",
+        "thought_log",
+      ]);
+      const canvasJsonContent = extractTagContentByAliases(raw, [
+        "canvas_json",
+        "canvas_update_json",
+      ]);
+      const canvasMarkdownContent = extractTagContentByAliases(raw, [
+        "canvas_md",
+        "canvas_update_md",
+      ]);
+      const canvasDefaultContent = extractTagContentByAliases(raw, [
+        "canvas",
+        "canvas_update",
+      ]);
+      const canvasContent =
+        canvasJsonContent ?? canvasMarkdownContent ?? canvasDefaultContent;
+      const baseUpdatedAt = extractTagContentByAliases(raw, [
+        "base",
+        "canvas_base_updated_at",
+      ]);
+      let currentCanvasRecord:
+        | {
+            id: string;
+            content_json: Json | null;
+            updated_at: string | null;
+          }
+        | null
+        | undefined;
 
-        const thoughtContent = extractTagContent(raw, "thought_log");
-        const canvasJsonContent = extractTagContent(raw, "canvas_update_json");
-        const canvasMarkdownContent = extractTagContent(
-          raw,
-          "canvas_update_md",
+      if (!thoughtContent && !canvasContent) {
+        throw new Error(
+          "Could not find log/canvas tags in the response. Use <log>...</log> and/or <canvas>...</canvas> (legacy <thought_log>/<canvas_update> also works). " +
+            "Make sure the LLM response contains the expected XML structure.",
         );
-        const canvasDefaultContent = extractTagContent(raw, "canvas_update");
-        const canvasContent =
-          canvasJsonContent ?? canvasMarkdownContent ?? canvasDefaultContent;
-        const baseUpdatedAt = extractTagContent(raw, "canvas_base_updated_at");
+      }
 
-        if (!thoughtContent && !canvasContent) {
-          throw new Error(
-            "Could not find <thought_log> or canvas update tags (<canvas_update>, <canvas_update_md>, <canvas_update_json>) in the response. " +
-              "Make sure the LLM response contains the expected XML structure.",
-          );
+      if (thoughtContent) {
+        nextThoughtLog = thoughtContent;
+      }
+
+      if (canProcessLog && !thoughtContent) {
+        warnings.push(
+          "No <thought_log> found — expected for this interaction mode.",
+        );
+      }
+
+      let resolvedBlocks: MarkdownBlock[] | null = null;
+      if (canvasContent) {
+        const { data: fetchedCanvas, error: currentCanvasError } = await supabase
+          .from("canvases")
+          .select("id, content_json, updated_at")
+          .eq("stream_id", streamId)
+          .maybeSingle();
+        if (currentCanvasError) throw currentCanvasError;
+        currentCanvasRecord = fetchedCanvas;
+        if (fetchedCanvas) {
+          queryClient.setQueryData(["canvas", streamId], fetchedCanvas);
         }
+        const currentBlocks =
+          (fetchedCanvas?.content_json as unknown as MarkdownBlock[]) || [];
 
-        if (thoughtContent && canProcessLog) {
-          setThoughtLog(thoughtContent);
-        } else if (thoughtContent) {
-          nextIgnored.push("thought_log");
-        }
-
-        if (canProcessLog && !thoughtContent) {
-          warnings.push(
-            "No <thought_log> found — expected for this interaction mode.",
-          );
-        }
-
-        let resolvedBlocks: MarkdownBlock[] | null = null;
-        if (canvasContent && canProcessCanvas) {
-          // Fetch current blocks for diff resolution
-          const currentData = queryClient.getQueryData<{ content_json: Json }>([
-            "canvas",
-            streamId,
-          ]);
-          const currentBlocks =
-            (currentData?.content_json as unknown as MarkdownBlock[]) || [];
-
-          const result = (() => {
-            if (canvasJsonContent) {
-              const jsonResult = resolveIncomingBlocks(canvasJsonContent);
-              return {
-                blocks: jsonResult.blocks,
-                error: jsonResult.error,
-                format: "json" as const,
-              };
-            }
-            return resolveCanvasBlocks(canvasContent, currentBlocks);
-          })();
-          if (result.error) {
-            setCanvasParseError(result.error);
-            warnings.push("Canvas update could not be parsed");
-          } else {
-            resolvedBlocks = result.blocks;
-            setIncomingBlocks(result.blocks);
-            if (result.format === "markdown") {
-              warnings.push("Canvas update parsed in compact markdown mode.");
-            } else if (result.format === "diff") {
-              warnings.push("Canvas update applied via git-diff mode.");
-            }
+        const result = (() => {
+          if (canvasJsonContent) {
+            const jsonResult = resolveIncomingBlocks(canvasJsonContent);
+            return {
+              blocks: jsonResult.blocks,
+              error: jsonResult.error,
+              format: "json" as const,
+            };
           }
-        } else if (canvasContent) {
-          nextIgnored.push("canvas_update");
-        }
+          return resolveCanvasBlocks(canvasContent, currentBlocks);
+        })();
 
-        if (canProcessCanvas && !canvasContent) {
-          warnings.push(
-            "No canvas update tag found — expected <canvas_update>, <canvas_update_md>, or <canvas_update_json>.",
-          );
-        }
-
-        if (baseUpdatedAt) {
-          const { data: canvas } = await supabase
-            .from("canvases")
-            .select("id, updated_at, content_json")
-            .eq("stream_id", streamId)
-            .single();
-          if (canvas?.updated_at && canvas.updated_at !== baseUpdatedAt) {
-            setConflictWarning(
-              "Canvas was edited after the AI response was generated.",
-            );
+        if (result.error) {
+          nextCanvasParseError = result.error;
+          warnings.push("Canvas update could not be parsed");
+        } else {
+          resolvedBlocks = result.blocks;
+          nextIncomingBlocks = result.blocks;
+          if (result.format === "diff") {
+            nextCanvasApplyMode = "replace";
           }
-          if (canvas?.content_json) {
-            queryClient.setQueryData(["canvas", streamId], canvas);
+          if (result.format === "markdown") {
+            warnings.push("Canvas update parsed in compact markdown mode.");
+          } else if (result.format === "diff") {
+            warnings.push("Canvas update applied via git-diff mode.");
           }
         }
+      }
 
-        setIgnoredTags(nextIgnored);
-        setParseWarnings(warnings);
+      if (canProcessCanvas && !canvasContent) {
+        warnings.push(
+          "No canvas update tag found — expected <canvas_update>, <canvas_update_md>, or <canvas_update_json>.",
+        );
+      }
 
-        if (canProcessCanvas && resolvedBlocks) {
-          const currentCanvas = await supabase
+      if (baseUpdatedAt) {
+        if (currentCanvasRecord === undefined) {
+          const { data: fetchedCanvas, error: currentCanvasError } = await supabase
             .from("canvases")
             .select("id, content_json, updated_at")
             .eq("stream_id", streamId)
-            .single();
-          if (currentCanvas.data) {
-            queryClient.setQueryData(["canvas", streamId], currentCanvas.data);
+            .maybeSingle();
+          if (currentCanvasError) throw currentCanvasError;
+          currentCanvasRecord = fetchedCanvas;
+          if (fetchedCanvas) {
+            queryClient.setQueryData(["canvas", streamId], fetchedCanvas);
           }
-          const currentBlocks =
-            (currentCanvas.data?.content_json as unknown as MarkdownBlock[]) ||
-            [];
-          const currentMap = new Map(
-            currentBlocks.map((block) => [block.id, block]),
-          );
-          const nextChanges: BlockChange[] = [];
-          resolvedBlocks.forEach((block) => {
-            const existing = currentMap.get(block.id);
-            if (!existing) {
-              nextChanges.push({
-                id: block.id,
-                type: "add",
-                incoming: block,
-                decision: "accept",
-              });
-              return;
-            }
-            const existingText = extractBlockText(existing);
-            const incomingText = extractBlockText(block);
-            if (existingText !== incomingText) {
-              const newId = crypto.randomUUID();
-              nextChanges.push({
-                id: newId,
-                type: "modify",
-                incoming: { ...block, id: newId },
-                current: existing,
-                decision: "accept",
-                originalId: block.id,
-              });
-            }
-          });
-          setChanges(nextChanges);
         }
+        if (
+          currentCanvasRecord?.updated_at &&
+          currentCanvasRecord.updated_at !== baseUpdatedAt
+        ) {
+          nextConflictWarning =
+            "Canvas was edited after the AI response was generated.";
+        }
+      }
+
+      let nextChanges: BlockChange[] = [];
+      let merged: MarkdownBlock[] | null = null;
+      if (canProcessCanvas && resolvedBlocks) {
+        if (currentCanvasRecord === undefined) {
+          const { data: fetchedCanvas, error: currentCanvasError } = await supabase
+            .from("canvases")
+            .select("id, content_json, updated_at")
+            .eq("stream_id", streamId)
+            .maybeSingle();
+          if (currentCanvasError) throw currentCanvasError;
+          currentCanvasRecord = fetchedCanvas;
+          if (fetchedCanvas) {
+            queryClient.setQueryData(["canvas", streamId], fetchedCanvas);
+          }
+        }
+        const currentBlocks =
+          (currentCanvasRecord?.content_json as unknown as MarkdownBlock[]) || [];
+        const currentMap = new Map(
+          currentBlocks.map((block) => [block.id, block]),
+        );
+        nextChanges = [];
+        resolvedBlocks.forEach((block) => {
+          const existing = currentMap.get(block.id);
+          if (!existing) {
+            nextChanges.push({
+              id: block.id,
+              type: "add",
+              incoming: block,
+              decision: "accept",
+            });
+            return;
+          }
+          const existingText = extractBlockText(existing);
+          const incomingText = extractBlockText(block);
+          if (existingText !== incomingText) {
+            const newId = crypto.randomUUID();
+            nextChanges.push({
+              id: newId,
+              type: "modify",
+              incoming: { ...block, id: newId },
+              current: existing,
+              decision: "accept",
+              originalId: block.id,
+            });
+          }
+        });
+        merged =
+          nextCanvasApplyMode === "replace"
+            ? resolvedBlocks
+            : mergeChangesIntoBlocks(
+                currentBlocks,
+                nextIncomingBlocks,
+                nextChanges,
+                "merged",
+              );
+      }
+
+      return {
+        ignoredTags: nextIgnored,
+        thoughtLog: nextThoughtLog,
+        incomingBlocks: nextIncomingBlocks,
+        changes: nextChanges,
+        conflictWarning: nextConflictWarning,
+        canvasParseError: nextCanvasParseError,
+        warnings,
+        usePlainText: nextUsePlainText,
+        canvasApplyMode: nextCanvasApplyMode,
+        mergedBlocks: merged,
+      };
+    };
+
+    const applyParsedState = (parsed: ParsedBridgeResponse) => {
+      setParseError(null);
+      setApplyError(null);
+      setIgnoredTags(parsed.ignoredTags);
+      setThoughtLog(parsed.thoughtLog);
+      setIncomingBlocks(parsed.incomingBlocks);
+      setChanges(parsed.changes);
+      setConflictWarning(parsed.conflictWarning);
+      setParseWarnings(parsed.warnings);
+      setCanvasParseError(parsed.canvasParseError);
+      setUsePlainText(parsed.usePlainText);
+      setCanvasApplyMode(parsed.canvasApplyMode);
+      latestParsedRef.current = parsed;
+    };
+
+    const parseResponse = async () => {
+      try {
+        const parsed = await parseCurrentResponse();
+        applyParsedState(parsed);
       } catch (err) {
+        latestParsedRef.current = null;
         setParseError((err as Error).message);
       }
     };
 
-    const handleApply = async () => {
-      if (!streamId) return;
+    const handleApply = async (parsedOverride?: ParsedBridgeResponse) => {
+      if (!streamId) return false;
+      const parsed = parsedOverride ?? latestParsedRef.current;
+      const nextThoughtLog = parsed?.thoughtLog ?? thoughtLog;
+      const nextMergedBlocks = parsed?.mergedBlocks ?? mergedBlocks;
+      const nextChanges = parsed?.changes ?? changes;
+
       setApplyError(null);
       setIsApplying(true);
       try {
-        if (canProcessLog && thoughtLog) {
-          const blocks = toParagraphBlocks(thoughtLog);
+        let createdEntryId: string | null = null;
+
+        if (nextThoughtLog) {
+          const blocks = toParagraphBlocks(nextThoughtLog);
+
+          const { data: existingBranch, error: existingBranchError } = await supabase
+            .from("branches")
+            .select("id")
+            .eq("stream_id", streamId)
+            .eq("name", currentBranch)
+            .maybeSingle();
+          if (existingBranchError) throw existingBranchError;
+
+          let branchId = existingBranch?.id ?? null;
+          if (!branchId) {
+            const { data: createdBranch, error: branchInsertError } = await supabase
+              .from("branches")
+              .insert({
+                stream_id: streamId,
+                name: currentBranch,
+              })
+              .select("id")
+              .single();
+            if (branchInsertError || !createdBranch) throw branchInsertError;
+            branchId = createdBranch.id;
+          }
 
           // Ensure we have a dedicated AI persona (system-level). Try to find
           // an existing system AI persona, otherwise create one.
@@ -663,10 +863,12 @@ export const ResponseParser = forwardRef<
             .insert({
               stream_id: streamId,
               is_draft: false,
+              parent_commit_id: currentBranchHeadId,
             })
             .select("id")
             .single();
           if (entryError || !createdEntry) throw entryError;
+          createdEntryId = createdEntry.id;
 
           const { error: sectionError } = await supabase
             .from("sections")
@@ -679,12 +881,18 @@ export const ResponseParser = forwardRef<
             });
           if (sectionError) throw sectionError;
 
+          const { error: branchUpdateError } = await supabase
+            .from("branches")
+            .update({ head_commit_id: createdEntry.id })
+            .eq("id", branchId);
+          if (branchUpdateError) throw branchUpdateError;
+
           const { data: bridgeUserData } = await supabase.auth.getUser();
           await supabase.from("audit_logs").insert({
             user_id: bridgeUserData.user?.id ?? null,
             action: "bridge_log_create",
             target_table: "entries",
-            payload: { content: thoughtLog },
+            payload: { content: nextThoughtLog },
           });
           queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
           queryClient.invalidateQueries({
@@ -699,9 +907,22 @@ export const ResponseParser = forwardRef<
           queryClient.invalidateQueries({
             queryKey: ["bridge-token-entries", streamId],
           });
+          queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
+          queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
+          queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
+          queryClient.invalidateQueries({
+            queryKey: ["graph-branches", streamId],
+          });
+          queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+          queryClient.invalidateQueries({
+            queryKey: ["home-recent-entries"],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["home-recent-streams"],
+          });
         }
 
-        if (canProcessCanvas && mergedBlocks) {
+        if (nextMergedBlocks) {
           const { data: canvas, error } = await supabase
             .from("canvases")
             .select("id")
@@ -709,11 +930,34 @@ export const ResponseParser = forwardRef<
             .single();
           if (error) throw error;
           if (canvas?.id) {
+            const nextRawMarkdown = blocksToStoredMarkdown(
+              nextMergedBlocks as PartialBlock[],
+            );
+            const nextStoredPayload = buildStoredContentPayload(
+              nextMergedBlocks,
+              nextRawMarkdown,
+            );
             const { error: updateError } = await supabase
               .from("canvases")
-              .update(buildStoredContentPayload(mergedBlocks))
+              .update(nextStoredPayload)
               .eq("id", canvas.id);
             if (updateError) throw updateError;
+
+            queryClient.setQueryData(["canvas", streamId], (previous: Record<
+              string,
+              unknown
+            > | undefined) => ({
+              ...(previous ?? {}),
+              id: canvas.id,
+              stream_id: streamId,
+              ...nextStoredPayload,
+            }));
+            setLiveContent(streamId, nextMergedBlocks as unknown as PartialBlock[]);
+            setLiveMarkdown(streamId, nextRawMarkdown);
+            markClean(streamId);
+            setSyncStatus(streamId, "idle");
+            setLocalStatus(streamId, "saved");
+
             const { data: bridgeUserData } = await supabase.auth.getUser();
             await supabase.from("audit_logs").insert({
               user_id: bridgeUserData.user?.id ?? null,
@@ -721,7 +965,7 @@ export const ResponseParser = forwardRef<
               target_table: "canvases",
               target_id: canvas.id,
               payload: {
-                changes: changes.map((change) => ({
+                changes: nextChanges.map((change: BlockChange) => ({
                   id: change.id,
                   type: change.type,
                   decision: change.decision,
@@ -732,17 +976,17 @@ export const ResponseParser = forwardRef<
 
             // Auto-save a canvas snapshot so it appears in the timeline
             const { data: userData } = await supabase.auth.getUser();
-            const summaryText = thoughtLog
-              ? thoughtLog.length > 200
-                ? thoughtLog.slice(0, 200) + "…"
-                : thoughtLog
+            const summaryText = nextThoughtLog
+              ? nextThoughtLog.length > 200
+                ? nextThoughtLog.slice(0, 200) + "…"
+                : nextThoughtLog
               : null;
             await supabase.from("canvas_versions").insert({
               canvas_id: canvas.id,
               stream_id: streamId,
               branch_name: currentBranch,
-              source_entry_id: currentBranchHeadId,
-              ...buildStoredContentPayload(mergedBlocks),
+              source_entry_id: createdEntryId ?? currentBranchHeadId,
+              ...nextStoredPayload,
               name: "AI Bridge Update",
               summary: summaryText,
               created_by: userData.user?.id ?? null,
@@ -752,21 +996,55 @@ export const ResponseParser = forwardRef<
             queryClient.invalidateQueries({
               queryKey: ["canvas-versions", streamId],
             });
+            queryClient.invalidateQueries({
+              queryKey: ["canvas-latest-version", streamId],
+            });
           }
         }
+        onApplySuccess?.();
+        return true;
       } catch (err) {
         setApplyError((err as Error).message);
+        return false;
       } finally {
         setIsApplying(false);
       }
     };
 
+    const quickApplyResponse = async () => {
+      try {
+        const parsed = await parseCurrentResponse();
+        applyParsedState(parsed);
+        if (!parsed.thoughtLog && !parsed.mergedBlocks) {
+          return false;
+        }
+        return await handleApply(parsed);
+      } catch (err) {
+        latestParsedRef.current = null;
+        setParseError((err as Error).message);
+        return false;
+      }
+    };
+
+    const handleApplyClick = () => {
+      void handleApply();
+    };
+
     const handlePlainTextImport = () => {
       if (!canProcessCanvas) return;
       const raw =
-        extractTagContent(pastedXML, "canvas_update_md") ??
-        extractTagContent(pastedXML, "canvas_update") ??
-        extractTagContent(pastedXML, "canvas_update_json") ??
+        extractTagContentByAliases(normalizeBridgeResponseText(pastedXML), [
+          "canvas_md",
+          "canvas_update_md",
+        ]) ??
+        extractTagContentByAliases(normalizeBridgeResponseText(pastedXML), [
+          "canvas",
+          "canvas_update",
+        ]) ??
+        extractTagContentByAliases(normalizeBridgeResponseText(pastedXML), [
+          "canvas_json",
+          "canvas_update_json",
+        ]) ??
         "";
       const blocks = toParagraphBlocks(raw);
       setIncomingBlocks(blocks);
@@ -780,6 +1058,7 @@ export const ResponseParser = forwardRef<
       );
       setUsePlainText(true);
       setCanvasParseError(null);
+      setCanvasApplyMode("replace");
     };
 
     const updateDecision = (id: string, decision: ChangeDecision) => {
@@ -1001,7 +1280,7 @@ export const ResponseParser = forwardRef<
             Parse Response
           </button>
           <button
-            onClick={handleApply}
+            onClick={handleApplyClick}
             disabled={isApplying || (!thoughtLog && !mergedBlocks)}
             className=" bg-surface-subtle px-4 py-2 text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
           >

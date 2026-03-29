@@ -62,16 +62,28 @@ export function AttachmentsManager({
 
   return (
     <>
-      <ModalShell open={isOpen} onClose={onClose} panelClassName="w-full p-6">
+      <ModalShell
+        open={isOpen}
+        onClose={onClose}
+        panelClassName="w-full"
+        footerActions={[
+          {
+            label: "Close",
+            onClick: () => {
+              setRemoveError(null);
+              onClose();
+            },
+            tone: "primary",
+          },
+        ]}
+      >
         <ModalHeader
           title="Attachments"
           icon={<Paperclip className="h-5 w-5" />}
           onClose={onClose}
-          className="mb-4 px-0 pb-4 pt-0"
-          titleClassName="text-lg font-semibold leading-6 text-text-default"
         />
 
-        <div className="space-y-4">
+        <div className="space-y-4 px-6 py-5">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -201,17 +213,6 @@ export function AttachmentsManager({
           </div>
         </div>
 
-        <div className="mt-4 flex justify-end">
-          <button
-            onClick={() => {
-              setRemoveError(null);
-              onClose();
-            }}
-            className="inline-flex justify-center border border-action-primary-bg bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover"
-          >
-            Close
-          </button>
-        </div>
       </ModalShell>
       <DocumentImportModal
         isOpen={docImportOpen}

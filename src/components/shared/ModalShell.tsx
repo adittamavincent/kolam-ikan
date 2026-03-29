@@ -11,15 +11,37 @@ import { X } from "lucide-react";
 import { Fragment, ReactNode, Ref } from "react";
 
 export type ModalCloseReason = "dismiss" | "close-button";
+export type ModalFooterActionTone =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "ghost";
+
+export type ModalFooterAction = {
+  id?: string;
+  label: ReactNode;
+  icon?: ReactNode;
+  onClick?: () => void;
+  type?: "button" | "submit" | "reset";
+  form?: string;
+  disabled?: boolean;
+  placement?: "start" | "end";
+  tone?: ModalFooterActionTone;
+};
 
 type ModalShellProps = {
   open: boolean;
   children: ReactNode;
+  footer?: ReactNode;
+  footerMeta?: ReactNode;
+  footerActions?: ModalFooterAction[];
   onClose?: () => void;
   onRequestClose?: (reason: ModalCloseReason) => void;
   panelClassName?: string;
   viewportClassName?: string;
   contentClassName?: string;
+  bodyClassName?: string;
+  footerClassName?: string;
   backdropClassName?: string;
   dialogClassName?: string;
   panelRef?: Ref<HTMLDivElement>;
@@ -52,19 +74,43 @@ function joinClassNames(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+function getFooterActionToneClassName(tone: ModalFooterActionTone) {
+  if (tone === "primary") {
+    return "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover disabled:bg-action-primary-disabled";
+  }
+  if (tone === "danger") {
+    return "border border-status-error-border text-status-error-text hover:bg-status-error-bg";
+  }
+  if (tone === "ghost") {
+    return "text-text-subtle hover:bg-surface-subtle hover:text-text-default";
+  }
+  return "border border-border-default text-text-default hover:bg-surface-hover";
+}
+
 export function ModalShell({
   open,
   children,
+  footer,
+  footerMeta,
+  footerActions,
   onClose,
   onRequestClose,
   panelClassName,
   viewportClassName,
   contentClassName,
+  bodyClassName,
+  footerClassName,
   backdropClassName,
   dialogClassName,
   panelRef,
   dismissable = true,
 }: ModalShellProps) {
+  const startActions =
+    footerActions?.filter((action) => action.placement === "start") ?? [];
+  const endActions =
+    footerActions?.filter((action) => action.placement !== "start") ?? [];
+  const hasStructuredFooter =
+    Boolean(footerMeta) || startActions.length > 0 || endActions.length > 0;
   const requestClose = (reason: ModalCloseReason) => {
     if (onRequestClose) {
       onRequestClose(reason);
@@ -125,13 +171,74 @@ export function ModalShell({
                   panelClassName,
                 )}
               >
-                {children}
+                <div className={joinClassNames("min-h-0", bodyClassName)}>
+                  {children}
+                </div>
+                {hasStructuredFooter ? (
+                  <div
+                    className={joinClassNames(
+                      "flex items-center justify-between gap-3 border-t border-border-subtle px-6 py-4",
+                      footerClassName,
+                    )}
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      {footerMeta}
+                      {startActions.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          {startActions.map((action, index) => (
+                            <ModalFooterActionButton
+                              key={action.id ?? `start-${index}`}
+                              action={action}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                    {endActions.length > 0 ? (
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        {endActions.map((action, index) => (
+                          <ModalFooterActionButton
+                            key={action.id ?? `end-${index}`}
+                            action={action}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : footer ? (
+                  <div
+                    className={joinClassNames(
+                      "flex items-center justify-end gap-2 border-t border-border-subtle px-6 py-4",
+                      footerClassName,
+                    )}
+                  >
+                    {footer}
+                  </div>
+                ) : null}
               </DialogPanel>
             </TransitionChild>
           </div>
         </div>
       </Dialog>
     </Transition>
+  );
+}
+
+function ModalFooterActionButton({ action }: { action: ModalFooterAction }) {
+  return (
+    <button
+      type={action.type ?? "button"}
+      onClick={action.onClick}
+      form={action.form}
+      disabled={action.disabled}
+      className={joinClassNames(
+        "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        getFooterActionToneClassName(action.tone ?? "secondary"),
+      )}
+    >
+      {action.icon}
+      {action.label}
+    </button>
   );
 }
 
@@ -174,7 +281,7 @@ export function ModalHeader({
   return (
     <div
       className={joinClassNames(
-        "flex items-center justify-between gap-4 border-b border-border-default py-5",
+        "flex items-center justify-between gap-4 border-b border-border-default px-6 py-5",
         className,
       )}
     >
@@ -186,7 +293,7 @@ export function ModalHeader({
           <DialogTitle
             as="h2"
             className={joinClassNames(
-              "text-lg font-semibold text-text-default",
+              "text-xl font-semibold text-text-default",
               titleClassName,
             )}
           >
@@ -196,7 +303,7 @@ export function ModalHeader({
         {description ? (
           <p
             className={joinClassNames(
-              "mt-1 text-sm text-text-muted",
+              "mt-1 text-sm leading-6 text-text-muted",
               descriptionClassName,
             )}
           >

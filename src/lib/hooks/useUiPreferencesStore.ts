@@ -2,6 +2,8 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { BridgeJobStatus } from "@/lib/types";
+import type { BridgeRunnerStatus } from "@/lib/bridge/bridge-jobs";
 
 export type UiDeviceClass = "mobile" | "tablet" | "desktop";
 export type UiSyncStatus = "idle" | "syncing" | "synced" | "error";
@@ -25,6 +27,13 @@ export interface BridgeStreamSession {
   lastUsedAt: string | null;
   isExternalSessionActive: boolean;
   externalSessionLoadedAt: string | null;
+  automationSessionKey: string | null;
+  automationStatus: BridgeRunnerStatus;
+  lastJobId: string | null;
+  lastAppliedJobId: string | null;
+  lastJobStatus: BridgeJobStatus | null;
+  lastJobError: string;
+  lastJobCompletedAt: string | null;
 }
 
 export interface BridgePreferencesPayload {
@@ -148,6 +157,13 @@ function createDefaultBridgeSession(): BridgeStreamSession {
     lastUsedAt: null,
     isExternalSessionActive: false,
     externalSessionLoadedAt: null,
+    automationSessionKey: null,
+    automationStatus: "idle",
+    lastJobId: null,
+    lastAppliedJobId: null,
+    lastJobStatus: null,
+    lastJobError: "",
+    lastJobCompletedAt: null,
   };
 }
 
@@ -176,6 +192,15 @@ function normalizeBridgeSession(
       session?.isExternalSessionActive ?? base.isExternalSessionActive,
     externalSessionLoadedAt:
       session?.externalSessionLoadedAt ?? base.externalSessionLoadedAt,
+    automationSessionKey:
+      session?.automationSessionKey ?? base.automationSessionKey,
+    automationStatus: session?.automationStatus ?? base.automationStatus,
+    lastJobId: session?.lastJobId ?? base.lastJobId,
+    lastAppliedJobId: session?.lastAppliedJobId ?? base.lastAppliedJobId,
+    lastJobStatus: session?.lastJobStatus ?? base.lastJobStatus,
+    lastJobError: (session?.lastJobError ?? base.lastJobError).trim(),
+    lastJobCompletedAt:
+      session?.lastJobCompletedAt ?? base.lastJobCompletedAt,
   };
 }
 

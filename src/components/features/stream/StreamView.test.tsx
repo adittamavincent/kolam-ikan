@@ -22,6 +22,15 @@ vi.mock("@/components/features/log/WhatsAppImportModal", () => ({
 vi.mock("@/lib/hooks/useRealtimeEntries", () => ({
   useRealtimeEntries: vi.fn(),
 }));
+vi.mock("@/lib/hooks/useBridgeJobs", () => ({
+  useLatestBridgeJob: vi.fn(() => ({ data: null })),
+}));
+vi.mock("@/lib/hooks/useResetBridgeSession", () => ({
+  useResetBridgeSession: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
+}));
 
 vi.mock("@/lib/hooks/useLayout", () => ({
   useLayout: () => ({
@@ -29,12 +38,8 @@ vi.mock("@/lib/hooks/useLayout", () => ({
   }),
 }));
 
-vi.mock("@/components/features/bridge/QuickBridgeDialog", () => ({
-  QuickBridgeDialog: ({
-    isOpen,
-  }: {
-    isOpen: boolean;
-  }) => (isOpen ? <div>QuickBridgeDialog</div> : null),
+vi.mock("@/components/features/bridge/QuickBridgeControl", () => ({
+  QuickBridgeControl: () => <div>QuickBridgeControl</div>,
 }));
 
 vi.mock("@/components/features/bridge/BridgeModal", () => ({
@@ -46,18 +51,15 @@ vi.mock("@/components/features/bridge/BridgeModal", () => ({
 }));
 
 describe("StreamView", () => {
-  it("renders sibling quick and detailed bridge buttons", () => {
+  it("renders quick inline control and detailed bridge button", () => {
     render(<StreamView streamId="stream-1" />);
 
-    expect(screen.getByRole("button", { name: "Quick" })).toBeInTheDocument();
+    expect(screen.getByText("QuickBridgeControl")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Detailed" })).toBeInTheDocument();
   });
 
-  it("opens quick and detailed bridge flows independently", () => {
+  it("opens the detailed bridge flow", () => {
     render(<StreamView streamId="stream-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "Quick" }));
-    expect(screen.getByText("QuickBridgeDialog")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Detailed" }));
     expect(screen.getByText("BridgeModal")).toBeInTheDocument();

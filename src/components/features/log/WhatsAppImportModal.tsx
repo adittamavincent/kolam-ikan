@@ -28,7 +28,11 @@ import { useDocuments } from "@/lib/hooks/useDocuments";
 import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { ModalHeader, ModalShell } from "@/components/shared/ModalShell";
+import {
+  ModalFooterAction,
+  ModalHeader,
+  ModalShell,
+} from "@/components/shared/ModalShell";
 
 declare global {
   interface Window {
@@ -1697,6 +1701,122 @@ export function WhatsAppImportModal({
   const totalSteps = hasPdfTurns ? 4 : 3;
   const currentStepNumber =
     step === "paste" ? 1 : step === "range" ? 2 : step === "map" ? 3 : 4;
+  const footerActions: ModalFooterAction[] =
+    step === "paste"
+      ? [
+          {
+            label: (
+              <>
+                Next
+                <ChevronRight className="h-3.5 w-3.5" />
+              </>
+            ),
+            onClick: handleParseAndNext,
+            disabled:
+              !rawText.trim() || liveMsgs.length === 0 || liveImportable === 0,
+            tone: "primary",
+          },
+        ]
+      : step === "range"
+        ? [
+            {
+              label: (
+                <>
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Back
+                </>
+              ),
+              onClick: () => setStep("paste"),
+              tone: "ghost",
+            },
+            {
+              label: (
+                <>
+                  Next: Map Personas
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </>
+              ),
+              onClick: handleRangeNext,
+              disabled: rangeImportableCount === 0,
+              tone: "primary",
+            },
+          ]
+        : step === "map"
+          ? [
+              {
+                label: (
+                  <>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Back
+                  </>
+                ),
+                onClick: () => setStep("range"),
+                tone: "ghost",
+              },
+              {
+                label: hasPdfTurns ? (
+                  <>
+                    Next: Attach PDFs
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    {creatingAllPersonas ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5" />
+                    )}
+                    {creatingAllPersonas
+                      ? "Creating personas..."
+                      : `Import ${textTurns.length} turn${textTurns.length !== 1 ? "s" : ""}`}
+                  </>
+                ),
+                onClick: () => void handleMapNext(),
+                disabled:
+                  creatingAllPersonas ||
+                  !allMapped ||
+                  (!hasPdfTurns && textTurns.length === 0),
+                tone: "primary",
+              },
+            ]
+          : [
+              {
+                label: (
+                  <>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                    Back
+                  </>
+                ),
+                onClick: () => setStep("map"),
+                disabled: anyUploading,
+                tone: "ghost",
+              },
+              {
+                label: anyUploading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Processing PDFs…
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    Process & Import {plannedImportableCount} section
+                    {plannedImportableCount !== 1 ? "s" : ""}
+                  </>
+                ),
+                onClick: () => void handleProcessAndConfirm(),
+                disabled: !canConfirmFiles,
+                tone: "primary",
+              },
+            ];
+  const nextAction =
+    footerActions.find((action) => action.tone === "primary") ?? null;
+
+  useStepFooterShortcuts({
+    onNext: nextAction?.onClick,
+    nextDisabled: nextAction?.disabled ?? true,
+    shortcutsEnabled: !confirmExitOpen,
+  });
 
   return (
     <>
@@ -1705,13 +1825,13 @@ export function WhatsAppImportModal({
         onRequestClose={handleRequestClose}
         viewportClassName="fixed inset-0 overflow-y-auto p-2 lg:p-3"
         panelClassName="flex w-full flex-col"
+        bodyClassName="flex min-h-0 flex-1 flex-col"
+        footerActions={footerActions}
       >
         <ModalHeader
           title="WhatsApp Import"
           icon={<MessageSquare className="h-4 w-4 text-text-muted" />}
           onClose={handleRequestClose}
-          className="px-4 py-3"
-          titleClassName="text-sm font-semibold text-text-default"
           meta={
             step !== "paste" ? (
               <span className=" bg-surface-subtle px-2 py-0.5 font-mono text-[10px] text-text-muted">
@@ -1723,7 +1843,7 @@ export function WhatsAppImportModal({
 
         {/* ─── Step 1: Paste ─────────────────────────────────────────── */}
         {step === "paste" && (
-          <div className="flex flex-col gap-3 p-3">
+          <div className="flex flex-col gap-3 px-6 py-5">
             <p className="text-xs text-text-muted">
               Paste chat text or upload ZIP. PDF references like{" "}
               <code className=" bg-surface-subtle px-1 py-0.5 text-[10px]">
@@ -1824,25 +1944,12 @@ export function WhatsAppImportModal({
               </div>
             )}
 
-            <StepFooter
-              onNext={handleParseAndNext}
-              nextDisabled={
-                !rawText.trim() || liveMsgs.length === 0 || liveImportable === 0
-              }
-              shortcutsEnabled={!confirmExitOpen}
-              nextContent={
-                <>
-                  Next
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </>
-              }
-            />
           </div>
         )}
 
         {/* ─── Step 2: Select range ─────────────────────────────────── */}
         {step === "range" && (
-          <div className="flex flex-col gap-3 p-3">
+          <div className="flex flex-col gap-3 px-6 py-5">
             <div>
               <p className="text-xs font-medium text-text-default">
                 Select chat range
@@ -2038,24 +2145,12 @@ export function WhatsAppImportModal({
               )}
             </div>
 
-            <StepFooter
-              onBack={() => setStep("paste")}
-              onNext={handleRangeNext}
-              nextDisabled={rangeImportableCount === 0}
-              shortcutsEnabled={!confirmExitOpen}
-              nextContent={
-                <>
-                  Next: Map Personas
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </>
-              }
-            />
           </div>
         )}
 
         {/* ─── Step 3: Map personas ────────────────────────────────────── */}
         {step === "map" && (
-          <div className="flex flex-col gap-3 p-3">
+          <div className="flex flex-col gap-3 px-6 py-5">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-xs font-medium text-text-default">
@@ -2291,41 +2386,12 @@ export function WhatsAppImportModal({
               </div>
             )}
 
-            <StepFooter
-              onBack={() => setStep("range")}
-              onNext={() => void handleMapNext()}
-              nextDisabled={
-                creatingAllPersonas ||
-                !allMapped ||
-                (!hasPdfTurns && textTurns.length === 0)
-              }
-              shortcutsEnabled={!confirmExitOpen}
-              nextContent={
-                hasPdfTurns ? (
-                  <>
-                    Next: Attach PDFs
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </>
-                ) : (
-                  <>
-                    {creatingAllPersonas ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Check className="h-3.5 w-3.5" />
-                    )}
-                    {creatingAllPersonas
-                      ? "Creating personas..."
-                      : `Import ${textTurns.length} turn${textTurns.length !== 1 ? "s" : ""}`}
-                  </>
-                )
-              }
-            />
           </div>
         )}
 
         {/* ─── Step 4: Attach PDFs ─────────────────────────────────────── */}
         {step === "files" && (
-          <div className="flex flex-col gap-3 p-3">
+          <div className="flex flex-col gap-3 px-6 py-5">
             <div>
               <p className="text-xs font-medium text-text-default">
                 Attach PDF files
@@ -2397,27 +2463,6 @@ export function WhatsAppImportModal({
               )}
             </div>
 
-            <StepFooter
-              onBack={() => setStep("map")}
-              backDisabled={anyUploading}
-              onNext={() => void handleProcessAndConfirm()}
-              nextDisabled={!canConfirmFiles}
-              shortcutsEnabled={!confirmExitOpen}
-              nextContent={
-                anyUploading ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Processing PDFs…
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-3.5 w-3.5" />
-                    Process & Import {plannedImportableCount} section
-                    {plannedImportableCount !== 1 ? "s" : ""}
-                  </>
-                )
-              }
-            />
           </div>
         )}
       </ModalShell>
@@ -2476,24 +2521,18 @@ export function WhatsAppImportModal({
 // ─── StepFooter sub-component ──────────────────────────────────────────────────
 
 interface StepFooterProps {
-  onBack?: () => void;
-  backDisabled?: boolean;
-  onNext: () => void;
+  onNext?: () => void;
   nextDisabled?: boolean;
   shortcutsEnabled?: boolean;
-  nextContent: React.ReactNode;
 }
 
-function StepFooter({
-  onBack,
-  backDisabled,
+function useStepFooterShortcuts({
   onNext,
   nextDisabled,
   shortcutsEnabled = true,
-  nextContent,
 }: StepFooterProps) {
   useEffect(() => {
-    if (!shortcutsEnabled) return;
+    if (!shortcutsEnabled || !onNext) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
@@ -2516,33 +2555,6 @@ function StepFooter({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onNext, nextDisabled, shortcutsEnabled]);
-
-  return (
-    <div
-      className={`flex items-center ${
-        onBack ? "justify-between" : "justify-end"
-      }`}
-    >
-      {onBack && (
-        <button
-          onClick={onBack}
-          disabled={backDisabled}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-          Back
-        </button>
-      )}
-
-      <button
-        onClick={onNext}
-        disabled={nextDisabled}
-        className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {nextContent}
-      </button>
-    </div>
-  );
 }
 
 // ─── PdfUploadRow sub-component ───────────────────────────────────────────────

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   CheckCircle2,
   ClipboardPaste,
   ExternalLink,
@@ -13,9 +12,15 @@ import {
   Wand2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ModalHeader, ModalShell } from "@/components/shared/ModalShell";
+import {
+  ModalHeader,
+  ModalShell,
+  type ModalFooterAction,
+} from "@/components/shared/ModalShell";
 import { STREAM_KIND } from "@/lib/types";
+import type { BridgeJobStatus } from "@/lib/types";
 import { XMLGenerator } from "./XMLGenerator";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import {
   BRIDGE_PROVIDER_PRESETS,
   buildQuickBridgePreset,
@@ -24,6 +29,10 @@ import {
   getBridgeProviderPreset,
 } from "./bridge-config";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
+import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
+import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
+import { BridgeResponsePreviewModal } from "./BridgeResponsePreviewModal";
+import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 
 interface QuickBridgeDialogProps {
   isOpen: boolean;
@@ -31,6 +40,17 @@ interface QuickBridgeDialogProps {
   onOpenDetailed: () => void;
   streamId: string;
 }
+
+type QuickLaunchState =
+  | "idle"
+  | "queueing"
+  | "queued"
+  | "launching"
+  | "done"
+  | "opened"
+  | "error";
+
+type QuickPhase = "compose" | "waiting" | "accepting";
 
 export function QuickBridgeDialog({
   isOpen,
@@ -49,9 +69,6 @@ export function QuickBridgeDialog({
   const upsertBridgeSession = useUiPreferencesStore(
     (state) => state.upsertBridgeSession,
   );
-  const setBridgeSessionActive = useUiPreferencesStore(
-    (state) => state.setBridgeSessionActive,
-  );
 
   const [providerId, setProviderId] = useState(
     bridgeSession?.providerId ?? bridgeDefaults.providerId,
@@ -61,10 +78,12 @@ export function QuickBridgeDialog({
   );
   const [generatedXML, setGeneratedXML] = useState("");
   const [payloadReady, setPayloadReady] = useState(false);
-  const [launchState, setLaunchState] = useState<
-    "idle" | "launching" | "done" | "opened" | "error"
-  >("idle");
-  const autoRanRef = useRef(false);
+  const [launchState, setLaunchState] = useState<QuickLaunchState>("idle");
+  const [isResponsePreviewOpen, setIsResponsePreviewOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const latestBridgeJob = useLatestBridgeJob(streamId, isOpen ? 3_000 : 8_000);
+  const createBridgeJob = useCreateBridgeJob(streamId);
+  const resetBridgeSession = useResetBridgeSession(streamId);
 
   const { data: streamMeta } = useQuery({
     queryKey: ["bridge-stream-meta", streamId],
@@ -152,8 +171,28 @@ export function QuickBridgeDialog({
   const providerPreset = getBridgeProviderPreset(providerId);
   const payloadVariant = getQuickPayloadVariant(bridgeSession);
   const isFollowupLaunch = payloadVariant === "followup";
+  const isGeminiAutomation = providerId === "gemini";
+  const queueStatus = bridgeSession?.automationStatus ?? "idle";
+  const latestJob = latestBridgeJob.data;
+  const currentSessionKey = buildBridgeSessionKey(streamId, "gemini");
+  const latestJobMatchesCurrentPayload =
+    latestJob?.session_key === currentSessionKey && latestJob?.payload === generatedXML;
+  const responseText = latestJob?.raw_response?.trim() ?? "";
 
-  const launchQuickBridge = async () => {
+  const phase: QuickPhase =
+    queueStatus === "succeeded" && responseText
+      ? "accepting"
+      : launchState === "queueing" ||
+          launchState === "queued" ||
+          queueStatus === "queued" ||
+          queueStatus === "running" ||
+          launchState === "launching" ||
+          launchState === "done" ||
+          launchState === "opened"
+        ? "waiting"
+        : "compose";
+
+  const launchManualQuickBridge = async () => {
     if (!payloadReady || !generatedXML.trim()) return;
     try {
       setLaunchState("launching");
@@ -186,7 +225,6 @@ export function QuickBridgeDialog({
         externalSessionLoadedAt:
           bridgeSession?.externalSessionLoadedAt ?? new Date().toISOString(),
       });
-      setBridgeSessionActive(streamId, true);
       setLaunchState(
         openedWindow && copied ? "done" : openedWindow ? "opened" : "error",
       );
@@ -195,336 +233,498 @@ export function QuickBridgeDialog({
     }
   };
 
-  useEffect(() => {
-    if (!isOpen || autoRanRef.current || !hasReusableInstruction) return;
+  const queueQuickBridge = async () => {
     if (!payloadReady || !generatedXML.trim()) return;
-    autoRanRef.current = true;
-    const timeoutId = window.setTimeout(() => {
-      void (async () => {
-        if (!payloadReady || !generatedXML.trim()) return;
-        try {
-          setLaunchState("launching");
-          await navigator.clipboard.writeText(generatedXML);
-          window.open(
-            providerPreset.launchUrl,
-            "_blank",
-            "noopener,noreferrer",
-          );
-          setBridgeDefaults({
-            providerId,
-            quickPreset: "recommended",
-          });
-          upsertBridgeSession(streamId, {
-            providerId,
-            lastMode: quickPreset.interactionMode,
-            lastInstruction: instruction,
-            lastContextRecipe: {
-              entrySelection: "all",
-              includeCanvas,
-              includeGlobalStream,
-            },
-            lastUsedAt: new Date().toISOString(),
-            isExternalSessionActive: true,
-            externalSessionLoadedAt:
-              bridgeSession?.externalSessionLoadedAt ??
-              new Date().toISOString(),
-          });
-          setBridgeSessionActive(streamId, true);
-          setLaunchState("opened");
-        } catch {
-          setLaunchState("error");
-        }
-      })();
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [
-    bridgeSession?.externalSessionLoadedAt,
-    generatedXML,
-    hasReusableInstruction,
-    includeCanvas,
-    includeGlobalStream,
-    instruction,
-    isOpen,
-    payloadReady,
-    providerId,
-    providerPreset.launchUrl,
-    quickPreset.interactionMode,
-    setBridgeSessionActive,
-    setBridgeDefaults,
-    streamId,
-    upsertBridgeSession,
-  ]);
+    if (
+      latestJobMatchesCurrentPayload &&
+      (latestJob?.status === "queued" || latestJob?.status === "running")
+    ) {
+      setLaunchState("queued");
+      return;
+    }
+
+    try {
+      setLaunchState("queueing");
+      const result = await createBridgeJob.mutateAsync({
+        provider: "gemini",
+        payload: generatedXML,
+        payloadVariant,
+        sessionKey: currentSessionKey,
+        runnerDetails: {
+          source: "quick-bridge",
+        },
+      });
+
+      setBridgeDefaults({
+        providerId,
+        quickPreset: "recommended",
+      });
+      upsertBridgeSession(streamId, {
+        providerId,
+        lastMode: quickPreset.interactionMode,
+        lastInstruction: instruction,
+        lastContextRecipe: {
+          entrySelection: "all",
+          includeCanvas,
+          includeGlobalStream,
+        },
+        lastUsedAt: new Date().toISOString(),
+        automationSessionKey: currentSessionKey,
+        automationStatus: "queued",
+        lastJobId: result.job.id,
+        lastJobStatus: result.job.status as BridgeJobStatus,
+        lastJobError: "",
+      });
+      setLaunchState("queued");
+    } catch {
+      setLaunchState("error");
+    }
+  };
+
+  const waitingHeadline = isGeminiAutomation
+    ? queueStatus === "running"
+      ? "Gemini is generating a response"
+      : "Payload queued for the Gemini sidecar"
+    : launchState === "done"
+      ? `${providerPreset.label} is open and ready`
+      : `${providerPreset.label} handoff is in progress`;
+
+  const waitingDescription = isGeminiAutomation
+    ? queueStatus === "running"
+      ? "The runner is inside Gemini now. You can leave this open, close it, or come back later."
+      : "Kolam Ikan has packed the payload. The local runner will claim it and start the browser work."
+    : launchState === "done"
+      ? "Paste the payload into the provider and wait for the answer before coming back."
+      : "Use the copy/open fallback below if the provider tab did not receive the prompt cleanly.";
+
+  const resetLocalState = () => {
+    setProviderId(bridgeDefaults.providerId);
+    setInstruction("");
+    setGeneratedXML("");
+    setPayloadReady(false);
+    setLaunchState("idle");
+    setIsResponsePreviewOpen(false);
+  };
+
+  const confirmReset = async () => {
+    setIsResetDialogOpen(false);
+    await resetBridgeSession.mutateAsync();
+    resetLocalState();
+  };
+  const footerActions: ModalFooterAction[] = [
+    ...(phase !== "compose"
+      ? [
+          {
+            label: resetBridgeSession.isPending
+              ? "Resetting..."
+              : phase === "waiting"
+                ? "Abort & Reset"
+                : "Reset",
+            onClick: () => setIsResetDialogOpen(true),
+            disabled: resetBridgeSession.isPending,
+            tone: "danger" as const,
+          },
+        ]
+      : []),
+    {
+      label: phase === "compose" ? "Cancel" : "Close",
+      onClick: onClose,
+      tone: "secondary" as const,
+    },
+    ...(phase === "compose"
+      ? [
+          {
+            label: `Queue to ${providerPreset.label}`,
+            icon:
+              launchState === "launching" || launchState === "queueing" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Rocket className="h-4 w-4" />
+              ),
+            onClick: () =>
+              void (isGeminiAutomation
+                ? queueQuickBridge()
+                : launchManualQuickBridge()),
+            disabled:
+              !instruction.trim() ||
+              !generatedXML.trim() ||
+              !payloadReady ||
+              launchState === "launching" ||
+              launchState === "queueing" ||
+              createBridgeJob.isPending,
+            tone: "primary" as const,
+          },
+        ]
+      : []),
+    ...(phase === "accepting"
+      ? [
+          {
+            label: "View response",
+            icon: <Rocket className="h-4 w-4" />,
+            onClick: () => setIsResponsePreviewOpen(true),
+            tone: "primary" as const,
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <ModalShell
-      open={isOpen}
-      onClose={onClose}
-      panelClassName="flex max-h-[90vh] w-full flex-col"
-    >
-      <ModalHeader
-        title="Quick Bridge"
-        description="Fast lane for repeat AI runs with a remembered destination and a recommended context bundle."
-        icon={<Wand2 className="h-5 w-5" />}
+    <>
+      <ModalShell
+        open={isOpen}
         onClose={onClose}
-        className="border-b border-border-subtle px-6 py-5"
-        titleClassName="text-xl font-semibold text-text-default"
-        meta={
-          <div className="flex flex-wrap items-center justify-end gap-2 text-[11px] text-text-muted">
-            <span className="border border-border-subtle bg-surface-subtle px-2 py-1">
-              {isFollowupLaunch ? "Continue" : "Full Context"}
-            </span>
-            <span className="border border-border-subtle bg-surface-subtle px-2 py-1">
-              All entries
-            </span>
-            {includeCanvas && (
+        panelClassName="flex max-h-[90vh] w-full flex-col overflow-hidden"
+        bodyClassName="flex min-h-0 flex-1 flex-col"
+        footerActions={footerActions}
+      >
+        <ModalHeader
+          title="Quick Bridge"
+          description={
+            phase === "compose"
+                ? "Fast lane for repeat AI runs with a remembered destination and a recommended context bundle."
+              : phase === "waiting"
+                ? "Your prompt is out of your hands now. Quick keeps the status focused while the runner or provider works."
+                : "The response is back. Review it here without jumping into Detailed."
+          }
+          icon={<Wand2 className="h-5 w-5" />}
+          onClose={onClose}
+          meta={
+            <div className="flex flex-wrap items-center justify-end gap-2 text-[11px] text-text-muted">
               <span className="border border-border-subtle bg-surface-subtle px-2 py-1">
-                Canvas on
+                {phase === "compose"
+                  ? "Compose"
+                  : phase === "waiting"
+                    ? "Waiting"
+                    : "Review"}
               </span>
-            )}
-          </div>
-        }
-      />
+              <span className="border border-border-subtle bg-surface-subtle px-2 py-1">
+                {isFollowupLaunch ? "Continue" : "Full Context"}
+              </span>
+            </div>
+          }
+        />
 
-      <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="grid gap-4 md:grid-cols-[1.1fr,0.9fr]">
-          <div className="space-y-4">
-            {(launchState === "done" || launchState === "opened") && (
-              <div className="border border-status-success-bg bg-status-success-bg/40 p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 text-status-success-text" />
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-5">
+          {phase === "compose" && (
+            <>
+              <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+                <div className="min-w-0 space-y-4">
+                  {launchState === "error" && (
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                      Quick could not open or queue the provider handoff. You can still use the fallback copy/open controls below.
+                    </div>
+                  )}
+
+                  {queueStatus === "needs-login" && (
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                      Gemini needs you to log in again in the runner browser profile before Quick can continue.
+                    </div>
+                  )}
+
+                  {queueStatus === "failed" && bridgeSession?.lastJobError && (
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                      Last Gemini bridge job failed: {bridgeSession.lastJobError}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
-                    <div className="text-sm font-semibold text-status-success-text">
-                      {launchState === "done"
-                        ? `Payload copied. ${providerPreset.label} is open.`
-                        : `${providerPreset.label} is open. Clipboard handoff still needs you.`}
+                    <label className="text-sm font-semibold text-text-default">
+                      Current request
+                    </label>
+                    <textarea
+                      value={instruction}
+                      onChange={(event) => setInstruction(event.target.value)}
+                      rows={4}
+                      placeholder="What should the AI help you do next?"
+                      className="w-full resize-y border border-border-default bg-surface-hover px-4 py-3 text-sm text-text-default placeholder:text-text-muted"
+                    />
+                    <p className="text-xs text-text-muted">
+                      {hasReusableInstruction
+                        ? "Using your last stream instruction. Edit it here if this run should change."
+                        : "Add a short request once, then Quick can reuse it on future runs."}
+                    </p>
+                  </div>
+
+                  <label className="space-y-2">
+                    <span className="text-sm font-semibold text-text-default">
+                      Destination
+                    </span>
+                    <select
+                      value={providerId}
+                      onChange={(event) =>
+                        setProviderId(event.target.value as typeof providerId)
+                      }
+                      className="w-full border border-border-default bg-surface-hover px-3 py-2 text-sm text-text-default"
+                    >
+                      {BRIDGE_PROVIDER_PRESETS.map((provider) => (
+                        <option key={provider.id} value={provider.id}>
+                          {provider.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="min-w-0 space-y-3 border border-border-default bg-surface-subtle p-4">
+                  <div>
+                    <div className="text-sm font-semibold text-text-default">
+                      Session + context
                     </div>
-                    <div className="text-xs text-text-default">
-                      Next: click the prompt box on {providerPreset.hostLabel}
-                      {launchState === "done" ? (
-                        <>
-                          , paste with{" "}
-                          <span className="font-semibold">Cmd/Ctrl+V</span>,
-                          then send.
-                        </>
-                      ) : (
-                        <>
-                          , use Copy payload again, then paste with{" "}
-                          <span className="font-semibold">Cmd/Ctrl+V</span> and
-                          send.
-                        </>
-                      )}
-                      When the answer is ready, come back here or open Detailed
-                      to paste, parse, and apply it.
+                    <div className="mt-2 space-y-1 text-xs text-text-muted">
+                      <div>
+                        {isFollowupLaunch
+                          ? "Active bridge session: follow-up payload"
+                          : "No active bridge session: full payload"}
+                      </div>
+                      <div>{selectedEntries.length || 0} recent entries</div>
+                      <div>
+                        {includeCanvas ? "Current canvas included" : "Canvas skipped"}
+                      </div>
+                      <div>
+                        {includeGlobalStream
+                          ? "Domain global stream included"
+                          : "Global stream skipped"}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-semibold text-text-default">
+                      Session memory
+                    </div>
+                    <p className="mt-2 text-xs text-text-muted">
+                      {bridgeSession?.sessionMemory ||
+                        "No remembered bridge context yet."}
+                    </p>
+                  </div>
+
+                  <div className="border border-border-default bg-surface-default p-3 text-xs text-text-muted">
+                    {isGeminiAutomation
+                      ? "Quick will enqueue a Gemini bridge job for the local sidecar. Manual copy/open fallback stays available if you need it."
+                      : `Quick automation is Gemini-only in v1. ${providerPreset.label} still uses the manual copy/open workflow.`}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenDetailed();
+                      }}
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Open Detailed
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <XMLGenerator
+                  compact
+                  streamId={streamId}
+                  interactionMode={quickPreset.interactionMode}
+                  selectedEntries={selectedEntries}
+                  includeCanvas={includeCanvas}
+                  includeGlobalStream={includeGlobalStream}
+                  globalStreamIds={domainGlobalStreamIds}
+                  globalStreamName={
+                    domainGlobalStreams.length === 1
+                      ? (domainGlobalStreams[0]?.name ?? null)
+                      : domainGlobalStreams.length > 1
+                        ? `${domainGlobalStreams.length} global streams`
+                        : null
+                  }
+                  userInput={effectiveInstruction}
+                  payloadVariant={payloadVariant}
+                  sessionLoadedAt={bridgeSession?.externalSessionLoadedAt}
+                  onXMLGenerated={setGeneratedXML}
+                  onPayloadReadyChange={setPayloadReady}
+                />
+              </div>
+            </>
+          )}
+
+          {phase === "waiting" && (
+            <div className="mx-auto flex min-w-0 max-w-2xl flex-col gap-5 py-6">
+              <section className="border border-border-default bg-surface-subtle p-6">
+                <div className="flex items-start gap-4">
+                  {queueStatus === "running" || launchState === "queueing" ? (
+                    <Loader2 className="mt-1 h-6 w-6 animate-spin text-action-primary-bg" />
+                  ) : (
+                    <CheckCircle2 className="mt-1 h-6 w-6 text-action-primary-bg" />
+                  )}
+                  <div className="space-y-2">
+                    <div className="text-lg font-semibold text-text-default">
+                      {waitingHeadline}
+                    </div>
+                    <p className="text-sm text-text-muted">
+                      {waitingDescription}
+                    </p>
+                    {latestJob?.id && isGeminiAutomation && (
+                      <div className="text-[11px] text-text-muted">
+                        Job: {latestJob.id}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
+              <section className="grid min-w-0 gap-3 md:grid-cols-3">
+                <div className="border border-border-default bg-surface-subtle p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                    Step 1
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-text-default">
+                    Compose
+                  </div>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Prompt and context were packed for this stream.
+                  </p>
+                </div>
+                <div className="border border-border-default bg-surface-subtle p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                    Step 2
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-text-default">
+                    Waiting
+                  </div>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {isGeminiAutomation
+                      ? "The sidecar is claiming or running the Gemini request."
+                      : "The provider tab is waiting for you to paste and send."}
+                  </p>
+                </div>
+                <div className="border border-border-default bg-surface-subtle p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                    Step 3
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-text-default">
+                    Review
+                  </div>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Once the reply lands, Quick switches to a clean response view.
+                  </p>
+                </div>
+              </section>
+
+              {!isGeminiAutomation && (
+                <section className="border border-border-default bg-surface-subtle p-4">
+                  <div className="text-sm font-semibold text-text-default">
+                    Manual fallback
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(generatedXML)}
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                    >
+                      <ClipboardPaste className="h-3.5 w-3.5" />
+                      Copy payload again
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.open(
+                          providerPreset.launchUrl,
+                          "_blank",
+                          "noopener,noreferrer",
+                        )
+                      }
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Reopen {providerPreset.label}
+                    </button>
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+
+          {phase === "accepting" && (
+            <div className="mx-auto flex min-w-0 max-w-2xl flex-col gap-5 py-6">
+              <section className="border border-status-success-bg bg-status-success-bg/40 p-6">
+                <div className="flex items-start gap-4">
+                  <CheckCircle2 className="mt-1 h-6 w-6 text-status-success-text" />
+                  <div className="space-y-2">
+                    <div className="text-lg font-semibold text-status-success-text">
+                      Response captured successfully
+                    </div>
+                    <p className="text-sm text-text-default">
+                      Quick has the raw provider response now. Review it in a focused preview modal, or open Detailed if you want to parse and apply changes.
+                    </p>
+                    <div className="flex flex-wrap gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() =>
-                          navigator.clipboard.writeText(generatedXML)
-                        }
-                        className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                        onClick={() => setIsResponsePreviewOpen(true)}
+                        className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-2 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover"
                       >
-                        <ClipboardPaste className="h-3.5 w-3.5" />
-                        Copy payload again
+                        View response
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          window.open(
-                            providerPreset.launchUrl,
-                            "_blank",
-                            "noopener,noreferrer",
-                          )
-                        }
+                        onClick={() => {
+                          onClose();
+                          onOpenDetailed();
+                        }}
                         className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Reopen {providerPreset.label}
+                        <Settings2 className="h-3.5 w-3.5" />
+                        Open Detailed
                       </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              </section>
 
-            {launchState === "error" && (
-              <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
-                Quick could not open the provider automatically. The payload is
-                still ready. Use Copy below, then open{" "}
-                {providerPreset.hostLabel} yourself and paste it in.
-              </div>
-            )}
-
-            {launchState === "opened" && (
-              <div className="flex items-start gap-2 border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  Browser auto-paste and auto-send still are not possible from
-                  this web app. The provider tab opened correctly; use the
-                  copied payload or press Copy payload again.
-                </span>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-text-default">
-                Current request
-              </label>
-              <textarea
-                value={instruction}
-                onChange={(event) => setInstruction(event.target.value)}
-                rows={4}
-                placeholder="What should the AI help you do next?"
-                className="w-full resize-y border border-border-default bg-surface-hover px-4 py-3 text-sm text-text-default placeholder:text-text-muted"
-              />
-              <p className="text-xs text-text-muted">
-                {hasReusableInstruction
-                  ? "Using your last stream instruction. Edit it here if this run should change."
-                  : "Add a short request once, then Quick can reuse it on future runs."}
-              </p>
-              <p className="text-xs text-text-muted">
-                {isFollowupLaunch
-                  ? "This stream already has an active web-LLM session, so Quick will send a lighter follow-up payload."
-                  : "This launch will send the full bridge payload so the provider conversation gets the complete system rules and context."}
-              </p>
-            </div>
-
-            <label className="space-y-2">
-              <span className="text-sm font-semibold text-text-default">
-                Destination
-              </span>
-              <select
-                value={providerId}
-                onChange={(event) =>
-                  setProviderId(event.target.value as typeof providerId)
-                }
-                className="w-full border border-border-default bg-surface-hover px-3 py-2 text-sm text-text-default"
-              >
-                {BRIDGE_PROVIDER_PRESETS.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
-              Quick will wait until the payload is ready, then copy it, open{" "}
-              {providerPreset.hostLabel}, and keep Detailed available for paste,
-              parse, and apply.
-            </div>
-          </div>
-
-          <div className="space-y-3 border border-border-default bg-surface-subtle p-4">
-            <div>
-              <div className="text-sm font-semibold text-text-default">
-                Session + context
-              </div>
-              <div className="mt-2 space-y-1 text-xs text-text-muted">
-                <div>
-                  {isFollowupLaunch
-                    ? "Active web session: follow-up payload"
-                    : "No active web session: full payload"}
+              <section className="grid min-w-0 gap-3 md:grid-cols-2">
+                <div className="border border-border-default bg-surface-subtle p-4">
+                  <div className="text-sm font-semibold text-text-default">
+                    Session status
+                  </div>
+                  <p className="mt-2 text-xs text-text-muted">
+                    The Gemini sidecar finished this run and returned the response to Kolam Ikan.
+                  </p>
                 </div>
-                <div>{selectedEntries.length || 0} recent entries</div>
-                <div>All stream entries included</div>
-                <div>
-                  {includeCanvas ? "Current canvas included" : "Canvas skipped"}
+                <div className="border border-border-default bg-surface-subtle p-4">
+                  <div className="text-sm font-semibold text-text-default">
+                    Next move
+                  </div>
+                  <p className="mt-2 text-xs text-text-muted">
+                    Stay in Quick to inspect the response, or switch to Detailed only when you want parser/apply tools.
+                  </p>
                 </div>
-                <div>
-                  {includeGlobalStream
-                    ? "Domain global stream included"
-                    : "Global stream skipped"}
-                </div>
-              </div>
+              </section>
             </div>
-            <div>
-              <div className="text-sm font-semibold text-text-default">
-                Session memory
-              </div>
-              <p className="mt-2 text-xs text-text-muted">
-                {bridgeSession?.sessionMemory ||
-                  "No remembered bridge context yet."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onOpenDetailed();
-              }}
-              className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-              Open Detailed
-            </button>
-          </div>
+          )}
         </div>
 
-        <div className="mt-5">
-          <XMLGenerator
-            compact
-            streamId={streamId}
-            interactionMode={quickPreset.interactionMode}
-            selectedEntries={selectedEntries}
-            includeCanvas={includeCanvas}
-            includeGlobalStream={includeGlobalStream}
-            globalStreamIds={domainGlobalStreamIds}
-            globalStreamName={
-              domainGlobalStreams.length === 1
-                ? (domainGlobalStreams[0]?.name ?? null)
-                : domainGlobalStreams.length > 1
-                  ? `${domainGlobalStreams.length} global streams`
-                  : null
-            }
-            userInput={effectiveInstruction}
-            payloadVariant={payloadVariant}
-            onXMLGenerated={setGeneratedXML}
-            onPayloadReadyChange={setPayloadReady}
-          />
-        </div>
-      </div>
+      </ModalShell>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle px-6 py-4">
-        <div className="text-xs text-text-muted">
-          {launchState === "done" &&
-            "Quick handoff is ready. Paste into the provider, then return here when you have a response."}
-          {launchState === "opened" &&
-            "Provider opened. Use Copy payload again if the clipboard did not carry over."}
-          {launchState === "error" &&
-            "Provider launch failed, but the payload is still available below."}
-          {launchState === "idle" &&
-            !payloadReady &&
-            "Loading recent entries and canvas context before Quick can launch."}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="border border-border-default px-4 py-2 text-sm font-semibold text-text-default hover:bg-surface-hover"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void launchQuickBridge()}
-            disabled={
-              !instruction.trim() ||
-              !generatedXML.trim() ||
-              !payloadReady ||
-              launchState === "launching"
-            }
-            className="inline-flex items-center gap-2 bg-action-primary-bg px-4 py-2 text-sm font-semibold text-action-primary-text hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:bg-action-primary-disabled"
-          >
-            {launchState === "launching" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Rocket className="h-4 w-4" />
-            )}
-            Launch Quick
-          </button>
-        </div>
-      </div>
-    </ModalShell>
+      <BridgeResponsePreviewModal
+        open={isResponsePreviewOpen}
+        onClose={() => setIsResponsePreviewOpen(false)}
+        title="Quick Bridge Response"
+        description="Raw response returned by the provider for this Quick Bridge run."
+        responseText={responseText}
+      />
+      <ConfirmDialog
+        open={isResetDialogOpen}
+        title={phase === "waiting" ? "Abort and reset this Quick Bridge run?" : "Reset this Quick Bridge session?"}
+        description={
+          phase === "waiting"
+            ? "This clears the current bridge session and removes queued or running jobs for this stream."
+            : "This clears the current bridge session, response, and related bridge jobs for this stream."
+        }
+        confirmLabel={phase === "waiting" ? "Abort & Reset" : "Reset"}
+        cancelLabel="Cancel"
+        destructive
+        loading={resetBridgeSession.isPending}
+        onCancel={() => setIsResetDialogOpen(false)}
+        onConfirm={() => void confirmReset()}
+      />
+    </>
   );
 }

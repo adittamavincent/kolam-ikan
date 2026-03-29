@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { ModalHeader, ModalShell } from "@/components/shared/ModalShell";
+import {
+  ModalHeader,
+  ModalShell,
+  type ModalFooterAction,
+} from "@/components/shared/ModalShell";
 import {
   ClipboardPaste,
   Globe,
   Layers3,
+  Loader2,
+  Rocket,
   Send,
   Settings2,
   Sparkles,
@@ -18,11 +24,16 @@ import { XMLGenerator } from "./XMLGenerator";
 import { ResponseParser, type ResponseParserHandle } from "./ResponseParser";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { STREAM_KIND } from "@/lib/types";
+import type { BridgeJobStatus } from "@/lib/types";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import {
   BRIDGE_PROVIDER_PRESETS,
   getBridgeProviderPreset,
 } from "./bridge-config";
+import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
+import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
+import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
+import { BridgeResponsePreviewModal } from "./BridgeResponsePreviewModal";
 
 interface BridgeModalProps {
   isOpen: boolean;
@@ -52,6 +63,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const [userInput, setUserInput] = useState("");
   const [tokenOverLimit, setTokenOverLimit] = useState(false);
   const [generatedXML, setGeneratedXML] = useState("");
+  const [payloadReady, setPayloadReady] = useState(false);
   const [pastedXML, setPastedXML] = useState("");
   const [providerId, setProviderId] = useState(
     bridgeSession?.providerId ?? bridgeDefaults.providerId,
@@ -63,9 +75,13 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     hasParsed: false,
   });
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isResponsePreviewOpen, setIsResponsePreviewOpen] = useState(false);
 
   const parserRef = useRef<ResponseParserHandle>(null);
   const currentProvider = getBridgeProviderPreset(providerId);
+  const latestBridgeJob = useLatestBridgeJob(streamId, isOpen ? 3_000 : 8_000);
+  const createBridgeJob = useCreateBridgeJob(streamId);
+  const resetBridgeSession = useResetBridgeSession(streamId);
 
   const { data: streamMeta, isLoading: isStreamMetaLoading } = useQuery({
     queryKey: ["bridge-stream-meta", streamId],
@@ -141,10 +157,23 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     setIsResetDialogOpen(true);
   };
 
-  const confirmReset = () => {
-    setIsResetDialogOpen(false);
+  const resetLocalState = () => {
+    setInteractionMode("ASK");
+    setSelectedEntries([]);
+    setIncludeCanvas(true);
+    setUserGlobalStreamChoice(true);
     setUserInput("");
+    setTokenOverLimit(false);
+    setGeneratedXML("");
+    setPastedXML("");
+    setProviderId(bridgeDefaults.providerId);
     parserRef.current?.reset();
+  };
+
+  const confirmReset = async () => {
+    setIsResetDialogOpen(false);
+    await resetBridgeSession.mutateAsync();
+    resetLocalState();
   };
 
   const handleOpenProvider = () => {
@@ -170,6 +199,23 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   const resetDialogTitle = "Clear all inputs and results?";
   const resetDialogDescription =
     "This resets your instructions and parsed output. Changes cannot be undone.";
+  const automatedResponse = latestBridgeJob.data?.raw_response?.trim() ?? "";
+  const effectivePastedXML = pastedXML.trim() ? pastedXML : automatedResponse;
+  const responsePreviewText = effectivePastedXML;
+  const currentSessionKey = buildBridgeSessionKey(streamId, "gemini");
+  const canQueueToGemini = providerId === "gemini";
+  const latestJobMatchesCurrentPayload =
+    latestBridgeJob.data?.session_key === currentSessionKey &&
+    latestBridgeJob.data?.payload === generatedXML;
+  const automationStatus = bridgeSession?.automationStatus ?? "idle";
+  const shouldShowReset =
+    !!bridgeSession?.sessionMemory.trim() ||
+    !!bridgeSession?.lastInstruction.trim() ||
+    !!bridgeSession?.lastJobId ||
+    automationStatus !== "idle" ||
+    !!bridgeSession?.isExternalSessionActive ||
+    !!pastedXML.trim() ||
+    !!responsePreviewText;
 
   const handleDone = () => {
     setBridgeDefaults({
@@ -190,20 +236,97 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     onClose();
   };
 
+  const handleQueueDetailed = async () => {
+    if (!canQueueToGemini || !payloadReady || !generatedXML.trim()) return;
+    if (
+      latestJobMatchesCurrentPayload &&
+      (latestBridgeJob.data?.status === "queued" ||
+        latestBridgeJob.data?.status === "running")
+    ) {
+      return;
+    }
+
+    const result = await createBridgeJob.mutateAsync({
+      provider: "gemini",
+      payload: generatedXML,
+      payloadVariant: bridgeSession?.isExternalSessionActive ? "followup" : "full",
+      sessionKey: currentSessionKey,
+      runnerDetails: {
+        source: "detailed-bridge",
+      },
+    });
+
+    setBridgeDefaults({
+      providerId,
+      quickPreset: bridgeDefaults.quickPreset,
+    });
+    upsertBridgeSession(streamId, {
+      providerId,
+      lastMode: interactionMode,
+      lastInstruction: userInput,
+      lastContextRecipe: {
+        entrySelection: "last-5",
+        includeCanvas,
+        includeGlobalStream,
+      },
+      lastUsedAt: new Date().toISOString(),
+      automationSessionKey: currentSessionKey,
+      automationStatus: "queued",
+      lastJobId: result.job.id,
+      lastJobStatus: result.job.status as BridgeJobStatus,
+      lastJobError: "",
+    });
+  };
+  const footerActions: ModalFooterAction[] = [
+    ...(shouldShowReset
+      ? [
+          {
+            label: resetBridgeSession.isPending ? "Resetting..." : "Reset",
+            onClick: handleReset,
+            disabled: resetBridgeSession.isPending,
+            tone: "secondary" as const,
+          },
+        ]
+      : []),
+    {
+      label: "Cancel",
+      onClick: handleDone,
+      tone: "secondary" as const,
+    },
+    {
+      label: `Queue to ${currentProvider.label}`,
+      icon: createBridgeJob.isPending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Rocket className="h-4 w-4" />
+      ),
+      onClick: () =>
+        void (canQueueToGemini ? handleQueueDetailed() : handleOpenProvider()),
+      disabled:
+        (canQueueToGemini &&
+          (!payloadReady ||
+            !generatedXML.trim() ||
+            createBridgeJob.isPending ||
+            resetBridgeSession.isPending)) ||
+        (!canQueueToGemini && !generatedXML.trim()),
+      tone: "primary" as const,
+    },
+  ];
+
   return (
     <>
       <ModalShell
         open={isOpen}
         onClose={onClose}
-        panelClassName="mx-auto flex max-h-[90vh] w-full flex-col"
+        panelClassName="mx-auto flex max-h-[90vh] w-full flex-col overflow-hidden"
+        bodyClassName="flex min-h-0 flex-1 flex-col"
+        footerActions={footerActions}
       >
         <ModalHeader
           title="Detailed Bridge"
           description="Build the payload, choose context deliberately, then bring the AI response back here to parse and apply."
           icon={<Sparkles className="h-5 w-5" />}
           onClose={onClose}
-          className="px-8 py-6"
-          titleClassName="text-2xl font-bold text-text-default"
           meta={
             streamMeta?.name ? (
               <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
@@ -222,10 +345,10 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
           }
         />
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-6 px-8 pb-8 pt-6">
-            <div className="grid gap-6 lg:grid-cols-[1.1fr,0.9fr]">
-              <section className="space-y-4 border border-border-default bg-surface-subtle p-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+          <div className="flex min-w-0 flex-col gap-6 px-6 py-5">
+            <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+              <section className="min-w-0 space-y-4 border border-border-default bg-surface-subtle p-5">
                 <div>
                   <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
                     <Layers3 className="h-4 w-4" />
@@ -269,7 +392,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                 </div>
               </section>
 
-              <section className="space-y-4 border border-border-default bg-surface-subtle p-5">
+              <section className="min-w-0 space-y-4 border border-border-default bg-surface-subtle p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
                   <Send className="h-4 w-4" />
                   Destination
@@ -311,7 +434,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
               </section>
             </div>
 
-            <section className="space-y-3">
+            <section className="min-w-0 space-y-3">
               <div>
                 <h3 className="text-sm font-semibold text-text-default">
                   Context
@@ -341,7 +464,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
               />
             </section>
 
-            <section className="flex flex-col gap-1.5 border border-border-default bg-surface-subtle p-5">
+            <section className="min-w-0 flex flex-col gap-1.5 border border-border-default bg-surface-subtle p-5">
               <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
                 <Settings2 className="h-4 w-4" />
                 Request
@@ -362,7 +485,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
               />
             </section>
 
-            <section className="border border-border-default bg-surface-subtle p-5">
+            <section className="min-w-0 border border-border-default bg-surface-subtle p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-text-default">
@@ -399,11 +522,13 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                 globalStreamName={globalStreamName}
                 userInput={userInput}
                 streamId={streamId}
+                sessionLoadedAt={bridgeSession?.externalSessionLoadedAt}
                 onXMLGenerated={setGeneratedXML}
+                onPayloadReadyChange={setPayloadReady}
               />
             </section>
 
-            <section className="border border-border-default bg-surface-subtle p-5">
+            <section className="min-w-0 border border-border-default bg-surface-subtle p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-text-default">
@@ -413,6 +538,12 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                     Paste the provider output here, then parse and apply from
                     this section.
                   </p>
+                  {latestBridgeJob.data?.raw_response && (
+                    <p className="mt-1 text-xs text-text-muted">
+                      Latest Gemini sidecar response is loaded automatically. You
+                      can still paste a different response over it.
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -421,6 +552,13 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                   >
                     <ClipboardPaste className="h-3.5 w-3.5" />
                     Paste from clipboard
+                  </button>
+                  <button
+                    onClick={() => setIsResponsePreviewOpen(true)}
+                    disabled={!responsePreviewText}
+                    className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover disabled:text-text-muted"
+                  >
+                    Preview response
                   </button>
                   <button
                     onClick={handleParse}
@@ -440,9 +578,10 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                   </button>
                   <button
                     onClick={handleReset}
+                    disabled={resetBridgeSession.isPending}
                     className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
                   >
-                    Reset
+                    {resetBridgeSession.isPending ? "Resetting..." : "Reset"}
                   </button>
                 </div>
               </div>
@@ -450,20 +589,23 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                 ref={parserRef}
                 streamId={streamId}
                 interactionMode={interactionMode}
-                pastedXML={pastedXML}
+                pastedXML={effectivePastedXML}
                 onPastedXMLChange={setPastedXML}
                 onStatusChange={setParserStatus}
+                onApplySuccess={() => {
+                  if (
+                    latestBridgeJob.data?.id &&
+                    latestBridgeJob.data?.raw_response?.trim() ===
+                      effectivePastedXML.trim()
+                  ) {
+                    upsertBridgeSession(streamId, {
+                      lastAppliedJobId: latestBridgeJob.data.id,
+                    });
+                  }
+                }}
               />
             </section>
           </div>
-        </div>
-        <div className="flex items-center justify-end border-t border-border-subtle px-8 py-4">
-          <button
-            onClick={handleDone}
-            className="bg-surface-subtle px-6 py-2.5 text-sm font-medium text-text-default transition-all hover:bg-surface-hover hover:text-text-strong md:min-w-30"
-          >
-            Done
-          </button>
         </div>
       </ModalShell>
       <ConfirmDialog
@@ -473,8 +615,16 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
         confirmLabel="Clear"
         cancelLabel="Cancel"
         destructive
+        loading={resetBridgeSession.isPending}
         onCancel={() => setIsResetDialogOpen(false)}
-        onConfirm={confirmReset}
+        onConfirm={() => void confirmReset()}
+      />
+      <BridgeResponsePreviewModal
+        open={isResponsePreviewOpen}
+        onClose={() => setIsResponsePreviewOpen(false)}
+        title="Bridge Response Preview"
+        description="Raw response available to parse or compare before applying changes."
+        responseText={responsePreviewText}
       />
     </>
   );

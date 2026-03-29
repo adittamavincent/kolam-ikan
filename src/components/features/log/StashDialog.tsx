@@ -72,19 +72,16 @@ export function StashDialog({
       onClose={onClose}
       viewportClassName="fixed inset-0 overflow-y-auto p-3 lg:p-4"
       contentClassName="flex min-h-full items-start justify-center"
-      panelClassName="my-auto flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden p-3"
+      panelClassName="my-auto flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden"
     >
       <ModalHeader
         title="Stash"
         description={`${totalCount} item${totalCount === 1 ? "" : "s"} stored across commits and drafts.`}
         icon={<Archive className="h-5 w-5" />}
         onClose={onClose}
-        className="px-4 py-3"
-        titleClassName="text-sm font-semibold text-text-default"
-        descriptionClassName="text-xs text-text-muted"
       />
 
-      <div className="flex-1 space-y-5 overflow-y-auto px-4 py-3">
+      <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
         {totalCount === 0 ? <EmptyState /> : null}
 
         {committedStashes.length > 0 && (

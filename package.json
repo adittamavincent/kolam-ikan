@@ -17,6 +17,7 @@
     "prepare": "husky",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
+    "bridge:runner": "node scripts/gemini-bridge-runner.mjs",
     "format:md:fix": "node scripts/fix-md-lists.js",
     "format:md": "prettier --write \"**/*.md\" && npm run format:md:fix"
   },

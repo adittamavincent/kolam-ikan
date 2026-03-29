@@ -15,6 +15,7 @@ interface XMLGeneratorProps {
   globalStreamName: string | null;
   userInput: string;
   payloadVariant?: BridgePayloadVariant;
+  sessionLoadedAt?: string | null;
   onXMLGenerated?: (xml: string) => void;
   onPayloadReadyChange?: (ready: boolean) => void;
   compact?: boolean;
@@ -30,6 +31,7 @@ export function XMLGenerator({
   globalStreamName,
   userInput,
   payloadVariant = "full",
+  sessionLoadedAt,
   onXMLGenerated,
   onPayloadReadyChange,
   compact = false,
@@ -45,6 +47,7 @@ export function XMLGenerator({
     globalStreamName,
     userInput,
     payloadVariant,
+    sessionLoadedAt,
     onPayloadGenerated: onXMLGenerated,
   });
 

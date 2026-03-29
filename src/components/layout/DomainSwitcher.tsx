@@ -387,16 +387,21 @@ export function DomainSwitcher({
       <ModalShell
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
-        panelClassName="w-full p-6"
+        panelClassName="w-full"
+        footerActions={[
+          {
+            label: "Close",
+            onClick: () => setProfileOpen(false),
+            tone: "primary",
+          },
+        ]}
       >
         <ModalHeader
           title="Profile Settings"
           icon={<Settings className="h-5 w-5" />}
           onClose={() => setProfileOpen(false)}
-          className="px-0 pb-4 pt-0"
-          titleClassName="text-lg font-semibold leading-6 text-text-default"
         />
-        <div className="mt-4 space-y-4">
+        <div className="space-y-4 px-6 py-5">
           <div className="flex items-center gap-4">
             {avatarUrl ? (
               <Image
@@ -439,15 +444,6 @@ export function DomainSwitcher({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <button
-            type="button"
-            className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: transition-colors"
-            onClick={() => setProfileOpen(false)}
-          >
-            Close
-          </button>
-        </div>
       </ModalShell>
 
       {/* PersonaManager is rendered at the layout level to keep global entries in sync */}

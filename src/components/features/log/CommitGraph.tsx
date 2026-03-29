@@ -415,6 +415,7 @@ export function CommitGraph({
           .from("canvas_versions")
           .select(selectClause)
           .eq("stream_id", currentStreamId)
+          .is("deleted_at", null)
           .order("created_at", { ascending: false });
 
       const { data, error } = await buildCanvasQuery(

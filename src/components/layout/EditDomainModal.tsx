@@ -150,18 +150,66 @@ export function EditDomainModal({
   };
 
   return (
-    <ModalShell open={isOpen} onClose={onClose} panelClassName="w-full p-6">
+    <ModalShell
+      open={isOpen}
+      onClose={onClose}
+      panelClassName="w-full"
+      footerActions={[
+        {
+          label: deleteDomain.isPending
+            ? "Deleting..."
+            : confirmDelete
+              ? "Confirm Delete"
+              : "Delete Domain",
+          icon: deleteDomain.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          ),
+          onClick: handleDelete,
+          disabled: isMutating,
+          tone: "danger",
+          placement: "start",
+        },
+        {
+          label: duplicateDomain.isPending ? "Duplicating..." : "Duplicate Domain",
+          icon: duplicateDomain.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : undefined,
+          onClick: handleDuplicate,
+          disabled: isMutating,
+          tone: "secondary",
+          placement: "start",
+        },
+        {
+          label: "Cancel",
+          onClick: onClose,
+          disabled: isMutating,
+          tone: "ghost",
+        },
+        {
+          label: updateDomain.isPending ? "Saving..." : "Save Changes",
+          icon: updateDomain.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          ),
+          type: "submit",
+          form: "edit-domain-form",
+          disabled: !name.trim() || isMutating,
+          tone: "primary",
+        },
+      ]}
+    >
       <ModalHeader
         title="Edit Domain"
         description="Update your domain name and icon."
         icon={<Pencil className="h-5 w-5" />}
         onClose={onClose}
         closeDisabled={isMutating}
-        className="mb-4 px-0 pb-4 pt-0"
-        titleClassName="text-lg font-medium leading-6 text-text-default"
       />
 
-      <form onSubmit={handleSubmit}>
+      <form id="edit-domain-form" onSubmit={handleSubmit} className="px-6 py-5">
         <div className="mt-2">
           <input
             type="text"
@@ -210,71 +258,6 @@ export function EditDomainModal({
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3">
-          <div className="flex gap-3 items-center justify-end">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isMutating}
-              className="inline-flex items-center justify-center gap-2 border border-status-error-text px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {deleteDomain.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4" />
-                  {confirmDelete ? "Confirm Delete" : "Delete Domain"}
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handleDuplicate}
-              disabled={isMutating}
-              className="inline-flex items-center justify-center gap-2 border border-border-default px-4 py-2 text-sm font-medium text-text-default transition-colors hover:bg-surface-subtle"
-            >
-              {duplicateDomain.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Duplicating...
-                </>
-              ) : (
-                <>Duplicate Domain</>
-              )}
-            </button>
-          </div>
-
-          <div className="flex gap-3 items-center justify-end">
-            <button
-              type="button"
-              className="inline-flex justify-center border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible:"
-              onClick={onClose}
-              disabled={isMutating}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!name.trim() || isMutating}
-              className="inline-flex items-center justify-center gap-2 border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {updateDomain.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  Save Changes
-                </>
-              )}
-            </button>
-          </div>
-        </div>
       </form>
     </ModalShell>
   );

@@ -3,7 +3,7 @@
 import { LogPane } from "@/components/features/log/LogPane";
 import { CanvasPane } from "@/components/features/canvas/CanvasPane";
 import { BridgeModal } from "@/components/features/bridge/BridgeModal";
-import { QuickBridgeDialog } from "@/components/features/bridge/QuickBridgeDialog";
+import { QuickBridgeControl } from "@/components/features/bridge/QuickBridgeControl";
 import { DocumentImportModal } from "@/components/features/documents/DocumentImportModal";
 import { WhatsAppImportModal } from "@/components/features/log/WhatsAppImportModal";
 import { useRealtimeEntries } from "@/lib/hooks/useRealtimeEntries";
@@ -12,10 +12,11 @@ import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { BRIDGE_PROVIDER_PRESETS } from "@/components/features/bridge/bridge-config";
 import { useEffect, useState } from "react";
 import { Globe, Link2, RotateCcw, Sparkles, Wand2 } from "lucide-react";
+import { useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
+import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
-  const [isQuickBridgeOpen, setIsQuickBridgeOpen] = useState(false);
   const [isDocumentImportOpen, setIsDocumentImportOpen] = useState(false);
   const [incomingDocumentFiles, setIncomingDocumentFiles] = useState<Array<{
     file: File;
@@ -27,9 +28,6 @@ export function StreamView({ streamId }: { streamId: string }) {
     (state) => state.bridgeSessionsByStream[streamId],
   );
   const bridgeDefaults = useUiPreferencesStore((state) => state.bridgeDefaults);
-  const clearBridgeSession = useUiPreferencesStore(
-    (state) => state.clearBridgeSession,
-  );
   const setBridgeDefaults = useUiPreferencesStore(
     (state) => state.setBridgeDefaults,
   );
@@ -37,6 +35,8 @@ export function StreamView({ streamId }: { streamId: string }) {
     (state) => state.upsertBridgeSession,
   );
   useRealtimeEntries(streamId);
+  useLatestBridgeJob(streamId, 4_000);
+  const resetBridgeSession = useResetBridgeSession(streamId);
 
   const selectedProviderId =
     bridgeSession?.providerId ?? bridgeDefaults.providerId;
@@ -44,6 +44,24 @@ export function StreamView({ streamId }: { streamId: string }) {
   const hasSessionMemory =
     !!bridgeSession?.sessionMemory.trim() ||
     !!bridgeSession?.lastInstruction.trim();
+  const automationStatus = bridgeSession?.automationStatus ?? "idle";
+  const shouldShowReset =
+    hasSessionMemory ||
+    !!bridgeSession?.lastJobId ||
+    automationStatus !== "idle" ||
+    hasActiveSession;
+  const queueLabel =
+    automationStatus === "queued"
+      ? "Queued"
+      : automationStatus === "running"
+        ? "Running"
+        : automationStatus === "needs-login"
+          ? "Login"
+          : automationStatus === "succeeded"
+            ? "Ready"
+            : automationStatus === "failed"
+              ? "Failed"
+              : "Idle";
 
   useEffect(() => {
     const onOpenDocumentImport = (ev?: Event) => {
@@ -82,12 +100,12 @@ export function StreamView({ streamId }: { streamId: string }) {
       <LogPane streamId={streamId} logWidth={logWidth} />
       <CanvasPane streamId={streamId} />
 
-      <div className="fixed bottom-4 right-4 z-40 flex flex-wrap items-center gap-2 border border-border-default bg-surface-default px-3 py-2 shadow-lg">
+      <div className="fixed bottom-4 right-4 z-40 flex items-center gap-0.5 border border-border-default bg-surface-default p-2 shadow-lg backdrop-blur-md transition-all">
         <div
-          className={`inline-flex items-center gap-1.5 border px-2 py-1 text-[11px] font-semibold ${
+          className={`inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold ${
             hasActiveSession
-              ? "border-status-success-bg bg-status-success-bg/40 text-status-success-text"
-              : "border-border-subtle bg-surface-subtle text-text-muted"
+              ? "bg-status-success-bg/40 text-status-success-text"
+              : "text-text-muted hover:bg-surface-hover"
           }`}
           title={
             hasActiveSession
@@ -99,7 +117,23 @@ export function StreamView({ streamId }: { streamId: string }) {
           <span>{hasActiveSession ? "Live" : "Fresh"}</span>
         </div>
 
-        <label className="inline-flex items-center gap-2 border border-border-subtle bg-surface-subtle px-2 py-1">
+        <div
+          className={`inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold ${
+            automationStatus === "succeeded"
+              ? "bg-status-success-bg/40 text-status-success-text"
+              : automationStatus === "queued" || automationStatus === "running"
+                ? "text-text-default hover:bg-surface-hover"
+                : automationStatus === "needs-login" || automationStatus === "failed"
+                  ? "bg-status-error-bg text-status-error-text"
+                  : "text-text-muted hover:bg-surface-hover"
+          }`}
+          title="Latest local Gemini sidecar queue state"
+        >
+          <Wand2 className="h-3.5 w-3.5" />
+          <span>{queueLabel}</span>
+        </div>
+
+        <label className="inline-flex h-8 items-center gap-2 px-2 text-text-default hover:bg-surface-hover">
           <Globe className="h-3.5 w-3.5 text-text-muted" />
           <select
             value={selectedProviderId}
@@ -124,45 +158,33 @@ export function StreamView({ streamId }: { streamId: string }) {
           </select>
         </label>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              setIsQuickBridgeOpen(true);
-            }}
-            className="flex items-center gap-1.5 bg-action-primary-bg px-3 py-2 text-sm font-semibold text-action-primary-text transition-[opacity,box-shadow] hover:opacity-90 hover:shadow-lg"
-          >
-            <Wand2 className="h-4 w-4" />
-            <span>Quick</span>
-          </button>
+        <div className="flex items-stretch gap-0.5">
+          <QuickBridgeControl streamId={streamId} />
           <button
             onClick={() => {
               setIsBridgeOpen(true);
             }}
-            className="flex items-center gap-1.5 border border-border-default bg-surface-subtle px-3 py-2 text-sm font-semibold text-text-default transition-[background-color,box-shadow] hover:bg-surface-hover hover:shadow-lg"
+            className="inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold text-text-default transition-all hover:bg-surface-hover hover:text-text-default"
           >
             <Sparkles className="h-4 w-4" />
             <span>Detailed</span>
           </button>
         </div>
 
-        {hasSessionMemory && (
+        {shouldShowReset && (
           <button
-            onClick={() => clearBridgeSession(streamId)}
-            className="inline-flex items-center gap-1.5 border border-border-subtle bg-surface-subtle px-2 py-2 text-[11px] font-semibold text-text-muted hover:bg-surface-hover hover:text-text-default"
+            onClick={() => void resetBridgeSession.mutateAsync()}
+            className="inline-flex items-center gap-1.5 px-2 py-2 text-[11px] font-semibold text-text-muted hover:bg-surface-hover hover:text-text-default"
             title="Reset current bridge session"
+            disabled={resetBridgeSession.isPending}
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Reset</span>
+            <span className="hidden sm:inline">
+              {resetBridgeSession.isPending ? "Resetting" : "Reset"}
+            </span>
           </button>
         )}
       </div>
-
-      <QuickBridgeDialog
-        isOpen={isQuickBridgeOpen}
-        onClose={() => setIsQuickBridgeOpen(false)}
-        onOpenDetailed={() => setIsBridgeOpen(true)}
-        streamId={streamId}
-      />
 
       <BridgeModal
         isOpen={isBridgeOpen}

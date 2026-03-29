@@ -20,6 +20,7 @@ interface UseBridgePayloadOptions {
   globalStreamName: string | null;
   userInput: string;
   payloadVariant?: BridgePayloadVariant;
+  sessionLoadedAt?: string | null;
   onPayloadGenerated?: (payload: string) => void;
 }
 
@@ -33,6 +34,7 @@ export function useBridgePayload({
   globalStreamName,
   userInput,
   payloadVariant = "full",
+  sessionLoadedAt,
   onPayloadGenerated,
 }: UseBridgePayloadOptions) {
   const supabase = createClient();
@@ -133,37 +135,52 @@ export function useBridgePayload({
     enabled: includeGlobalStream && additionalGlobalStreamIds.length > 0,
   });
 
+  const incrementalContext = useMemo(
+    () =>
+      selectIncrementalBridgeContext({
+        payloadVariant,
+        sessionLoadedAt,
+        entries,
+        canvas,
+        globalEntries,
+        globalCanvases,
+      }),
+    [canvas, entries, globalCanvases, globalEntries, payloadVariant, sessionLoadedAt],
+  );
+
   const payload = useMemo(
     () =>
       buildBridgePayload({
         stream,
         interactionMode,
         includeCanvas,
-        canvas,
-        entries,
+        canvas: incrementalContext.canvas,
+        entries: incrementalContext.entries,
         includeGlobalStream,
         additionalGlobalStreamIds,
         globalStreamsMeta,
-        globalCanvases,
-        globalEntries,
+        globalCanvases: incrementalContext.globalCanvases,
+        globalEntries: incrementalContext.globalEntries,
         globalStreamName,
         userInput,
         payloadVariant,
+        sessionLoadedAt,
       }),
     [
       stream,
       interactionMode,
       includeCanvas,
-      canvas,
-      entries,
+      incrementalContext.canvas,
+      incrementalContext.entries,
       includeGlobalStream,
       additionalGlobalStreamIds,
       globalStreamsMeta,
-      globalCanvases,
-      globalEntries,
+      incrementalContext.globalCanvases,
+      incrementalContext.globalEntries,
       globalStreamName,
       userInput,
       payloadVariant,
+      sessionLoadedAt,
     ],
   );
 
@@ -196,7 +213,63 @@ type BuildBridgePayloadArgs = {
   globalStreamName: string | null;
   userInput: string;
   payloadVariant: BridgePayloadVariant;
+  sessionLoadedAt?: string | null;
 };
+
+type IncrementalBridgeContextArgs = {
+  payloadVariant: BridgePayloadVariant;
+  sessionLoadedAt?: string | null;
+  entries: EntryWithSections[] | undefined;
+  canvas: Record<string, unknown> | null | undefined;
+  globalEntries: EntryWithSections[] | undefined;
+  globalCanvases: Array<Record<string, unknown>> | undefined;
+};
+
+function hasTimestampAfter(
+  value: string | null | undefined,
+  thresholdMs: number | null,
+) {
+  if (thresholdMs === null || !value) return true;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) && parsed > thresholdMs;
+}
+
+export function selectIncrementalBridgeContext({
+  payloadVariant,
+  sessionLoadedAt,
+  entries,
+  canvas,
+  globalEntries,
+  globalCanvases,
+}: IncrementalBridgeContextArgs) {
+  if (payloadVariant !== "followup") {
+    return {
+      entries,
+      canvas,
+      globalEntries,
+      globalCanvases,
+    };
+  }
+
+  const sessionLoadedAtMs = sessionLoadedAt ? Date.parse(sessionLoadedAt) : Number.NaN;
+  const thresholdMs = Number.isFinite(sessionLoadedAtMs) ? sessionLoadedAtMs : null;
+
+  return {
+    entries: (entries ?? []).filter((entry) =>
+      hasTimestampAfter(entry.created_at, thresholdMs),
+    ),
+    canvas:
+      canvas && hasTimestampAfter(canvas.updated_at as string | undefined, thresholdMs)
+        ? canvas
+        : null,
+    globalEntries: (globalEntries ?? []).filter((entry) =>
+      hasTimestampAfter(entry.created_at, thresholdMs),
+    ),
+    globalCanvases: (globalCanvases ?? []).filter((item) =>
+      hasTimestampAfter(item.updated_at as string | undefined, thresholdMs),
+    ),
+  };
+}
 
 export function buildBridgePayload({
   stream,
@@ -212,12 +285,20 @@ export function buildBridgePayload({
   globalStreamName,
   userInput,
   payloadVariant,
+  sessionLoadedAt,
 }: BuildBridgePayloadArgs) {
   if (payloadVariant === "followup") {
     return buildBridgeFollowupPayload({
       stream,
       interactionMode,
+      canvas,
+      entries,
+      includeGlobalStream,
+      globalCanvases,
+      globalEntries,
+      globalStreamName,
       userInput,
+      sessionLoadedAt,
     });
   }
 
@@ -332,20 +413,87 @@ ${userInput}
 function buildBridgeFollowupPayload({
   stream,
   interactionMode,
+  canvas,
+  entries,
+  includeGlobalStream,
+  globalCanvases,
+  globalEntries,
+  globalStreamName,
   userInput,
-}: Pick<BuildBridgePayloadArgs, "stream" | "interactionMode" | "userInput">) {
+  sessionLoadedAt,
+}: Pick<
+  BuildBridgePayloadArgs,
+  | "stream"
+  | "interactionMode"
+  | "canvas"
+  | "entries"
+  | "includeGlobalStream"
+  | "globalCanvases"
+  | "globalEntries"
+  | "globalStreamName"
+  | "userInput"
+  | "sessionLoadedAt"
+>) {
   const domainName = (stream?.domain as { name?: string } | undefined)?.name || "";
   const isGlobal = stream?.stream_kind === STREAM_KIND.GLOBAL;
+  const sessionWindow = sessionLoadedAt?.trim() || "unknown";
+  const canvasContent = (canvas?.content_json as MarkdownBlock[] | undefined) || [];
+  const hasCanvasChanges =
+    Array.isArray(canvasContent) && canvasContent.length > 0;
+  const hasEntryChanges = (entries?.length ?? 0) > 0;
+  const hasGlobalChanges =
+    includeGlobalStream &&
+    ((globalEntries?.length ?? 0) > 0 || (globalCanvases?.length ?? 0) > 0);
+
+  const incrementalSections = [
+    hasCanvasChanges
+      ? `<changed_canvas>
+${canvasToMarkdown(canvasContent)}
+</changed_canvas>`
+      : "",
+    hasEntryChanges
+      ? `<changed_entries>
+${entries?.map((entry) => entryToMarkdown(entry)).join("\n\n") || ""}
+</changed_entries>`
+      : "",
+    hasGlobalChanges
+      ? `<changed_global_context>
+${globalStreamName || "Domain Global Streams"}
+
+<global_canvases>
+${(globalCanvases ?? [])
+  .map((canvasItem) => {
+    const streamLabel = (canvasItem.stream_id as string | undefined) || "unknown";
+    return `<global_canvas stream="${streamLabel}">
+${canvasToMarkdown((canvasItem.content_json as MarkdownBlock[] | undefined) || [])}
+</global_canvas>`;
+  })
+  .join("\n\n")}
+</global_canvases>
+
+<global_entries>
+${globalEntries?.map((entry) => entryToMarkdown(entry)).join("\n\n") || ""}
+</global_entries>
+</changed_global_context>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return `<session_followup>
 Continue the active Kolam Ikan bridge session that is already loaded in this provider conversation.
 Reuse the original bridge rules, response XML format, and parsing contract from the earlier full payload.
-Only respond to this incremental follow-up.
+Only respond to this incremental follow-up and only use the changed context below.
 
 Target: ${interactionMode}
 Stream: ${(stream?.name as string | undefined) || ""} ${isGlobal ? "(Global)" : ""}
 Domain: ${domainName}
+Session window start: ${sessionWindow}
 </session_followup>
+
+<incremental_context>
+${incrementalSections || "No new stream, canvas, or global-context changes were detected since the active session started."}
+</incremental_context>
 
 <incremental_instruction>
 ${userInput}
@@ -406,61 +554,28 @@ export function buildResponseDirective(
   canvasUpdatedAt?: string,
   canvasIsEmpty?: boolean,
 ) {
-  const askCore = `You MUST include a <thought_log> tag containing your analysis, reasoning, or answer.
-This content will be saved as a new entry (log item) in the stream's left pillar.
-
-Write in natural prose. Separate paragraphs with blank lines.
-Each double-newline-separated paragraph becomes a distinct block in the entry.`;
+  const askCore = `Use <log>...</log> for the log entry.
+Write natural prose with blank lines between paragraphs.
+Return only the final answer text inside <log>.`;
 
   const canvasRules = canvasIsEmpty
-    ? `The canvas is currently EMPTY. You are creating fresh content from scratch.
-Format the content as a unified diff (like \`git diff\`) where every line is a new addition.
-Every single line inside <canvas_update> MUST start with \`+ \` (plus, then a space), then the content.
-This includes headings, bullets, numbered lists, and blank lines — EVERYTHING.
-A blank line is represented as: \`+ \` (plus, then a single space, nothing after).
-Do NOT use \`*\`, \`#\`, or \`-\` as the first character of a line. ALWAYS prefix with \`+ \`.
-
-\`\`\`diff
-+ # My Title
-+ 
-+ ## Section One
-+ - First item
-+ - Second item
-+ 
-+ Some paragraph text here.
-\`\`\`
-
-Wrap the above inside <canvas_update>...</canvas_update> (no \`\`\`diff fences inside the tag).`
-    : `The canvas has existing content. Use unified diff format (like \`git diff\` / \`diff -u\`) to describe your changes.
-Every line inside <canvas_update> MUST start with one of:
+    ? `Canvas is empty. Use <canvas>...</canvas>.
+Inside <canvas>, every line must start with \`+ \`.
+Blank line: \`+ \`.`
+    : `Canvas has content. Use <canvas>...</canvas> as unified diff.
+Every line inside <canvas> must start with one of:
 - \`+ \` (plus, space) — add this line
 - \`- \` (minus, space) — remove this line
 - \` \` (single space) — unchanged context line (use sparingly for clarity)
+Do not use code fences.`;
 
-Do NOT use \`*\` as a line prefix. This is NOT markdown — it is a strict git-style unified diff.
-
-\`\`\`diff
-- # Old Title
-+ # Updated Title
- 
-+ ## New Section
-+ - Added item
-- - Removed item
-\`\`\`
-
-Wrap the above inside <canvas_update>...</canvas_update> (no \`\`\`diff fences inside the tag).`;
-
-  const goCore = `You MUST include a <canvas_update> tag using unified diff format (git diff style).
+  const goCore = `Use <canvas>...</canvas>.
 
 ${canvasRules}
 
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>\nEcho this exact <canvas_base_updated_at> value back in your response for conflict detection.` : ""}
+${canvasUpdatedAt ? `Also echo <base>${canvasUpdatedAt}</base> exactly.` : ""}
 
-CRITICAL FORMATTING RULES:
-- Every line inside <canvas_update> MUST begin with \`+ \`, \`- \`, or \` \` (space). NO EXCEPTIONS.
-- Do NOT write raw markdown lines. Do NOT start lines directly with \`#\`, \`*\`, or \`-\`.
-- A heading: \`+ # My Heading\` — a bullet: \`+ - item\` — a blank line: \`+ \`
-- If any line is missing the \`+\`/\`-\`/\` \` prefix, YOUR RESPONSE WILL BE REJECTED.`;
+Do not write raw markdown lines outside the diff prefixes.`;
 
   const askDirective = `<response_format_ask>
 ${askCore}
@@ -469,27 +584,27 @@ Do NOT include any canvas-related tags.
 
 Example response:
 <response>
-<thought_log>
+<log>
 Your analysis paragraph one goes here.
 
 Another paragraph with further reasoning.
-</thought_log>
+</log>
 </response>
 </response_format_ask>`;
 
   const goDirective = `<response_format_go>
 ${goCore}
 
-Do NOT include any thought_log tags in GO mode.
+Do NOT include any log tags in GO mode.
 
 Example response:
 <response>
-<canvas_update>
+<canvas>
 + # Example Title
 + 
 + - Example bullet
-</canvas_update>
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ""}
+</canvas>
+${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
 </response>
 </response_format_go>`;
 
@@ -500,17 +615,17 @@ ${goCore}
 
 Example response:
 <response>
-<thought_log>
+<log>
 Your reasoning goes here.
-</thought_log>
-<canvas_update>
+</log>
+<canvas>
 + # Title
 + 
 + ## Section
 + - Task one
 + - Task two
-</canvas_update>
-${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_updated_at>` : ""}
+</canvas>
+${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
 </response>
 </response_format_both>`;
 
@@ -521,9 +636,9 @@ ${canvasUpdatedAt ? `<canvas_base_updated_at>${canvasUpdatedAt}</canvas_base_upd
   };
 
   return `<response_instructions>
-You are an AI assistant integrated into a structured knowledge management system called "Kolam Ikan".
-Your response MUST be wrapped in a <response> root tag and follow the structured output format below exactly.
-Do NOT output any text outside the <response> tags. The system parses your XML response programmatically.
+Return XML only. No code fences. No text outside <response>.
+Preferred tags: <log>, <canvas>, <base>.
+Legacy tags still work, but prefer the short tags to save tokens.
 
 The user's interaction mode is: ${mode}
 ${mode === "ASK" ? "- ASK mode: Generate a thought log entry only (left pillar / log)." : ""}${mode === "GO" ? "- GO mode: Generate a canvas update only (right pillar / canvas)." : ""}${mode === "BOTH" ? "- BOTH mode: Generate both a thought log entry AND a canvas update." : ""}

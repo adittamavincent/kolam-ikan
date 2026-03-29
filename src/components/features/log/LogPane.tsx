@@ -48,9 +48,13 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
-import { EntryWithSections, SectionFileAttachmentWithDocument } from "@/lib/types";
+import {
+  CanvasVersion,
+  EntryWithSections,
+  SectionFileAttachmentWithDocument,
+} from "@/lib/types";
 import { calculateFileHash } from "@/lib/utils/hash";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import type { PartialBlock } from "@/lib/types/editor";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -58,7 +62,9 @@ import { TextInputDialog } from "@/components/shared/TextInputDialog";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import {
+  buildStoredContentPayload,
   cloneStoredContentFields,
+  storedContentToBlocks,
   storedContentToMarkdown,
 } from "@/lib/content-protocol";
 import {
@@ -71,6 +77,8 @@ import {
   writeCommittedEntryStash,
 } from "@/lib/utils/stash";
 import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
+import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
+import { CANVAS_PREVIEW_OPEN_EVENT } from "@/lib/utils/canvasPreview";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -144,6 +152,7 @@ function isEntryLineageSchemaError(error: unknown): boolean {
 }
 
 type EntryConfirmType = "reset" | "delete";
+type SnapshotConfirmType = "delete";
 type BranchRecord = {
   id: string;
   name: string;
@@ -190,6 +199,20 @@ type BranchDialogState =
       initialName: string;
       branchId: string;
       currentName: string;
+    };
+
+type LogContextMenuState =
+  | {
+      kind: "entry";
+      entry: EntryWithSections;
+      x: number;
+      y: number;
+    }
+  | {
+      kind: "snapshot";
+      snapshot: CanvasVersion;
+      x: number;
+      y: number;
     };
 
 function isParsedReadyStatus(status?: string | null): boolean {
@@ -460,11 +483,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [uploadingAmendSectionIds, setUploadingAmendSectionIds] = useState<
     Set<string>
   >(new Set());
-  const [contextMenu, setContextMenu] = useState<{
-    entry: EntryWithSections;
-    x: number;
-    y: number;
-  } | null>(null);
+  const [contextMenu, setContextMenu] = useState<LogContextMenuState | null>(null);
   const [diffTarget, setDiffTarget] = useState<{
     entry: EntryWithSections;
     prevEntry: EntryWithSections | null;
@@ -492,6 +511,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     type: EntryConfirmType;
     entry: EntryWithSections;
   } | null>(null);
+  const [snapshotConfirm, setSnapshotConfirm] = useState<{
+    type: SnapshotConfirmType;
+    snapshot: CanvasVersion;
+  } | null>(null);
   const [attachmentPreview, setAttachmentPreview] =
     useState<FileAttachmentPreviewData | null>(null);
   const [isAttachmentPreviewOpen, setIsAttachmentPreviewOpen] = useState(false);
@@ -515,6 +538,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     sourceHeadId: string;
     mode: "fast-forward" | "commit";
   } | null>(null);
+  const setLiveContent = useCanvasDraft((state) => state.setLiveContent);
+  const setLiveMarkdown = useCanvasDraft((state) => state.setLiveMarkdown);
+  const markClean = useCanvasDraft((state) => state.markClean);
+  const setSyncStatus = useCanvasDraft((state) => state.setSyncStatus);
+  const setLocalStatus = useCanvasDraft((state) => state.setLocalStatus);
   useEffect(() => {
     setHasHydrated(true);
   }, []);
@@ -672,6 +700,93 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     } else {
       deleteEntry.mutate(entry.id);
     }
+  };
+
+  const handleOpenSnapshotInCanvas = useCallback((snapshot: CanvasVersion) => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent(CANVAS_PREVIEW_OPEN_EVENT, {
+        detail: {
+          streamId,
+          versionId: snapshot.id,
+          versionName: snapshot.name || "Untitled Snapshot",
+          versionCreatedAt: snapshot.created_at,
+          content: storedContentToBlocks(snapshot),
+          markdown: storedContentToMarkdown(snapshot),
+        },
+      }),
+    );
+  }, [streamId]);
+
+  const deleteCanvasSnapshot = useMutation({
+    mutationFn: async (snapshot: CanvasVersion) => {
+      const deletedAt = new Date().toISOString();
+
+      const { data: deletedSnapshot, error: deleteError } = await supabase
+        .from("canvas_versions")
+        .update({ deleted_at: deletedAt })
+        .eq("id", snapshot.id)
+        .is("deleted_at", null)
+        .select("id")
+        .maybeSingle();
+      if (deleteError) throw deleteError;
+      if (!deletedSnapshot) {
+        throw new Error("Canvas snapshot could not be deleted.");
+      }
+
+      const { data: remainingLatest, error: latestError } = await supabase
+        .from("canvas_versions")
+        .select("*")
+        .eq("stream_id", streamId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestError) throw latestError;
+
+      const nextSnapshot = (remainingLatest ?? null) as CanvasVersion | null;
+      const nextPayload = nextSnapshot
+        ? cloneStoredContentFields(nextSnapshot)
+        : buildStoredContentPayload([], "");
+
+      const { data: updatedCanvas, error: canvasError } = await supabase
+        .from("canvases")
+        .update(nextPayload)
+        .eq("id", snapshot.canvas_id)
+        .select()
+        .single();
+      if (canvasError) throw canvasError;
+
+      return {
+        snapshotId: snapshot.id,
+        nextSnapshot,
+        updatedCanvas,
+      };
+    },
+    onSuccess: ({ nextSnapshot, updatedCanvas }) => {
+      const nextBlocks = nextSnapshot ? storedContentToBlocks(nextSnapshot) : [];
+      const nextMarkdown = nextSnapshot ? storedContentToMarkdown(nextSnapshot) : "";
+
+      queryClient.setQueryData(["canvas", streamId], updatedCanvas);
+      setLiveContent(streamId, nextBlocks as PartialBlock[]);
+      setLiveMarkdown(streamId, nextMarkdown);
+      markClean(streamId);
+      setSyncStatus(streamId, "idle");
+      setLocalStatus(streamId, "saved");
+
+      queryClient.invalidateQueries({ queryKey: ["canvas", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["canvas-versions", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas-latest-version", streamId],
+      });
+    },
+  });
+
+  const handleConfirmSnapshotAction = () => {
+    if (!snapshotConfirm) return;
+    const { snapshot } = snapshotConfirm;
+    setSnapshotConfirm(null);
+    deleteCanvasSnapshot.mutate(snapshot);
   };
 
   const { stream } = useStream(streamId);
@@ -1639,12 +1754,22 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     };
   }, [contextMenu]);
 
-  const handleContextMenu = (e: React.MouseEvent, entry: EntryWithSections) => {
+  const handleEntryContextMenu = (e: React.MouseEvent, entry: EntryWithSections) => {
     e.preventDefault();
     // Use a close initial estimate so the menu starts near-final position before exact measurement.
     const estimated = clampContextMenuPosition(e.clientX, e.clientY, 224, 300);
     setContextMenuPosition(estimated);
-    setContextMenu({ entry, x: e.clientX, y: e.clientY });
+    setContextMenu({ kind: "entry", entry, x: e.clientX, y: e.clientY });
+  };
+
+  const handleSnapshotContextMenu = (
+    e: React.MouseEvent,
+    snapshot: CanvasVersion,
+  ) => {
+    e.preventDefault();
+    const estimated = clampContextMenuPosition(e.clientX, e.clientY, 224, 220);
+    setContextMenuPosition(estimated);
+    setContextMenu({ kind: "snapshot", snapshot, x: e.clientX, y: e.clientY });
   };
 
   type GitAction =
@@ -1659,8 +1784,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     | "reset"
     | "delete";
 
+  type SnapshotAction = "open" | "copy-content" | "delete";
+
   const handleContextAction = async (action: GitAction) => {
-    if (!contextMenu) return;
+    if (!contextMenu || contextMenu.kind !== "entry") return;
     const { entry } = contextMenu;
     setContextMenu(null);
 
@@ -1708,6 +1835,24 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         break;
       case "delete":
         setEntryConfirm({ type: "delete", entry });
+        break;
+    }
+  };
+
+  const handleSnapshotAction = async (action: SnapshotAction) => {
+    if (!contextMenu || contextMenu.kind !== "snapshot") return;
+    const { snapshot } = contextMenu;
+    setContextMenu(null);
+
+    switch (action) {
+      case "open":
+        handleOpenSnapshotInCanvas(snapshot);
+        break;
+      case "copy-content":
+        await navigator.clipboard.writeText(storedContentToMarkdown(snapshot));
+        break;
+      case "delete":
+        setSnapshotConfirm({ type: "delete", snapshot });
         break;
     }
   };
@@ -2440,6 +2585,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                             ref={(node) => {
                               entryRefs.current[itemCollapseKey] = node;
                             }}
+                            onContextMenu={(event) =>
+                              handleSnapshotContextMenu(event, item.data)
+                            }
                             className={
                               animatedItemKey === itemCollapseKey
                                 ? "kolam-search-reveal"
@@ -2509,7 +2657,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                             entryRefs.current[entry.id] = node;
                             entryRefs.current[itemCollapseKey] = node;
                           }}
-                          onContextMenu={(e) => handleContextMenu(e, entry)}
+                          onContextMenu={(e) => handleEntryContextMenu(e, entry)}
                           className={[
                             isStashed ? "text-text-muted" : "",
                             animatedItemKey === itemCollapseKey
@@ -2884,128 +3032,181 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             }}
             role="menu"
           >
-            {/* Hash label */}
-            <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
-              <GitCommitHorizontal className="h-3.5 w-3.5 text-text-muted" />
-              <code className="text-[11px] font-mono text-primary-400">
-                {shortHash(contextMenu.entry.id)}
-              </code>
-              <span className="text-[10px] text-text-muted truncate">
-                {contextMenu.entry.created_at &&
-                  new Date(contextMenu.entry.created_at).toLocaleString(
-                    undefined,
-                    {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    },
-                  )}
-              </span>
-            </div>
-            <div className="h-px bg-border-subtle mb-0.5" />
-
-            {/* Inspect / Copy */}
-            <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-              inspect
-            </div>
-            <button
-              onClick={() => handleContextAction("copy-sha")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <Copy className="h-3.5 w-3.5 text-text-muted" />
-              Copy commit SHA
-            </button>
-            <button
-              onClick={() => handleContextAction("copy-content")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <Eye className="h-3.5 w-3.5 text-text-muted" />
-              Copy commit content
-            </button>
-            <button
-              onClick={() => handleContextAction("diff")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <GitCompare className="h-3.5 w-3.5 text-text-muted" />
-              Compare with parent
-            </button>
-
-            <div className="my-1 h-px bg-border-subtle" />
-
-            {/* Modify */}
-            <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-              modify
-            </div>
-            <button
-              onClick={() => handleContextAction("cherry-pick")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <RotateCcw className="h-3.5 w-3.5 text-text-muted rotate-180" />
-              Cherry-pick commit
-            </button>
-            <button
-              onClick={() => handleContextAction("branch")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <GitBranch className="h-3.5 w-3.5 text-text-muted" />
-              Create branch here
-            </button>
-            <button
-              onClick={() => handleContextAction("revert")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <Undo2 className="h-3.5 w-3.5 text-text-muted" />
-              Revert this commit
-            </button>
-            <button
-              onClick={() => handleContextAction("tag")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <Tag className="h-3.5 w-3.5 text-text-muted" />
-              {tags[contextMenu.entry.id]
-                ? `Edit tag (${tags[contextMenu.entry.id]})`
-                : "Add tag"}
-            </button>
-            <button
-              onClick={() => handleContextAction("stash")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              {stashedEntryIds.has(contextMenu.entry.id) ? (
-                <>
-                  <EyeOff className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-amber-600 dark:text-amber-400">
-                    Unstash commit
+            {contextMenu.kind === "entry" ? (
+              <>
+                <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
+                  <GitCommitHorizontal className="h-3.5 w-3.5 text-text-muted" />
+                  <code className="text-[11px] font-mono text-primary-400">
+                    {shortHash(contextMenu.entry.id)}
+                  </code>
+                  <span className="text-[10px] text-text-muted truncate">
+                    {contextMenu.entry.created_at &&
+                      new Date(contextMenu.entry.created_at).toLocaleString(
+                        undefined,
+                        {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        },
+                      )}
                   </span>
-                </>
-              ) : (
-                <>
-                  <Archive className="h-3.5 w-3.5 text-text-muted" />
-                  Stash commit
-                </>
-              )}
-            </button>
+                </div>
+                <div className="h-px bg-border-subtle mb-0.5" />
 
-            <div className="my-1 h-px bg-border-subtle" />
+                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
+                  inspect
+                </div>
+                <button
+                  onClick={() => handleContextAction("copy-sha")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <Copy className="h-3.5 w-3.5 text-text-muted" />
+                  Copy commit SHA
+                </button>
+                <button
+                  onClick={() => handleContextAction("copy-content")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <Eye className="h-3.5 w-3.5 text-text-muted" />
+                  Copy commit content
+                </button>
+                <button
+                  onClick={() => handleContextAction("diff")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <GitCompare className="h-3.5 w-3.5 text-text-muted" />
+                  Compare with parent
+                </button>
 
-            {/* Danger */}
-            <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-              danger
-            </div>
-            <button
-              onClick={() => handleContextAction("reset")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-            >
-              <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-              Reset branch to this commit
-            </button>
-            <button
-              onClick={() => handleContextAction("delete")}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete commit
-            </button>
+                <div className="my-1 h-px bg-border-subtle" />
+
+                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
+                  modify
+                </div>
+                <button
+                  onClick={() => handleContextAction("cherry-pick")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-text-muted rotate-180" />
+                  Cherry-pick commit
+                </button>
+                <button
+                  onClick={() => handleContextAction("branch")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <GitBranch className="h-3.5 w-3.5 text-text-muted" />
+                  Create branch here
+                </button>
+                <button
+                  onClick={() => handleContextAction("revert")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <Undo2 className="h-3.5 w-3.5 text-text-muted" />
+                  Revert this commit
+                </button>
+                <button
+                  onClick={() => handleContextAction("tag")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <Tag className="h-3.5 w-3.5 text-text-muted" />
+                  {tags[contextMenu.entry.id]
+                    ? `Edit tag (${tags[contextMenu.entry.id]})`
+                    : "Add tag"}
+                </button>
+                <button
+                  onClick={() => handleContextAction("stash")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  {stashedEntryIds.has(contextMenu.entry.id) ? (
+                    <>
+                      <EyeOff className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-amber-600 dark:text-amber-400">
+                        Unstash commit
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="h-3.5 w-3.5 text-text-muted" />
+                      Stash commit
+                    </>
+                  )}
+                </button>
+
+                <div className="my-1 h-px bg-border-subtle" />
+
+                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
+                  danger
+                </div>
+                <button
+                  onClick={() => handleContextAction("reset")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
+                  Reset branch to this commit
+                </button>
+                <button
+                  onClick={() => handleContextAction("delete")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete commit
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
+                  <Eye className="h-3.5 w-3.5 text-text-muted" />
+                  <code className="text-[11px] font-mono text-primary-400">
+                    {shortHash(contextMenu.snapshot.id)}
+                  </code>
+                  <span className="text-[10px] text-text-muted truncate">
+                    {contextMenu.snapshot.created_at &&
+                      new Date(contextMenu.snapshot.created_at).toLocaleString(
+                        undefined,
+                        {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        },
+                      )}
+                  </span>
+                </div>
+                <div className="h-px bg-border-subtle mb-0.5" />
+
+                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
+                  inspect
+                </div>
+                <button
+                  onClick={() => handleSnapshotAction("open")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-text-muted" />
+                  Open in canvas preview
+                </button>
+                <button
+                  onClick={() => handleSnapshotAction("copy-content")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                >
+                  <Copy className="h-3.5 w-3.5 text-text-muted" />
+                  Copy snapshot content
+                </button>
+
+                <div className="my-1 h-px bg-border-subtle" />
+
+                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
+                  danger
+                </div>
+                <button
+                  onClick={() => handleSnapshotAction("delete")}
+                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete canvas snapshot
+                </button>
+              </>
+            )}
           </div>,
           document.body,
         )}
@@ -3134,6 +3335,32 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         }
         onCancel={() => setEntryConfirm(null)}
         onConfirm={handleConfirmEntryAction}
+      />
+      <ConfirmDialog
+        open={Boolean(snapshotConfirm)}
+        title={
+          snapshotConfirm
+            ? `Delete canvas snapshot ${shortHash(snapshotConfirm.snapshot.id)}?`
+            : ""
+        }
+        description={
+          snapshotConfirm ? (
+            <div className="space-y-1">
+              <p className="text-xs font-mono text-text-default">
+                canvas snapshot {shortHash(snapshotConfirm.snapshot.id)}
+              </p>
+              <p className="text-sm text-text-muted">
+                The live canvas will rewind to the newest remaining snapshot. If none remain, the canvas becomes empty.
+              </p>
+            </div>
+          ) : null
+        }
+        confirmLabel="Delete snapshot"
+        cancelLabel="Cancel"
+        destructive
+        loading={deleteCanvasSnapshot.isPending}
+        onCancel={() => setSnapshotConfirm(null)}
+        onConfirm={handleConfirmSnapshotAction}
       />
     </>
   );

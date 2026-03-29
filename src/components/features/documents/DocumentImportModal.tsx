@@ -109,6 +109,7 @@ export function DocumentImportModal({
   onSelectDocument,
   initialQueuedFiles,
 }: DocumentImportModalProps) {
+  const formId = "document-import-form";
   const {
     documents,
     isLoading,
@@ -577,16 +578,43 @@ export function DocumentImportModal({
         onClose={handleClose}
         viewportClassName="fixed inset-0 overflow-y-auto p-3 lg:p-4"
         contentClassName="flex min-h-full items-start justify-center"
-        panelClassName="my-auto flex min-h-0 w-full flex-col gap-3 overflow-hidden p-3"
+        panelClassName="my-auto flex min-h-0 w-full flex-col overflow-hidden"
+        bodyClassName="flex min-h-0 flex-1 flex-col"
+        footerMeta={
+          <div>
+            <div className="text-sm font-semibold text-text-default">
+              Ready to queue
+            </div>
+            <div className="mt-1 text-xs leading-5 text-text-muted">
+              Shows up instantly in the queue.
+            </div>
+          </div>
+        }
+        footerActions={[
+          {
+            label: "Close",
+            onClick: handleClose,
+            tone: "secondary",
+          },
+          {
+            label: "Queue Import",
+            icon: createImport.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <UploadCloud className="h-4 w-4" />
+            ),
+            type: "submit",
+            form: formId,
+            disabled: !selectedFile || createImport.isPending,
+            tone: "primary",
+          },
+        ]}
       >
         <ModalHeader
           title="Document Import"
           description="Queue a file for background processing and manage the imported files already available in this view."
           icon={<UploadCloud className="h-4 w-4" />}
           onClose={handleClose}
-          className="px-4 py-3"
-          titleClassName="text-sm font-semibold text-text-default"
-          descriptionClassName="text-xs text-text-muted"
           meta={
             <div className="inline-flex items-center gap-2 text-xs text-text-muted">
               <Clock3 className="h-3.5 w-3.5" />
@@ -595,8 +623,9 @@ export function DocumentImportModal({
           }
         />
 
-        <div className="grid min-h-0 gap-3">
+        <div className="grid min-h-0 gap-3 px-6 py-5">
           <form
+            id={formId}
             onSubmit={handleSubmit}
             className="flex min-h-0 min-w-0 flex-col gap-3 border border-border-default bg-surface-subtle p-3"
           >
@@ -782,28 +811,6 @@ export function DocumentImportModal({
               </div>
             )}
 
-            <div className="flex flex-col gap-2 border border-border-default bg-surface-default p-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <div className="text-sm font-semibold text-text-default">
-                  Ready to queue
-                </div>
-                <div className="mt-1 text-xs leading-5 text-text-muted">
-                  Shows up instantly in the queue.
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={createImport.isPending}
-                className="inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap bg-action-primary-bg px-5 py-3 text-sm font-semibold text-action-primary-text transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {createImport.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <UploadCloud className="h-4 w-4" />
-                )}
-                Queue Import
-              </button>
-            </div>
           </form>
 
           <div className="flex min-h-0 min-w-0 w-full flex-col items-stretch gap-2 border border-border-default bg-surface-subtle p-3">

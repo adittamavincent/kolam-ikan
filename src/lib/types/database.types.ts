@@ -109,6 +109,80 @@ export type Database = {
           },
         ]
       }
+      bridge_jobs: {
+        Row: {
+          attempt_count: number
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          payload: string
+          payload_variant: string
+          provider: string
+          raw_response: string | null
+          runner_details: Json
+          runner_id: string | null
+          session_key: string
+          started_at: string | null
+          status: string
+          stream_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          payload: string
+          payload_variant?: string
+          provider: string
+          raw_response?: string | null
+          runner_details?: Json
+          runner_id?: string | null
+          session_key: string
+          started_at?: string | null
+          status?: string
+          stream_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          claimed_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: string
+          payload_variant?: string
+          provider?: string
+          raw_response?: string | null
+          runner_details?: Json
+          runner_id?: string | null
+          session_key?: string
+          started_at?: string | null
+          status?: string
+          stream_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bridge_jobs_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cabinets: {
         Row: {
           created_at: string | null
@@ -165,6 +239,7 @@ export type Database = {
           content_json: Json
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           id: string
           name: string | null
           raw_markdown: string
@@ -179,6 +254,7 @@ export type Database = {
           content_json?: Json
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
           name?: string | null
           raw_markdown?: string
@@ -193,6 +269,7 @@ export type Database = {
           content_json?: Json
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           id?: string
           name?: string | null
           raw_markdown?: string
@@ -910,6 +987,36 @@ export type Database = {
       apply_audit_inverse: {
         Args: { payload: Json; target_id: string; target_table: string }
         Returns: undefined
+      }
+      claim_next_bridge_job: {
+        Args: { p_provider?: string; p_runner_id?: string }
+        Returns: {
+          attempt_count: number
+          claimed_at: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          payload: string
+          payload_variant: string
+          provider: string
+          raw_response: string | null
+          runner_details: Json
+          runner_id: string | null
+          session_key: string
+          started_at: string | null
+          status: string
+          stream_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bridge_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       cleanup_unused_shadow_persona: {
         Args: { p_persona_id: string }

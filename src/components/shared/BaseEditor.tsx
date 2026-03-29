@@ -3269,6 +3269,17 @@ export default function BaseEditor({
       focus: () => {
         viewRef.current?.focus();
       },
+      focusEnd: () => {
+        const view = viewRef.current;
+        if (!view) return;
+
+        const end = view.state.doc.length;
+        view.dispatch({
+          scrollIntoView: true,
+          selection: EditorSelection.cursor(end),
+        });
+        view.focus();
+      },
       isFocused: () => focusRef.current,
     };
 

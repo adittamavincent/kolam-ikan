@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { fireEvent, render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BaseEditor from "@/components/shared/BaseEditor";
 import { findMarkdownTableBlocks } from "@/lib/markdownTables";
@@ -263,5 +264,30 @@ describe("BaseEditor live table interactions", () => {
 
     expect(scrollSnapshotSpy).toHaveBeenCalled();
     scrollSnapshotSpy.mockRestore();
+  });
+
+  it("emits change events for command-delete line-start deletion on macOS", async () => {
+    const user = userEvent.setup();
+    const handleChange = vi.fn();
+    const initialMarkdown = ["alpha beta", "second line"].join("\n");
+    const { container } = render(
+      <BaseEditor initialMarkdown={initialMarkdown} onChange={handleChange} />,
+    );
+
+    const editor = container.querySelector(".cm-content") as HTMLElement | null;
+    if (!editor) {
+      throw new Error("Expected CodeMirror content element");
+    }
+
+    editor.focus();
+    await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}");
+    await user.keyboard("{Meta>}{Backspace}{/Meta}");
+
+    await waitFor(() => {
+      expect(handleChange).toHaveBeenCalled();
+    });
+
+    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as string | undefined;
+    expect(latestMarkdown).toBe(" beta\nsecond line");
   });
 });

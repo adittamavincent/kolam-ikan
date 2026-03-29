@@ -6,6 +6,7 @@ import type { PartialBlock } from "@/lib/types/editor";
 
 export interface MarkdownEditorHandle {
   focus: () => void;
+  focusEnd?: () => void;
   isFocused?: () => boolean;
 }
 

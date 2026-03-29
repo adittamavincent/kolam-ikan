@@ -576,6 +576,22 @@ body {
   min-height: 0;
 }
 
+.log-pane .markdown-editor-editable .kolam-codemirror-frame,
+.log-pane .markdown-editor-editable .kolam-codemirror-root,
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-editor,
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-scroller {
+  height: auto;
+  min-height: 0;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-editor {
+  min-height: 1.65em;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root {
+  padding: 0.25rem;
+}
+
 .log-pane .markdown-editor-readonly,
 .log-pane .markdown-editor-readonly .kolam-editor-shell,
 .log-pane .markdown-editor-readonly .kolam-codemirror-frame {
@@ -589,6 +605,10 @@ body {
 }
 
 .log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-scroller {
+  overflow: hidden;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-scroller {
   overflow: hidden;
 }
 

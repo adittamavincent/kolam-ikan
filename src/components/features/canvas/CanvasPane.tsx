@@ -10,7 +10,7 @@ import {
   type MarkdownEditorHandle,
 } from "@/components/shared/MarkdownEditor";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import debounce from "lodash/debounce";
 import type { PartialBlock } from "@/lib/types/editor";
 import { createClient } from "@/lib/supabase/client";
@@ -58,7 +58,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const setLocalStatus = useCanvasDraft((s) => s.setLocalStatus);
   const syncStatus = useCanvasDraft((s) => s.dbSyncStatusByStream[streamId]) || "idle";
   const localStatus = useCanvasDraft((s) => s.localSaveStatusByStream[streamId]) || "idle";
-  const hasReceivedFirstChange = useRef(false);
   const [previewSession, setPreviewSession] = useState<PreviewSession | null>(null);
   const [editorSeed, setEditorSeed] = useState(0);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -85,13 +84,28 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       previewSession.previousDraftContent,
       previewSession.previousDraftMarkdown,
     );
-    const after = contentToDiffText(liveContent ?? canvasBlocks, liveMarkdown || canvasMarkdown);
+    const after = contentToDiffText(
+      liveContent ?? canvasBlocks,
+      liveMarkdown ?? canvasMarkdown,
+    );
     return lineDiff(before, after);
   }, [previewSession, liveContent, liveMarkdown, canvasBlocks, canvasMarkdown]);
   const previewAdditions = previewDiffs.filter((line) => line.type === "add").length;
   const previewDeletions = previewDiffs.filter((line) => line.type === "del").length;
 
   const isVisible = canvasWidth > 0;
+
+  const handleEditorAreaMouseDown = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (event.target !== event.currentTarget) {
+        return;
+      }
+
+      event.preventDefault();
+      editor?.focusEnd?.();
+    },
+    [editor],
+  );
 
   // Calculate smooth animation - slides in from right with decompression
   const containerStyle = {
@@ -165,13 +179,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const handleContentChange = useCallback(
     (blocks: PartialBlock[], markdown: string) => {
       if (canvas) {
-        // Skip the first change event triggered on mount.
-        if (!hasReceivedFirstChange.current) {
-          hasReceivedFirstChange.current = true;
-          return;
-        }
-
-        const previousMarkdown = liveMarkdown || canvasMarkdown;
+        const previousMarkdown = liveMarkdown ?? canvasMarkdown;
         const markdownChanged = markdown !== previousMarkdown;
         // Compare canonicalized content and ignore only volatile IDs.
         const prev = liveContent || canvasBlocks;
@@ -205,11 +213,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     ],
   );
 
-  // Reset first-change flag when canvas ID changes (but NOT on updated_at)
-  useEffect(() => {
-    hasReceivedFirstChange.current = false;
-  }, [canvas?.id]);
-
   // Sync initial content once if DB canvas is loaded but no local cache yet
   useEffect(() => {
     if (isPreviewing) return;
@@ -220,15 +223,15 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       } else {
         // If we HAVE local content but it's different from DB, start background sync
         if (!areCanvasContentsEquivalent(canvasBlocks, liveContent)) {
-           syncDirtyAgainstDb(liveContent, liveMarkdown || canvasMarkdown);
+           syncDirtyAgainstDb(liveContent, liveMarkdown ?? canvasMarkdown);
            console.log(`[CanvasPane] detecting local change on mount, starting sync for ${streamId}`);
            debouncedUpdateRef.current?.(
              canvas.id,
              liveContent,
-             liveMarkdown || canvasMarkdown,
+             liveMarkdown ?? canvasMarkdown,
            );
         } else {
-           syncDirtyAgainstDb(liveContent, liveMarkdown || canvasMarkdown);
+           syncDirtyAgainstDb(liveContent, liveMarkdown ?? canvasMarkdown);
         }
       }
     } else {
@@ -283,7 +286,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         source_entry_id: currentBranchHeadId,
         ...buildStoredContentPayload(
           liveContent ?? canvasBlocks,
-          liveMarkdown || canvasMarkdown,
+          liveMarkdown ?? canvasMarkdown,
         ),
         name,
         created_by: userData.user?.id ?? null,
@@ -368,7 +371,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       previewSession.previousDraftContent,
       previewSession.previousDraftMarkdown,
     );
-    hasReceivedFirstChange.current = false;
     setEditorSeed((seed) => seed + 1);
     setPreviewSession(null);
     setIsCompareOpen(false);
@@ -394,7 +396,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         id: canvas.id,
         updates: buildStoredContentPayload(
           nextContent ?? [],
-          liveMarkdown || canvasMarkdown,
+          liveMarkdown ?? canvasMarkdown,
         ),
       });
       setSyncStatus(streamId, "synced");
@@ -446,7 +448,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         versionName: detail.versionName,
         versionCreatedAt: detail.versionCreatedAt ?? null,
         previousDraftContent: currentDraft,
-        previousDraftMarkdown: liveMarkdown || canvasMarkdown,
+        previousDraftMarkdown: liveMarkdown ?? canvasMarkdown,
       });
       setLiveContent(streamId, detail.content ?? []);
       setLiveMarkdown(
@@ -459,7 +461,6 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         detail.content ?? [],
         detail.markdown ?? blocksToStoredMarkdown(detail.content ?? []),
       );
-      hasReceivedFirstChange.current = false;
       setEditorSeed((seed) => seed + 1);
     };
 
@@ -551,12 +552,15 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           </div>
         )}
         {/* Editor area */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-20">
+        <div
+          className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-20"
+          onMouseDown={handleEditorAreaMouseDown}
+        >
           {canvas ? (
             <MarkdownEditor
               key={`canvas-${canvas.id}-${editorSeed}`}
               initialContent={liveContent || canvasBlocks}
-              initialMarkdown={liveMarkdown || canvasMarkdown}
+              initialMarkdown={liveMarkdown ?? canvasMarkdown}
               onChange={handleContentChange}
               onEditorReady={setEditor}
               placeholder="Start writing on the canvas..."

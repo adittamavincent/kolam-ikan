@@ -1,7 +1,7 @@
 "use client";
 
 import { Domain } from "@/lib/types";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   Home,
   Plus,
@@ -45,6 +45,7 @@ export function DomainSwitcher({
   onOpenPersona,
 }: DomainSwitcherProps) {
   const router = useRouter();
+  const [isNavigating, startNavigation] = useTransition();
   const params = useParams();
   const pathname = usePathname();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -55,6 +56,8 @@ export function DomainSwitcher({
     name: string;
     top: number;
   } | null>(null);
+  const [pendingDomainId, setPendingDomainId] = useState<string | null>(null);
+  const [pendingHome, setPendingHome] = useState(false);
   const switcherRef = useRef<HTMLDivElement>(null);
   const { user, status, loading, signOut } = useAuth();
   const { hide: hideSidebar } = useSidebar();
@@ -103,6 +106,31 @@ export function DomainSwitcher({
   const [attachmentsOpen, setAttachmentsOpen] = useState(false);
 
   const currentDomainId = params?.domain as string;
+  const activeDomainId = pendingDomainId ?? currentDomainId;
+
+  useEffect(() => {
+    setPendingDomainId(null);
+    setPendingHome(false);
+  }, [pathname]);
+
+  const navigateToHome = () => {
+    setHoveredDomainTooltip(null);
+    setPendingDomainId(null);
+    setPendingHome(true);
+    hideSidebar();
+    startNavigation(() => {
+      router.push("/");
+    });
+  };
+
+  const navigateToDomain = (domainId: string) => {
+    setHoveredDomainTooltip(null);
+    setPendingHome(false);
+    setPendingDomainId(domainId);
+    startNavigation(() => {
+      router.push(`/${domainId}`);
+    });
+  };
 
   const showDomainTooltip = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -126,17 +154,18 @@ export function DomainSwitcher({
       {/* Home / Root */}
       <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-border-default">
         <button
-          onClick={() => {
-            hideSidebar();
-            router.push("/");
-          }}
+          onClick={navigateToHome}
           className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
-            pathname === "/"
+            pathname === "/" || pendingHome
               ? "bg-action-primary-bg text-white"
               : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
           }`}
         >
-          <Home className="h-4 w-4" />
+          {pendingHome && isNavigating ? (
+            <RefreshCw className="h-4 w-4 animate-spin" />
+          ) : (
+            <Home className="h-4 w-4" />
+          )}
           <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
             Home
           </div>
@@ -189,10 +218,7 @@ export function DomainSwitcher({
         {domains?.map((domain) => (
           <button
             key={domain.id}
-            onClick={() => {
-              setHoveredDomainTooltip(null);
-              router.push(`/${domain.id}`);
-            }}
+            onClick={() => navigateToDomain(domain.id)}
             onMouseEnter={(event) => showDomainTooltip(event, domain.name)}
             onDoubleClick={() => {
               setHoveredDomainTooltip(null);
@@ -207,19 +233,28 @@ export function DomainSwitcher({
             title={`${domain.name} (double-click to edit)`}
             aria-label={domain.name}
             className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
-              currentDomainId === domain.id
+              activeDomainId === domain.id
                 ? "bg-action-primary-bg text-white"
                 : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
             }`}
           >
-            {domain.icon ? (
-              <DynamicIcon name={domain.icon} className="h-4 w-4" />
+            {pendingDomainId === domain.id && isNavigating ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
-              <DynamicIcon name={domain.name} className="h-4 w-4" />
+              <>
+                {domain.icon ? (
+                  <DynamicIcon name={domain.icon} className="h-4 w-4" />
+                ) : (
+                  <DynamicIcon name={domain.name} className="h-4 w-4" />
+                )}
+              </>
             )}
             {/* Active Indicator */}
-            {currentDomainId === domain.id && (
+            {activeDomainId === domain.id && (
               <div className="absolute -left-2 h-5 w-1 bg-action-primary-bg" />
+            )}
+            {pendingDomainId === domain.id && isNavigating && (
+              <span className="absolute -bottom-1 -right-1 h-2 w-2 bg-action-primary-bg shadow-[0_0_0_2px_var(--bg-surface-default)]" />
             )}
           </button>
         ))}

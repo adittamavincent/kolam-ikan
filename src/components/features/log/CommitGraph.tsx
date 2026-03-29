@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
 import {
   CommittedEntryStashItem,
   EntryCreatorStashItem,
@@ -78,6 +79,49 @@ interface CommitGraphProps {
 
 const ROW_H = 82;
 const LANE_GAP = 18;
+
+type GraphBranchRow = {
+  id: string;
+  name: string;
+  created_at: string | null;
+  head_commit_id: string | null;
+};
+
+type GraphEntryRow = {
+  id: string;
+  created_at: string | null;
+  parent_commit_id: string | null;
+  entry_kind: string | null;
+  merge_source_commit_id: string | null;
+  merge_source_branch_name: string | null;
+};
+
+type GraphCanvasRow = {
+  id: string;
+  created_at: string | null;
+  name: string | null;
+  branch_name: string | null;
+  source_entry_id: string | null;
+};
+
+function isBranchHeadSchemaError(error: unknown): boolean {
+  return isSupabaseSchemaMismatchError(error, ["head_commit_id"]);
+}
+
+function isGraphEntrySchemaError(error: unknown): boolean {
+  return isSupabaseSchemaMismatchError(error, [
+    "parent_commit_id",
+    "merge_source_commit_id",
+    "merge_source_branch_name",
+  ]);
+}
+
+function isGraphCanvasSchemaError(error: unknown): boolean {
+  return isSupabaseSchemaMismatchError(error, [
+    "branch_name",
+    "source_entry_id",
+  ]);
+}
 const GRAPH_PAD_X = 24;
 const DOT_R = 6;
 
@@ -275,13 +319,32 @@ export function CommitGraph({
   const { data: branches } = useQuery({
     queryKey: ["graph-branches", currentStreamId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("branches")
-        .select("id, name, created_at, head_commit_id")
-        .eq("stream_id", currentStreamId)
-        .order("created_at", { ascending: true });
+      const buildBranchQuery = (selectClause: string) =>
+        supabase
+          .from("branches")
+          .select(selectClause)
+          .eq("stream_id", currentStreamId)
+          .order("created_at", { ascending: true });
+
+      const { data, error } = await buildBranchQuery(
+        "id, name, created_at, head_commit_id",
+      );
+
+      if (error && isBranchHeadSchemaError(error)) {
+        const fallback = await buildBranchQuery("id, name, created_at");
+        if (fallback.error) throw fallback.error;
+        return (
+          ((fallback.data ?? []) as unknown as Array<
+            Omit<GraphBranchRow, "head_commit_id">
+          >)
+        ).map((branch): GraphBranchRow => ({
+          ...branch,
+          head_commit_id: null,
+        }));
+      }
+
       if (error) throw error;
-      return data;
+      return (data ?? []) as unknown as GraphBranchRow[];
     },
     enabled: !!currentStreamId,
   });
@@ -307,25 +370,38 @@ export function CommitGraph({
   const { data: rawEntries } = useQuery({
     queryKey: ["graph-entries", currentStreamId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("entries")
-        .select(
-          "id, created_at, parent_commit_id, entry_kind, merge_source_commit_id, merge_source_branch_name",
-        )
-        .eq("stream_id", currentStreamId)
-        .eq("is_draft", false)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
+      const buildEntriesQuery = (selectClause: string) =>
+        supabase
+          .from("entries")
+          .select(selectClause)
+          .eq("stream_id", currentStreamId)
+          .eq("is_draft", false)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false });
+
+      const { data, error } = await buildEntriesQuery(
+        "id, created_at, parent_commit_id, entry_kind, merge_source_commit_id, merge_source_branch_name",
+      );
+
+      if (error && isGraphEntrySchemaError(error)) {
+        const fallback = await buildEntriesQuery("id, created_at, entry_kind");
+        if (fallback.error) throw fallback.error;
+        return (
+          ((fallback.data ?? []) as unknown as Array<{
+            id: string;
+            created_at: string | null;
+            entry_kind: string | null;
+          }>)
+        ).map((entry): GraphEntryRow => ({
+          ...entry,
+          parent_commit_id: null,
+          merge_source_commit_id: null,
+          merge_source_branch_name: null,
+        }));
+      }
 
       if (error) throw error;
-      return data as Array<{
-        id: string;
-        created_at: string | null;
-        parent_commit_id: string | null;
-        entry_kind: string | null;
-        merge_source_commit_id: string | null;
-        merge_source_branch_name: string | null;
-      }>;
+      return (data ?? []) as unknown as GraphEntryRow[];
     },
     enabled: !!currentStreamId,
     refetchOnMount: "always",
@@ -334,20 +410,35 @@ export function CommitGraph({
   const { data: rawCanvasVersions } = useQuery({
     queryKey: ["graph-canvas-versions", currentStreamId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("canvas_versions")
-        .select("id, created_at, name, branch_name, source_entry_id")
-        .eq("stream_id", currentStreamId)
-        .order("created_at", { ascending: false });
+      const buildCanvasQuery = (selectClause: string) =>
+        supabase
+          .from("canvas_versions")
+          .select(selectClause)
+          .eq("stream_id", currentStreamId)
+          .order("created_at", { ascending: false });
+
+      const { data, error } = await buildCanvasQuery(
+        "id, created_at, name, branch_name, source_entry_id",
+      );
+
+      if (error && isGraphCanvasSchemaError(error)) {
+        const fallback = await buildCanvasQuery("id, created_at, name");
+        if (fallback.error) throw fallback.error;
+        return (
+          ((fallback.data ?? []) as unknown as Array<{
+            id: string;
+            created_at: string | null;
+            name: string | null;
+          }>)
+        ).map((snapshot): GraphCanvasRow => ({
+          ...snapshot,
+          branch_name: null,
+          source_entry_id: null,
+        }));
+      }
 
       if (error) throw error;
-      return data as Array<{
-        id: string;
-        created_at: string | null;
-        name: string | null;
-        branch_name: string | null;
-        source_entry_id: string | null;
-      }>;
+      return (data ?? []) as unknown as GraphCanvasRow[];
     },
     enabled: !!currentStreamId,
     refetchOnMount: "always",

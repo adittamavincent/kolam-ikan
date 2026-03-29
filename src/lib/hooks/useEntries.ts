@@ -16,6 +16,7 @@ import {
   buildStoredContentPayload,
   cloneStoredContentFields,
 } from "@/lib/content-protocol";
+import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
 
 interface UseEntriesOptions {
   branchId?: string | null;
@@ -61,21 +62,27 @@ const ENTRIES_SELECT_LEGACY=`
  )
 `;
 
-function isMissingColumnError(
-  error: { message?: string; code?: string } | null,
-): boolean {
-  if (!error?.message) return false;
-  const msg = error.message.toLowerCase();
-  return (
-    (msg.includes("column") ||
-      msg.includes("relation") ||
-      msg.includes("does not exist")) &&
-    (msg.includes("section_type") ||
-      msg.includes("file_display_mode") ||
-      msg.includes("section_attachments") ||
-      msg.includes("raw_markdown") ||
-      msg.includes("content_format"))
-  );
+const ENTRIES_SELECT_COMPAT = `
+ id, stream_id, is_draft, created_at, updated_at, deleted_at,
+ entry_kind,
+ sections!inner (
+ id, entry_id, persona_id, persona_name_snapshot, content_json,
+ sort_order, updated_at,
+ persona:personas (id, name, icon, color, is_shadow, shadow_stream_id, shadow_document_id)
+ )
+`;
+
+function isLegacyEntriesSchemaError(error: unknown): boolean {
+  return isSupabaseSchemaMismatchError(error, [
+    "merge_source_commit_id",
+    "merge_source_branch_name",
+    "merge_target_branch_name",
+    "raw_markdown",
+    "content_format",
+    "section_type",
+    "file_display_mode",
+    "section_attachments",
+  ]);
 }
 
 function orderBySortOrder<T extends { sort_order?: number | null }>(
@@ -176,12 +183,23 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
       const { data, error } = await buildQuery(ENTRIES_SELECT_FULL);
 
-      if (error && isMissingColumnError(error)) {
-        const fallback = await buildQuery(ENTRIES_SELECT_LEGACY);
-        if (fallback.error) throw fallback.error;
-        return normalizeEntryOrder(
-          (fallback.data as unknown as EntryWithSections[]) ?? [],
-        );
+      if (error && isLegacyEntriesSchemaError(error)) {
+        const legacyFallback = await buildQuery(ENTRIES_SELECT_LEGACY);
+        if (!legacyFallback.error) {
+          return normalizeEntryOrder(
+            (legacyFallback.data as unknown as EntryWithSections[]) ?? [],
+          );
+        }
+
+        if (isLegacyEntriesSchemaError(legacyFallback.error)) {
+          const compatFallback = await buildQuery(ENTRIES_SELECT_COMPAT);
+          if (compatFallback.error) throw compatFallback.error;
+          return normalizeEntryOrder(
+            (compatFallback.data as unknown as EntryWithSections[]) ?? [],
+          );
+        }
+
+        throw legacyFallback.error;
       }
 
       if (error) throw error;
@@ -634,12 +652,23 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
 
     const { data, error } = await buildExportQuery(ENTRIES_SELECT_FULL);
 
-    if (error && isMissingColumnError(error)) {
-      const fallback = await buildExportQuery(ENTRIES_SELECT_LEGACY);
-      if (fallback.error) throw fallback.error;
-      return normalizeEntryOrder(
-        (fallback.data as unknown as EntryWithSections[]) ?? [],
-      );
+    if (error && isLegacyEntriesSchemaError(error)) {
+      const legacyFallback = await buildExportQuery(ENTRIES_SELECT_LEGACY);
+      if (!legacyFallback.error) {
+        return normalizeEntryOrder(
+          (legacyFallback.data as unknown as EntryWithSections[]) ?? [],
+        );
+      }
+
+      if (isLegacyEntriesSchemaError(legacyFallback.error)) {
+        const compatFallback = await buildExportQuery(ENTRIES_SELECT_COMPAT);
+        if (compatFallback.error) throw compatFallback.error;
+        return normalizeEntryOrder(
+          (compatFallback.data as unknown as EntryWithSections[]) ?? [],
+        );
+      }
+
+      throw legacyFallback.error;
     }
 
     if (error) throw error;

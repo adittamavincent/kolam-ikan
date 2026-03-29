@@ -70,6 +70,7 @@ import {
   subscribeToStashChanges,
   writeCommittedEntryStash,
 } from "@/lib/utils/stash";
+import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -135,11 +136,24 @@ function getTimelineItemCollapseKey(item: { type: "entry" | "canvas_snapshot"; d
   return `${item.type}:${item.data.id}`;
 }
 
+function isEntryLineageSchemaError(error: unknown): boolean {
+  return isSupabaseSchemaMismatchError(error, [
+    "parent_commit_id",
+    "merge_source_commit_id",
+  ]);
+}
+
 type EntryConfirmType = "reset" | "delete";
 type BranchRecord = {
   id: string;
   name: string;
   head_commit_id: string | null;
+};
+type EntryLineageRow = {
+  id: string;
+  parent_commit_id: string | null;
+  merge_source_commit_id: string | null;
+  created_at: string | null;
 };
 type MergeSourceEntry = Pick<EntryWithSections, "id" | "created_at"> & {
   sections: Array<
@@ -941,14 +955,36 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const { data: entryLineage, isLoading: isEntryLineageLoading } = useQuery({
     queryKey: ["entries-lineage", streamId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("entries")
-        .select("id,parent_commit_id,merge_source_commit_id,created_at")
-        .eq("stream_id", streamId)
-        .eq("is_draft", false)
-        .is("deleted_at", null);
+      const buildLineageQuery = (selectClause: string) =>
+        supabase
+          .from("entries")
+          .select(selectClause)
+          .eq("stream_id", streamId)
+          .eq("is_draft", false)
+          .is("deleted_at", null);
+
+      const { data, error } = await buildLineageQuery(
+        "id,parent_commit_id,merge_source_commit_id,created_at",
+      );
+
+      if (error && isEntryLineageSchemaError(error)) {
+        const fallback = await buildLineageQuery("id,created_at");
+        if (fallback.error) throw fallback.error;
+
+        return (
+          ((fallback.data ?? []) as unknown as Array<{
+            id: string;
+            created_at: string | null;
+          }>)
+        ).map((entry): EntryLineageRow => ({
+          ...entry,
+          parent_commit_id: null,
+          merge_source_commit_id: null,
+        }));
+      }
+
       if (error) throw error;
-      return data;
+      return (data ?? []) as unknown as EntryLineageRow[];
     },
     enabled: !!streamId,
   });

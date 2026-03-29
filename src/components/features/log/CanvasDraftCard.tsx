@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
+import type { CanvasVersion } from "@/lib/types";
 import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
 import { contentToDiffText, lineDiff } from "@/lib/utils/canvasPreview";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
@@ -16,10 +17,16 @@ import {
   storedContentToMarkdown,
   storedContentToBlocks,
 } from "@/lib/content-protocol";
+import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
 
 interface CanvasDraftCardProps {
   streamId: string;
 }
+
+type CanvasVersionPreview = Pick<
+  CanvasVersion,
+  "id" | "content_json" | "raw_markdown" | "created_at"
+>;
 
 export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const supabase = createClient();
@@ -55,16 +62,32 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     useQuery({
       queryKey: ["canvas-latest-version", streamId],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("canvas_versions")
-          .select("id, content_json, raw_markdown, created_at")
-          .eq("stream_id", streamId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const buildCanvasVersionQuery = (selectClause: string) =>
+          supabase
+            .from("canvas_versions")
+            .select(selectClause)
+            .eq("stream_id", streamId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        const { data, error } = await buildCanvasVersionQuery(
+          "id, content_json, raw_markdown, created_at",
+        );
+
+        if (
+          error &&
+          isSupabaseSchemaMismatchError(error, ["raw_markdown"])
+        ) {
+          const fallback = await buildCanvasVersionQuery(
+            "id, content_json, created_at",
+          );
+          if (fallback.error) throw fallback.error;
+          return (fallback.data ?? null) as CanvasVersionPreview | null;
+        }
 
         if (error) throw error;
-        return data;
+        return (data ?? null) as CanvasVersionPreview | null;
       },
       enabled: !!streamId,
     });

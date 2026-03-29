@@ -239,19 +239,7 @@ function removeLocalDraft(streamId: string): boolean {
 }
 
 function shouldHydrateFromLocalSnapshot(): boolean {
-  if (typeof window === "undefined" || typeof performance === "undefined") {
-    return false;
-  }
-
-  const navEntry = performance.getEntriesByType(
-    "navigation",
-  )[0] as PerformanceNavigationTiming | undefined;
-
-  if (navEntry?.type) {
-    return navEntry.type === "reload";
-  }
-
-  return false;
+  return typeof window !== "undefined";
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -276,12 +264,6 @@ export function useDraftSystem({
     sectionOrder: [],
     updatedAt: Date.now(),
   });
-
-  const hydrateFromLocalRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    hydrateFromLocalRef.current = shouldHydrateFromLocalSnapshot();
-  }, []);
 
   const snapshotLocalDraft = useCallback(() => {
     if (!streamId) return;
@@ -308,8 +290,8 @@ export function useDraftSystem({
     async function initializeDrafts() {
       if (!streamId) return;
 
-      // Recover local snapshot only on a real page reload.
-      const local = hydrateFromLocalRef.current
+      // Recover local snapshot whenever the entry creator is opened in the browser.
+      const local = shouldHydrateFromLocalSnapshot()
         ? readLocalDraft(streamId)
         : null;
       if (local && Object.keys(local.sections).length > 0) {

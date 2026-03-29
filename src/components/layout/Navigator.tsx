@@ -32,15 +32,26 @@ import {
   Cabinet,
   CabinetInsert,
   CabinetUpdate,
+  Canvas,
+  CanvasInsert,
+  DocumentEntryLinkInsert,
+  DocumentInsert,
+  Entry,
+  EntryInsert,
+  Section,
+  SectionFileAttachmentInsert,
+  SectionInsert,
   Stream,
   StreamInsert,
   StreamKind,
   StreamUpdate,
   STREAM_KIND,
 } from "@/lib/types";
+import { cloneStoredContentFields } from "@/lib/content-protocol";
 import { useSidebar } from "@/lib/hooks/useSidebar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useNavigatorPreferences } from "@/lib/hooks/useNavigatorPreferences";
+import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import {
   applyOptimisticCabinetCreation,
   applyOptimisticStreamCreation,
@@ -121,6 +132,146 @@ const getStreamKind = (stream: Stream): StreamKind =>
 const isGlobalStream = (stream: Stream) =>
   getStreamKind(stream) === STREAM_KIND.GLOBAL;
 const canDeleteStream = (stream: Stream) => !isGlobalStream(stream);
+
+const ENTRY_CREATOR_DRAFT_STORAGE_PREFIX = "kolam_draft_v2_";
+const ENTRY_CREATOR_STASH_STORAGE_PREFIX = "kolam_entry_creator_stash_v1_";
+const CANVAS_PREVIEW_STASH_STORAGE_PREFIX = "kolam_canvas_preview_stash_v1_";
+
+type PersistedCanvasDraftState = {
+  state?: {
+    liveContentByStream?: Record<string, unknown>;
+    liveMarkdownByStream?: Record<string, string>;
+    dbSyncStatusByStream?: Record<string, unknown>;
+    localSaveStatusByStream?: Record<string, unknown>;
+    _dirtyStreamsArr?: string[];
+  };
+  version?: number;
+};
+
+function copyLocalEntryCreatorDraftState(
+  oldStreamId: string,
+  newStreamId: string,
+) {
+  if (typeof window === "undefined") return;
+
+  const sourceKey = `${ENTRY_CREATOR_DRAFT_STORAGE_PREFIX}${oldStreamId}`;
+  const targetKey = `${ENTRY_CREATOR_DRAFT_STORAGE_PREFIX}${newStreamId}`;
+  const sourceDraft = window.localStorage.getItem(sourceKey);
+  if (sourceDraft) {
+    window.localStorage.setItem(targetKey, sourceDraft);
+  }
+
+  const sourceStashKey = `${ENTRY_CREATOR_STASH_STORAGE_PREFIX}${oldStreamId}`;
+  const targetStashKey = `${ENTRY_CREATOR_STASH_STORAGE_PREFIX}${newStreamId}`;
+  const sourceStash = window.localStorage.getItem(sourceStashKey);
+  if (sourceStash) {
+    window.localStorage.setItem(targetStashKey, sourceStash);
+  }
+}
+
+function copyLocalCanvasDraftState(oldStreamId: string, newStreamId: string) {
+  if (typeof window === "undefined") return;
+
+  const raw = window.localStorage.getItem("kolam-canvas-drafts");
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw) as PersistedCanvasDraftState;
+    const state = parsed.state ?? {};
+
+    const nextLive = { ...(state.liveContentByStream ?? {}) };
+    const nextMarkdown = { ...(state.liveMarkdownByStream ?? {}) };
+    const nextDbSync = { ...(state.dbSyncStatusByStream ?? {}) };
+    const nextLocalSave = { ...(state.localSaveStatusByStream ?? {}) };
+    const dirtySet = new Set(state._dirtyStreamsArr ?? []);
+
+    if (oldStreamId in nextLive) {
+      nextLive[newStreamId] = nextLive[oldStreamId];
+    }
+    if (oldStreamId in nextMarkdown) {
+      nextMarkdown[newStreamId] = nextMarkdown[oldStreamId];
+    }
+    if (oldStreamId in nextDbSync) {
+      nextDbSync[newStreamId] = nextDbSync[oldStreamId];
+    }
+    if (oldStreamId in nextLocalSave) {
+      nextLocalSave[newStreamId] = nextLocalSave[oldStreamId];
+    }
+    if (dirtySet.has(oldStreamId)) {
+      dirtySet.add(newStreamId);
+    }
+
+    const nextState: PersistedCanvasDraftState = {
+      ...parsed,
+      state: {
+        ...state,
+        liveContentByStream: nextLive,
+        liveMarkdownByStream: nextMarkdown,
+        dbSyncStatusByStream: nextDbSync,
+        localSaveStatusByStream: nextLocalSave,
+        _dirtyStreamsArr: Array.from(dirtySet),
+      },
+    };
+
+    window.localStorage.setItem(
+      "kolam-canvas-drafts",
+      JSON.stringify(nextState),
+    );
+
+    useCanvasDraft.setState((current) => {
+      const nextDirty = new Set(current.dirtyStreams);
+      if (dirtySet.has(newStreamId)) {
+        nextDirty.add(newStreamId);
+      }
+
+      return {
+        ...current,
+        dirtyStreams: nextDirty,
+        liveContentByStream: {
+          ...current.liveContentByStream,
+          ...(newStreamId in nextLive
+            ? { [newStreamId]: nextLive[newStreamId] as typeof current.liveContentByStream[string] }
+            : {}),
+        },
+        liveMarkdownByStream: {
+          ...current.liveMarkdownByStream,
+          ...(newStreamId in nextMarkdown
+            ? { [newStreamId]: nextMarkdown[newStreamId] ?? "" }
+            : {}),
+        },
+        dbSyncStatusByStream: {
+          ...current.dbSyncStatusByStream,
+          ...(newStreamId in nextDbSync
+            ? {
+                [newStreamId]:
+                  nextDbSync[newStreamId] as typeof current.dbSyncStatusByStream[string],
+              }
+            : {}),
+        },
+        localSaveStatusByStream: {
+          ...current.localSaveStatusByStream,
+          ...(newStreamId in nextLocalSave
+            ? {
+                [newStreamId]:
+                  nextLocalSave[
+                    newStreamId
+                  ] as typeof current.localSaveStatusByStream[string],
+              }
+            : {}),
+        },
+      };
+    });
+  } catch {
+    // Best effort only.
+  }
+
+  const sourcePreviewStashKey = `${CANVAS_PREVIEW_STASH_STORAGE_PREFIX}${oldStreamId}`;
+  const targetPreviewStashKey = `${CANVAS_PREVIEW_STASH_STORAGE_PREFIX}${newStreamId}`;
+  const sourcePreviewStash = window.localStorage.getItem(sourcePreviewStashKey);
+  if (sourcePreviewStash) {
+    window.localStorage.setItem(targetPreviewStashKey, sourcePreviewStash);
+  }
+}
 
 interface CreationInputProps {
   type: "cabinet" | "stream";
@@ -1404,6 +1555,421 @@ export function Navigator({}: NavigatorProps) {
     },
   });
 
+  const duplicateStreamMutation = useMutation({
+    mutationFn: async (stream: Stream) => {
+      const siblingStreams =
+        streams?.filter((candidate) => candidate.cabinet_id === stream.cabinet_id) ??
+        [];
+      const sortOrder = getNextSortOrder(siblingStreams);
+
+      const { data: newStream, error: newStreamError } = await supabase
+        .from("streams")
+        .insert({
+          cabinet_id: stream.cabinet_id,
+          domain_id: stream.domain_id,
+          name: stream.name,
+          description: stream.description,
+          sort_order: sortOrder,
+          stream_kind: stream.stream_kind,
+        } as StreamInsert)
+        .select()
+        .single();
+
+      if (newStreamError || !newStream) {
+        throw newStreamError ?? new Error("Failed to create duplicate stream");
+      }
+
+      const duplicatedStream = newStream as Stream;
+      const entryMap = new Map<string, string>();
+      const sectionMap = new Map<string, string>();
+      const documentMap = new Map<string, string>();
+
+      const { data: sourceDocuments, error: sourceDocumentsError } = await supabase
+        .from("documents")
+        .select(
+          "id, title, original_filename, content_type, storage_path, storage_bucket, import_status, file_size_bytes, extracted_markdown, extraction_metadata, source_metadata, created_at, created_by, updated_at, thumbnail_path, thumbnail_status, thumbnail_updated_at, thumbnail_error",
+        )
+        .eq("stream_id", stream.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      if (sourceDocumentsError) throw sourceDocumentsError;
+
+      for (const sourceDocument of sourceDocuments ?? []) {
+        const { data: insertedDocument, error: insertedDocumentError } =
+          await supabase
+            .from("documents")
+            .insert({
+              stream_id: duplicatedStream.id,
+              title: sourceDocument.title,
+              original_filename: sourceDocument.original_filename,
+              content_type: sourceDocument.content_type,
+              storage_path: sourceDocument.storage_path,
+              storage_bucket: sourceDocument.storage_bucket,
+              import_status: sourceDocument.import_status,
+              file_size_bytes: sourceDocument.file_size_bytes,
+              extracted_markdown: sourceDocument.extracted_markdown,
+              extraction_metadata: sourceDocument.extraction_metadata,
+              source_metadata: sourceDocument.source_metadata,
+              created_at: sourceDocument.created_at,
+              created_by: sourceDocument.created_by,
+              updated_at: sourceDocument.updated_at,
+              thumbnail_path: sourceDocument.thumbnail_path,
+              thumbnail_status: sourceDocument.thumbnail_status,
+              thumbnail_updated_at: sourceDocument.thumbnail_updated_at,
+              thumbnail_error: sourceDocument.thumbnail_error,
+            } as DocumentInsert)
+            .select("id")
+            .single();
+
+        if (insertedDocumentError || !insertedDocument) {
+          throw (
+            insertedDocumentError ??
+            new Error("Failed to duplicate stream documents")
+          );
+        }
+
+        documentMap.set(sourceDocument.id, insertedDocument.id);
+      }
+
+      if (documentMap.size > 0) {
+        const sourceDocumentIds = Array.from(documentMap.keys());
+        const { data: sourceChunks, error: sourceChunksError } = await supabase
+          .from("document_chunks")
+          .select(
+            "document_id, chunk_index, chunk_markdown, chunk_metadata, heading_path, page_start, page_end, token_count, created_at",
+          )
+          .in("document_id", sourceDocumentIds)
+          .order("chunk_index", { ascending: true });
+
+        if (sourceChunksError) throw sourceChunksError;
+
+        const chunkInserts = (sourceChunks ?? [])
+          .map((chunk) => {
+            const duplicatedDocumentId = documentMap.get(chunk.document_id);
+            if (!duplicatedDocumentId) return null;
+            return {
+              document_id: duplicatedDocumentId,
+              stream_id: duplicatedStream.id,
+              chunk_index: chunk.chunk_index,
+              chunk_markdown: chunk.chunk_markdown,
+              chunk_metadata: chunk.chunk_metadata,
+              heading_path: chunk.heading_path,
+              page_start: chunk.page_start,
+              page_end: chunk.page_end,
+              token_count: chunk.token_count,
+              created_at: chunk.created_at,
+            };
+          })
+          .filter((chunk): chunk is NonNullable<typeof chunk> => chunk !== null);
+
+        if (chunkInserts.length > 0) {
+          const { error: insertChunksError } = await supabase
+            .from("document_chunks")
+            .insert(chunkInserts);
+
+          if (insertChunksError) throw insertChunksError;
+        }
+      }
+
+      const { data: sourceEntries, error: sourceEntriesError } = await supabase
+        .from("entries")
+        .select(
+          "id, created_at, updated_at, is_draft, entry_kind, parent_commit_id, merge_source_commit_id, merge_source_branch_name, merge_target_branch_name",
+        )
+        .eq("stream_id", stream.id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      if (sourceEntriesError) throw sourceEntriesError;
+
+      for (const sourceEntry of sourceEntries ?? []) {
+        const { data: insertedEntry, error: insertedEntryError } = await supabase
+          .from("entries")
+          .insert({
+            stream_id: duplicatedStream.id,
+            created_at: sourceEntry.created_at,
+            updated_at: sourceEntry.updated_at,
+            is_draft: sourceEntry.is_draft,
+            entry_kind: sourceEntry.entry_kind,
+            parent_commit_id: null,
+            merge_source_commit_id: null,
+            merge_source_branch_name: sourceEntry.merge_source_branch_name,
+            merge_target_branch_name: sourceEntry.merge_target_branch_name,
+          } as EntryInsert)
+          .select()
+          .single();
+
+        if (insertedEntryError || !insertedEntry) {
+          throw insertedEntryError ?? new Error("Failed to duplicate entries");
+        }
+
+        entryMap.set(sourceEntry.id, (insertedEntry as Entry).id);
+      }
+
+      for (const sourceEntry of sourceEntries ?? []) {
+        const duplicatedEntryId = entryMap.get(sourceEntry.id);
+        if (!duplicatedEntryId) continue;
+
+        const parentCommitId = sourceEntry.parent_commit_id
+          ? (entryMap.get(sourceEntry.parent_commit_id) ?? null)
+          : null;
+        const mergeSourceCommitId = sourceEntry.merge_source_commit_id
+          ? (entryMap.get(sourceEntry.merge_source_commit_id) ?? null)
+          : null;
+
+        if (!parentCommitId && !mergeSourceCommitId) continue;
+
+        const { error: updateEntryError } = await supabase
+          .from("entries")
+          .update({
+            parent_commit_id: parentCommitId,
+            merge_source_commit_id: mergeSourceCommitId,
+          })
+          .eq("id", duplicatedEntryId);
+
+        if (updateEntryError) throw updateEntryError;
+      }
+
+      const sourceEntryIds = Array.from(entryMap.keys());
+      if (sourceEntryIds.length > 0) {
+        const { data: sourceSections, error: sourceSectionsError } = await supabase
+          .from("sections")
+          .select(
+            "id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format, sort_order, section_type, file_display_mode, created_at, updated_at",
+          )
+          .in("entry_id", sourceEntryIds)
+          .order("sort_order", { ascending: true });
+
+        if (sourceSectionsError) throw sourceSectionsError;
+
+        for (const sourceSection of sourceSections ?? []) {
+          const duplicatedEntryId = entryMap.get(sourceSection.entry_id);
+          if (!duplicatedEntryId) continue;
+
+          const { data: insertedSection, error: insertedSectionError } =
+            await supabase
+              .from("sections")
+              .insert({
+                entry_id: duplicatedEntryId,
+                persona_id: sourceSection.persona_id,
+                persona_name_snapshot: sourceSection.persona_name_snapshot,
+                ...cloneStoredContentFields(sourceSection),
+                sort_order: sourceSection.sort_order,
+                section_type: sourceSection.section_type,
+                file_display_mode: sourceSection.file_display_mode,
+                created_at: sourceSection.created_at,
+                updated_at: sourceSection.updated_at,
+              } as SectionInsert)
+              .select()
+              .single();
+
+          if (insertedSectionError || !insertedSection) {
+            throw insertedSectionError ?? new Error("Failed to duplicate sections");
+          }
+
+          sectionMap.set(sourceSection.id, (insertedSection as Section).id);
+        }
+
+        const sourceSectionIds = Array.from(sectionMap.keys());
+        if (sourceSectionIds.length > 0) {
+          const { data: sourceAttachments, error: sourceAttachmentsError } =
+            await supabase
+              .from("section_attachments")
+              .select(
+                "section_id, document_id, sort_order, title_snapshot, annotation_text, referenced_persona_id, referenced_page",
+              )
+              .in("section_id", sourceSectionIds);
+
+          if (sourceAttachmentsError) throw sourceAttachmentsError;
+
+          const attachmentInserts = (sourceAttachments ?? [])
+            .map((attachment) => {
+              const duplicatedSectionId = sectionMap.get(attachment.section_id);
+              const duplicatedDocumentId = documentMap.get(attachment.document_id);
+              if (!duplicatedSectionId || !duplicatedDocumentId) return null;
+              return {
+                section_id: duplicatedSectionId,
+                document_id: duplicatedDocumentId,
+                sort_order: attachment.sort_order,
+                title_snapshot: attachment.title_snapshot,
+                annotation_text: attachment.annotation_text,
+                referenced_persona_id: attachment.referenced_persona_id,
+                referenced_page: attachment.referenced_page,
+              };
+            })
+            .filter(
+              (attachment): attachment is NonNullable<typeof attachment> =>
+                attachment !== null,
+            );
+
+          if (attachmentInserts.length > 0) {
+            const { error: insertAttachmentsError } = await supabase
+              .from("section_attachments")
+              .insert(attachmentInserts as SectionFileAttachmentInsert[]);
+
+            if (insertAttachmentsError) throw insertAttachmentsError;
+          }
+        }
+
+        const { data: sourceDocumentEntryLinks, error: sourceDocumentEntryLinksError } =
+          await supabase
+            .from("document_entry_links")
+            .select("document_id, entry_id, relationship_type")
+            .in("entry_id", sourceEntryIds);
+
+        if (sourceDocumentEntryLinksError) throw sourceDocumentEntryLinksError;
+
+        const documentEntryLinkInserts = (sourceDocumentEntryLinks ?? [])
+          .map((link) => {
+            const duplicatedDocumentId = documentMap.get(link.document_id);
+            const duplicatedEntryId = entryMap.get(link.entry_id);
+            if (!duplicatedDocumentId || !duplicatedEntryId) return null;
+            return {
+              document_id: duplicatedDocumentId,
+              entry_id: duplicatedEntryId,
+              relationship_type: link.relationship_type,
+            };
+          })
+          .filter((link): link is NonNullable<typeof link> => link !== null);
+
+        if (documentEntryLinkInserts.length > 0) {
+          const { error: insertDocumentEntryLinksError } = await supabase
+            .from("document_entry_links")
+            .insert(documentEntryLinkInserts as DocumentEntryLinkInsert[]);
+
+          if (insertDocumentEntryLinksError) throw insertDocumentEntryLinksError;
+        }
+      }
+
+      const { data: sourceCanvas, error: sourceCanvasError } = await supabase
+        .from("canvases")
+        .select("id, content_json, raw_markdown, content_format, created_at, updated_at")
+        .eq("stream_id", stream.id)
+        .maybeSingle();
+
+      if (sourceCanvasError) throw sourceCanvasError;
+
+      if (sourceCanvas) {
+        const { error: upsertCanvasError } = await supabase
+          .from("canvases")
+          .upsert(
+            {
+              stream_id: duplicatedStream.id,
+              created_at: sourceCanvas.created_at,
+              updated_at: sourceCanvas.updated_at,
+              ...cloneStoredContentFields(sourceCanvas),
+            } as CanvasInsert,
+            { onConflict: "stream_id" },
+          );
+
+        if (upsertCanvasError) throw upsertCanvasError;
+      }
+
+      const { data: duplicatedCanvas, error: duplicatedCanvasError } = await supabase
+        .from("canvases")
+        .select("id, stream_id")
+        .eq("stream_id", duplicatedStream.id)
+        .maybeSingle();
+
+      if (duplicatedCanvasError) throw duplicatedCanvasError;
+
+      if (duplicatedCanvas) {
+        const { data: sourceVersions, error: sourceVersionsError } = await supabase
+          .from("canvas_versions")
+          .select(
+            "content_json, raw_markdown, content_format, name, summary, created_by, created_at, branch_name, source_entry_id",
+          )
+          .eq("stream_id", stream.id)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: true });
+
+        if (sourceVersionsError) throw sourceVersionsError;
+
+        for (const sourceVersion of sourceVersions ?? []) {
+          const { error: insertVersionError } = await supabase
+            .from("canvas_versions")
+            .insert({
+              canvas_id: (duplicatedCanvas as Canvas).id,
+              stream_id: duplicatedStream.id,
+              ...cloneStoredContentFields(sourceVersion),
+              name: sourceVersion.name,
+              summary: sourceVersion.summary,
+              created_by: sourceVersion.created_by,
+              created_at: sourceVersion.created_at,
+              branch_name: sourceVersion.branch_name,
+              source_entry_id: sourceVersion.source_entry_id
+                ? (entryMap.get(sourceVersion.source_entry_id) ?? null)
+                : null,
+            });
+
+          if (insertVersionError) throw insertVersionError;
+        }
+      }
+
+      const { data: sourceBranches, error: sourceBranchesError } = await supabase
+        .from("branches")
+        .select("name, created_at, updated_at, head_commit_id")
+        .eq("stream_id", stream.id)
+        .order("created_at", { ascending: true });
+
+      if (sourceBranchesError) throw sourceBranchesError;
+
+      for (const sourceBranch of sourceBranches ?? []) {
+        const { error: insertBranchError } = await supabase.from("branches").insert({
+          stream_id: duplicatedStream.id,
+          name: sourceBranch.name,
+          created_at: sourceBranch.created_at,
+          updated_at: sourceBranch.updated_at,
+          head_commit_id: sourceBranch.head_commit_id
+            ? (entryMap.get(sourceBranch.head_commit_id) ?? null)
+            : null,
+        });
+
+        if (insertBranchError) throw insertBranchError;
+      }
+
+      return duplicatedStream;
+    },
+    onSuccess: (duplicatedStream, sourceStream) => {
+      if (!domainId || !duplicatedStream) return;
+      if (sourceStream?.id) {
+        copyLocalEntryCreatorDraftState(sourceStream.id, duplicatedStream.id);
+        copyLocalCanvasDraftState(sourceStream.id, duplicatedStream.id);
+      }
+      setJustCreatedStreamId(duplicatedStream.id);
+      if (duplicatedStream.cabinet_id) {
+        addExpandedCabinet(domainId, duplicatedStream.cabinet_id);
+      }
+      queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
+      queryClient.invalidateQueries({ queryKey: ["entries", duplicatedStream.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["entries-xml", duplicatedStream.id],
+      });
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ["documents", userId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ["canvas", duplicatedStream.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas-versions", duplicatedStream.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas-latest-version", duplicatedStream.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["branches", duplicatedStream.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["entries-lineage", duplicatedStream.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["graph-branches", duplicatedStream.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      router.push(`/${domainId}/${duplicatedStream.id}`);
+    },
+  });
+
   const toggleCabinet = (cabinetId: string) => {
     if (domainId) {
       toggleExpandedCabinet(domainId, cabinetId);
@@ -1804,15 +2370,7 @@ export function Navigator({}: NavigatorProps) {
     } else {
       const stream = getStreamById(id);
       if (!stream) return;
-      const siblings =
-        streams?.filter((s) => s.cabinet_id === stream.cabinet_id) || [];
-      const sortOrder = getNextSortOrder(siblings);
-      createStreamMutation.mutate({
-        cabinet_id: stream.cabinet_id,
-        domain_id: domainId,
-        name: stream.name,
-        sort_order: sortOrder,
-      });
+      duplicateStreamMutation.mutate(stream);
     }
   };
 

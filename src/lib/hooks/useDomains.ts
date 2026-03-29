@@ -58,6 +58,7 @@ export function useDomains(userId: string) {
     type PersistedCanvasDraftState = {
       state?: {
         liveContentByStream?: Record<string, unknown>;
+        liveMarkdownByStream?: Record<string, string>;
         dbSyncStatusByStream?: Record<string, unknown>;
         localSaveStatusByStream?: Record<string, unknown>;
         _dirtyStreamsArr?: string[];
@@ -70,6 +71,7 @@ export function useDomains(userId: string) {
       const state = parsed.state ?? {};
 
       const nextLive = { ...(state.liveContentByStream ?? {}) };
+      const nextMarkdown = { ...(state.liveMarkdownByStream ?? {}) };
       const nextDbSync = { ...(state.dbSyncStatusByStream ?? {}) };
       const nextLocalSave = { ...(state.localSaveStatusByStream ?? {}) };
       const dirtySet = new Set(state._dirtyStreamsArr ?? []);
@@ -77,6 +79,9 @@ export function useDomains(userId: string) {
       for (const [oldStreamId, newStreamId] of streamMap.entries()) {
         if (oldStreamId in nextLive) {
           nextLive[newStreamId] = nextLive[oldStreamId];
+        }
+        if (oldStreamId in nextMarkdown) {
+          nextMarkdown[newStreamId] = nextMarkdown[oldStreamId];
         }
         if (oldStreamId in nextDbSync) {
           nextDbSync[newStreamId] = nextDbSync[oldStreamId];
@@ -94,6 +99,7 @@ export function useDomains(userId: string) {
         state: {
           ...state,
           liveContentByStream: nextLive,
+          liveMarkdownByStream: nextMarkdown,
           dbSyncStatusByStream: nextDbSync,
           localSaveStatusByStream: nextLocalSave,
           _dirtyStreamsArr: Array.from(dirtySet),

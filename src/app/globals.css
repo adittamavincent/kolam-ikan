@@ -202,6 +202,22 @@ body {
   font-family: var(--font-text), Arial, Helvetica, sans-serif;
 }
 
+.kolam-search-reveal {
+  animation: kolam-search-reveal 1.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.kolam-search-hit {
+  background: color-mix(in srgb, #d19a66 28%, transparent);
+  color: #e5c07b;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, #d19a66 55%, transparent);
+}
+
+.kolam-search-hit-active {
+  background: color-mix(in srgb, #56b6c2 62%, transparent);
+  color: #f4feff;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, #56b6c2 90%, transparent);
+}
+
 ::selection {
   background: #323844;
   color: #d7dae0;
@@ -212,28 +228,19 @@ body {
 /* -------------------------------------------------------------------------- */
 
 @layer base {
+  html {
+    scrollbar-gutter: auto;
+  }
+
   * {
-    scrollbar-color: var(--border-strong) var(--bg-surface-default);
-    scrollbar-width: thin;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  /* Webkit browsers (Chrome, Safari, Edge) */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--bg-surface-default);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--border-strong);
-    border-radius: 0;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   .scrollbar-hide {
@@ -243,6 +250,51 @@ body {
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  .scrollbar-default {
+    -ms-overflow-style: auto;
+    scrollbar-width: auto;
+  }
+
+  .scrollbar-default::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    display: block;
+  }
+
+  .scrollbar-default::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-default::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 0;
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .scrollbar-default::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+}
+
+@supports (overflow: overlay) {
+  @layer utilities {
+    .overflow-auto,
+    .overflow-scroll {
+      overflow: overlay;
+    }
+
+    .overflow-x-auto,
+    .overflow-x-scroll {
+      overflow-x: overlay;
+    }
+
+    .overflow-y-auto,
+    .overflow-y-scroll {
+      overflow-y: overlay;
+    }
   }
 }
 

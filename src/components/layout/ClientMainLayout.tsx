@@ -117,6 +117,61 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const parts = pathname?.split("/").filter(Boolean) || [];
   const showLayoutControls = parts.length === 2;
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.dispatchEvent(
+      new CustomEvent("kolam_global_search_state", {
+        detail: {
+          term: searchTerm,
+          open: searchOpen,
+        },
+      }),
+    );
+
+    if (showLayoutControls) {
+      window.dispatchEvent(
+        new CustomEvent("kolam_header_log_search_term", {
+          detail: { term: searchTerm },
+        }),
+      );
+    }
+  }, [searchOpen, searchTerm, showLayoutControls]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onGlobalSearchRequest = (
+      event: Event,
+    ) => {
+      const detail = (
+        event as CustomEvent<{
+          term?: string;
+          open?: boolean;
+        }>
+      ).detail;
+
+      if (typeof detail?.term === "string") {
+        setSearchTerm(detail.term);
+      }
+      if (typeof detail?.open === "boolean") {
+        setSearchOpen(detail.open);
+      }
+    };
+
+    window.addEventListener(
+      "kolam_global_search_request",
+      onGlobalSearchRequest as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "kolam_global_search_request",
+        onGlobalSearchRequest as EventListener,
+      );
+    };
+  }, []);
+
   // Track whether we want the slide-out animation vs. a hard cut
   const layoutRootRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -644,6 +699,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                         const payload = {
                           term: parsedSearch.cleaned,
                           target: result.type === "canvas" ? "canvas" : "log",
+                          itemId: result.id,
                           entryId: result.entryId ?? null,
                           streamId: result.streamId,
                         };
@@ -651,6 +707,13 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                           "kolam_search_highlight",
                           JSON.stringify(payload),
                         );
+                        if (typeof window !== "undefined") {
+                          window.dispatchEvent(
+                            new CustomEvent("kolam_search_highlight", {
+                              detail: payload,
+                            }),
+                          );
+                        }
                         setSearchOpen(false);
                         router.push(`/${result.domainId}/${result.streamId}`);
                       }}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { Fragment, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSidebar } from "@/lib/hooks/useSidebar";
@@ -44,6 +44,8 @@ type LogHeaderState = {
   graphView: boolean;
   sortOrder: "newest" | "oldest";
   searchTerm: string;
+  occurrenceCount?: number;
+  activeOccurrenceIndex?: number;
   branchNames: string[];
   collapsedEntryCount?: number;
   allEntriesCollapsed?: boolean;
@@ -74,8 +76,12 @@ export function MainHeader() {
   const streamId = parts.length === 2 ? parts[1] : null;
 
   const { stream } = useStream(streamId || "");
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchOpenManual, setIsSearchOpenManual] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const isSearchOpen =
+    isSearchOpenManual || isSearchFocused || Boolean(searchTerm.trim());
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [logState, setLogState] = useState<LogHeaderState | null>(null);
@@ -183,12 +189,12 @@ export function MainHeader() {
 
   const cloudStatus = getCloudSyncStatus();
   const collapsedEntryCount = logState?.collapsedEntryCount ?? 0;
-  const hasEntries = (logState?.commitCount ?? 0) > 0;
   const totalCommitCount =
     (logState?.commitCount ?? 0) + (logState?.canvasCommitCount ?? 0);
+  const hasEntries = totalCommitCount > 0;
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
   const headerButtonClass =
-    "inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-text-muted";
+    "inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-text-muted";
   const cloudStatusLabel =
     cloudStatus === "saving"
       ? "Cloud syncing"
@@ -212,6 +218,52 @@ export function MainHeader() {
     return value.length > 0 ? value : null;
   }, [descriptionDraft]);
   const hasDescription = Boolean(stream?.description?.trim());
+  const occurrenceCount = logState?.occurrenceCount ?? 0;
+  const activeOccurrenceIndex = logState?.activeOccurrenceIndex ?? 0;
+
+  const clearSearchKeepOpen = () => {
+    setSearchTerm("");
+    setIsSearchOpenManual(true);
+    setIsSearchFocused(true);
+    emit("kolam_header_log_search_term", { term: "" });
+    emit("kolam_global_search_request", { term: "" });
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+    });
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onGlobalSearchState = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          term?: string;
+          open?: boolean;
+        }>
+      ).detail;
+
+      if (typeof detail?.term === "string") {
+        setSearchTerm(detail.term);
+      }
+
+      if (typeof detail?.open === "boolean" && detail.open) {
+        setIsSearchOpenManual(true);
+      }
+    };
+
+    window.addEventListener(
+      "kolam_global_search_state",
+      onGlobalSearchState as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "kolam_global_search_state",
+        onGlobalSearchState as EventListener,
+      );
+    };
+  }, []);
 
   const saveDescription = async () => {
     if (!streamId) return;
@@ -364,13 +416,102 @@ export function MainHeader() {
                           )}
                         </button>
 
-                        <button
-                          onClick={() => setIsSearchOpen((prev) => !prev)}
-                          className={`${headerButtonClass} ${isSearchOpen ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
-                          title={isSearchOpen ? "Hide search" : "Show search"}
+                        <div
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            clearSearchKeepOpen();
+                          }}
+                          className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-border-default bg-surface-default transition-[width,border-color,background-color] duration-300 ease-out ${
+                            isSearchOpen
+                              ? "w-[20rem] border-primary-800 bg-primary-950/40"
+                              : "w-7"
+                          }`}
+                          style={{ willChange: "width" }}
                         >
-                          <Search className="h-4 w-4" />
-                        </button>
+                          <button
+                            onClick={() => {
+                              setIsSearchOpenManual((prev) => {
+                                const next = !prev;
+                                if (next) {
+                                  window.requestAnimationFrame(() => {
+                                    searchInputRef.current?.focus();
+                                  });
+                                }
+                                return next;
+                              });
+                            }}
+                            className={`absolute inset-0 inline-flex items-center justify-center text-text-muted transition-all duration-200 ${
+                              isSearchOpen
+                                ? "pointer-events-none opacity-0 scale-90"
+                                : "opacity-100 scale-100 hover:text-text-default"
+                            }`}
+                            title="Show search"
+                          >
+                            <Search className="h-4 w-4" />
+                          </button>
+
+                          <div
+                            className={`flex h-full items-center gap-1 px-1 transition-all duration-200 ${
+                              isSearchOpen
+                                ? "opacity-100 translate-x-0"
+                                : "pointer-events-none opacity-0 -translate-x-2"
+                            }`}
+                          >
+                            <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-action-primary-bg" />
+                            <input
+                              ref={searchInputRef}
+                              type="text"
+                              value={searchTerm}
+                              onFocus={() => setIsSearchFocused(true)}
+                              onBlur={() => {
+                                setIsSearchFocused(false);
+                                if (!searchTerm.trim()) {
+                                  setIsSearchOpenManual(false);
+                                }
+                              }}
+                              onChange={(event) => {
+                                const term = event.target.value;
+                                setSearchTerm(term);
+                                emit("kolam_header_log_search_term", { term });
+                                emit("kolam_global_search_request", { term });
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key === "Enter" && event.shiftKey) {
+                                  event.preventDefault();
+                                  emit("kolam_header_log_prev_occurrence");
+                                } else if (event.key === "Enter") {
+                                  event.preventDefault();
+                                  emit("kolam_header_log_next_occurrence");
+                                } else if (event.key === "Escape" && !searchTerm.trim()) {
+                                  setIsSearchOpenManual(false);
+                                }
+                              }}
+                              placeholder="Find in log..."
+                              className="min-w-0 flex-1 bg-transparent py-1.5 text-xs text-text-default outline-none placeholder:text-text-muted"
+                            />
+                            <span className="inline-flex h-5 min-w-12 items-center justify-center border border-border-default bg-surface-default px-1.5 text-[10px] font-mono text-text-muted">
+                              {occurrenceCount > 0
+                                ? `${activeOccurrenceIndex}/${occurrenceCount}`
+                                : "0/0"}
+                            </span>
+                            <button
+                              onClick={() => emit("kolam_header_log_prev_occurrence")}
+                              disabled={occurrenceCount === 0}
+                              className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Previous occurrence"
+                            >
+                              <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                            </button>
+                            <button
+                              onClick={() => emit("kolam_header_log_next_occurrence")}
+                              disabled={occurrenceCount === 0}
+                              className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                              title="Next occurrence"
+                            >
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
 
                         <button
                           onClick={() => emit("kolam_header_log_toggle_stash")}
@@ -406,22 +547,6 @@ export function MainHeader() {
                           <Network className="h-4 w-4" />
                         </button>
 
-                        {isSearchOpen && (
-                          <div className="relative ml-1 w-full min-w-45 max-w-xs">
-                            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted" />
-                            <input
-                              type="text"
-                              value={searchTerm}
-                              onChange={(event) => {
-                                const term = event.target.value;
-                                setSearchTerm(term);
-                                emit("kolam_header_log_search_term", { term });
-                              }}
-                              placeholder="Search commits..."
-                              className="w-full border border-border-default bg-surface-default py-2 pl-7 pr-2 text-xs text-text-default focus:border-border-default focus: focus: focus:"
-                            />
-                          </div>
-                        )}
                       </div>
 
                       <div className={toolbarGroupClass}>

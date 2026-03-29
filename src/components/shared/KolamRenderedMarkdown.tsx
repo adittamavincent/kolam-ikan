@@ -118,7 +118,42 @@ function formatCalloutTitle(type: string) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-function renderInline(text: string): React.ReactNode[] {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightPlainText(
+  text: string,
+  highlightTerm?: string,
+): React.ReactNode[] {
+  if (!highlightTerm?.trim()) return [text];
+
+  const pattern = new RegExp(`(${escapeRegExp(highlightTerm)})`, "gi");
+  const nodes: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    nodes.push(
+      <mark className="kolam-search-hit" key={`hit-${nodes.length}-${match.index}`}>
+        {match[0]}
+      </mark>,
+    );
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes.length ? nodes : [text];
+}
+
+function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   const pattern =
     /(\[\[([^[\]]+)\]\]|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|==([^=]+)==|~~([^~]+)~~|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|%%([\s\S]*?)%%)/g;
@@ -127,7 +162,7 @@ function renderInline(text: string): React.ReactNode[] {
 
   while ((match = pattern.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      nodes.push(text.slice(lastIndex, match.index));
+      nodes.push(...highlightPlainText(text.slice(lastIndex, match.index), highlightTerm));
     }
 
     if (match[13]) {
@@ -138,7 +173,7 @@ function renderInline(text: string): React.ReactNode[] {
     if (match[2]) {
       nodes.push(
         <span className="kolam-inline-link" key={nodes.length}>
-          {match[2]}
+          {highlightPlainText(match[2], highlightTerm)}
         </span>,
       );
     } else if (match[3] && match[4]) {
@@ -150,29 +185,37 @@ function renderInline(text: string): React.ReactNode[] {
           rel="noreferrer"
           target="_blank"
         >
-          {match[3]}
+          {highlightPlainText(match[3], highlightTerm)}
         </a>,
       );
     } else if (match[5]) {
       nodes.push(
         <code className="kolam-inline-code" key={nodes.length}>
-          {match[5]}
+          {highlightPlainText(match[5], highlightTerm)}
         </code>,
       );
     } else if (match[6]) {
-      nodes.push(<mark key={nodes.length}>{match[6]}</mark>);
+      nodes.push(<mark key={nodes.length}>{highlightPlainText(match[6], highlightTerm)}</mark>);
     } else if (match[7]) {
-      nodes.push(<del key={nodes.length}>{match[7]}</del>);
+      nodes.push(<del key={nodes.length}>{highlightPlainText(match[7], highlightTerm)}</del>);
     } else if (match[8]) {
       nodes.push(
         <strong key={nodes.length}>
-          <em>{match[8]}</em>
+          <em>{highlightPlainText(match[8], highlightTerm)}</em>
         </strong>,
       );
     } else if (match[9] || match[10]) {
-      nodes.push(<strong key={nodes.length}>{match[9] ?? match[10]}</strong>);
+      nodes.push(
+        <strong key={nodes.length}>
+          {highlightPlainText(match[9] ?? match[10], highlightTerm)}
+        </strong>,
+      );
     } else if (match[11] || match[12]) {
-      nodes.push(<em key={nodes.length}>{match[11] ?? match[12]}</em>);
+      nodes.push(
+        <em key={nodes.length}>
+          {highlightPlainText(match[11] ?? match[12], highlightTerm)}
+        </em>,
+      );
     } else {
       nodes.push(match[0]);
     }
@@ -181,14 +224,14 @@ function renderInline(text: string): React.ReactNode[] {
   }
 
   if (lastIndex < text.length) {
-    nodes.push(text.slice(lastIndex));
+    nodes.push(...highlightPlainText(text.slice(lastIndex), highlightTerm));
   }
 
   return nodes;
 }
 
-function renderHeading(level: number, text: string, key: string) {
-  const content = renderInline(text);
+function renderHeading(level: number, text: string, key: string, highlightTerm?: string) {
+  const content = renderInline(text, highlightTerm);
 
   switch (level) {
     case 1:
@@ -232,11 +275,13 @@ function renderHeading(level: number, text: string, key: string) {
 
 type RendererProps = {
   source: string;
+  highlightTerm?: string;
   onToggleTask?: (lineNumber: number, nextChecked: boolean) => void;
 };
 
 function renderMarkdownBody(
   source: string,
+  highlightTerm?: string,
   onToggleTask?: (lineNumber: number, nextChecked: boolean) => void,
 ): React.ReactNode[] {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
@@ -268,7 +313,7 @@ function renderMarkdownBody(
           <div className="kolam-code-header">
             <span>{language || "plain text"}</span>
           </div>
-          <code>{codeLines.join("\n")}</code>
+          <code>{highlightPlainText(codeLines.join("\n"), highlightTerm)}</code>
         </pre>,
       );
       continue;
@@ -292,9 +337,9 @@ function renderMarkdownBody(
           key={`callout-${start}`}
           open={foldState !== "-"}
         >
-          <summary>{renderInline(title)}</summary>
+          <summary>{renderInline(title, highlightTerm)}</summary>
           <div className="kolam-callout-body">
-            {renderMarkdownBody(innerLines.join("\n"), onToggleTask)}
+            {renderMarkdownBody(innerLines.join("\n"), highlightTerm, onToggleTask)}
           </div>
         </details>,
       );
@@ -304,7 +349,7 @@ function renderMarkdownBody(
     const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (headingMatch) {
       const level = Math.min(6, headingMatch[1].length);
-      nodes.push(renderHeading(level, headingMatch[2], `heading-${i}`));
+      nodes.push(renderHeading(level, headingMatch[2], `heading-${i}`, highlightTerm));
       i += 1;
       continue;
     }
@@ -329,7 +374,7 @@ function renderMarkdownBody(
                   key={index}
                   style={{ textAlign: tableBlock.model.alignments[index] }}
                 >
-                  {renderInline(cell.content)}
+                  {renderInline(cell.content, highlightTerm)}
                 </th>
               ))}
             </tr>
@@ -342,7 +387,7 @@ function renderMarkdownBody(
                     key={cellIndex}
                     style={{ textAlign: tableBlock.model.alignments[cellIndex] }}
                   >
-                    {renderInline(cell.content)}
+                    {renderInline(cell.content, highlightTerm)}
                   </td>
                 ))}
               </tr>
@@ -384,10 +429,10 @@ function renderMarkdownBody(
                   onChange={() => onToggleTask?.(lineNumber, !checked)}
                   type="checkbox"
                 />
-                <span>{renderInline(text)}</span>
+                <span>{renderInline(text, highlightTerm)}</span>
               </label>
             ) : (
-              renderInline(text)
+              renderInline(text, highlightTerm)
             )}
           </li>,
         );
@@ -416,7 +461,7 @@ function renderMarkdownBody(
       }
       nodes.push(
         <blockquote className="kolam-blockquote" key={`quote-${start}`}>
-          {renderMarkdownBody(quoteLines.join("\n"), onToggleTask)}
+          {renderMarkdownBody(quoteLines.join("\n"), highlightTerm, onToggleTask)}
         </blockquote>,
       );
       continue;
@@ -441,7 +486,7 @@ function renderMarkdownBody(
 
     nodes.push(
       <p className="kolam-paragraph p-1" key={`paragraph-${start}`}>
-        {renderInline(paragraphLines.join(" "))}
+        {renderInline(paragraphLines.join(" "), highlightTerm)}
       </p>,
     );
   }
@@ -451,11 +496,12 @@ function renderMarkdownBody(
 
 export default function KolamRenderedMarkdown({
   source,
+  highlightTerm,
   onToggleTask,
 }: RendererProps) {
   return (
     <div className="kolam-rendered-markdown">
-      {renderMarkdownBody(source, onToggleTask)}
+      {renderMarkdownBody(source, highlightTerm, onToggleTask)}
     </div>
   );
 }

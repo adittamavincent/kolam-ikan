@@ -257,6 +257,7 @@ describe("EntryCreator", () => {
   beforeEach(() => {
     queryClient = new QueryClient();
     vi.clearAllMocks();
+    window.localStorage.clear();
     Object.keys(mockDraftContents).forEach((key) => delete mockDraftContents[key]);
     Object.keys(mockDraftMarkdown).forEach((key) => delete mockDraftMarkdown[key]);
     Object.keys(mockInitialDrafts).forEach((key) => delete mockInitialDrafts[key]);
@@ -459,5 +460,63 @@ describe("EntryCreator", () => {
         content: [{ content: [{ text: "Batch note" }] }],
       }),
     );
+  });
+
+  it("opens a stash menu on right click and stashes the current draft", async () => {
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    const editor = await screen.findByTestId("mock-editor");
+    fireEvent.change(editor, { target: { value: "Draft to stash" } });
+
+    const entryCreator = container.querySelector(".entry-creator");
+    if (!entryCreator) {
+      throw new Error("Entry creator container not found");
+    }
+
+    fireEvent.contextMenu(entryCreator, { clientX: 120, clientY: 80 });
+
+    expect(
+      await screen.findByRole("menu", { name: /entry creator stash menu/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /stash changes/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("mock-editor")).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Add a persona or attach a file to start building this entry.")).toBeInTheDocument();
+  });
+
+  it("can pop the latest stash back into the composer", async () => {
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    const editor = await screen.findByTestId("mock-editor");
+    fireEvent.change(editor, { target: { value: "Bring me back" } });
+
+    const entryCreator = container.querySelector(".entry-creator");
+    if (!entryCreator) {
+      throw new Error("Entry creator container not found");
+    }
+
+    fireEvent.contextMenu(entryCreator, { clientX: 120, clientY: 80 });
+    fireEvent.click(await screen.findByRole("button", { name: /stash changes/i }));
+
+    fireEvent.contextMenu(entryCreator, { clientX: 120, clientY: 80 });
+    fireEvent.click(await screen.findByRole("button", { name: /pop latest stash/i }));
+
+    expect(await screen.findByDisplayValue("Bring me back")).toBeInTheDocument();
   });
 });

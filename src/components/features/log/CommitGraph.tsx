@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
   ArrowUpRight,
+  Archive,
   Camera,
   Clock3,
   Copy,
@@ -29,11 +30,14 @@ interface GraphNode {
   row: number;
   date: Date;
   shortHash: string;
-  nodeType: "entry" | "canvas_snapshot";
+  nodeType: "entry" | "canvas_snapshot" | "draft" | "stash";
   commitId: string | null;
   sourceEntryId: string | null;
   snapshotName: string | null;
   snapshotBranchName: string | null;
+  workspaceBranchName: string | null;
+  workspaceSectionCount: number;
+  workspaceHeadCommitId: string | null;
   isHead: boolean;
   tag?: string;
   entryKind: string;
@@ -139,6 +143,78 @@ function compareBranchNames(a: string, b: string): number {
   return a.localeCompare(b);
 }
 
+type EntryCreatorStashGraphItem = {
+  id: string;
+  createdAt: string;
+  branchName: string;
+  headCommitId: string | null;
+  sectionCount: number;
+};
+
+function readDraftSectionCount(streamId: string): number {
+  if (typeof window === "undefined") return 0;
+
+  try {
+    const raw = window.localStorage.getItem(`kolam_draft_v2_${streamId}`);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as { sections?: Record<string, unknown> } | null;
+    if (!parsed?.sections || typeof parsed.sections !== "object") return 0;
+    return Object.keys(parsed.sections).length;
+  } catch {
+    return 0;
+  }
+}
+
+function readEntryCreatorStashGraphItems(
+  streamId: string,
+): EntryCreatorStashGraphItem[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(
+      `kolam_entry_creator_stash_v1_${streamId}`,
+    );
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const candidate = item as {
+        id?: unknown;
+        createdAt?: unknown;
+        branchName?: unknown;
+        headCommitId?: unknown;
+        sections?: unknown[];
+      };
+
+      if (
+        typeof candidate.id !== "string" ||
+        typeof candidate.createdAt !== "string" ||
+        typeof candidate.branchName !== "string"
+      ) {
+        return [];
+      }
+
+      return [{
+        id: candidate.id,
+        createdAt: candidate.createdAt,
+        branchName: candidate.branchName,
+        headCommitId:
+          typeof candidate.headCommitId === "string"
+            ? candidate.headCommitId
+            : null,
+        sectionCount: Array.isArray(candidate.sections)
+          ? candidate.sections.length
+          : 0,
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
+
 function buildEdgePath(edge: GraphEdge): string {
   const x1 = laneX(edge.fromLane);
   const x2 = laneX(edge.toLane);
@@ -158,6 +234,35 @@ function buildEdgePath(edge: GraphEdge): string {
   const midY = y1 + (y2 - y1) / 2;
   return `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
 }
+
+type GraphRow =
+  | {
+      nodeType: "entry";
+      graphId: string;
+      rawId: string;
+      createdAt: string | null;
+      workspaceBranchName?: undefined;
+      workspaceSectionCount?: undefined;
+      workspaceHeadCommitId?: undefined;
+    }
+  | {
+      nodeType: "canvas_snapshot";
+      graphId: string;
+      rawId: string;
+      createdAt: string | null;
+      workspaceBranchName?: undefined;
+      workspaceSectionCount?: undefined;
+      workspaceHeadCommitId?: undefined;
+    }
+  | {
+      nodeType: "draft" | "stash";
+      graphId: string;
+      rawId: string;
+      createdAt: string;
+      workspaceBranchName: string;
+      workspaceSectionCount: number;
+      workspaceHeadCommitId: string | null;
+    };
 
 export function CommitGraph({
   currentStreamId,
@@ -181,7 +286,34 @@ export function CommitGraph({
     left: 0,
     top: 0,
   });
+  const [workspaceSnapshot, setWorkspaceSnapshot] = useState<{
+    draftSectionCount: number;
+    stashItems: EntryCreatorStashGraphItem[];
+  }>({
+    draftSectionCount: 0,
+    stashItems: [],
+  });
   const branchMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!currentStreamId || typeof window === "undefined") return;
+
+    const readWorkspaceSnapshot = () => {
+      setWorkspaceSnapshot({
+        draftSectionCount: readDraftSectionCount(currentStreamId),
+        stashItems: readEntryCreatorStashGraphItems(currentStreamId),
+      });
+    };
+
+    readWorkspaceSnapshot();
+    window.addEventListener("storage", readWorkspaceSnapshot);
+    window.addEventListener("focus", readWorkspaceSnapshot);
+
+    return () => {
+      window.removeEventListener("storage", readWorkspaceSnapshot);
+      window.removeEventListener("focus", readWorkspaceSnapshot);
+    };
+  }, [currentStreamId]);
 
   const { data: branches } = useQuery({
     queryKey: ["graph-branches", currentStreamId],
@@ -363,12 +495,52 @@ export function CommitGraph({
     return map;
   }, [latestEntryId, orderedBranches]);
 
+  const currentBranchHeadCommitId = useMemo(() => {
+    if (currentBranch === "main") {
+      const mainBranch = orderedBranches.find((branch) => branch.name === "main");
+      return mainBranch?.head_commit_id ?? latestEntryId ?? null;
+    }
+
+    return (
+      orderedBranches.find((branch) => branch.name === currentBranch)?.head_commit_id ??
+      null
+    );
+  }, [currentBranch, latestEntryId, orderedBranches]);
+
   const { nodes, edges, laneCount } = useMemo(() => {
     if (!rawEntries) {
       return { nodes: [] as GraphNode[], edges: [] as GraphEdge[], laneCount: 1 };
     }
 
-    const graphRows = [
+    const branchHeadByName = new Map(
+      orderedBranches.map((branch) => [branch.name, branch.head_commit_id ?? null]),
+    );
+    if (!branchHeadByName.has("main")) {
+      branchHeadByName.set("main", latestEntryId ?? null);
+    }
+
+    const graphRows: GraphRow[] = [
+      ...(workspaceSnapshot.draftSectionCount > 0
+        ? [{
+            nodeType: "draft" as const,
+            graphId: `draft:${currentBranch}`,
+            rawId: currentBranch,
+            createdAt: new Date().toISOString(),
+            workspaceBranchName: currentBranch,
+            workspaceSectionCount: workspaceSnapshot.draftSectionCount,
+            workspaceHeadCommitId: currentBranchHeadCommitId,
+          }]
+        : []),
+      ...workspaceSnapshot.stashItems.map((stash) => ({
+        nodeType: "stash" as const,
+        graphId: `stash:${stash.id}`,
+        rawId: stash.id,
+        createdAt: stash.createdAt,
+        workspaceBranchName: stash.branchName,
+        workspaceSectionCount: stash.sectionCount,
+        workspaceHeadCommitId:
+          stash.headCommitId ?? branchHeadByName.get(stash.branchName) ?? null,
+      })),
       ...rawEntries.map((entry) => ({
         nodeType: "entry" as const,
         graphId: `entry:${entry.id}`,
@@ -436,6 +608,10 @@ export function CommitGraph({
       const desiredCommitId =
         graphRow.nodeType === "entry"
           ? `entry:${graphRow.rawId}`
+          : graphRow.nodeType === "draft" || graphRow.nodeType === "stash"
+            ? graphRow.workspaceHeadCommitId
+              ? `entry:${graphRow.workspaceHeadCommitId}`
+              : null
           : snapshot?.source_entry_id
             ? `entry:${snapshot.source_entry_id}`
             : null;
@@ -455,9 +631,14 @@ export function CommitGraph({
       }
 
       const refs = entry ? branchRefsByCommitId.get(entry.id) ?? [] : [];
+      const workspaceBranchColor =
+        graphRow.workspaceBranchName
+          ? orderedBranches.find((branch) => branch.name === graphRow.workspaceBranchName)?.color
+          : undefined;
       const color =
         refs[0]?.color ??
         (entry ? colorByCommitId.get(entry.id) : undefined) ??
+        workspaceBranchColor ??
         (graphRow.nodeType === "canvas_snapshot" ? "#a855f7" : undefined) ??
         BRANCH_COLORS[lane % BRANCH_COLORS.length];
 
@@ -471,10 +652,17 @@ export function CommitGraph({
         sourceEntryId: snapshot?.source_entry_id ?? null,
         snapshotName: snapshot?.name ?? null,
         snapshotBranchName: snapshot?.branch_name ?? null,
+        workspaceBranchName: graphRow.workspaceBranchName ?? null,
+        workspaceSectionCount: graphRow.workspaceSectionCount ?? 0,
+        workspaceHeadCommitId: graphRow.workspaceHeadCommitId ?? null,
         isHead: entry?.id === latestEntryId,
         tag: entry ? tags[entry.id] : undefined,
         entryKind:
-          graphRow.nodeType === "entry" ? entry?.entry_kind ?? "commit" : "canvas_snapshot",
+          graphRow.nodeType === "entry"
+            ? entry?.entry_kind ?? "commit"
+            : graphRow.nodeType === "canvas_snapshot"
+              ? "canvas_snapshot"
+              : graphRow.nodeType,
         mergeSourceCommitId: entry?.merge_source_commit_id ?? null,
         mergeSourceBranchName: entry?.merge_source_branch_name ?? null,
         parentCommitId: entry?.parent_commit_id ?? null,
@@ -485,6 +673,8 @@ export function CommitGraph({
       const primaryParentId =
         graphRow.nodeType === "entry"
           ? (entry?.parent_commit_id ?? null)
+          : graphRow.nodeType === "draft" || graphRow.nodeType === "stash"
+            ? (graphRow.workspaceHeadCommitId ?? null)
           : (snapshot?.source_entry_id ?? null);
       if (primaryParentId) {
         const parentGraphId = `entry:${primaryParentId}`;
@@ -578,11 +768,15 @@ export function CommitGraph({
     };
   }, [
     branchRefsByCommitId,
+    currentBranch,
+    currentBranchHeadCommitId,
     latestEntryId,
     orderedBranches,
     rawCanvasVersions,
     rawEntries,
     tags,
+    workspaceSnapshot.draftSectionCount,
+    workspaceSnapshot.stashItems,
   ]);
 
   const graphWidth = Math.max(72, GRAPH_PAD_X * 2 + (laneCount - 1) * LANE_GAP);
@@ -615,8 +809,9 @@ export function CommitGraph({
 
   const getNodeRefs = useCallback(
     (node: GraphNode) => {
-      const commitRefs = node.commitId
-        ? branchRefsByCommitId.get(node.commitId) ?? []
+      const refCommitId = node.commitId ?? node.workspaceHeadCommitId;
+      const commitRefs = refCommitId
+        ? branchRefsByCommitId.get(refCommitId) ?? []
         : [];
       const filteredCommitRefs = useVirtualMainRef
         ? commitRefs.filter((ref) => ref.name !== "main")
@@ -1053,6 +1248,9 @@ export function CommitGraph({
             const refs = getNodeRefs(node);
             const isHovered = hoveredId === node.id;
             const accent = refs[0]?.color ?? "#568af2";
+            const isWorkspaceNode =
+              node.nodeType === "draft" || node.nodeType === "stash";
+            const branchLabel = node.workspaceBranchName;
 
             return (
               <button
@@ -1078,6 +1276,10 @@ export function CommitGraph({
                 title={
                   node.nodeType === "entry"
                     ? `Open commit ${node.shortHash}`
+                    : node.nodeType === "draft"
+                      ? "Working tree draft"
+                    : node.nodeType === "stash"
+                      ? "Stashed draft"
                     : "Open linked commit in commit list"
                 }
               >
@@ -1126,6 +1328,20 @@ export function CommitGraph({
                           </span>
                         )}
 
+                        {node.nodeType === "draft" && (
+                          <span className="inline-flex items-center gap-1 border border-cyan-800 bg-cyan-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
+                            <PencilLine className="h-3 w-3" />
+                            working tree
+                          </span>
+                        )}
+
+                        {node.nodeType === "stash" && (
+                          <span className="inline-flex items-center gap-1 border border-amber-800 bg-amber-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300">
+                            <Archive className="h-3 w-3" />
+                            stash
+                          </span>
+                        )}
+
                         {node.entryKind === "merge" && (
                           <span className="inline-flex items-center gap-1 border border-emerald-800 bg-emerald-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400">
                             <GitMerge className="h-3 w-3" />
@@ -1146,21 +1362,48 @@ export function CommitGraph({
                             {ref.name}
                           </span>
                         ))}
+                        {branchLabel &&
+                          !refs.some((ref) => ref.name === branchLabel) && (
+                            <span
+                              className="inline-flex items-center gap-1 border border-border-default px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                              style={{
+                                color: accent,
+                                backgroundColor: "var(--bg-surface-subtle)",
+                              }}
+                            >
+                              <GitBranch className="h-3 w-3" />
+                              {branchLabel}
+                            </span>
+                          )}
                       </div>
 
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-muted">
                         <span className="inline-flex items-center gap-1">
                           {node.nodeType === "canvas_snapshot" ? (
                             <Camera className="h-3.5 w-3.5" />
+                          ) : node.nodeType === "stash" ? (
+                            <Archive className="h-3.5 w-3.5" />
+                          ) : node.nodeType === "draft" ? (
+                            <PencilLine className="h-3.5 w-3.5" />
                           ) : (
                             <GitCommitHorizontal className="h-3.5 w-3.5" />
                           )}
                           {node.nodeType === "canvas_snapshot"
                             ? node.snapshotName || "Canvas snapshot"
+                            : node.nodeType === "draft"
+                              ? `${node.workspaceSectionCount} draft section${node.workspaceSectionCount === 1 ? "" : "s"} ready to commit`
+                            : node.nodeType === "stash"
+                              ? `${node.workspaceSectionCount} stashed section${node.workspaceSectionCount === 1 ? "" : "s"}`
                             : refs.length > 0
                               ? `${refs.length} branch ref${refs.length === 1 ? "" : "s"} point here`
                               : "Stream history commit"}
                         </span>
+                        {isWorkspaceNode && branchLabel && (
+                          <span className="inline-flex items-center gap-1">
+                            <GitBranch className="h-3.5 w-3.5" />
+                            on {branchLabel}
+                          </span>
+                        )}
                         {node.nodeType === "canvas_snapshot" && node.snapshotBranchName && (
                           <span className="inline-flex items-center gap-1">
                             <GitBranch className="h-3.5 w-3.5" />
@@ -1187,8 +1430,12 @@ export function CommitGraph({
                       <div className="mt-2 inline-flex items-center gap-1 text-[11px] text-text-muted">
                         {node.nodeType === "canvas_snapshot"
                           ? "Open linked commit in commit list"
+                          : node.nodeType === "draft"
+                            ? "Current draft workspace"
+                          : node.nodeType === "stash"
+                            ? "Stored stash snapshot"
                           : "Open in commit list"}
-                        <ArrowUpRight className="h-3.5 w-3.5" />
+                        {!isWorkspaceNode && <ArrowUpRight className="h-3.5 w-3.5" />}
                       </div>
                     </div>
                   </div>

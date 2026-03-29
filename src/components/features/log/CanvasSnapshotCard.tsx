@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { CanvasVersion } from "@/lib/types";
 import {
   Camera,
+  ChevronDown,
+  ChevronRight,
   Eye,
   GitCompare,
   RotateCcw,
@@ -14,6 +16,7 @@ import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import type { PartialBlock } from "@/lib/types/editor";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
+import { ThreadFrame } from "@/components/shared/SectionPreset";
 import {
   CANVAS_PREVIEW_OPEN_EVENT,
   contentToDiffText,
@@ -24,11 +27,15 @@ import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-pr
 interface CanvasSnapshotCardProps {
   version: CanvasVersion;
   streamId: string;
+  isCollapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 export function CanvasSnapshotCard({
   version,
   streamId,
+  isCollapsed = false,
+  onToggleCollapsed,
 }: CanvasSnapshotCardProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
@@ -79,14 +86,52 @@ export function CanvasSnapshotCard({
 
   return (
     <>
-      <div className="group relative overflow-hidden border border-border-default bg-surface-subtle transition-colors">
-        {/* Header */}
-        <div className="flex items-center border-b border-border-subtle bg-surface-elevated px-2.5 py-2">
-          <div className="flex w-full items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5">
-              <span className="h-4 w-1 bg-border-strong" aria-hidden="true" />
-              <Camera className="h-3 w-3 text-text-subtle" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default">
+      <ThreadFrame
+        hideBody={isCollapsed}
+        className="group"
+        frameClassName={`overflow-hidden transition-colors ${
+          isCollapsed
+            ? "border-border-strong bg-surface-default"
+            : "border-border-default bg-surface-subtle"
+        }`}
+        headerClassName={`transition-colors ${
+          isCollapsed
+            ? "bg-surface-hover hover:bg-surface-subtle"
+            : "bg-surface-elevated hover:bg-surface-hover"
+        }`}
+        bodyClassName="bg-surface-subtle"
+        header={
+          <div
+            role="button"
+            tabIndex={0}
+            aria-expanded={!isCollapsed}
+            onClick={onToggleCollapsed}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onToggleCollapsed?.();
+              }
+            }}
+            className="flex h-8 items-center justify-between gap-2"
+          >
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span
+                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center border ${
+                  isCollapsed
+                    ? "border-border-default bg-surface-default text-text-muted"
+                    : "border-action-primary-bg bg-surface-default text-action-primary-bg"
+                }`}
+                aria-hidden="true"
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </span>
+              <span className="h-4 w-1 shrink-0 bg-border-strong" aria-hidden="true" />
+              <Camera className="h-3 w-3 shrink-0 text-text-subtle" />
+              <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default">
                 Canvas Snapshot
               </span>
               {isAIGenerated ? (
@@ -96,7 +141,7 @@ export function CanvasSnapshotCard({
                 </span>
               ) : null}
             </div>
-            <span className="text-[10px] font-medium text-text-subtle font-mono">
+            <span className="shrink-0 font-mono text-[10px] font-medium text-text-subtle">
               {new Date(version.created_at || "").toLocaleString(undefined, {
                 month: "short",
                 day: "numeric",
@@ -105,11 +150,10 @@ export function CanvasSnapshotCard({
               })}
             </span>
           </div>
-        </div>
-
-        {/* Body */}
+        }
+      >
         <div className="px-2.5 py-2.5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs font-medium text-text-default">
                 {version.name || "Untitled Snapshot"}
@@ -157,7 +201,7 @@ export function CanvasSnapshotCard({
             </div>
           </div>
         </div>
-      </div>
+      </ThreadFrame>
 
       {isCompareOpen && (
         <div

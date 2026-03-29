@@ -1,5 +1,4 @@
 import { Fragment, useId, useLayoutEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogPanel,
@@ -131,7 +130,6 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const nameFieldHintId = useId();
   const supabase = createClient();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const { personas, isLoading } = usePersonas({ includeDeleted: true, includeLocal: true });
   const { createPersona, updatePersona, deletePersona, hardDeletePersona } =
     usePersonaMutations();
@@ -143,8 +141,12 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const [showDeleted, setShowDeleted] = useState(false);
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [selectedPersonaIds, setSelectedPersonaIds] = useState<string[]>([]);
+  const [bulkDeleteQueue, setBulkDeleteQueue] = useState<string[]>([]);
+  const [bulkDeleteTotalCount, setBulkDeleteTotalCount] = useState(0);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isPreparingBulkDelete, setIsPreparingBulkDelete] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [bulkDeleteInUseCount, setBulkDeleteInUseCount] = useState(0);
   const [deleteUsageCount, setDeleteUsageCount] = useState(0);
   const [transferPersonaId, setTransferPersonaId] = useState("");
   const [isPermanent, setIsPermanent] = useState(false);
@@ -257,94 +259,51 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     );
   };
 
-  const requestBulkDelete = () => {
-    if (selectedPersonaIds.length === 0) return;
-    setIsBulkDeleteDialogOpen(true);
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedPersonaIds.length === 0) return;
-
-    setIsBulkDeleteDialogOpen(false);
-    setIsBulkDeleting(true);
+  const resetDeleteState = () => {
+    setDeletingPersona(null);
+    setDeleteUsageCount(0);
+    setTransferPersonaId("");
+    setIsPermanent(false);
     setError(null);
-
-    const failedNames: string[] = [];
-    for (const personaId of selectedPersonaIds) {
-      const persona = personas?.find((item) => item.id === personaId);
-      if (!persona) continue;
-      try {
-        await deletePersona.mutateAsync({ id: personaId });
-      } catch {
-        failedNames.push(persona.name);
-      }
-    }
-
-    // Ensure all persona query variants are invalidated after bulk delete.
-    queryClient.invalidateQueries({
-      predicate: (query) =>
-        Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
-    });
-
-    setIsBulkDeleting(false);
-    if (failedNames.length > 0) {
-      setError(
-        `Failed to delete ${failedNames.length} persona${failedNames.length === 1 ? "" : "s"}: ${failedNames.join(", ")}`,
-      );
-      setSelectedPersonaIds(
-        selectedPersonaIds.filter((id) => {
-          const persona = personas?.find((item) => item.id === id);
-          return !!persona && failedNames.includes(persona.name);
-        }),
-      );
-      return;
-    }
-
-    setSelectedPersonaIds([]);
-    setIsBulkMode(false);
   };
 
-  const bulkDeleteCount = selectedPersonaIds.length;
-  const bulkDeleteTitle=`Delete ${bulkDeleteCount} selected persona${
- bulkDeleteCount === 1 ? "" : "s"
- }?`;
-  const bulkDeleteDescription =
-    "Personas that are in use may fail and will be reported.";
+  const getActiveUsageCount = async (personaId: string) => {
+    const { data: usageRows, error: usageError } = await supabase
+      .from("sections")
+      .select(
+        "id, entries(id, is_draft, deleted_at, streams(id, deleted_at, domains(id, deleted_at)))",
+      )
+      .eq("persona_id", personaId);
 
-  const handleDeleteRequest = async (persona: Persona) => {
+    if (usageError) throw usageError;
+
+    return (usageRows ?? []).filter((row) => {
+      const entry = Array.isArray(row.entries) ? row.entries[0] : row.entries;
+      if (!entry) return false;
+
+      const streamRaw = (entry as { streams?: unknown }).streams;
+      const stream = Array.isArray(streamRaw) ? streamRaw[0] : streamRaw;
+      if (!stream) return false;
+
+      const domainRaw = (stream as { domains?: unknown }).domains;
+      const domain = Array.isArray(domainRaw) ? domainRaw[0] : domainRaw;
+      if (!domain) return false;
+
+      return (
+        entry.is_draft === false &&
+        entry.deleted_at == null &&
+        (stream as { deleted_at?: string | null }).deleted_at == null &&
+        (domain as { deleted_at?: string | null }).deleted_at == null
+      );
+    }).length;
+  };
+
+  const openDeleteGuard = async (persona: Persona) => {
     setError(null);
     setIsPreparingDelete(true);
 
     try {
-      const { data: usageRows, error: usageError } = await supabase
-        .from("sections")
-        .select(
-          "id, entries(id, is_draft, deleted_at, streams(id, deleted_at, domains(id, deleted_at)))",
-        )
-        .eq("persona_id", persona.id);
-
-      if (usageError) throw usageError;
-
-      const activeUsageCount = (usageRows ?? []).filter((row) => {
-        const entry = Array.isArray(row.entries) ? row.entries[0] : row.entries;
-        if (!entry) return false;
-
-        const streamRaw = (entry as { streams?: unknown }).streams;
-        const stream = Array.isArray(streamRaw) ? streamRaw[0] : streamRaw;
-        if (!stream) return false;
-
-        const domainRaw = (stream as { domains?: unknown }).domains;
-        const domain = Array.isArray(domainRaw) ? domainRaw[0] : domainRaw;
-        if (!domain) return false;
-
-        return (
-          entry.is_draft === false &&
-          entry.deleted_at == null &&
-          (stream as { deleted_at?: string | null }).deleted_at == null &&
-          (domain as { deleted_at?: string | null }).deleted_at == null
-        );
-      }).length;
-
+      const activeUsageCount = await getActiveUsageCount(persona.id);
       const nextTransferCandidates = (personas ?? [])
         .filter((candidate) => !candidate.deleted_at)
         .filter((candidate) => candidate.id !== persona.id);
@@ -358,6 +317,93 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     } finally {
       setIsPreparingDelete(false);
     }
+  };
+
+  const finishBulkDeleteFlow = () => {
+    setBulkDeleteQueue([]);
+    setBulkDeleteTotalCount(0);
+    setBulkDeleteInUseCount(0);
+    setIsBulkDeleting(false);
+    setSelectedPersonaIds([]);
+    setIsBulkMode(false);
+  };
+
+  const continueBulkDeleteFlow = async (
+    currentQueue: string[],
+    processedPersonaId?: string,
+  ) => {
+    if (processedPersonaId) {
+      setSelectedPersonaIds((prev) => prev.filter((id) => id !== processedPersonaId));
+    }
+
+    const remainingQueue = processedPersonaId
+      ? currentQueue.filter((id) => id !== processedPersonaId)
+      : currentQueue;
+
+    if (remainingQueue.length === 0) {
+      finishBulkDeleteFlow();
+      return;
+    }
+
+    setBulkDeleteQueue(remainingQueue);
+
+    const nextPersona = (personas ?? []).find(
+      (persona) => persona.id === remainingQueue[0],
+    );
+
+    if (!nextPersona) {
+      await continueBulkDeleteFlow(remainingQueue, remainingQueue[0]);
+      return;
+    }
+
+    await openDeleteGuard(nextPersona);
+  };
+
+  const requestBulkDelete = async () => {
+    if (selectedPersonaIds.length === 0) return;
+
+    setError(null);
+    setIsPreparingBulkDelete(true);
+
+    try {
+      const usageCounts = await Promise.all(
+        selectedPersonaIds.map((personaId) => getActiveUsageCount(personaId)),
+      );
+      setBulkDeleteInUseCount(
+        usageCounts.filter((count) => count > 0).length,
+      );
+      setIsBulkDeleteDialogOpen(true);
+    } catch (deleteError) {
+      setError(getErrorMessage(deleteError));
+    } finally {
+      setIsPreparingBulkDelete(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPersonaIds.length === 0) return;
+
+    setIsBulkDeleteDialogOpen(false);
+    setIsBulkDeleting(true);
+    setError(null);
+    setBulkDeleteTotalCount(selectedPersonaIds.length);
+    setBulkDeleteQueue(selectedPersonaIds);
+    await continueBulkDeleteFlow(selectedPersonaIds);
+  };
+
+  const bulkDeleteCount = selectedPersonaIds.length;
+  const bulkDeleteTitle = `Review ${bulkDeleteCount} selected persona${
+    bulkDeleteCount === 1 ? "" : "s"
+  }?`;
+  const bulkDeleteDescription =
+    bulkDeleteInUseCount > 0
+      ? `${bulkDeleteInUseCount} selected persona${
+          bulkDeleteInUseCount === 1 ? " is" : "s are"
+        } used in active sections. Continue to review each delete one by one with the regular guard.`
+      : "Each selected persona will be reviewed one by one with the regular delete guard before anything is removed.";
+
+  const handleDeleteRequest = async (persona: Persona) => {
+    await openDeleteGuard(persona);
   };
 
   const handleDelete = async (permanent?: boolean) => {
@@ -388,11 +434,14 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
         await deletePersona.mutateAsync(params);
       }
 
-      setDeletingPersona(null);
-      setDeleteUsageCount(0);
-      setTransferPersonaId("");
-      setIsPermanent(false);
-      setError(null);
+      const currentQueue = bulkDeleteQueue;
+      const deletedPersonaId = deletingPersona.id;
+
+      resetDeleteState();
+
+      if (currentQueue.length > 0) {
+        await continueBulkDeleteFlow(currentQueue, deletedPersonaId);
+      }
     } catch (deleteError) {
       setError(getErrorMessage(deleteError));
     }
@@ -403,6 +452,10 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
     : { is_shadow: false as const };
   const previewTypeLabel = sanitizePersonaTypeInput(type, DEFAULT_PERSONA_TYPE);
   const previewName = name.trim() || "Untitled Persona";
+  const bulkDeleteCurrentStep =
+    bulkDeleteQueue.length > 0
+      ? bulkDeleteTotalCount - bulkDeleteQueue.length + 1
+      : 0;
   const canEditPersona = (persona: Persona) =>
     !persona.is_system && persona.user_id === user?.id;
 
@@ -457,6 +510,11 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           ? "Permanently Delete Persona"
                           : "Delete Persona"}
                       </h4>
+                      {bulkDeleteQueue.length > 0 && (
+                        <p className="mt-1 text-[11px] uppercase tracking-wider text-text-muted">
+                          Reviewing {bulkDeleteCurrentStep} of {bulkDeleteTotalCount}
+                        </p>
+                      )}
                       <p className="mt-1 text-xs text-text-muted">
                         You are deleting{" "}
                         <span className="font-medium text-text-default">
@@ -531,15 +589,21 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                       <button
                         type="button"
                         onClick={() => {
-                          setDeletingPersona(null);
-                          setDeleteUsageCount(0);
-                          setTransferPersonaId("");
-                          setIsPermanent(false);
-                          setError(null);
+                          const currentQueue = bulkDeleteQueue;
+                          const skippedPersonaId = deletingPersona.id;
+
+                          resetDeleteState();
+
+                          if (currentQueue.length > 0) {
+                            void continueBulkDeleteFlow(
+                              currentQueue,
+                              skippedPersonaId,
+                            );
+                          }
                         }}
                         className="px-4 py-2 text-sm font-medium text-text-subtle hover:text-text-default hover:bg-surface-subtle transition-colors"
                       >
-                        Cancel
+                        {bulkDeleteQueue.length > 0 ? "Skip" : "Cancel"}
                       </button>
                       {isPermanent ? (
                         <button
@@ -826,11 +890,13 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                             type="button"
                             onClick={requestBulkDelete}
                             disabled={
-                              selectedPersonaIds.length === 0 || isBulkDeleting
+                              selectedPersonaIds.length === 0 ||
+                              isPreparingBulkDelete ||
+                              isBulkDeleting
                             }
                             className="inline-flex items-center gap-1 bg-status-error-bg px-2 py-1 font-medium text-status-error-text disabled:opacity-50"
                           >
-                            {isBulkDeleting && (
+                            {(isPreparingBulkDelete || isBulkDeleting) && (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             )}
                             Delete selected
@@ -999,10 +1065,10 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
         open={isBulkDeleteDialogOpen}
         title={bulkDeleteTitle}
         description={bulkDeleteDescription}
-        confirmLabel="Delete selected"
+        confirmLabel="Review selected"
         cancelLabel="Cancel"
         destructive
-        loading={isBulkDeleting}
+        loading={isPreparingBulkDelete}
         onCancel={() => setIsBulkDeleteDialogOpen(false)}
         onConfirm={() => {
           void handleBulkDelete();

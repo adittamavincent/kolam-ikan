@@ -55,6 +55,7 @@ import type { PartialBlock } from "@/lib/types/editor";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { TextInputDialog } from "@/components/shared/TextInputDialog";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
+import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import {
   cloneStoredContentFields,
   storedContentToMarkdown,
@@ -107,6 +108,21 @@ function compareBranchNames(a: string, b: string): number {
   if (a === "main") return -1;
   if (b === "main") return 1;
   return a.localeCompare(b);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function countSearchOccurrences(source: string, term: string): number {
+  const normalizedTerm = term.trim();
+  if (!normalizedTerm) return 0;
+  const matches = source.match(new RegExp(escapeRegExp(normalizedTerm), "gi"));
+  return matches?.length ?? 0;
+}
+
+function getTimelineItemCollapseKey(item: { type: "entry" | "canvas_snapshot"; data: { id: string } }): string {
+  return `${item.type}:${item.data.id}`;
 }
 
 type EntryConfirmType = "reset" | "delete";
@@ -198,6 +214,7 @@ function lineDiff(oldText: string, newText: string): DiffLine[] {
 }
 
 const STASH_KEY = (streamId: string) => `kolam_stash_${streamId}`;
+const EMPTY_COLLAPSED_ITEM_IDS: string[] = [];
 
 // ─── Git Diff Modal ──────────────────────────────────────────────────────────
 
@@ -407,11 +424,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const supabase = createClient();
   const [hasHydrated, setHasHydrated] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [filterPersonaId] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
+  const [highlightSectionId, setHighlightSectionId] = useState<string | null>(null);
+  const [revealItemKey, setRevealItemKey] = useState<string | null>(null);
+  const [animatedItemKey, setAnimatedItemKey] = useState<string | null>(null);
+  const [activeOccurrenceIndex, setActiveOccurrenceIndex] = useState<number | null>(null);
   const [amendState, setAmendState] = useState<AmendState | null>(null);
   const [amendError, setAmendError] = useState<string | null>(null);
   const [uploadingAmendSectionIds, setUploadingAmendSectionIds] = useState<
@@ -428,14 +448,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   } | null>(null);
   const [tagTarget, setTagTarget] = useState<EntryWithSections | null>(null);
   const [stashedIds, setStashedIds] = useState<Set<string>>(new Set());
-  const [collapsedEntryIds, setCollapsedEntryIds] = useState<Set<string>>(
-    new Set(),
-  );
   const [showStash, setShowStash] = useState(false);
   const [tags, setTags] = useState<Record<string, string>>({}); // entryId → tag label
   const [currentBranch, setCurrentBranch] = useState("main");
   const [graphView, setGraphView] = useState(false);
   const entryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState({
     left: 0,
@@ -447,6 +465,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   } | null>(null);
   const [attachmentPreview, setAttachmentPreview] =
     useState<FileAttachmentPreviewData | null>(null);
+  const [isAttachmentPreviewOpen, setIsAttachmentPreviewOpen] = useState(false);
   const [activePreviewTab, setActivePreviewTab] = useState<"file" | "parsed">(
     "file",
   );
@@ -471,38 +490,97 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     setHasHydrated(true);
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+  const applySearchHighlightPayload = useCallback(
+    (
+      rawPayload:
+        | string
+        | {
+            term: string;
+            target: "log" | "canvas";
+            itemId?: string | null;
+            entryId?: string | null;
+            streamId?: string;
+          },
+    ) => {
+      try {
+        const payload =
+          typeof rawPayload === "string"
+            ? (JSON.parse(rawPayload) as {
+                term: string;
+                target: "log" | "canvas";
+                itemId?: string | null;
+                entryId?: string | null;
+                streamId?: string;
+              })
+            : rawPayload;
+
+        if (payload.streamId !== streamId) return;
+
+        setSearchTerm(payload.term);
+        setHighlightTerm(payload.term);
+        setHighlightEntryId(payload.entryId ?? null);
+        setHighlightSectionId(
+          payload.target === "log" ? (payload.itemId ?? null) : null,
+        );
+
+        if (payload.target === "log" && payload.entryId) {
+          setRevealItemKey(`entry:${payload.entryId}`);
+        } else if (payload.target === "canvas" && payload.itemId) {
+          setRevealItemKey(`canvas_snapshot:${payload.itemId}`);
+        }
+      } finally {
+      }
+    },
+    [streamId],
+  );
 
   useEffect(() => {
     const raw = sessionStorage.getItem("kolam_search_highlight");
     if (!raw) return;
-    try {
-      const payload = JSON.parse(raw) as {
-        term: string;
-        target: "log" | "canvas";
-        entryId?: string | null;
-        streamId?: string;
-      };
-      if (payload.target === "log" && payload.streamId === streamId) {
-        setSearchTerm(payload.term);
-        setHighlightTerm(payload.term);
-        setHighlightEntryId(payload.entryId ?? null);
-        sessionStorage.removeItem("kolam_search_highlight");
-      }
-    } finally {
-    }
-  }, [streamId]);
+    applySearchHighlightPayload(raw);
+    sessionStorage.removeItem("kolam_search_highlight");
+  }, [applySearchHighlightPayload]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onSearchHighlight = (
+      event: Event,
+    ) => {
+      const detail = (
+        event as CustomEvent<{
+          term: string;
+          target: "log" | "canvas";
+          itemId?: string | null;
+          entryId?: string | null;
+          streamId?: string;
+        }>
+      ).detail;
+      applySearchHighlightPayload(detail);
+    };
+
+    window.addEventListener(
+      "kolam_search_highlight",
+      onSearchHighlight as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "kolam_search_highlight",
+        onSearchHighlight as EventListener,
+      );
+    };
+  }, [applySearchHighlightPayload]);
 
   const scrollToHighlighted = useCallback(() => {
-    if (!highlightEntryId) return;
-    const ref = entryRefs.current[highlightEntryId];
+    const sectionRef = highlightSectionId
+      ? sectionRefs.current[highlightSectionId]
+      : null;
+    const targetKey =
+      revealItemKey ?? (highlightEntryId ? `entry:${highlightEntryId}` : null);
+    const ref = sectionRef ?? (targetKey ? entryRefs.current[targetKey] : null);
     if (ref) ref.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [highlightEntryId]);
+  }, [highlightEntryId, highlightSectionId, revealItemKey]);
 
   const { data: branchRowsForMutations } = useQuery({
     queryKey: ["branches", streamId],
@@ -536,7 +614,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   } = useEntries(streamId, {
     branchId: currentBranchForMutations?.id ?? null,
     parentEntryId: currentBranchForMutations?.head_commit_id ?? null,
-    search: debouncedSearch,
+    search: "",
     personaId: filterPersonaId,
     sortOrder,
   });
@@ -557,6 +635,25 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const { timelineItems } = useTimelineItems(streamId, entryList, {
     sortOrder,
   });
+  const collapsedEntryIdList = useUiPreferencesStore((state) => {
+    return state.logCollapsedItemIdsByStream[streamId] ?? EMPTY_COLLAPSED_ITEM_IDS;
+  });
+  const collapsedEntryIds = useMemo(
+    () => new Set(collapsedEntryIdList),
+    [collapsedEntryIdList],
+  );
+  const setCollapsedLogItemsForStream = useUiPreferencesStore(
+    (state) => state.setCollapsedLogItemsForStream,
+  );
+  const removeCollapsedLogItem = useUiPreferencesStore(
+    (state) => state.removeCollapsedLogItem,
+  );
+  const toggleCollapsedLogItem = useUiPreferencesStore(
+    (state) => state.toggleCollapsedLogItem,
+  );
+  const pruneCollapsedLogItemsForStream = useUiPreferencesStore(
+    (state) => state.pruneCollapsedLogItemsForStream,
+  );
 
   const { data: latestEntryId } = useQuery({
     queryKey: ["latest-entry-id", streamId],
@@ -647,6 +744,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         previewUrl,
         importStatus,
       });
+      setIsAttachmentPreviewOpen(true);
       setActivePreviewTab(nextTab);
       setParsedPreview(null);
       setParsedPreviewError(null);
@@ -660,11 +758,15 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const closeAttachmentPreview = useCallback(() => {
     if (parsedPreviewLoading) return;
+    setIsAttachmentPreviewOpen(false);
+  }, [parsedPreviewLoading]);
+
+  const resetAttachmentPreview = useCallback(() => {
     setAttachmentPreview(null);
     setParsedPreview(null);
     setParsedPreviewError(null);
     setActivePreviewTab("file");
-  }, [parsedPreviewLoading]);
+  }, []);
 
   const openAttachmentPreview = useCallback(
     (attachment: SectionFileAttachmentWithDocument, tab: "file" | "parsed") => {
@@ -1506,12 +1608,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     // Keep draft sections empty initially; each section draft is written only
     // after the user edits it. This avoids overriding initial editor payload
     // when toggling modes in read/edit flows.
-    setCollapsedEntryIds((prev) => {
-      if (!prev.has(entry.id)) return prev;
-      const next = new Set(prev);
-      next.delete(entry.id);
-      return next;
-    });
+    const entryCollapseKey = `entry:${entry.id}`;
+    if (collapsedEntryIds.has(entryCollapseKey)) {
+      removeCollapsedLogItem(streamId, entryCollapseKey);
+    }
     setAmendState({ entryId: entry.id, sections: {} });
     setAmendError(null);
   };
@@ -1686,63 +1786,199 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const visibleEntries = showStash
     ? branchEntries
     : branchEntries.filter((e) => !stashedIds.has(e.id));
+  const normalizedSearchTerm = searchTerm.trim();
   const branchCanvasCommitCount = useMemo(
     () =>
       branchTimelineItems.filter((item) => item.type === "canvas_snapshot")
         .length,
     [branchTimelineItems],
   );
-  const visibleEntryIds = useMemo(
-    () => visibleEntries.map((entry) => entry.id),
-    [visibleEntries],
+  const visibleCollapsibleItemIds = useMemo(
+    () =>
+      branchTimelineItems
+        .filter((item) => showStash || item.type !== "entry" || !stashedIds.has(item.data.id))
+        .map(getTimelineItemCollapseKey),
+    [branchTimelineItems, showStash, stashedIds],
   );
 
   const setEntriesCollapsed = useCallback(
     (entryIds: string[], collapsed: boolean) => {
       if (!entryIds.length) return;
 
-      setCollapsedEntryIds((prev) => {
-        const next = new Set(prev);
-        let changed = false;
+      const next = new Set(collapsedEntryIds);
 
-        for (const entryId of entryIds) {
-          if (collapsed) {
-            if (!next.has(entryId)) {
-              next.add(entryId);
-              changed = true;
-            }
-          } else if (next.delete(entryId)) {
-            changed = true;
-          }
-        }
+      for (const entryId of entryIds) {
+        if (collapsed) next.add(entryId);
+        else next.delete(entryId);
+      }
 
-        return changed ? next : prev;
-      });
+      setCollapsedLogItemsForStream(streamId, next);
     },
-    [],
+    [collapsedEntryIds, setCollapsedLogItemsForStream, streamId],
   );
 
   const toggleEntryCollapsed = useCallback(
     (entryId: string) => {
-      if (amendState?.entryId === entryId) return;
+      if (amendState?.entryId && `entry:${amendState.entryId}` === entryId) return;
 
-      setCollapsedEntryIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(entryId)) next.delete(entryId);
-        else next.add(entryId);
-        return next;
-      });
+      toggleCollapsedLogItem(streamId, entryId);
     },
-    [amendState?.entryId],
+    [amendState?.entryId, streamId, toggleCollapsedLogItem],
   );
 
   const setVisibleEntriesCollapsed = useCallback(
     (collapsed: boolean) => {
-      const targetIds = visibleEntryIds.filter((id) => id !== amendState?.entryId);
+      const targetIds = visibleCollapsibleItemIds.filter(
+        (id) => id !== (amendState?.entryId ? `entry:${amendState.entryId}` : null),
+      );
       setEntriesCollapsed(targetIds, collapsed);
     },
-    [amendState?.entryId, setEntriesCollapsed, visibleEntryIds],
+    [amendState?.entryId, setEntriesCollapsed, visibleCollapsibleItemIds],
   );
+
+  const occurrenceTargets = useMemo(() => {
+    if (!normalizedSearchTerm) return [];
+
+    const targets: Array<{
+      itemKey: string;
+      entryId: string;
+      sectionId: string;
+      occurrenceIndexInSection: number;
+    }> = [];
+
+    for (const entry of visibleEntries) {
+      for (const section of entry.sections ?? []) {
+        const markdown = storedContentToMarkdown(section);
+        const count = countSearchOccurrences(markdown, normalizedSearchTerm);
+        for (let index = 0; index < count; index += 1) {
+          targets.push({
+            itemKey: `entry:${entry.id}`,
+            entryId: entry.id,
+            sectionId: section.id,
+            occurrenceIndexInSection: index,
+          });
+        }
+      }
+    }
+
+    return targets;
+  }, [normalizedSearchTerm, visibleEntries]);
+
+  useEffect(() => {
+    if (!normalizedSearchTerm) {
+      setActiveOccurrenceIndex(null);
+      return;
+    }
+
+    if (occurrenceTargets.length === 0) {
+      setActiveOccurrenceIndex(null);
+      return;
+    }
+
+    const highlightedIndex = highlightSectionId
+      ? occurrenceTargets.findIndex((target) => target.sectionId === highlightSectionId)
+      : -1;
+
+    setActiveOccurrenceIndex((current) => {
+      if (
+        current !== null &&
+        current >= 0 &&
+        current < occurrenceTargets.length
+      ) {
+        return current;
+      }
+      if (highlightedIndex >= 0) return highlightedIndex;
+      return 0;
+    });
+  }, [highlightSectionId, normalizedSearchTerm, occurrenceTargets]);
+
+  useEffect(() => {
+    if (normalizedSearchTerm) return;
+    document
+      .querySelectorAll(".kolam-search-hit-active")
+      .forEach((node) => node.classList.remove("kolam-search-hit-active"));
+  }, [normalizedSearchTerm]);
+
+  useEffect(() => {
+    if (!normalizedSearchTerm) return;
+    if (activeOccurrenceIndex === null) return;
+
+    const target = occurrenceTargets[activeOccurrenceIndex];
+    if (!target) return;
+
+    setHighlightEntryId(target.entryId);
+    setHighlightSectionId(target.sectionId);
+    setRevealItemKey(target.itemKey);
+  }, [activeOccurrenceIndex, normalizedSearchTerm, occurrenceTargets]);
+
+  useEffect(() => {
+    if (!revealItemKey) return;
+    if (!hasHydrated) return;
+    if (isEntriesLoading || isEntriesFetching) return;
+    if (branchTimelineItems.length === 0) return;
+
+    const itemExists = branchTimelineItems.some(
+      (item) => getTimelineItemCollapseKey(item) === revealItemKey,
+    );
+    if (!itemExists) return;
+
+    if (collapsedEntryIds.has(revealItemKey)) {
+      removeCollapsedLogItem(streamId, revealItemKey);
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToHighlighted();
+      setAnimatedItemKey(revealItemKey);
+    });
+
+    const timer = window.setTimeout(() => {
+      setAnimatedItemKey((current) =>
+        current === revealItemKey ? null : current,
+      );
+      setRevealItemKey((current) => (current === revealItemKey ? null : current));
+    }, 2200);
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.clearTimeout(timer);
+    };
+  }, [
+    branchTimelineItems,
+    collapsedEntryIds,
+    hasHydrated,
+    isEntriesFetching,
+    isEntriesLoading,
+    removeCollapsedLogItem,
+    revealItemKey,
+    scrollToHighlighted,
+    streamId,
+  ]);
+
+  useEffect(() => {
+    if (!normalizedSearchTerm) return;
+    if (activeOccurrenceIndex === null) return;
+
+    const target = occurrenceTargets[activeOccurrenceIndex];
+    if (!target) return;
+
+    const rafId = window.requestAnimationFrame(() => {
+      document
+        .querySelectorAll(".kolam-search-hit-active")
+        .forEach((node) => node.classList.remove("kolam-search-hit-active"));
+
+      const sectionNode = sectionRefs.current[target.sectionId];
+      if (!sectionNode) return;
+
+      const marks = sectionNode.querySelectorAll<HTMLElement>(".kolam-search-hit");
+      const activeMark = marks[target.occurrenceIndexInSection] ?? null;
+      if (!activeMark) return;
+
+      activeMark.classList.add("kolam-search-hit-active");
+      activeMark.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    return () => window.cancelAnimationFrame(rafId);
+  }, [activeOccurrenceIndex, normalizedSearchTerm, occurrenceTargets]);
 
   const stashCount = stashedIds.size;
   const showLoadingState =
@@ -1803,30 +2039,33 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const collapsedVisibleCount = useMemo(
     () =>
-      visibleEntryIds.reduce(
+      visibleCollapsibleItemIds.reduce(
         (count, entryId) => count + (collapsedEntryIds.has(entryId) ? 1 : 0),
         0,
       ),
-    [collapsedEntryIds, visibleEntryIds],
+    [collapsedEntryIds, visibleCollapsibleItemIds],
   );
   const allVisibleCollapsed =
-    visibleEntryIds.length > 0 && collapsedVisibleCount === visibleEntryIds.length;
+    visibleCollapsibleItemIds.length > 0 &&
+    collapsedVisibleCount === visibleCollapsibleItemIds.length;
 
   useEffect(() => {
-    const branchEntryIds = new Set(branchEntries.map((entry) => entry.id));
+    if (!hasHydrated) return;
+    if (isEntriesLoading || isEntriesFetching) return;
+    if (branchTimelineItems.length === 0) return;
 
-    setCollapsedEntryIds((prev) => {
-      let changed = false;
-      const next = new Set<string>();
-
-      for (const entryId of prev) {
-        if (branchEntryIds.has(entryId)) next.add(entryId);
-        else changed = true;
-      }
-
-      return changed ? next : prev;
-    });
-  }, [branchEntries]);
+    pruneCollapsedLogItemsForStream(
+      streamId,
+      branchTimelineItems.map(getTimelineItemCollapseKey),
+    );
+  }, [
+    branchTimelineItems,
+    hasHydrated,
+    isEntriesFetching,
+    isEntriesLoading,
+    pruneCollapsedLogItemsForStream,
+    streamId,
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1882,6 +2121,22 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       }
     };
 
+    const onNextOccurrence = () => {
+      if (!occurrenceTargets.length) return;
+      setActiveOccurrenceIndex((prev) => {
+        if (prev === null) return 0;
+        return (prev + 1) % occurrenceTargets.length;
+      });
+    };
+
+    const onPrevOccurrence = () => {
+      if (!occurrenceTargets.length) return;
+      setActiveOccurrenceIndex((prev) => {
+        if (prev === null) return occurrenceTargets.length - 1;
+        return (prev - 1 + occurrenceTargets.length) % occurrenceTargets.length;
+      });
+    };
+
     window.addEventListener("kolam_header_log_export", onExport);
     window.addEventListener("kolam_header_log_toggle_graph", onToggleGraph);
     window.addEventListener("kolam_header_log_toggle_stash", onToggleStash);
@@ -1901,6 +2156,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     window.addEventListener(
       "kolam_header_log_search_term",
       onSearch as EventListener,
+    );
+    window.addEventListener(
+      "kolam_header_log_next_occurrence",
+      onNextOccurrence,
+    );
+    window.addEventListener(
+      "kolam_header_log_prev_occurrence",
+      onPrevOccurrence,
     );
 
     return () => {
@@ -1930,11 +2193,20 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         "kolam_header_log_search_term",
         onSearch as EventListener,
       );
+      window.removeEventListener(
+        "kolam_header_log_next_occurrence",
+        onNextOccurrence,
+      );
+      window.removeEventListener(
+        "kolam_header_log_prev_occurrence",
+        onPrevOccurrence,
+      );
     };
   }, [
     handleExport,
     openCreateBranchDialog,
     allVisibleCollapsed,
+    occurrenceTargets.length,
     setVisibleEntriesCollapsed,
   ]);
 
@@ -1954,6 +2226,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           graphView,
           sortOrder,
           searchTerm,
+          occurrenceCount: occurrenceTargets.length,
+          activeOccurrenceIndex:
+            activeOccurrenceIndex !== null ? activeOccurrenceIndex + 1 : 0,
           branchNames,
           currentBranchHeadId,
         },
@@ -1971,6 +2246,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     graphView,
     sortOrder,
     searchTerm,
+    occurrenceTargets.length,
+    activeOccurrenceIndex,
     branchNames,
     currentBranchHeadId,
   ]);
@@ -2036,12 +2313,28 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                   <div className="flex flex-col gap-1.5">
                     {branchTimelineItems.map((item) => {
                       if (item.type === "canvas_snapshot") {
+                        const itemCollapseKey = getTimelineItemCollapseKey(item);
                         return (
-                          <CanvasSnapshotCard
+                          <div
                             key={`snapshot-${item.data.id}`}
-                            version={item.data}
-                            streamId={streamId}
-                          />
+                            ref={(node) => {
+                              entryRefs.current[itemCollapseKey] = node;
+                            }}
+                            className={
+                              animatedItemKey === itemCollapseKey
+                                ? "kolam-search-reveal"
+                                : undefined
+                            }
+                          >
+                            <CanvasSnapshotCard
+                              version={item.data}
+                              streamId={streamId}
+                              isCollapsed={collapsedEntryIds.has(itemCollapseKey)}
+                              onToggleCollapsed={() =>
+                                toggleEntryCollapsed(itemCollapseKey)
+                              }
+                            />
+                          </div>
                         );
                       }
 
@@ -2053,7 +2346,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       const isLatestEntry = headEntryId === entry.id;
                       const isAmending = amendState?.entryId === entry.id;
                       const isStashed = stashedIds.has(entry.id);
-                      const isCollapsed = collapsedEntryIds.has(entry.id);
+                      const itemCollapseKey = getTimelineItemCollapseKey(item);
+                      const isCollapsed = collapsedEntryIds.has(itemCollapseKey);
                       const tag = tags[entry.id];
                       const hash = shortHash(entry.id);
                       const entryBranches =
@@ -2074,6 +2368,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                             key={entry.id}
                             ref={(node) => {
                               entryRefs.current[entry.id] = node;
+                              entryRefs.current[itemCollapseKey] = node;
                             }}
                             className={isStashed ? "opacity-50" : undefined}
                           >
@@ -2093,13 +2388,21 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                           key={entry.id}
                           ref={(node) => {
                             entryRefs.current[entry.id] = node;
+                            entryRefs.current[itemCollapseKey] = node;
                           }}
                           onContextMenu={(e) => handleContextMenu(e, entry)}
-                          className={isStashed ? "text-text-muted" : undefined}
+                          className={[
+                            isStashed ? "text-text-muted" : "",
+                            animatedItemKey === itemCollapseKey
+                              ? "kolam-search-reveal"
+                              : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ") || undefined}
                         >
                           <ThreadFrame
                             hideBody={isCollapsed}
-                            frameClassName={`group transition-colors ${
+                            frameClassName={`group overflow-visible transition-colors hover:z-20 focus-within:z-20 ${
                               isCollapsed
                                 ? "border-border-strong bg-surface-default"
                                 : "border-border-default bg-surface-default"
@@ -2115,15 +2418,15 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                 role="button"
                                 tabIndex={isAmending ? -1 : 0}
                                 aria-expanded={!isCollapsed}
-                                onClick={() => toggleEntryCollapsed(entry.id)}
+                                onClick={() => toggleEntryCollapsed(itemCollapseKey)}
                                 onKeyDown={(event) => {
                                   if (isAmending) return;
                                   if (event.key === "Enter" || event.key === " ") {
                                     event.preventDefault();
-                                    toggleEntryCollapsed(entry.id);
+                                    toggleEntryCollapsed(itemCollapseKey);
                                   }
                                 }}
-                                className="flex items-center justify-between gap-2"
+                                className="flex h-8 items-center justify-between gap-2"
                               >
                                 <div className="flex min-w-0 items-center gap-1.5">
                                   <span
@@ -2289,78 +2592,89 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                                     section: EntryWithSections["sections"][number],
                                     sectionIndex,
                                   ) => (
-                                    <LogSection
+                                    <div
                                       key={section.id}
-                                      section={section}
-                                      streamId={streamId}
-                                      sectionIndex={sectionIndex}
-                                      totalSections={entry.sections.length}
-                                      onPreviewAttachment={openAttachmentPreview}
-                                      editable={isAmending}
-                                      currentEditedContent={
-                                        isAmending
-                                          ? amendState.sections[section.id]?.content
-                                          : undefined
-                                      }
-                                      currentEditedMarkdown={
-                                        isAmending
-                                          ? amendState.sections[section.id]?.markdown
-                                          : undefined
-                                      }
-                                      attachmentOverrides={
-                                        isAmending
-                                          ? amendState.sections[section.id]?.attachments
-                                          : undefined
-                                      }
-                                      onRemoveAttachment={
-                                        isAmending
-                                          ? (attachment, attachmentIndex) =>
-                                              handleRemoveAmendAttachment(
-                                                section.id,
-                                                amendState.sections[section.id]?.attachments ??
-                                                  section.section_attachments ??
-                                                  [],
-                                                attachment,
-                                                attachmentIndex,
-                                              )
-                                          : undefined
-                                      }
-                                      onAddAttachments={
-                                        isAmending
-                                          ? (files) =>
-                                              handleAddAmendAttachments(
-                                                section.id,
-                                                amendState.sections[section.id]
-                                                  ?.attachments ??
-                                                  section.section_attachments ??
-                                                  [],
-                                                files,
-                                              )
-                                          : undefined
-                                      }
-                                      isUploadingAttachments={
-                                        uploadingAmendSectionIds.has(section.id)
-                                      }
-                                      onContentChange={(content, markdown) => {
-                                        if (!isAmending) return;
-                                        setAmendState((prev) => {
-                                          if (!prev || prev.entryId !== entry.id)
-                                            return prev;
-                                          return {
-                                            ...prev,
-                                            sections: {
-                                              ...prev.sections,
-                                              [section.id]: { content, markdown },
-                                            },
-                                          };
-                                        });
+                                      ref={(node) => {
+                                        sectionRefs.current[section.id] = node;
                                       }}
-                                      highlightTerm={
-                                        entry.id === highlightEntryId
-                                          ? (highlightTerm ?? undefined)
-                                          : undefined
-                                      }
-                                    />
+                                    >
+                                      <LogSection
+                                        section={section}
+                                        streamId={streamId}
+                                        sectionIndex={sectionIndex}
+                                        totalSections={entry.sections.length}
+                                        onPreviewAttachment={openAttachmentPreview}
+                                        editable={isAmending}
+                                        currentEditedContent={
+                                          isAmending
+                                            ? amendState.sections[section.id]?.content
+                                            : undefined
+                                        }
+                                        currentEditedMarkdown={
+                                          isAmending
+                                            ? amendState.sections[section.id]?.markdown
+                                            : undefined
+                                        }
+                                        attachmentOverrides={
+                                          isAmending
+                                            ? amendState.sections[section.id]?.attachments
+                                            : undefined
+                                        }
+                                        onRemoveAttachment={
+                                          isAmending
+                                            ? (attachment, attachmentIndex) =>
+                                                handleRemoveAmendAttachment(
+                                                  section.id,
+                                                  amendState.sections[section.id]?.attachments ??
+                                                    section.section_attachments ??
+                                                    [],
+                                                  attachment,
+                                                  attachmentIndex,
+                                                )
+                                            : undefined
+                                        }
+                                        onAddAttachments={
+                                          isAmending
+                                            ? (files) =>
+                                                handleAddAmendAttachments(
+                                                  section.id,
+                                                  amendState.sections[section.id]
+                                                    ?.attachments ??
+                                                    section.section_attachments ??
+                                                    [],
+                                                  files,
+                                                )
+                                            : undefined
+                                        }
+                                        isUploadingAttachments={
+                                          uploadingAmendSectionIds.has(section.id)
+                                        }
+                                        isSearchTarget={
+                                          section.id === highlightSectionId
+                                        }
+                                        onContentChange={(content, markdown) => {
+                                          if (!isAmending) return;
+                                          setAmendState((prev) => {
+                                            if (!prev || prev.entryId !== entry.id)
+                                              return prev;
+                                            return {
+                                              ...prev,
+                                              sections: {
+                                                ...prev.sections,
+                                                [section.id]: { content, markdown },
+                                              },
+                                            };
+                                          });
+                                        }}
+                                        highlightTerm={
+                                          normalizedSearchTerm
+                                            ? normalizedSearchTerm
+                                            : entry.id === highlightEntryId
+                                              ? (highlightTerm ?? undefined)
+                                              : undefined
+                                        }
+                                      />
+                                    </div>
                                   ),
                                 )}
                               </div>
@@ -2406,7 +2720,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
       {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
       <FileAttachmentPreviewDialog
-        open={!!attachmentPreview}
+        open={isAttachmentPreviewOpen}
         onClose={closeAttachmentPreview}
         attachmentPreview={attachmentPreview}
         activePreviewTab={activePreviewTab}
@@ -2414,6 +2728,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         parsedPreview={parsedPreview}
         parsedPreviewLoading={parsedPreviewLoading}
         parsedPreviewError={parsedPreviewError}
+        onAfterLeave={resetAttachmentPreview}
         onRequestParsedPreview={(documentId, titleSnapshot) => {
           void handleParsedPreview(documentId, titleSnapshot);
         }}

@@ -29,6 +29,9 @@ export interface UiPreferencesPayload {
   navigator: {
     expandedCabinetIdsByDomain: Record<string, string[]>;
   };
+  log: {
+    collapsedItemIdsByStream: Record<string, string[]>;
+  };
 }
 
 interface UiPreferencesStoreState {
@@ -39,6 +42,7 @@ interface UiPreferencesStoreState {
   layoutMode: LayoutMode;
   layoutWidthsByDevice: Record<UiDeviceClass, DeviceLayoutWidths>;
   navigatorExpandedByDomain: Record<string, string[]>;
+  logCollapsedItemIdsByStream: Record<string, string[]>;
   localUpdatedAt: number | null;
   lastSyncedAt: number | null;
   cloudHydratedUserId: string | null;
@@ -57,6 +61,14 @@ interface UiPreferencesStoreState {
   addExpandedCabinet: (domainId: string, cabinetId: string) => void;
   removeExpandedCabinet: (domainId: string, cabinetId: string) => void;
   toggleExpandedCabinet: (domainId: string, cabinetId: string) => void;
+  setCollapsedLogItemsForStream: (streamId: string, ids: Iterable<string>) => void;
+  addCollapsedLogItem: (streamId: string, itemId: string) => void;
+  removeCollapsedLogItem: (streamId: string, itemId: string) => void;
+  toggleCollapsedLogItem: (streamId: string, itemId: string) => void;
+  pruneCollapsedLogItemsForStream: (
+    streamId: string,
+    validIds: Iterable<string>,
+  ) => void;
   setActiveUser: (userId: string | null) => void;
   setCloudHydrated: (userId: string | null) => void;
   setSyncStatus: (status: UiSyncStatus) => void;
@@ -133,6 +145,7 @@ export function buildUiPreferencesPayload(
     | "sidebarVisible"
     | "sidebarWidths"
     | "navigatorExpandedByDomain"
+    | "logCollapsedItemIdsByStream"
   >,
 ): UiPreferencesPayload {
   return {
@@ -164,6 +177,13 @@ export function buildUiPreferencesPayload(
         ]),
       ),
     },
+    log: {
+      collapsedItemIdsByStream: Object.fromEntries(
+        Object.entries(state.logCollapsedItemIdsByStream).map(
+          ([streamId, ids]: [string, string[]]) => [streamId, toSortedUniqueIds(ids)],
+        ),
+      ),
+    },
   };
 }
 
@@ -189,7 +209,12 @@ function mergePayloadIntoState(
     sidebarWidths: nextSidebarWidths,
     navigatorExpandedByDomain: Object.fromEntries(
       Object.entries(payload.navigator.expandedCabinetIdsByDomain ?? {}).map(
-        ([domainId, ids]) => [domainId, toSortedUniqueIds(ids)],
+        ([domainId, ids]: [string, string[]]) => [domainId, toSortedUniqueIds(ids)],
+      ),
+    ),
+    logCollapsedItemIdsByStream: Object.fromEntries(
+      Object.entries(payload.log?.collapsedItemIdsByStream ?? {}).map(
+        ([streamId, ids]: [string, string[]]) => [streamId, toSortedUniqueIds(ids)],
       ),
     ),
   };
@@ -209,6 +234,7 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
       layoutMode: "balanced",
       layoutWidthsByDevice: createDefaultLayoutWidths(),
       navigatorExpandedByDomain: {},
+      logCollapsedItemIdsByStream: {},
       localUpdatedAt: null,
       lastSyncedAt: null,
       cloudHydratedUserId: null,
@@ -390,6 +416,70 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
         }
         get().addExpandedCabinet(domainId, cabinetId);
       },
+      setCollapsedLogItemsForStream: (streamId, ids) => {
+        set((state) => {
+          const nextIds = toSortedUniqueIds(ids);
+          const currentIds = state.logCollapsedItemIdsByStream[streamId] ?? [];
+          if (JSON.stringify(currentIds) === JSON.stringify(nextIds)) {
+            return state;
+          }
+          return touchLocalState({
+            logCollapsedItemIdsByStream: {
+              ...state.logCollapsedItemIdsByStream,
+              [streamId]: nextIds,
+            },
+          });
+        });
+      },
+      addCollapsedLogItem: (streamId, itemId) => {
+        set((state) => {
+          const currentIds = state.logCollapsedItemIdsByStream[streamId] ?? [];
+          if (currentIds.includes(itemId)) return state;
+          return touchLocalState({
+            logCollapsedItemIdsByStream: {
+              ...state.logCollapsedItemIdsByStream,
+              [streamId]: toSortedUniqueIds([...currentIds, itemId]),
+            },
+          });
+        });
+      },
+      removeCollapsedLogItem: (streamId, itemId) => {
+        set((state) => {
+          const currentIds = state.logCollapsedItemIdsByStream[streamId] ?? [];
+          if (!currentIds.includes(itemId)) return state;
+          return touchLocalState({
+            logCollapsedItemIdsByStream: {
+              ...state.logCollapsedItemIdsByStream,
+              [streamId]: currentIds.filter((id) => id !== itemId),
+            },
+          });
+        });
+      },
+      toggleCollapsedLogItem: (streamId, itemId) => {
+        const state = get();
+        if ((state.logCollapsedItemIdsByStream[streamId] ?? []).includes(itemId)) {
+          get().removeCollapsedLogItem(streamId, itemId);
+          return;
+        }
+        get().addCollapsedLogItem(streamId, itemId);
+      },
+      pruneCollapsedLogItemsForStream: (streamId, validIds) => {
+        set((state) => {
+          const currentIds = state.logCollapsedItemIdsByStream[streamId] ?? [];
+          if (!currentIds.length) return state;
+
+          const validIdSet = new Set(validIds);
+          const nextIds = currentIds.filter((id) => validIdSet.has(id));
+          if (nextIds.length === currentIds.length) return state;
+
+          return touchLocalState({
+            logCollapsedItemIdsByStream: {
+              ...state.logCollapsedItemIdsByStream,
+              [streamId]: nextIds,
+            },
+          });
+        });
+      },
       setActiveUser: (userId) => {
         set((state) => {
           if (state.activeUserId === userId) return state;
@@ -438,6 +528,7 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
         layoutMode: state.layoutMode,
         layoutWidthsByDevice: state.layoutWidthsByDevice,
         navigatorExpandedByDomain: state.navigatorExpandedByDomain,
+        logCollapsedItemIdsByStream: state.logCollapsedItemIdsByStream,
         localUpdatedAt: state.localUpdatedAt,
         lastSyncedAt: state.lastSyncedAt,
         cloudHydratedUserId: state.cloudHydratedUserId,

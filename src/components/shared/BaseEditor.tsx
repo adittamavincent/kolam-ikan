@@ -3127,10 +3127,8 @@ export default function BaseEditor({
   placeholder,
   onEditorReady,
   onFocusChange,
-  highlightTerm: _highlightTerm,
+  highlightTerm,
 }: BaseEditorProps) {
-  void _highlightTerm;
-
   const [markdownValue, setMarkdownValue] = useState(() =>
     typeof initialMarkdown === "string"
       ? initialMarkdown
@@ -3345,7 +3343,10 @@ export default function BaseEditor({
         ) : null}
 
         <div className="kolam-codemirror-frame is-readonly">
-          <KolamRenderedMarkdown source={frontmatter.body} />
+          <KolamRenderedMarkdown
+            source={frontmatter.body}
+            highlightTerm={highlightTerm}
+          />
         </div>
       </div>
     );

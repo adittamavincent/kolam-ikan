@@ -25,6 +25,7 @@ interface LogSectionProps {
   sectionIndex?: number;
   totalSections?: number;
   highlightTerm?: string;
+  isSearchTarget?: boolean;
   editable?: boolean;
   currentEditedContent?: PartialBlock[];
   currentEditedMarkdown?: string;
@@ -50,6 +51,7 @@ export function LogSection({
   sectionIndex = 0,
   totalSections = 1,
   highlightTerm,
+  isSearchTarget = false,
   editable = false,
   currentEditedContent,
   currentEditedMarkdown,
@@ -201,7 +203,7 @@ export function LogSection({
       persona={currentPersona || null}
       isAttachment={isAttachmentSection}
       nestedConnector={nestedConnector}
-      className="flex flex-col"
+      className={`flex flex-col ${isSearchTarget ? "kolam-search-reveal" : ""}`}
       headerClassName="bg-surface-hover"
       bodyClassName="bg-surface-default"
       centerHeader={

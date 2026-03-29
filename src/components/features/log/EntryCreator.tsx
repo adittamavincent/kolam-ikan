@@ -9,6 +9,7 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -32,6 +33,11 @@ import {
   GitCommitHorizontal,
   Info,
   Minimize2,
+  Archive,
+  ArchiveRestore,
+  Copy,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -55,7 +61,11 @@ import AttachmentsManager from "@/components/layout/AttachmentsManager";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
-import { useDraftSystem, FileDraftAttachment } from "@/lib/hooks/useDraftSystem";
+import {
+  useDraftSystem,
+  FileDraftAttachment,
+  type DraftContent,
+} from "@/lib/hooks/useDraftSystem";
 import debounce from "lodash/debounce";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { PersonaManager } from "@/components/features/persona/PersonaManager";
@@ -100,6 +110,97 @@ function comparePersonaCreatedAt(
 
   if (timeA !== timeB) return timeA - timeB;
   return a.name.localeCompare(b.name);
+}
+
+type EntryCreatorStashItem = {
+  id: string;
+  createdAt: string;
+  branchName: string;
+  headCommitId: string | null;
+  sections: Array<{
+    instanceId: string;
+    draft: DraftContent;
+  }>;
+};
+
+const ENTRY_CREATOR_STASH_KEY = (streamId: string) =>
+  `kolam_entry_creator_stash_v1_${streamId}`;
+const MAX_ENTRY_CREATOR_STASH_ITEMS = 20;
+
+function readEntryCreatorStash(streamId: string): EntryCreatorStashItem[] {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(ENTRY_CREATOR_STASH_KEY(streamId));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+
+      const candidate = item as Partial<EntryCreatorStashItem>;
+      if (
+        typeof candidate.id !== "string" ||
+        typeof candidate.createdAt !== "string" ||
+        typeof candidate.branchName !== "string" ||
+        !Array.isArray(candidate.sections)
+      ) {
+        return [];
+      }
+
+      return [{
+        id: candidate.id,
+        createdAt: candidate.createdAt,
+        branchName: candidate.branchName,
+        headCommitId:
+          typeof candidate.headCommitId === "string"
+            ? candidate.headCommitId
+            : null,
+        sections: candidate.sections.flatMap((section) => {
+          if (!section || typeof section !== "object") return [];
+
+          const sectionCandidate = section as {
+            instanceId?: unknown;
+            draft?: DraftContent;
+          };
+
+          if (typeof sectionCandidate.instanceId !== "string") return [];
+          if (!sectionCandidate.draft || typeof sectionCandidate.draft !== "object") {
+            return [];
+          }
+
+          return [{
+            instanceId: sectionCandidate.instanceId,
+            draft: sectionCandidate.draft,
+          }];
+        }),
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
+
+function writeEntryCreatorStash(
+  streamId: string,
+  items: EntryCreatorStashItem[],
+): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (items.length === 0) {
+      window.localStorage.removeItem(ENTRY_CREATOR_STASH_KEY(streamId));
+      return;
+    }
+
+    window.localStorage.setItem(
+      ENTRY_CREATOR_STASH_KEY(streamId),
+      JSON.stringify(items),
+    );
+  } catch {
+    // Ignore storage errors.
+  }
 }
 
 function textToBlockContent(text: string) {
@@ -383,6 +484,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     previewUrl: string | null;
     importStatus?: string;
   } | null>(null);
+  const [isAttachmentPreviewOpen, setIsAttachmentPreviewOpen] = useState(false);
   const attachmentSectionMemoryRef = useRef<
     Record<string, AttachmentSectionMemory>
   >({});
@@ -408,9 +510,15 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     "idle" | "syncing" | "synced" | "error"
   >("idle");
   const [headerDirty, setHeaderDirty] = useState(false);
+  const [stashItems, setStashItems] = useState<EntryCreatorStashItem[]>([]);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const cloudSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const quickPersonaStripRef = useRef<HTMLDivElement | null>(null);
   const quickPersonaMeasureRefs = useRef<Record<string, HTMLDivElement | null>>(
     {},
@@ -728,6 +836,21 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   const hiddenQuickPersonaCount = Math.max(
     quickPersonas.length - visibleQuickPersonaCount,
     0,
+  );
+
+  useEffect(() => {
+    setStashItems(readEntryCreatorStash(streamId));
+  }, [streamId]);
+
+  const persistStashItems = useCallback(
+    (updater: (current: EntryCreatorStashItem[]) => EntryCreatorStashItem[]) => {
+      setStashItems((current) => {
+        const next = updater(current);
+        writeEntryCreatorStash(streamId, next);
+        return next;
+      });
+    },
+    [streamId],
   );
 
   useEffect(() => {
@@ -1428,16 +1551,212 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
 
       // Reset to empty state (no auto-default persona)
-      setSections([]);
-      setFullscreenSectionId(null);
-      setFocusedPersonaInstanceId(null);
-      setLastFocusedPersonaInstanceId(null);
-      editorRefs.current = {};
-      pendingFocusInstanceIdRef.current = null;
+      resetComposerState();
     } catch (e) {
       console.error("Failed to commit", e);
     }
   };
+
+  const resetComposerState = useCallback(() => {
+    setSections([]);
+    setFullscreenSectionId(null);
+    setFocusedPersonaInstanceId(null);
+    setLastFocusedPersonaInstanceId(null);
+    setHeaderDirty(false);
+    setHeaderCloudStatus("idle");
+    setContextMenuPosition(null);
+    attachmentSectionMemoryRef.current = {};
+    editorRefs.current = {};
+    pendingFocusInstanceIdRef.current = null;
+    userEditedRef.current = {};
+    editorReadyAtRef.current = {};
+  }, []);
+
+  const buildCurrentDraftSnapshot = useCallback((): EntryCreatorStashItem | null => {
+    const snapshotSections: EntryCreatorStashItem["sections"] = [];
+
+    for (const section of sections) {
+      if (section.kind === "PERSONA") {
+        const content = getDraftContent(section.instanceId);
+        const rawMarkdown = getDraftMarkdown(section.instanceId);
+        const personaName =
+          personas?.find((persona) => persona.id === section.personaId)?.name;
+
+        if (!section.personaId && !hasMeaningfulDraftContent(content)) {
+          continue;
+        }
+
+        snapshotSections.push({
+          instanceId: section.instanceId,
+          draft: {
+            sectionType: "PERSONA" as const,
+            personaId: section.personaId,
+            personaName,
+            content,
+            rawMarkdown,
+          },
+        });
+        continue;
+      }
+
+      const content = getDraftContent(section.instanceId);
+      const rawMarkdown = getDraftMarkdown(section.instanceId);
+
+      if (
+        section.attachments.length === 0 &&
+        !hasMeaningfulDraftContent(content)
+      ) {
+        continue;
+      }
+
+      snapshotSections.push({
+        instanceId: section.instanceId,
+        draft: {
+          sectionType: "FILE_ATTACHMENT" as const,
+          personaId: section.personaId ?? null,
+          personaName: section.personaName ?? undefined,
+          content,
+          rawMarkdown,
+          fileDisplayMode: section.displayMode,
+          fileAttachments: section.attachments.map((attachment) => ({
+            documentId: attachment.documentId,
+            storagePath: attachment.storagePath,
+            thumbnailPath: attachment.thumbnailPath ?? null,
+            previewUrl: attachment.previewUrl ?? null,
+            titleSnapshot: attachment.titleSnapshot,
+            annotationText: attachment.annotationText ?? null,
+            referencedPersonaId: attachment.referencedPersonaId ?? null,
+            referencedPage: attachment.referencedPage ?? null,
+            fileHash: attachment.fileHash,
+          })),
+        },
+      });
+    }
+
+    if (snapshotSections.length === 0) return null;
+
+    return {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      branchName: selectedBranch,
+      headCommitId: currentBranchHeadId,
+      sections: snapshotSections,
+    };
+  }, [
+    currentBranchHeadId,
+    getDraftContent,
+    getDraftMarkdown,
+    personas,
+    sections,
+    selectedBranch,
+  ]);
+
+  const restoreStashIntoComposer = useCallback(
+    (stashItem: EntryCreatorStashItem) => {
+      resetComposerState();
+      void clearDraft();
+
+      const restoredSections: SectionState[] = stashItem.sections.map(
+        ({ instanceId, draft }) => {
+          if (draft.sectionType === "FILE_ATTACHMENT") {
+            const attachments = (draft.fileAttachments ?? []).map((attachment) => ({
+              documentId: attachment.documentId ?? "",
+              titleSnapshot: attachment.titleSnapshot,
+              pageCount: 0,
+              author: null,
+              creationDate: null,
+              storagePath: attachment.storagePath,
+              thumbnailPath: attachment.thumbnailPath ?? null,
+              previewUrl: attachment.previewUrl ?? null,
+              annotationText: attachment.annotationText ?? null,
+              referencedPersonaId: attachment.referencedPersonaId ?? null,
+              referencedPage: attachment.referencedPage ?? null,
+              fileHash: attachment.fileHash,
+            }));
+
+            attachmentSectionMemoryRef.current[instanceId] = {
+              displayMode: draft.fileDisplayMode ?? "inline",
+              attachments: attachments.map((attachment) => ({ ...attachment })),
+              personaId: draft.personaId ?? null,
+              personaName: draft.personaName ?? null,
+            };
+
+            saveFileAttachmentDraft(instanceId, {
+              displayMode: draft.fileDisplayMode ?? "inline",
+              personaId: draft.personaId ?? null,
+              personaName: draft.personaName,
+              attachments: draft.fileAttachments ?? [],
+              content: draft.content ?? [],
+              rawMarkdown: draft.rawMarkdown,
+            });
+
+            return {
+              instanceId,
+              kind: "FILE_ATTACHMENT" as const,
+              displayMode: draft.fileDisplayMode ?? "inline",
+              attachments,
+              personaId: draft.personaId ?? null,
+              personaName: draft.personaName ?? undefined,
+              isUploading: false,
+            };
+          }
+
+          saveDraft(
+            instanceId,
+            draft.personaId ?? "",
+            draft.content ?? [],
+            draft.personaName,
+            false,
+            draft.rawMarkdown,
+          );
+
+          return {
+            instanceId,
+            kind: "PERSONA" as const,
+            personaId: draft.personaId ?? "",
+          };
+        },
+      );
+
+      setSections(restoredSections);
+    },
+    [clearDraft, resetComposerState, saveDraft, saveFileAttachmentDraft],
+  );
+
+  const stashCurrentDraft = useCallback(() => {
+    const snapshot = buildCurrentDraftSnapshot();
+    if (!snapshot) return;
+
+    persistStashItems((current) =>
+      [snapshot, ...current].slice(0, MAX_ENTRY_CREATOR_STASH_ITEMS),
+    );
+    resetComposerState();
+    void clearDraft();
+  }, [buildCurrentDraftSnapshot, clearDraft, persistStashItems, resetComposerState]);
+
+  const applyLatestStash = useCallback(
+    (removeFromStack: boolean) => {
+      const latestStash = stashItems[0];
+      if (!latestStash) return;
+
+      restoreStashIntoComposer(latestStash);
+
+      if (removeFromStack) {
+        persistStashItems((current) => current.slice(1));
+      }
+    },
+    [persistStashItems, restoreStashIntoComposer, stashItems],
+  );
+
+  const dropLatestStash = useCallback(() => {
+    if (stashItems.length === 0) return;
+    persistStashItems((current) => current.slice(1));
+  }, [persistStashItems, stashItems.length]);
+
+  const clearAllStashes = useCallback(() => {
+    if (stashItems.length === 0) return;
+    persistStashItems(() => []);
+  }, [persistStashItems, stashItems.length]);
 
   const addPersona = (pId: string) => {
     const instanceId = crypto.randomUUID();
@@ -1623,11 +1942,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
   };
 
   const confirmClearSections = () => {
-    setSections([]);
-    setFullscreenSectionId(null);
-    setFocusedPersonaInstanceId(null);
-    setLastFocusedPersonaInstanceId(null);
-    attachmentSectionMemoryRef.current = {};
+    resetComposerState();
     void clearDraft();
     setClearSectionsDialogOpen(false);
   };
@@ -1959,6 +2274,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
       previewUrl: attachment.previewUrl,
       importStatus,
     });
+    setIsAttachmentPreviewOpen(true);
     setActivePreviewTab(nextTab);
 
     setParsedPreview(null);
@@ -1971,11 +2287,59 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   const closeAttachmentPreview = () => {
     if (parsedPreviewLoading) return;
+    setIsAttachmentPreviewOpen(false);
+  };
+
+  const resetAttachmentPreview = () => {
     setAttachmentPreview(null);
     setParsedPreview(null);
     setParsedPreviewError(null);
     setActivePreviewTab("file");
   };
+
+  useEffect(() => {
+    if (!contextMenuPosition) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!contextMenuRef.current) return;
+      const targetNode = event.target as Node | null;
+      if (targetNode && !contextMenuRef.current.contains(targetNode)) {
+        setContextMenuPosition(null);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setContextMenuPosition(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [contextMenuPosition]);
+
+  const handleEntryCreatorContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+
+      const estimatedWidth = 248;
+      const estimatedHeight = 220;
+      const padding = 8;
+      const maxLeft = Math.max(window.innerWidth - estimatedWidth - padding, padding);
+      const maxTop = Math.max(window.innerHeight - estimatedHeight - padding, padding);
+
+      setContextMenuPosition({
+        left: Math.min(event.clientX, maxLeft),
+        top: Math.min(event.clientY, maxTop),
+      });
+    },
+    [],
+  );
 
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -2000,7 +2364,10 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
 
   return (
     <>
-      <div className="entry-creator relative group">
+      <div
+        className="entry-creator relative group"
+        onContextMenu={handleEntryCreatorContextMenu}
+      >
         {(status === "saving" || status === "error") && (
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
@@ -2581,7 +2948,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         />
 
         <FileAttachmentPreviewDialog
-          open={!!attachmentPreview}
+          open={isAttachmentPreviewOpen}
           onClose={closeAttachmentPreview}
           attachmentPreview={attachmentPreview}
           activePreviewTab={activePreviewTab}
@@ -2589,10 +2956,127 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
           parsedPreview={parsedPreview}
           parsedPreviewLoading={parsedPreviewLoading}
           parsedPreviewError={parsedPreviewError}
+          onAfterLeave={resetAttachmentPreview}
           onRequestParsedPreview={(documentId, titleSnapshot) => {
             void openParsedPreview(documentId, titleSnapshot);
           }}
         />
+
+        {contextMenuPosition &&
+          typeof window !== "undefined" &&
+          createPortal(
+            <div
+              ref={contextMenuRef}
+              className="fixed z-50 w-64 border border-border-default bg-surface-elevated p-1.5 shadow-lg"
+              style={{
+                top: contextMenuPosition.top,
+                left: contextMenuPosition.left,
+              }}
+              role="menu"
+              aria-label="Entry creator stash menu"
+            >
+              <div className="px-2 py-1">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+                  working tree
+                </div>
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-text-default">
+                  <GitBranch className="h-3.5 w-3.5 text-text-muted" />
+                  <span className="truncate">{selectedBranch}</span>
+                  <span className="text-text-muted">·</span>
+                  <span className="text-text-muted">
+                    {sections.length} section{sections.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="my-1 h-px bg-border-subtle" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  stashCurrentDraft();
+                  setContextMenuPosition(null);
+                }}
+                disabled={!hasCommitableContent}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+              >
+                <Archive className="h-3.5 w-3.5 text-text-muted" />
+                Stash changes
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  applyLatestStash(false);
+                  setContextMenuPosition(null);
+                }}
+                disabled={stashItems.length === 0}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+              >
+                <ArchiveRestore className="h-3.5 w-3.5 text-text-muted" />
+                Apply latest stash
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  applyLatestStash(true);
+                  setContextMenuPosition(null);
+                }}
+                disabled={stashItems.length === 0}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+              >
+                <RotateCcw className="h-3.5 w-3.5 text-text-muted" />
+                Pop latest stash
+              </button>
+
+              <div className="my-1 h-px bg-border-subtle" />
+
+              <div className="px-2 py-1 text-[10px] text-text-muted">
+                {stashItems.length === 0
+                  ? "No stashed drafts"
+                  : `${stashItems.length} stashed draft${stashItems.length === 1 ? "" : "s"} available`}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  dropLatestStash();
+                  setContextMenuPosition(null);
+                }}
+                disabled={stashItems.length === 0}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-text-muted" />
+                Drop latest stash
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearAllStashes();
+                  setContextMenuPosition(null);
+                }}
+                disabled={stashItems.length === 0}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-text-muted" />
+                Clear stash stack
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const latest = stashItems[0];
+                  if (!latest) return;
+                  await navigator.clipboard.writeText(JSON.stringify(latest, null, 2));
+                  setContextMenuPosition(null);
+                }}
+                disabled={stashItems.length === 0}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+              >
+                <Copy className="h-3.5 w-3.5 text-text-muted" />
+                Copy latest stash payload
+              </button>
+            </div>,
+            document.body,
+          )}
       </div>
 
       <PersonaManager

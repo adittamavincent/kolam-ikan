@@ -21,6 +21,7 @@ function resetUiPreferencesStore() {
       desktop: { log: 50, canvas: 50, previous: { log: 50, canvas: 50 } },
     },
     navigatorExpandedByDomain: {},
+    logCollapsedItemIdsByStream: {},
     localUpdatedAt: null,
     lastSyncedAt: null,
     cloudHydratedUserId: null,
@@ -70,6 +71,11 @@ describe("useUiPreferencesStore", () => {
             pond: ["cab-2", "cab-1"],
           },
         },
+        log: {
+          collapsedItemIdsByStream: {
+            stream_1: ["canvas_snapshot:snap-2", "entry:entry-1"],
+          },
+        },
       },
       "user-1",
       1234,
@@ -80,6 +86,10 @@ describe("useUiPreferencesStore", () => {
     expect(next.sidebarWidths.desktop).toBe(288);
     expect(next.layoutWidthsByDevice.desktop.log).toBe(0);
     expect(next.navigatorExpandedByDomain.pond).toEqual(["cab-1", "cab-2"]);
+    expect(next.logCollapsedItemIdsByStream.stream_1).toEqual([
+      "canvas_snapshot:snap-2",
+      "entry:entry-1",
+    ]);
     expect(next.lastSyncedAt).toBe(1234);
     expect(next.localUpdatedAt).toBeNull();
   });
@@ -94,6 +104,9 @@ describe("useUiPreferencesStore", () => {
       },
       navigatorExpandedByDomain: {
         pond: ["b", "a", "a"],
+      },
+      logCollapsedItemIdsByStream: {
+        stream_1: ["entry:b", "entry:a", "entry:a"],
       },
     });
 
@@ -131,6 +144,28 @@ describe("useUiPreferencesStore", () => {
           pond: ["a", "b"],
         },
       },
+      log: {
+        collapsedItemIdsByStream: {
+          stream_1: ["entry:a", "entry:b"],
+        },
+      },
     });
+  });
+
+  it("prunes stale collapsed log items for a stream", () => {
+    useUiPreferencesStore.setState({
+      logCollapsedItemIdsByStream: {
+        stream_1: ["entry:a", "entry:b", "canvas_snapshot:c"],
+      },
+    });
+
+    useUiPreferencesStore
+      .getState()
+      .pruneCollapsedLogItemsForStream("stream_1", ["entry:b", "canvas_snapshot:c"]);
+
+    expect(useUiPreferencesStore.getState().logCollapsedItemIdsByStream.stream_1).toEqual([
+      "entry:b",
+      "canvas_snapshot:c",
+    ]);
   });
 });

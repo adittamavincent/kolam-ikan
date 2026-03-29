@@ -32,6 +32,7 @@ interface FileAttachmentPreviewDialogProps {
   parsedPreviewLoading: boolean;
   parsedPreviewError: string | null;
   onRequestParsedPreview: (documentId: string, titleSnapshot: string) => void;
+  onAfterLeave?: () => void;
 }
 
 function isParsedReadyStatus(status?: string | null): boolean {
@@ -48,9 +49,10 @@ export function FileAttachmentPreviewDialog({
   parsedPreviewLoading,
   parsedPreviewError,
   onRequestParsedPreview,
+  onAfterLeave,
 }: FileAttachmentPreviewDialogProps) {
   return (
-    <Transition appear show={open} as={Fragment}>
+    <Transition appear show={open} as={Fragment} afterLeave={onAfterLeave}>
       <Dialog as="div" onClose={onClose} className="relative z-50">
         <TransitionChild
           as={Fragment}

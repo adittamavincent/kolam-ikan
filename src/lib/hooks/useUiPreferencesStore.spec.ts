@@ -22,6 +22,11 @@ function resetUiPreferencesStore() {
     },
     navigatorExpandedByDomain: {},
     logCollapsedItemIdsByStream: {},
+    bridgeDefaults: {
+      providerId: "gemini",
+      quickPreset: "recommended",
+    },
+    bridgeSessionsByStream: {},
     localUpdatedAt: null,
     lastSyncedAt: null,
     cloudHydratedUserId: null,
@@ -76,6 +81,28 @@ describe("useUiPreferencesStore", () => {
             stream_1: ["canvas_snapshot:snap-2", "entry:entry-1"],
           },
         },
+        bridge: {
+          defaults: {
+            providerId: "claude",
+            quickPreset: "recommended",
+          },
+          sessionsByStream: {
+            stream_1: {
+              providerId: "gemini",
+              lastMode: "BOTH",
+              lastContextRecipe: {
+                entrySelection: "all",
+                includeCanvas: true,
+                includeGlobalStream: false,
+              },
+              lastInstruction: "Summarize the latest discussion",
+              sessionMemory: "Recent both objective: Summarize the latest discussion",
+              lastUsedAt: "2026-03-29T10:00:00.000Z",
+              isExternalSessionActive: true,
+              externalSessionLoadedAt: "2026-03-29T10:01:00.000Z",
+            },
+          },
+        },
       },
       "user-1",
       1234,
@@ -90,6 +117,8 @@ describe("useUiPreferencesStore", () => {
       "canvas_snapshot:snap-2",
       "entry:entry-1",
     ]);
+    expect(next.bridgeDefaults.providerId).toBe("claude");
+    expect(next.bridgeSessionsByStream.stream_1?.providerId).toBe("gemini");
     expect(next.lastSyncedAt).toBe(1234);
     expect(next.localUpdatedAt).toBeNull();
   });
@@ -107,6 +136,26 @@ describe("useUiPreferencesStore", () => {
       },
       logCollapsedItemIdsByStream: {
         stream_1: ["entry:b", "entry:a", "entry:a"],
+      },
+      bridgeDefaults: {
+        providerId: "claude",
+        quickPreset: "recommended",
+      },
+      bridgeSessionsByStream: {
+        stream_1: {
+          providerId: "gemini",
+          lastMode: "BOTH",
+          lastContextRecipe: {
+            entrySelection: "all",
+            includeCanvas: true,
+            includeGlobalStream: true,
+          },
+          lastInstruction: "Draft the protocol",
+          sessionMemory: "Recent both objective: Draft the protocol",
+          lastUsedAt: "2026-03-29T12:00:00.000Z",
+          isExternalSessionActive: false,
+          externalSessionLoadedAt: null,
+        },
       },
     });
 
@@ -149,7 +198,61 @@ describe("useUiPreferencesStore", () => {
           stream_1: ["entry:a", "entry:b"],
         },
       },
+      bridge: {
+        defaults: {
+          providerId: "claude",
+          quickPreset: "recommended",
+        },
+        sessionsByStream: {
+          stream_1: {
+            providerId: "gemini",
+            lastMode: "BOTH",
+            lastContextRecipe: {
+              entrySelection: "all",
+              includeCanvas: true,
+              includeGlobalStream: true,
+            },
+            lastInstruction: "Draft the protocol",
+            sessionMemory: "Recent both objective: Draft the protocol",
+            lastUsedAt: "2026-03-29T12:00:00.000Z",
+            isExternalSessionActive: false,
+            externalSessionLoadedAt: null,
+          },
+        },
+      },
     });
+  });
+
+  it("stores bridge defaults and sessions", () => {
+    const state = useUiPreferencesStore.getState();
+
+    state.setBridgeDefaults({
+      providerId: "claude",
+    });
+    state.upsertBridgeSession("stream_77", {
+      providerId: "gemini",
+      lastMode: "BOTH",
+      lastInstruction: "Turn this into a concise spec",
+      lastContextRecipe: {
+        entrySelection: "all",
+        includeCanvas: true,
+        includeGlobalStream: false,
+      },
+      lastUsedAt: "2026-03-29T13:00:00.000Z",
+      isExternalSessionActive: true,
+      externalSessionLoadedAt: "2026-03-29T13:05:00.000Z",
+    });
+
+    const next = useUiPreferencesStore.getState();
+    expect(next.bridgeDefaults.providerId).toBe("claude");
+    expect(next.bridgeSessionsByStream.stream_77).toMatchObject({
+      providerId: "gemini",
+      lastInstruction: "Turn this into a concise spec",
+      isExternalSessionActive: true,
+    });
+    expect(next.bridgeSessionsByStream.stream_77?.sessionMemory).toContain(
+      "Recent both objective:",
+    );
   });
 
   it("prunes stale collapsed log items for a stream", () => {

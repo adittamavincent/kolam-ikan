@@ -104,7 +104,7 @@ export function ContextBag({
   return (
     <div className="mb-6 border border-border-default bg-surface-subtle p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-text-default">Context Bag</h3>
+        <h3 className="font-semibold text-text-default">Selected context</h3>
         <span className=" bg-surface-subtle px-2.5 py-1 text-[10px] font-bold tracking-wider text-text-muted">
           {selectedEntries.length} SELECTED
         </span>
@@ -116,7 +116,7 @@ export function ContextBag({
             checked={includeCanvas}
             onChange={(e) => onIncludeCanvasChange(e.target.checked)}
           />
-          Include Current Canvas
+          Include current canvas
         </label>
         <div className="space-y-1">
           <label
@@ -142,6 +142,7 @@ export function ContextBag({
                 }`}
               />
               Include Domain Global Stream
+              
             </span>
             {globalStreamLoading && (
               <span className="ml-1 inline-block h-3 w-3 animate-spin border-2 border-border-default border-t-action-primary-bg" />

@@ -21,6 +21,7 @@ import {
 import { CanvasSnapshotCard } from "./CanvasSnapshotCard";
 import { CanvasDraftCard } from "./CanvasDraftCard";
 import { MergeCommitCard } from "./MergeCommitCard";
+import { StashDialog } from "./StashDialog";
 import { useStream } from "@/lib/hooks/useStream";
 import { useTimelineItems } from "@/lib/hooks/useTimelineItems";
 import { CommitGraph } from "./CommitGraph";
@@ -60,6 +61,15 @@ import {
   cloneStoredContentFields,
   storedContentToMarkdown,
 } from "@/lib/content-protocol";
+import {
+  buildCommittedEntryStashItem,
+  CommittedEntryStashItem,
+  EntryCreatorStashItem,
+  readCommittedEntryStash,
+  readEntryCreatorStash,
+  subscribeToStashChanges,
+  writeCommittedEntryStash,
+} from "@/lib/utils/stash";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -213,7 +223,6 @@ function lineDiff(oldText: string, newText: string): DiffLine[] {
   return result;
 }
 
-const STASH_KEY = (streamId: string) => `kolam_stash_${streamId}`;
 const EMPTY_COLLAPSED_ITEM_IDS: string[] = [];
 
 // ─── Git Diff Modal ──────────────────────────────────────────────────────────
@@ -447,8 +456,14 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     prevEntry: EntryWithSections | null;
   } | null>(null);
   const [tagTarget, setTagTarget] = useState<EntryWithSections | null>(null);
-  const [stashedIds, setStashedIds] = useState<Set<string>>(new Set());
-  const [showStash, setShowStash] = useState(false);
+  const [committedStashes, setCommittedStashes] = useState<CommittedEntryStashItem[]>([]);
+  const [draftStashes, setDraftStashes] = useState<EntryCreatorStashItem[]>([]);
+  const [isStashDialogOpen, setIsStashDialogOpen] = useState(false);
+  const [pendingDraftStashAction, setPendingDraftStashAction] = useState<{
+    nonce: string;
+    stashId: string;
+    kind: "apply" | "pop" | "drop";
+  } | null>(null);
   const [tags, setTags] = useState<Record<string, string>>({}); // entryId → tag label
   const [currentBranch, setCurrentBranch] = useState("main");
   const [graphView, setGraphView] = useState(false);
@@ -489,6 +504,21 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   useEffect(() => {
     setHasHydrated(true);
   }, []);
+
+  useEffect(() => {
+    const syncStashes = () => {
+      setCommittedStashes(readCommittedEntryStash(streamId));
+      setDraftStashes(readEntryCreatorStash(streamId));
+    };
+
+    syncStashes();
+    return subscribeToStashChanges(streamId, syncStashes);
+  }, [streamId]);
+
+  const stashedEntryIds = useMemo(
+    () => new Set(committedStashes.map((stash) => stash.entryId)),
+    [committedStashes],
+  );
 
   const applySearchHighlightPayload = useCallback(
     (
@@ -1411,15 +1441,59 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   // ─── Stash helpers ─────────────────────────────────────────────────────────
 
-  const toggleStash = (entryId: string) => {
-    setStashedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(entryId)) next.delete(entryId);
-      else next.add(entryId);
-      localStorage.setItem(STASH_KEY(streamId), JSON.stringify([...next]));
-      return next;
-    });
-  };
+  const toggleStash = useCallback(
+    (entry: EntryWithSections) => {
+      const existing = committedStashes.find(
+        (stashItem) => stashItem.entryId === entry.id,
+      );
+
+      if (existing) {
+        writeCommittedEntryStash(
+          streamId,
+          committedStashes.filter((stashItem) => stashItem.id !== existing.id),
+        );
+        return;
+      }
+
+      writeCommittedEntryStash(streamId, [
+        buildCommittedEntryStashItem({
+          entry,
+          branchName: currentBranch,
+          headCommitId: currentBranchHeadId,
+        }),
+        ...committedStashes,
+      ]);
+    },
+    [committedStashes, currentBranch, currentBranchHeadId, streamId],
+  );
+
+  const unstashCommittedEntry = useCallback(
+    (stashId: string) => {
+      writeCommittedEntryStash(
+        streamId,
+        committedStashes.filter((stashItem) => stashItem.id !== stashId),
+      );
+    },
+    [committedStashes, streamId],
+  );
+
+  const queueDraftStashAction = useCallback(
+    (stashId: string, kind: "apply" | "pop" | "drop") => {
+      setGraphView(false);
+      setPendingDraftStashAction({
+        nonce: crypto.randomUUID(),
+        stashId,
+        kind,
+      });
+      setIsStashDialogOpen(false);
+    },
+    [],
+  );
+
+  const openCommittedStashInGraph = useCallback(() => {
+    setGraphView(true);
+    setIsStashDialogOpen(false);
+  }, []);
 
   const saveTag = (entryId: string, tag: string | null) => {
     setTags((prev) => {
@@ -1591,7 +1665,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         setTagTarget(entry);
         break;
       case "stash":
-        toggleStash(entry.id);
+        toggleStash(entry);
         break;
       case "reset":
         setEntryConfirm({ type: "reset", entry });
@@ -1783,9 +1857,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     [branchTimelineItems],
   );
 
-  const visibleEntries = showStash
-    ? branchEntries
-    : branchEntries.filter((e) => !stashedIds.has(e.id));
+  const visibleEntries = useMemo(
+    () => branchEntries.filter((entry) => !stashedEntryIds.has(entry.id)),
+    [branchEntries, stashedEntryIds],
+  );
   const normalizedSearchTerm = searchTerm.trim();
   const branchCanvasCommitCount = useMemo(
     () =>
@@ -1796,9 +1871,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const visibleCollapsibleItemIds = useMemo(
     () =>
       branchTimelineItems
-        .filter((item) => showStash || item.type !== "entry" || !stashedIds.has(item.data.id))
+        .filter(
+          (item) => item.type !== "entry" || !stashedEntryIds.has(item.data.id),
+        )
         .map(getTimelineItemCollapseKey),
-    [branchTimelineItems, showStash, stashedIds],
+    [branchTimelineItems, stashedEntryIds],
   );
 
   const setEntriesCollapsed = useCallback(
@@ -1980,7 +2057,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     return () => window.cancelAnimationFrame(rafId);
   }, [activeOccurrenceIndex, normalizedSearchTerm, occurrenceTargets]);
 
-  const stashCount = stashedIds.size;
+  const stashCount = committedStashes.length + draftStashes.length;
   const showLoadingState =
     !hasHydrated ||
     ((isEntriesLoading || isEntriesFetching) &&
@@ -2079,7 +2156,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     };
 
     const onToggleStash = () => {
-      setShowStash((prev) => !prev);
+      setIsStashDialogOpen((prev) => !prev);
     };
 
     const onToggleSort = () => {
@@ -2221,7 +2298,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           canvasCommitCount: branchCanvasCommitCount,
           collapsedEntryCount: collapsedVisibleCount,
           allEntriesCollapsed: allVisibleCollapsed,
-          showStash,
+          showStash: isStashDialogOpen,
           stashCount,
           graphView,
           sortOrder,
@@ -2241,7 +2318,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     branchCanvasCommitCount,
     collapsedVisibleCount,
     allVisibleCollapsed,
-    showStash,
+    isStashDialogOpen,
     stashCount,
     graphView,
     sortOrder,
@@ -2267,6 +2344,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               currentBranch={currentBranch}
               tags={tags}
               latestEntryId={latestEntryId ?? null}
+              committedStashEntryIds={Array.from(stashedEntryIds)}
               onEntryClick={(_streamId, entryId) => {
                 setGraphView(false);
                 // After switching back to list, scroll to the entry
@@ -2291,6 +2369,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     streamId={streamId}
                     currentBranch={currentBranch}
                     onCurrentBranchChange={setCurrentBranch}
+                    externalStashAction={pendingDraftStashAction}
+                    onExternalStashActionHandled={(nonce) => {
+                      setPendingDraftStashAction((current) =>
+                        current?.nonce === nonce ? null : current,
+                      );
+                    }}
                   />
                   <CanvasDraftCard streamId={streamId} />
                 </div>
@@ -2340,12 +2424,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
                       const entry = item.data;
 
-                      // Hide stashed (unless showStash is on)
-                      if (!showStash && stashedIds.has(entry.id)) return null;
+                      if (stashedEntryIds.has(entry.id)) return null;
 
                       const isLatestEntry = headEntryId === entry.id;
                       const isAmending = amendState?.entryId === entry.id;
-                      const isStashed = stashedIds.has(entry.id);
+                      const isStashed = stashedEntryIds.has(entry.id);
                       const itemCollapseKey = getTimelineItemCollapseKey(item);
                       const isCollapsed = collapsedEntryIds.has(itemCollapseKey);
                       const tag = tags[entry.id];
@@ -2693,6 +2776,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                         streamId={streamId}
                         currentBranch={currentBranch}
                         onCurrentBranchChange={setCurrentBranch}
+                        externalStashAction={pendingDraftStashAction}
+                        onExternalStashActionHandled={(nonce) => {
+                          setPendingDraftStashAction((current) =>
+                            current?.nonce === nonce ? null : current,
+                          );
+                        }}
                       />
                     </div>
                   )}
@@ -2719,6 +2808,18 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       </div>
 
       {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
+      <StashDialog
+        open={isStashDialogOpen}
+        committedStashes={committedStashes}
+        draftStashes={draftStashes}
+        onClose={() => setIsStashDialogOpen(false)}
+        onApplyDraftStash={(stashId) => queueDraftStashAction(stashId, "apply")}
+        onPopDraftStash={(stashId) => queueDraftStashAction(stashId, "pop")}
+        onDropDraftStash={(stashId) => queueDraftStashAction(stashId, "drop")}
+        onUnstashCommittedEntry={unstashCommittedEntry}
+        onOpenCommittedStashInGraph={openCommittedStashInGraph}
+      />
+
       <FileAttachmentPreviewDialog
         open={isAttachmentPreviewOpen}
         onClose={closeAttachmentPreview}
@@ -2834,7 +2935,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
               onClick={() => handleContextAction("stash")}
               className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
             >
-              {stashedIds.has(contextMenu.entry.id) ? (
+              {stashedEntryIds.has(contextMenu.entry.id) ? (
                 <>
                   <EyeOff className="h-3.5 w-3.5 text-amber-500" />
                   <span className="text-amber-600 dark:text-amber-400">

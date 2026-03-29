@@ -271,7 +271,7 @@ test.describe.serial("Role: Startup Founder", () => {
   test("opens bridge for AI-assisted specs", async ({ page }) => {
     await goToStream(page, roles.founder.domainId, roles.founder.streamId);
 
-    const bridgeBtn = page.getByRole("button", { name: /bridge/i }).first();
+    const bridgeBtn = page.getByRole("button", { name: /detailed/i }).first();
     if (!(await bridgeBtn.isVisible().catch(() => false))) return;
 
     await bridgeBtn.click();

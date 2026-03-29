@@ -515,14 +515,19 @@ export function MainHeader() {
 
                         <button
                           onClick={() => emit("kolam_header_log_toggle_stash")}
-                          className={`${headerButtonClass} ${logState.showStash ? "border-amber-800 bg-amber-950 text-amber-500" : ""}`}
+                          className={`relative ${headerButtonClass} ${logState.showStash ? "border-amber-800 bg-amber-950 text-amber-500" : ""}`}
                           title={
                             logState.showStash
-                              ? "Hide stashed entries"
-                              : `Show stash (${logState.stashCount ?? 0})`
+                              ? "Close stash manager"
+                              : `Open stash (${logState.stashCount ?? 0})`
                           }
                         >
                           <Archive className="h-4 w-4" />
+                          {(logState.stashCount ?? 0) > 0 && (
+                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
+                              {logState.stashCount}
+                            </span>
+                          )}
                         </button>
 
                         <button
@@ -643,10 +648,6 @@ export function MainHeader() {
                       <span className={summaryPillClass}>
                         <GitCommitHorizontal className="h-3 w-3" />
                         {totalCommitCount} commits
-                      </span>
-                      <span className={summaryPillClass}>
-                        <Archive className="h-3 w-3" />
-                        {logState.stashCount ?? 0} stashed
                       </span>
                     </div>
                   </div>

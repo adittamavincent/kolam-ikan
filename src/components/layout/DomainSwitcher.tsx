@@ -21,10 +21,6 @@ import {
   MenuItem,
   MenuItems,
   Transition,
-  TransitionChild,
-  Dialog,
-  DialogPanel,
-  DialogTitle,
 } from "@headlessui/react";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { useSidebar } from "@/lib/hooks/useSidebar";
@@ -34,6 +30,7 @@ import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { useDomains } from "@/lib/hooks/useDomains";
 import { EditDomainModal } from "./EditDomainModal";
 import AttachmentsManager from "./AttachmentsManager";
+import { ModalHeader, ModalShell } from "@/components/shared/ModalShell";
 // PersonaManager is controlled at layout level so the global entry stays in sync
 
 interface DomainSwitcherProps {
@@ -332,7 +329,11 @@ export function DomainSwitcher({
         userId={userId}
       />
 
-      <AttachmentsManager isOpen={attachmentsOpen} onClose={() => setAttachmentsOpen(false)} userId={userId} />
+      <AttachmentsManager
+        isOpen={attachmentsOpen}
+        onClose={() => setAttachmentsOpen(false)}
+        userId={userId}
+      />
 
       <EditDomainModal
         key={editingDomain?.id ?? "domain-editor"}
@@ -348,102 +349,71 @@ export function DomainSwitcher({
         }}
       />
 
-      <Transition appear show={profileOpen} as={Fragment}>
-        <Dialog
-          as="div"
-          className="relative z-50"
+      <ModalShell
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        panelClassName="w-full p-6"
+      >
+        <ModalHeader
+          title="Profile Settings"
+          icon={<Settings className="h-5 w-5" />}
           onClose={() => setProfileOpen(false)}
-        >
-          <TransitionChild
-            as={Fragment}
-            enter="ease-out duration-300"
-            enterFrom="opacity-0"
-            enterTo="opacity-100"
-            leave="ease-in duration-200"
-            leaveFrom="opacity-100"
-            leaveTo="opacity-0"
-          >
-            <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm" />
-          </TransitionChild>
-
-          <div className="fixed inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4 text-center">
-              <TransitionChild
-                as={Fragment}
-                enter="ease-out duration-300"
-                enterFrom="opacity-0"
-                enterTo="opacity-100 scale-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100 scale-100"
-                leaveTo="opacity-0"
-              >
-                <DialogPanel className="w-full max-w-md transform overflow-hidden bg-surface-default p-6 text-left align-middle transition-all border border-border-default">
-                  <DialogTitle
-                    as="h3"
-                    className="text-lg font-semibold leading-6 text-text-default"
-                  >
-                    Profile Settings
-                  </DialogTitle>
-                  <div className="mt-4 space-y-4">
-                    <div className="flex items-center gap-4">
-                      {avatarUrl ? (
-                        <Image
-                          src={avatarUrl}
-                          alt={displayName}
-                          width={64}
-                          height={64}
-                          unoptimized
-                          className=" object-cover border-2 border-border-default"
-                        />
-                      ) : (
-                        <div className="flex h-16 w-16 items-center justify-center bg-primary-950 text-xl font-bold text-action-primary-bg border-2 border-border-subtle">
-                          {initials}
-                        </div>
-                      )}
-                      <div>
-                        <p className="font-semibold text-text-default">
-                          {displayName}
-                        </p>
-                        <p className="text-sm text-text-muted">{user?.email}</p>
-                      </div>
-                    </div>
-
-                    <div className=" bg-surface-subtle p-4 border border-border-default">
-                      <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">
-                        Account Details
-                      </p>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-text-muted">User ID</span>
-                          <span className="font-mono text-text-default">
-                            {userId.slice(0, 8)}...
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-text-muted">Auth Status</span>
-                          <span className="capitalize text-status-success-text">
-                            {status.replace("_", " ")}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex justify-end">
-                    <button
-                      type="button"
-                      className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: transition-colors"
-                      onClick={() => setProfileOpen(false)}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </DialogPanel>
-              </TransitionChild>
+          className="px-0 pb-4 pt-0"
+          titleClassName="text-lg font-semibold leading-6 text-text-default"
+        />
+        <div className="mt-4 space-y-4">
+          <div className="flex items-center gap-4">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={displayName}
+                width={64}
+                height={64}
+                unoptimized
+                className=" object-cover border-2 border-border-default"
+              />
+            ) : (
+              <div className="flex h-16 w-16 items-center justify-center bg-primary-950 text-xl font-bold text-action-primary-bg border-2 border-border-subtle">
+                {initials}
+              </div>
+            )}
+            <div>
+              <p className="font-semibold text-text-default">{displayName}</p>
+              <p className="text-sm text-text-muted">{user?.email}</p>
             </div>
           </div>
-        </Dialog>
-      </Transition>
+
+          <div className=" bg-surface-subtle p-4 border border-border-default">
+            <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">
+              Account Details
+            </p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-text-muted">User ID</span>
+                <span className="font-mono text-text-default">
+                  {userId.slice(0, 8)}...
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-text-muted">Auth Status</span>
+                <span className="capitalize text-status-success-text">
+                  {status.replace("_", " ")}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            type="button"
+            className="inline-flex justify-center border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-white hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: transition-colors"
+            onClick={() => setProfileOpen(false)}
+          >
+            Close
+          </button>
+        </div>
+      </ModalShell>
 
       {/* PersonaManager is rendered at the layout level to keep global entries in sync */}
     </div>

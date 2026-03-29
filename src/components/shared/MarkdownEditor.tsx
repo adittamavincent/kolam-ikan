@@ -19,6 +19,7 @@ export interface MarkdownEditorProps {
   onEditorReady?: (editor: MarkdownEditorHandle) => void;
   onFocusChange?: (isFocused: boolean) => void;
   highlightTerm?: string;
+  viewStateKey?: string;
 }
 
 // Dynamically import the editor with SSR disabled to prevent window access errors.

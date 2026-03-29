@@ -6,6 +6,34 @@ import { persist } from "zustand/middleware";
 export type UiDeviceClass = "mobile" | "tablet" | "desktop";
 export type UiSyncStatus = "idle" | "syncing" | "synced" | "error";
 export type LayoutMode = "log-only" | "balanced" | "canvas-only";
+export type BridgeProviderId = "chatgpt" | "gemini" | "claude";
+export type BridgeInteractionMode = "ASK" | "GO" | "BOTH";
+export type BridgeQuickPresetId = "recommended";
+
+export interface BridgeContextRecipe {
+  entrySelection: "all" | "last-5";
+  includeCanvas: boolean;
+  includeGlobalStream: boolean;
+}
+
+export interface BridgeStreamSession {
+  providerId: BridgeProviderId;
+  lastMode: BridgeInteractionMode;
+  lastContextRecipe: BridgeContextRecipe;
+  lastInstruction: string;
+  sessionMemory: string;
+  lastUsedAt: string | null;
+  isExternalSessionActive: boolean;
+  externalSessionLoadedAt: string | null;
+}
+
+export interface BridgePreferencesPayload {
+  defaults: {
+    providerId: BridgeProviderId;
+    quickPreset: BridgeQuickPresetId;
+  };
+  sessionsByStream: Record<string, BridgeStreamSession>;
+}
 
 export interface DeviceLayoutWidths {
   log: number;
@@ -32,6 +60,7 @@ export interface UiPreferencesPayload {
   log: {
     collapsedItemIdsByStream: Record<string, string[]>;
   };
+  bridge: BridgePreferencesPayload;
 }
 
 interface UiPreferencesStoreState {
@@ -43,6 +72,8 @@ interface UiPreferencesStoreState {
   layoutWidthsByDevice: Record<UiDeviceClass, DeviceLayoutWidths>;
   navigatorExpandedByDomain: Record<string, string[]>;
   logCollapsedItemIdsByStream: Record<string, string[]>;
+  bridgeDefaults: BridgePreferencesPayload["defaults"];
+  bridgeSessionsByStream: Record<string, BridgeStreamSession>;
   localUpdatedAt: number | null;
   lastSyncedAt: number | null;
   cloudHydratedUserId: string | null;
@@ -69,6 +100,13 @@ interface UiPreferencesStoreState {
     streamId: string,
     validIds: Iterable<string>,
   ) => void;
+  setBridgeDefaults: (defaults: Partial<BridgePreferencesPayload["defaults"]>) => void;
+  upsertBridgeSession: (
+    streamId: string,
+    session: Partial<BridgeStreamSession>,
+  ) => void;
+  clearBridgeSession: (streamId: string) => void;
+  setBridgeSessionActive: (streamId: string, active: boolean) => void;
   setActiveUser: (userId: string | null) => void;
   setCloudHydrated: (userId: string | null) => void;
   setSyncStatus: (status: UiSyncStatus) => void;
@@ -86,6 +124,67 @@ const DEFAULT_LAYOUT_WIDTHS: DeviceLayoutWidths = {
   canvas: 50,
   previous: { log: 50, canvas: 50 },
 };
+
+const DEFAULT_BRIDGE_DEFAULTS: BridgePreferencesPayload["defaults"] = {
+  providerId: "gemini",
+  quickPreset: "recommended",
+};
+
+function createDefaultBridgeContextRecipe(): BridgeContextRecipe {
+  return {
+    entrySelection: "all",
+    includeCanvas: true,
+    includeGlobalStream: true,
+  };
+}
+
+function createDefaultBridgeSession(): BridgeStreamSession {
+  return {
+    providerId: DEFAULT_BRIDGE_DEFAULTS.providerId,
+    lastMode: "BOTH",
+    lastContextRecipe: createDefaultBridgeContextRecipe(),
+    lastInstruction: "",
+    sessionMemory: "",
+    lastUsedAt: null,
+    isExternalSessionActive: false,
+    externalSessionLoadedAt: null,
+  };
+}
+
+function normalizeSessionMemory(value: string) {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  return trimmed.length > 280 ? `${trimmed.slice(0, 277)}...` : trimmed;
+}
+
+function normalizeBridgeSession(
+  session: Partial<BridgeStreamSession> | undefined,
+): BridgeStreamSession {
+  const base = createDefaultBridgeSession();
+  return {
+    providerId: session?.providerId ?? base.providerId,
+    lastMode: session?.lastMode ?? base.lastMode,
+    lastContextRecipe: {
+      ...base.lastContextRecipe,
+      ...(session?.lastContextRecipe ?? {}),
+    },
+    lastInstruction: (session?.lastInstruction ?? base.lastInstruction).trim(),
+    sessionMemory: normalizeSessionMemory(
+      session?.sessionMemory ?? base.sessionMemory,
+    ),
+    lastUsedAt: session?.lastUsedAt ?? base.lastUsedAt,
+    isExternalSessionActive:
+      session?.isExternalSessionActive ?? base.isExternalSessionActive,
+    externalSessionLoadedAt:
+      session?.externalSessionLoadedAt ?? base.externalSessionLoadedAt,
+  };
+}
+
+function buildSessionMemory(instruction: string, mode: BridgeInteractionMode) {
+  const trimmed = instruction.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+  const prefix = `Recent ${mode.toLowerCase()} objective: `;
+  return normalizeSessionMemory(`${prefix}${trimmed}`);
+}
 
 function cloneLayoutWidths(widths: DeviceLayoutWidths): DeviceLayoutWidths {
   return {
@@ -146,6 +245,8 @@ export function buildUiPreferencesPayload(
     | "sidebarWidths"
     | "navigatorExpandedByDomain"
     | "logCollapsedItemIdsByStream"
+    | "bridgeDefaults"
+    | "bridgeSessionsByStream"
   >,
 ): UiPreferencesPayload {
   return {
@@ -184,6 +285,18 @@ export function buildUiPreferencesPayload(
         ),
       ),
     },
+    bridge: {
+      defaults: {
+        providerId: state.bridgeDefaults.providerId,
+        quickPreset: state.bridgeDefaults.quickPreset,
+      },
+      sessionsByStream: Object.fromEntries(
+        Object.entries(state.bridgeSessionsByStream).map(([streamId, session]) => [
+          streamId,
+          normalizeBridgeSession(session),
+        ]),
+      ),
+    },
   };
 }
 
@@ -217,6 +330,17 @@ function mergePayloadIntoState(
         ([streamId, ids]: [string, string[]]) => [streamId, toSortedUniqueIds(ids)],
       ),
     ),
+    bridgeDefaults: {
+      providerId:
+        payload.bridge?.defaults?.providerId ?? current.bridgeDefaults.providerId,
+      quickPreset:
+        payload.bridge?.defaults?.quickPreset ?? current.bridgeDefaults.quickPreset,
+    },
+    bridgeSessionsByStream: Object.fromEntries(
+      Object.entries(payload.bridge?.sessionsByStream ?? {}).map(
+        ([streamId, session]) => [streamId, normalizeBridgeSession(session)],
+      ),
+    ),
   };
 }
 
@@ -235,6 +359,8 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
       layoutWidthsByDevice: createDefaultLayoutWidths(),
       navigatorExpandedByDomain: {},
       logCollapsedItemIdsByStream: {},
+      bridgeDefaults: DEFAULT_BRIDGE_DEFAULTS,
+      bridgeSessionsByStream: {},
       localUpdatedAt: null,
       lastSyncedAt: null,
       cloudHydratedUserId: null,
@@ -480,6 +606,77 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
           });
         });
       },
+      setBridgeDefaults: (defaults) => {
+        set((state) => {
+          const nextDefaults = {
+            ...state.bridgeDefaults,
+            ...defaults,
+          };
+          if (JSON.stringify(nextDefaults) === JSON.stringify(state.bridgeDefaults)) {
+            return state;
+          }
+          return touchLocalState({ bridgeDefaults: nextDefaults });
+        });
+      },
+      upsertBridgeSession: (streamId, session) => {
+        set((state) => {
+          const current = state.bridgeSessionsByStream[streamId];
+          const merged = normalizeBridgeSession({
+            ...current,
+            ...session,
+            lastContextRecipe: {
+              ...(current?.lastContextRecipe ?? createDefaultBridgeContextRecipe()),
+              ...(session.lastContextRecipe ?? {}),
+            },
+            sessionMemory:
+              session.sessionMemory ??
+              buildSessionMemory(
+                session.lastInstruction ?? current?.lastInstruction ?? "",
+                (session.lastMode ?? current?.lastMode ?? "BOTH") as BridgeInteractionMode,
+              ),
+          });
+          if (JSON.stringify(current) === JSON.stringify(merged)) return state;
+          return touchLocalState({
+            bridgeSessionsByStream: {
+              ...state.bridgeSessionsByStream,
+              [streamId]: merged,
+            },
+          });
+        });
+      },
+      clearBridgeSession: (streamId) => {
+        set((state) => {
+          if (!(streamId in state.bridgeSessionsByStream)) return state;
+          const nextSessions = { ...state.bridgeSessionsByStream };
+          delete nextSessions[streamId];
+          return touchLocalState({ bridgeSessionsByStream: nextSessions });
+        });
+      },
+      setBridgeSessionActive: (streamId, active) => {
+        set((state) => {
+          const current = state.bridgeSessionsByStream[streamId];
+          if (!current && !active) return state;
+
+          const nextSession = normalizeBridgeSession({
+            ...current,
+            isExternalSessionActive: active,
+            externalSessionLoadedAt: active
+              ? new Date().toISOString()
+              : null,
+          });
+
+          if (JSON.stringify(current) === JSON.stringify(nextSession)) {
+            return state;
+          }
+
+          return touchLocalState({
+            bridgeSessionsByStream: {
+              ...state.bridgeSessionsByStream,
+              [streamId]: nextSession,
+            },
+          });
+        });
+      },
       setActiveUser: (userId) => {
         set((state) => {
           if (state.activeUserId === userId) return state;
@@ -529,6 +726,8 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
         layoutWidthsByDevice: state.layoutWidthsByDevice,
         navigatorExpandedByDomain: state.navigatorExpandedByDomain,
         logCollapsedItemIdsByStream: state.logCollapsedItemIdsByStream,
+        bridgeDefaults: state.bridgeDefaults,
+        bridgeSessionsByStream: state.bridgeSessionsByStream,
         localUpdatedAt: state.localUpdatedAt,
         lastSyncedAt: state.lastSyncedAt,
         cloudHydratedUserId: state.cloudHydratedUserId,

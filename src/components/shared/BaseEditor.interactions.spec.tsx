@@ -290,4 +290,68 @@ describe("BaseEditor live table interactions", () => {
     const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as string | undefined;
     expect(latestMarkdown).toBe(" beta\nsecond line");
   });
+
+  it("restores cursor and scroll position after remounting with the same view state key", async () => {
+    const user = userEvent.setup();
+    const initialMarkdown = Array.from({ length: 30 }, (_, index) => `line ${index}`)
+      .join("\n");
+    const handleChange = vi.fn();
+    const firstRender = render(
+      <BaseEditor
+        initialMarkdown={initialMarkdown}
+        onChange={handleChange}
+        viewStateKey="persisted-editor"
+      />,
+    );
+
+    const firstEditor = firstRender.container.querySelector(
+      ".cm-content",
+    ) as HTMLElement | null;
+    const firstScroller = firstRender.container.querySelector(
+      ".cm-scroller",
+    ) as HTMLElement | null;
+
+    if (!firstEditor || !firstScroller) {
+      throw new Error("Expected CodeMirror editor and scroller");
+    }
+
+    firstEditor.focus();
+    await user.keyboard("{ArrowRight}{ArrowRight}");
+    firstScroller.scrollTop = 180;
+    fireEvent.scroll(firstScroller);
+
+    firstRender.unmount();
+
+    const secondRender = render(
+      <BaseEditor
+        initialMarkdown={initialMarkdown}
+        onChange={handleChange}
+        viewStateKey="persisted-editor"
+      />,
+    );
+    const secondEditor = secondRender.container.querySelector(
+      ".cm-content",
+    ) as HTMLElement | null;
+    const secondScroller = secondRender.container.querySelector(
+      ".cm-scroller",
+    ) as HTMLElement | null;
+
+    if (!secondEditor || !secondScroller) {
+      throw new Error("Expected remounted CodeMirror editor and scroller");
+    }
+
+    await waitFor(() => {
+      expect(secondScroller.scrollTop).toBe(180);
+    });
+
+    secondEditor.focus();
+    await user.keyboard("Z");
+
+    await waitFor(() => {
+      expect(handleChange).toHaveBeenCalled();
+    });
+
+    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as string | undefined;
+    expect(latestMarkdown?.startsWith("liZne 0")).toBe(true);
+  });
 });

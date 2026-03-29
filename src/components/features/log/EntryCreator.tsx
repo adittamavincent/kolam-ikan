@@ -64,7 +64,6 @@ import { DocumentWithLatestJob } from "@/lib/types";
 import {
   useDraftSystem,
   FileDraftAttachment,
-  type DraftContent,
 } from "@/lib/hooks/useDraftSystem";
 import debounce from "lodash/debounce";
 import { calculateFileHash } from "@/lib/utils/hash";
@@ -88,6 +87,11 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  EntryCreatorStashItem,
+  readEntryCreatorStash,
+  writeEntryCreatorStash,
+} from "@/lib/utils/stash";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -112,96 +116,7 @@ function comparePersonaCreatedAt(
   return a.name.localeCompare(b.name);
 }
 
-type EntryCreatorStashItem = {
-  id: string;
-  createdAt: string;
-  branchName: string;
-  headCommitId: string | null;
-  sections: Array<{
-    instanceId: string;
-    draft: DraftContent;
-  }>;
-};
-
-const ENTRY_CREATOR_STASH_KEY = (streamId: string) =>
-  `kolam_entry_creator_stash_v1_${streamId}`;
 const MAX_ENTRY_CREATOR_STASH_ITEMS = 20;
-
-function readEntryCreatorStash(streamId: string): EntryCreatorStashItem[] {
-  if (typeof window === "undefined") return [];
-
-  try {
-    const raw = window.localStorage.getItem(ENTRY_CREATOR_STASH_KEY(streamId));
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.flatMap((item) => {
-      if (!item || typeof item !== "object") return [];
-
-      const candidate = item as Partial<EntryCreatorStashItem>;
-      if (
-        typeof candidate.id !== "string" ||
-        typeof candidate.createdAt !== "string" ||
-        typeof candidate.branchName !== "string" ||
-        !Array.isArray(candidate.sections)
-      ) {
-        return [];
-      }
-
-      return [{
-        id: candidate.id,
-        createdAt: candidate.createdAt,
-        branchName: candidate.branchName,
-        headCommitId:
-          typeof candidate.headCommitId === "string"
-            ? candidate.headCommitId
-            : null,
-        sections: candidate.sections.flatMap((section) => {
-          if (!section || typeof section !== "object") return [];
-
-          const sectionCandidate = section as {
-            instanceId?: unknown;
-            draft?: DraftContent;
-          };
-
-          if (typeof sectionCandidate.instanceId !== "string") return [];
-          if (!sectionCandidate.draft || typeof sectionCandidate.draft !== "object") {
-            return [];
-          }
-
-          return [{
-            instanceId: sectionCandidate.instanceId,
-            draft: sectionCandidate.draft,
-          }];
-        }),
-      }];
-    });
-  } catch {
-    return [];
-  }
-}
-
-function writeEntryCreatorStash(
-  streamId: string,
-  items: EntryCreatorStashItem[],
-): void {
-  if (typeof window === "undefined") return;
-
-  try {
-    if (items.length === 0) {
-      window.localStorage.removeItem(ENTRY_CREATOR_STASH_KEY(streamId));
-      return;
-    }
-
-    window.localStorage.setItem(
-      ENTRY_CREATOR_STASH_KEY(streamId),
-      JSON.stringify(items),
-    );
-  } catch {
-    // Ignore storage errors.
-  }
-}
 
 function textToBlockContent(text: string) {
   const value = text.trim();
@@ -397,9 +312,22 @@ interface EntryCreatorProps {
   streamId: string;
   currentBranch?: string;
   onCurrentBranchChange?: (branchName: string) => void;
+  externalStashAction?:
+    | {
+        nonce: string;
+        stashId: string;
+        kind: "apply" | "pop" | "drop";
+      }
+    | null;
+  onExternalStashActionHandled?: (nonce: string) => void;
 }
 
-export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
+export function EntryCreator({
+  streamId,
+  currentBranch,
+  externalStashAction = null,
+  onExternalStashActionHandled,
+}: EntryCreatorProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -1296,6 +1224,7 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
         <MarkdownEditor
           initialContent={getDraftContent(instanceId)}
           initialMarkdown={getDraftMarkdown(instanceId)}
+          viewStateKey={`entry-creator:${instanceId}`}
           onChange={(content, markdown) => {
             handlePersonaEditorChange(
               instanceId,
@@ -1757,6 +1686,40 @@ export function EntryCreator({ streamId, currentBranch }: EntryCreatorProps) {
     if (stashItems.length === 0) return;
     persistStashItems(() => []);
   }, [persistStashItems, stashItems.length]);
+
+  useEffect(() => {
+    if (!externalStashAction) return;
+
+    const targetStash = stashItems.find(
+      (stashItem) => stashItem.id === externalStashAction.stashId,
+    );
+
+    if (!targetStash) {
+      onExternalStashActionHandled?.(externalStashAction.nonce);
+      return;
+    }
+
+    if (externalStashAction.kind === "apply") {
+      restoreStashIntoComposer(targetStash);
+    } else if (externalStashAction.kind === "pop") {
+      restoreStashIntoComposer(targetStash);
+      persistStashItems((current) =>
+        current.filter((stashItem) => stashItem.id !== externalStashAction.stashId),
+      );
+    } else if (externalStashAction.kind === "drop") {
+      persistStashItems((current) =>
+        current.filter((stashItem) => stashItem.id !== externalStashAction.stashId),
+      );
+    }
+
+    onExternalStashActionHandled?.(externalStashAction.nonce);
+  }, [
+    externalStashAction,
+    onExternalStashActionHandled,
+    persistStashItems,
+    restoreStashIntoComposer,
+    stashItems,
+  ]);
 
   const addPersona = (pId: string) => {
     const instanceId = crypto.randomUUID();

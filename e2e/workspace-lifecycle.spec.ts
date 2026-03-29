@@ -325,47 +325,39 @@ test.describe.serial("Canvas Writing", () => {
 // CATEGORY 5: Bridge (AI synthesis modal)
 // ===================================================================
 
-test.describe.serial("Bridge Modal", () => {
-  test("opens bridge and shows interaction modes", async ({ page }) => {
+test.describe.serial("Bridge", () => {
+  test("opens detailed bridge and shows interaction modes", async ({ page }) => {
     restoreCtx();
     await goToStream(page, ctx.domainId, ctx.streamId);
 
-    const bridgeBtn = page.getByRole("button", { name: /bridge/i }).first();
-    if (!(await bridgeBtn.isVisible().catch(() => false))) {
+    const detailedBtn = page.getByRole("button", { name: /detailed/i }).first();
+    if (!(await detailedBtn.isVisible().catch(() => false))) {
       test.skip();
       return;
     }
 
-    await bridgeBtn.click();
+    await detailedBtn.click();
     await page.waitForTimeout(1000);
     await expect(page.getByText(/ASK|GO|BOTH/i).first()).toBeVisible({
       timeout: 5000,
     });
   });
 
-  test("bridge copy to clipboard works", async ({ page }) => {
+  test("opens quick bridge launcher", async ({ page }) => {
     await goToStream(page, ctx.domainId, ctx.streamId);
 
-    const bridgeBtn = page.getByRole("button", { name: /bridge/i }).first();
-    if (!(await bridgeBtn.isVisible().catch(() => false))) {
+    const quickBtn = page.getByRole("button", { name: /quick/i }).first();
+    if (!(await quickBtn.isVisible().catch(() => false))) {
       test.skip();
       return;
     }
 
-    await bridgeBtn.click();
+    await quickBtn.click();
     await page.waitForTimeout(1000);
 
-    const copyBtn = page.getByText(/copy to clipboard|copy/i).first();
-    if (!(await copyBtn.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
-
-    await page
-      .context()
-      .grantPermissions(["clipboard-read", "clipboard-write"]);
-    await copyBtn.click();
-    await expect(page.getByText(/copied/i)).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText(/Quick Bridge/i)).toBeVisible({
+      timeout: 5000,
+    });
   });
 });
 

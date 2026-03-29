@@ -1,16 +1,8 @@
 "use client";
 
-import { Fragment, useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useBlobUrl } from "@/lib/hooks/useBlobUrl";
-import {
-  Dialog,
-  
-  DialogPanel,
-  DialogTitle,
-  Transition,
-  TransitionChild,
-} from "@headlessui/react";
 import {
   X,
   MessageSquare,
@@ -36,6 +28,7 @@ import { useDocuments } from "@/lib/hooks/useDocuments";
 import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ModalHeader, ModalShell } from "@/components/shared/ModalShell";
 
 declare global {
   interface Window {
@@ -594,15 +587,22 @@ export function WhatsAppImportModal({
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
   const [allPdfsExistDialogOpen, setAllPdfsExistDialogOpen] = useState(false);
   const [existingLocalReuseCount, setExistingLocalReuseCount] = useState(0);
-  const [pendingPersonaCreations, setPendingPersonaCreations] = useState<string[]>([]);
-  const [draftPersonas, setDraftPersonas] = useState<Record<string, {
-    id: string;
-    name: string;
-    color: string;
-    icon: string;
-    is_shadow: true;
-    isDraft: true;
-  }>>({});
+  const [pendingPersonaCreations, setPendingPersonaCreations] = useState<
+    string[]
+  >([]);
+  const [draftPersonas, setDraftPersonas] = useState<
+    Record<
+      string,
+      {
+        id: string;
+        name: string;
+        color: string;
+        icon: string;
+        is_shadow: true;
+        isDraft: true;
+      }
+    >
+  >({});
   // Abort flag to avoid creating personas if the modal is closed/discarded
   const creatingAbortRef = useRef(false);
 
@@ -689,7 +689,12 @@ export function WhatsAppImportModal({
   const allPdfsPrepared = pdfTurns.every((turn) => {
     const upload = uploads[turn.id];
     if (!upload) return false;
-    if (upload.status === "skipped" || upload.status === "done" || upload.status === "exists") return true;
+    if (
+      upload.status === "skipped" ||
+      upload.status === "done" ||
+      upload.status === "exists"
+    )
+      return true;
     return !!upload.file;
   });
   // Live preview (step 1 only)
@@ -731,10 +736,11 @@ export function WhatsAppImportModal({
     [draftPersonas],
   );
   const validMapping = Object.fromEntries(
-    Object.entries(mapping).filter(([, id]) =>
-      localPersonaIds.has(id) ||
-      globalPersonaIds.has(id) ||
-      draftPersonaIds.has(id),
+    Object.entries(mapping).filter(
+      ([, id]) =>
+        localPersonaIds.has(id) ||
+        globalPersonaIds.has(id) ||
+        draftPersonaIds.has(id),
     ),
   );
   const allMapped = mappableSenders.every((s) => !!validMapping[s]);
@@ -744,10 +750,11 @@ export function WhatsAppImportModal({
 
   const getValidMapping = (snapshot: Record<string, string>) =>
     Object.fromEntries(
-      Object.entries(snapshot).filter(([, id]) =>
-        localPersonaIds.has(id) ||
-        globalPersonaIds.has(id) ||
-        draftPersonaIds.has(id),
+      Object.entries(snapshot).filter(
+        ([, id]) =>
+          localPersonaIds.has(id) ||
+          globalPersonaIds.has(id) ||
+          draftPersonaIds.has(id),
       ),
     );
 
@@ -931,9 +938,7 @@ export function WhatsAppImportModal({
     setMappableSenders(senders);
 
     const existingLocalsBySender = senders.filter((s) =>
-      localPersonas.some(
-        (p) => p.name.toLowerCase() === s.toLowerCase(),
-      ),
+      localPersonas.some((p) => p.name.toLowerCase() === s.toLowerCase()),
     );
     setExistingLocalReuseCount(existingLocalsBySender.length);
 
@@ -953,7 +958,9 @@ export function WhatsAppImportModal({
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
   };
 
-  const handleCreatePersonas = async (sendersToCreate: string[]): Promise<Record<string, string> | null> => {
+  const handleCreatePersonas = async (
+    sendersToCreate: string[],
+  ): Promise<Record<string, string> | null> => {
     setMapError(null);
     setMapNotice(null);
     setCreatingAllPersonas(true);
@@ -965,7 +972,9 @@ export function WhatsAppImportModal({
     // Reset abort flag for this run
     creatingAbortRef.current = false;
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (creatingAbortRef.current || !isOpen) return null;
       if (!user) return null;
 
@@ -992,7 +1001,8 @@ export function WhatsAppImportModal({
       }
 
       await queryClient.invalidateQueries({
-        predicate: (query) => Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
       });
 
       const createdMap: Record<string, string> = {};
@@ -1007,7 +1017,10 @@ export function WhatsAppImportModal({
       }
 
       if (Object.keys(createdMap).length === 0) {
-        console.debug("[WhatsApp] No created map entries matched senders; created rows:", data);
+        console.debug(
+          "[WhatsApp] No created map entries matched senders; created rows:",
+          data,
+        );
       } else {
         setMapping((prev) => ({ ...prev, ...createdMap }));
       }
@@ -1019,7 +1032,9 @@ export function WhatsAppImportModal({
       if (Object.keys(createdMap).length > 0) {
         setDraftPersonas((prev) => {
           const next = { ...prev };
-          const createdNameKeys = new Set(Object.keys(createdMap).map((s) => normalizePersonaNameKey(s)));
+          const createdNameKeys = new Set(
+            Object.keys(createdMap).map((s) => normalizePersonaNameKey(s)),
+          );
           for (const key of Object.keys(prev)) {
             if (createdNameKeys.has(normalizePersonaNameKey(prev[key].name))) {
               delete next[key];
@@ -1109,14 +1124,16 @@ export function WhatsAppImportModal({
           // If not matched, try to find a file from ZIP and hash it
           if (!matchedDoc) {
             const candidate = findBestPdfForTurn(t, zipPdfIndex);
-              if (candidate && !fileHash) {
-                try {
-                  fileHash = await calculateFileHash(candidate);
-                } catch {
-                  fileHash = undefined;
-                }
-                if (fileHash) matchedDoc = docsByHash.get(String(fileHash).toLowerCase()) ?? null;
+            if (candidate && !fileHash) {
+              try {
+                fileHash = await calculateFileHash(candidate);
+              } catch {
+                fileHash = undefined;
               }
+              if (fileHash)
+                matchedDoc =
+                  docsByHash.get(String(fileHash).toLowerCase()) ?? null;
+            }
           }
 
           // Fallback: match by normalized filename/path
@@ -1185,7 +1202,9 @@ export function WhatsAppImportModal({
               ...(next[t.id] ?? {}),
               status: "exists",
               fileHash: check.fileHash,
-              existingDocument: normalizeDoc(check.matchedDoc as DocLite | null),
+              existingDocument: normalizeDoc(
+                check.matchedDoc as DocLite | null,
+              ),
             };
           } else {
             if (!next[t.id]) next[t.id] = { status: "pending" };
@@ -1234,9 +1253,7 @@ export function WhatsAppImportModal({
   ) => {
     const blobUrl = URL.createObjectURL(file);
     const safeTitle =
-      titleHint?.trim() ||
-      file.name.replace(/\.[^/.]+$/, "") ||
-      "Document";
+      titleHint?.trim() || file.name.replace(/\.[^/.]+$/, "") || "Document";
 
     setUploads((prev) => ({
       ...prev,
@@ -1263,18 +1280,16 @@ export function WhatsAppImportModal({
         body: formData,
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | {
-            document?: {
-              id: string;
-              storage_path: string;
-              thumbnail_path: string | null;
-              title: string;
-            };
-            previewUrl?: string | null;
-            error?: string;
-          }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        document?: {
+          id: string;
+          storage_path: string;
+          thumbnail_path: string | null;
+          title: string;
+        };
+        previewUrl?: string | null;
+        error?: string;
+      } | null;
 
       if (!response.ok || !payload?.document) {
         throw new Error(payload?.error ?? "Failed to upload attachment");
@@ -1359,24 +1374,40 @@ export function WhatsAppImportModal({
 
         if (process.env.NODE_ENV !== "production")
           console.debug("[WhatsApp] Processing PDF turn:", {
-          turnId: turn.id,
-          filename: turn.filename,
-          fullPath: turn.fullPath,
-          uploadStatus: upload?.status,
-          uploadFile: upload?.file
-            ? { name: upload.file.name, size: upload.file.size }
-            : null,
+            turnId: turn.id,
+            filename: turn.filename,
+            fullPath: turn.fullPath,
+            uploadStatus: upload?.status,
+            uploadFile: upload?.file
+              ? { name: upload.file.name, size: upload.file.size }
+              : null,
           });
 
         // If already uploaded (done) or already exists → include in inject payload
         if (
-          (upload?.status === "done" && upload.documentId && upload.storagePath) ||
-          (upload?.status === "exists" && upload.existingDocument && (upload.existingDocument.id || upload.existingDocument.storagePath))
+          (upload?.status === "done" &&
+            upload.documentId &&
+            upload.storagePath) ||
+          (upload?.status === "exists" &&
+            upload.existingDocument &&
+            (upload.existingDocument.id || upload.existingDocument.storagePath))
         ) {
-          const docId = upload?.status === "done" ? upload!.documentId : upload!.existingDocument?.id;
-          const storagePath = upload?.status === "done" ? upload!.storagePath : upload!.existingDocument?.storagePath;
-          const thumbnailPath = (upload?.status === "done" ? upload!.thumbnailPath : upload!.existingDocument?.thumbnailPath) ?? undefined;
-          const titleFromDoc = upload?.status === "done" ? upload!.titleSnapshot : upload!.existingDocument?.title;
+          const docId =
+            upload?.status === "done"
+              ? upload!.documentId
+              : upload!.existingDocument?.id;
+          const storagePath =
+            upload?.status === "done"
+              ? upload!.storagePath
+              : upload!.existingDocument?.storagePath;
+          const thumbnailPath =
+            (upload?.status === "done"
+              ? upload!.thumbnailPath
+              : upload!.existingDocument?.thumbnailPath) ?? undefined;
+          const titleFromDoc =
+            upload?.status === "done"
+              ? upload!.titleSnapshot
+              : upload!.existingDocument?.title;
 
           const attachment = {
             documentId: docId,
@@ -1550,7 +1581,11 @@ export function WhatsAppImportModal({
       } else {
         const upload = uploadsSnapshot[turn.id];
         if (!upload) continue;
-        if (upload.status === "done" && upload.documentId && upload.storagePath) {
+        if (
+          upload.status === "done" &&
+          upload.documentId &&
+          upload.storagePath
+        ) {
           const attachment = {
             documentId: upload.documentId,
             storagePath: upload.storagePath,
@@ -1581,7 +1616,11 @@ export function WhatsAppImportModal({
             storagePath: ed.storagePath,
             thumbnailPath: ed.thumbnailPath ?? undefined,
             titleSnapshot:
-              upload.titleSnapshot ?? ed.title ?? turn.preferredTitle ?? turn.filename ?? "Document",
+              upload.titleSnapshot ??
+              ed.title ??
+              turn.preferredTitle ??
+              turn.filename ??
+              "Document",
           };
 
           const last = payloadTurns[payloadTurns.length - 1];
@@ -1645,6 +1684,14 @@ export function WhatsAppImportModal({
     onClose();
   };
 
+  const handleRequestClose = () => {
+    if (step !== "paste") {
+      setConfirmExitOpen(true);
+      return;
+    }
+    handleClose();
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   const totalSteps = hasPdfTurns ? 4 : 3;
@@ -1652,779 +1699,750 @@ export function WhatsAppImportModal({
     step === "paste" ? 1 : step === "range" ? 2 : step === "map" ? 3 : 4;
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog
-        as="div"
-        onClose={() => {
-          // If user progressed past the paste step show confirmation
-          if (step !== "paste") setConfirmExitOpen(true);
-          else handleClose();
-        }}
-        className="relative z-50"
+    <>
+      <ModalShell
+        open={isOpen}
+        onRequestClose={handleRequestClose}
+        viewportClassName="fixed inset-0 overflow-y-auto p-2 lg:p-3"
+        panelClassName="flex w-full flex-col"
       >
-        <TransitionChild
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-surface-dark backdrop-blur-xs transition-opacity" />
-        </TransitionChild>
+        <ModalHeader
+          title="WhatsApp Import"
+          icon={<MessageSquare className="h-4 w-4 text-text-muted" />}
+          onClose={handleRequestClose}
+          className="px-4 py-3"
+          titleClassName="text-sm font-semibold text-text-default"
+          meta={
+            step !== "paste" ? (
+              <span className=" bg-surface-subtle px-2 py-0.5 font-mono text-[10px] text-text-muted">
+                {currentStepNumber} / {totalSteps}
+              </span>
+            ) : null
+          }
+        />
 
-        <div className="fixed inset-0 overflow-y-auto p-2 lg:p-3">
-          <div className="flex min-h-full items-center justify-center">
-            <TransitionChild
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0 translate-y-4"
-              enterTo="opacity-100 scale-100 translate-y-0"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100 translate-y-0"
-              leaveTo="opacity-0 translate-y-4"
-            >
-              <DialogPanel className="flex w-full max-w-xl flex-col border border-border-strong bg-surface-default transition-all">
-            {/* ─── Header ────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-text-muted" />
-                <DialogTitle className="text-sm font-semibold text-text-default">
-                  WhatsApp Import
-                </DialogTitle>
-                {step !== "paste" && (
-                  <span className=" bg-surface-subtle px-2 py-0.5 font-mono text-[10px] text-text-muted">
-                    {currentStepNumber} / {totalSteps}
-                  </span>
-                )}
-              </div>
+        {/* ─── Step 1: Paste ─────────────────────────────────────────── */}
+        {step === "paste" && (
+          <div className="flex flex-col gap-3 p-3">
+            <p className="text-xs text-text-muted">
+              Paste chat text or upload ZIP. PDF references like{" "}
+              <code className=" bg-surface-subtle px-1 py-0.5 text-[10px]">
+                &lt;attached: file.pdf&gt;
+              </code>{" "}
+              are detected automatically.
+            </p>
+
+            <input
+              ref={zipInputRef}
+              type="file"
+              accept=".zip,application/zip"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleZipSelect(file);
+                e.target.value = "";
+              }}
+            />
+
+            <div className="flex flex-wrap items-center gap-2 border border-border-default bg-surface-subtle px-3 py-2">
               <button
-                onClick={() => {
-                  if (step !== "paste") setConfirmExitOpen(true);
-                  else handleClose();
-                }}
-                className=" p-1 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
+                onClick={() => zipInputRef.current?.click()}
+                disabled={zipLoading}
+                className="inline-flex items-center gap-1.5 border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle disabled:opacity-50"
               >
-                <X className="h-4 w-4" />
+                {zipLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Upload className="h-3.5 w-3.5" />
+                )}
+                {zipLoading ? "Parsing ZIP…" : "Upload WhatsApp ZIP"}
               </button>
+              {zipSourceName && (
+                <span className="text-[11px] text-text-muted">
+                  Loaded:{" "}
+                  <span className="font-medium text-text-default">
+                    {zipSourceName}
+                  </span>
+                </span>
+              )}
+              {zipLoadError && (
+                <span className="text-[11px] text-red-500">{zipLoadError}</span>
+              )}
             </div>
 
-            {/* ─── Step 1: Paste ─────────────────────────────────────────── */}
-            {step === "paste" && (
-              <div className="flex flex-col gap-3 p-3">
-                <p className="text-xs text-text-muted">
-                  Paste chat text or upload ZIP. PDF references like{" "}
-                  <code className=" bg-surface-subtle px-1 py-0.5 text-[10px]">
-                    &lt;attached: file.pdf&gt;
-                  </code>{" "}
-                  are detected automatically.
-                </p>
+            <textarea
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+              className="h-56 w-full resize-none border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-border-default focus: focus: focus:"
+              placeholder={`[3/10/26, 7:42:30 PM] Alice: Hey!\n[3/10/26, 7:44:00 PM] Bob: Here is the doc\n[3/10/26, 7:44:01 PM] Bob: <attached: proposal.pdf>\n[3/10/26, 7:44:05 PM] Bob: /Users/you/.../proposal.pdf`}
+              spellCheck={false}
+            />
 
-                <input
-                  ref={zipInputRef}
-                  type="file"
-                  accept=".zip,application/zip"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void handleZipSelect(file);
-                    e.target.value = "";
-                  }}
-                />
+            {/* Live feedback */}
+            {rawText.trim() && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+                {liveMsgs.length === 0 ? (
+                  <span className="flex items-center gap-1 text-amber-500">
+                    <AlertTriangle className="h-3 w-3" />
+                    No messages recognized — check the format.
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-text-muted">
+                      <span className="font-semibold text-text-default">
+                        {liveMsgs.length}
+                      </span>{" "}
+                      message{liveMsgs.length !== 1 ? "s" : ""}
+                    </span>
+                    <span className="text-text-muted">
+                      <span className="font-semibold text-text-default">
+                        {liveSenders.length}
+                      </span>{" "}
+                      sender{liveSenders.length !== 1 ? "s" : ""}
+                    </span>
+                    {livePdfCount > 0 && (
+                      <span className="flex items-center gap-1 font-medium text-blue-500">
+                        <FileText className="h-3 w-3" />
+                        {livePdfCount} PDF{livePdfCount !== 1 ? "s" : ""}{" "}
+                        detected
+                      </span>
+                    )}
+                    {liveMediaCount > 0 && (
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <ImageIcon className="h-3 w-3" />
+                        {liveMediaCount} media (skipped)
+                      </span>
+                    )}
+                    {liveCleanedSenders > 0 && (
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        {liveCleanedSenders} sender name
+                        {liveCleanedSenders !== 1 ? "s" : ""} cleaned
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
-                <div className="flex flex-wrap items-center gap-2 border border-border-default bg-surface-subtle px-3 py-2">
+            <StepFooter
+              onNext={handleParseAndNext}
+              nextDisabled={
+                !rawText.trim() || liveMsgs.length === 0 || liveImportable === 0
+              }
+              shortcutsEnabled={!confirmExitOpen}
+              nextContent={
+                <>
+                  Next
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </>
+              }
+            />
+          </div>
+        )}
+
+        {/* ─── Step 2: Select range ─────────────────────────────────── */}
+        {step === "range" && (
+          <div className="flex flex-col gap-3 p-3">
+            <div>
+              <p className="text-xs font-medium text-text-default">
+                Select chat range
+              </p>
+            </div>
+
+            <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
+              <div>
+                Total turns:{" "}
+                <span className="font-semibold text-text-default">
+                  {parsedTurns.length}
+                </span>
+                {" · "}
+                Selected:{" "}
+                <span className="font-semibold text-text-default">
+                  {selectedTurns.length}
+                </span>
+                {" · "}
+                Importable:{" "}
+                <span className="font-semibold text-text-default">
+                  {rangeImportableCount}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1 text-[11px] text-text-muted">
+                From turn
+                <div className="flex items-center gap-2">
                   <button
-                    onClick={() => zipInputRef.current?.click()}
-                    disabled={zipLoading}
-                    className="inline-flex items-center gap-1.5 border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle disabled:opacity-50"
+                    onClick={() => setRangeStart((s) => Math.max(0, s - 1))}
+                    className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                    aria-label="decrement start"
                   >
-                    {zipLoading ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Upload className="h-3.5 w-3.5" />
-                    )}
-                    {zipLoading ? "Parsing ZIP…" : "Upload WhatsApp ZIP"}
+                    -
                   </button>
-                  {zipSourceName && (
-                    <span className="text-[11px] text-text-muted">
-                      Loaded:{" "}
-                      <span className="font-medium text-text-default">
-                        {zipSourceName}
-                      </span>
-                    </span>
-                  )}
-                  {zipLoadError && (
-                    <span className="text-[11px] text-red-500">
-                      {zipLoadError}
-                    </span>
-                  )}
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(1, parsedTurns.length)}
+                    value={Math.min(
+                      rangeStart + 1,
+                      Math.max(1, parsedTurns.length),
+                    )}
+                    onChange={(e) => {
+                      const max = Math.max(1, parsedTurns.length);
+                      const next =
+                        Math.min(
+                          Math.max(
+                            1,
+                            Number.parseInt(e.target.value || "1", 10) || 1,
+                          ),
+                          max,
+                        ) - 1;
+                      setRangeStart(next);
+                      if (next > rangeEnd) setRangeEnd(next);
+                    }}
+                    className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus:"
+                  />
+                  <button
+                    onClick={() =>
+                      setRangeStart((s) => Math.min(s + 1, rangeEnd))
+                    }
+                    className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                    aria-label="increment start"
+                  >
+                    +
+                  </button>
                 </div>
+              </label>
 
-                <textarea
-                  value={rawText}
-                  onChange={(e) => setRawText(e.target.value)}
-                  className="h-56 w-full resize-none border border-border-default bg-surface-subtle p-3 font-mono text-xs text-text-default placeholder:text-text-muted focus:border-border-default focus: focus: focus:"
-                  placeholder={`[3/10/26, 7:42:30 PM] Alice: Hey!\n[3/10/26, 7:44:00 PM] Bob: Here is the doc\n[3/10/26, 7:44:01 PM] Bob: <attached: proposal.pdf>\n[3/10/26, 7:44:05 PM] Bob: /Users/you/.../proposal.pdf`}
-                  spellCheck={false}
-                />
+              <label className="flex flex-col gap-1 text-[11px] text-text-muted">
+                To turn
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setRangeEnd((e) => Math.max(e - 1, rangeStart))
+                    }
+                    className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                    aria-label="decrement end"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(1, parsedTurns.length)}
+                    value={Math.min(
+                      rangeEnd + 1,
+                      Math.max(1, parsedTurns.length),
+                    )}
+                    onChange={(e) => {
+                      const max = Math.max(1, parsedTurns.length);
+                      const next =
+                        Math.min(
+                          Math.max(
+                            1,
+                            Number.parseInt(e.target.value || "1", 10) || 1,
+                          ),
+                          max,
+                        ) - 1;
+                      setRangeEnd(next);
+                      if (next < rangeStart) setRangeStart(next);
+                    }}
+                    className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus:"
+                  />
+                  <button
+                    onClick={() =>
+                      setRangeEnd((e) =>
+                        Math.min(e + 1, parsedTurns.length - 1),
+                      )
+                    }
+                    className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
+                    aria-label="increment end"
+                  >
+                    +
+                  </button>
+                </div>
+              </label>
+            </div>
 
-                {/* Live feedback */}
-                {rawText.trim() && (
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-                    {liveMsgs.length === 0 ? (
-                      <span className="flex items-center gap-1 text-amber-500">
-                        <AlertTriangle className="h-3 w-3" />
-                        No messages recognized — check the format.
-                      </span>
+            {/* Preview list with clickable controls to set start/end */}
+            <div className="max-h-48 overflow-y-auto border border-border-default bg-surface-subtle p-2 text-[11px]">
+              {parsedTurns.length === 0 ? (
+                <div className="text-text-muted">No turns to preview.</div>
+              ) : (
+                parsedTurns.map((t, idx) => {
+                  const isSelected = idx >= rangeStart && idx <= rangeEnd;
+                  // Determine preview + optional size for PDFs when file is available
+                  let preview = "";
+                  let fullPreview = "";
+                  if (t.type === "text") {
+                    fullPreview = (t.messages && t.messages.join("\n\n")) || "";
+                    preview = t.messages?.[0]?.slice(0, 120) ?? "";
+                  } else if (t.type === "pdf") {
+                    const filename = t.filename ?? "document.pdf";
+                    const matchedFile =
+                      uploads[t.id]?.file ?? findBestPdfForTurn(t, zipPdfIndex);
+                    const sizeStr = matchedFile
+                      ? ` (${formatBytes(matchedFile.size)})`
+                      : "";
+                    preview = `PDF: ${filename}${sizeStr}`;
+                    fullPreview = preview;
+                  } else {
+                    preview = `Media: ${t.mediaKind ?? "file"}`;
+                    fullPreview = preview;
+                  }
+                  return (
+                    <div
+                      key={t.id}
+                      className={`relative flex items-center justify-between gap-3 px-2 py-1  ${isSelected ? "bg-primary-950 border border-border-subtle" : "hover:bg-surface-subtle"}`}
+                    >
+                      <div
+                        className="min-w-0 flex-1 text-[11px]"
+                        onMouseEnter={(e) =>
+                          handlePreviewMouseEnter(e, idx, fullPreview)
+                        }
+                        onMouseLeave={handlePreviewMouseLeave}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[11px] text-text-muted">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-medium text-text-default truncate">
+                            {t.sender}
+                          </span>
+                        </div>
+                        <div className="truncate text-[10px] text-text-muted">
+                          {preview}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setRangeStart(idx)}
+                          title="Set as start"
+                          className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+                        >
+                          Start
+                        </button>
+                        <button
+                          onClick={() => setRangeEnd(idx)}
+                          title="Set as end"
+                          className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+                        >
+                          End
+                        </button>
+                      </div>
+                      {/* Tooltip is rendered in a portal to avoid affecting layout */}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <StepFooter
+              onBack={() => setStep("paste")}
+              onNext={handleRangeNext}
+              nextDisabled={rangeImportableCount === 0}
+              shortcutsEnabled={!confirmExitOpen}
+              nextContent={
+                <>
+                  Next: Map Personas
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </>
+              }
+            />
+          </div>
+        )}
+
+        {/* ─── Step 3: Map personas ────────────────────────────────────── */}
+        {step === "map" && (
+          <div className="flex flex-col gap-3 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-xs font-medium text-text-default">
+                  Map senders
+                </p>
+                <p className="mt-0.5 text-[11px] text-text-muted">
+                  {textTurns.length} text turn
+                  {textTurns.length !== 1 ? "s" : ""}
+                  {pdfTurns.length > 0 &&
+                    ` · ${pdfTurns.length} PDF attachment${pdfTurns.length !== 1 ? "s" : ""}`}
+                  {mediaTurns.length > 0 &&
+                    ` · ${mediaTurns.length} media skipped`}
+                </p>
+                <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
+                  <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
+                    Using existing local personas: {existingLocalReuseCount}
+                  </span>
+                  <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
+                    Will create on import (local):{" "}
+                    {step === "map" ? pendingPersonaCreations.length : 0}
+                  </span>
+                </div>
+              </div>
+              {unmappedCount > 0 && (
+                <span className="flex shrink-0 items-center gap-1 bg-amber-950 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="h-3 w-3" />
+                  {unmappedCount} unmapped
+                </span>
+              )}
+            </div>
+
+            {mapError && (
+              <div className="flex items-start gap-1.5 border border-red-800 bg-red-950 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                <span>{mapError}</span>
+              </div>
+            )}
+
+            {mapNotice && (
+              <div className="flex items-start gap-1.5 border border-border-subtle bg-amber-950 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
+                <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                <span>{mapNotice}</span>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              {mappableSenders.map((sender) => {
+                const assignedId = mapping[sender];
+                const assignedPersona =
+                  (assignedId && draftPersonas[assignedId]) ||
+                  personas?.find((p) => p.id === assignedId);
+
+                return (
+                  <div
+                    key={sender}
+                    className="flex items-center gap-3 border border-border-default bg-surface-subtle px-3 py-2"
+                  >
+                    <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-default">
+                      {sender}
+                    </span>
+
+                    {assignedPersona ? (
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className="flex h-5 w-5 shrink-0 items-center justify-center "
+                          style={{
+                            backgroundColor: `${assignedPersona.color}20`,
+                            color: assignedPersona.color,
+                          }}
+                        >
+                          <DynamicIcon
+                            name={assignedPersona.icon}
+                            className="h-3 w-3"
+                          />
+                        </div>
+                        <span className="text-xs text-text-default">
+                          {assignedPersona.name}
+                        </span>
+                        <span
+                          className={` px-1.5 py-0.5 text-[10px] font-medium ${
+                            isLocalPersona(assignedPersona)
+                              ? "border border-border-subtle bg-amber-950 text-amber-700 dark:text-amber-400"
+                              : "border border-border-default bg-surface-subtle text-text-muted"
+                          }`}
+                        >
+                          {getPersonaScopeLabel(assignedPersona)}
+                        </span>
+                        <button
+                          onClick={() =>
+                            setMapping((prev) => {
+                              const next = { ...prev };
+                              delete next[sender];
+                              return next;
+                            })
+                          }
+                          className=" p-0.5 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
                     ) : (
-                      <>
-                        <span className="text-text-muted">
-                          <span className="font-semibold text-text-default">
-                            {liveMsgs.length}
-                          </span>{" "}
-                          message{liveMsgs.length !== 1 ? "s" : ""}
-                        </span>
-                        <span className="text-text-muted">
-                          <span className="font-semibold text-text-default">
-                            {liveSenders.length}
-                          </span>{" "}
-                          sender{liveSenders.length !== 1 ? "s" : ""}
-                        </span>
-                        {livePdfCount > 0 && (
-                          <span className="flex items-center gap-1 font-medium text-blue-500">
-                            <FileText className="h-3 w-3" />
-                            {livePdfCount} PDF{livePdfCount !== 1 ? "s" : ""}{" "}
-                            detected
-                          </span>
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val) {
+                            setMapping((prev) => ({
+                              ...prev,
+                              [sender]: val,
+                            }));
+                          }
+                        }}
+                        className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus: disabled:opacity-60"
+                      >
+                        <option value="" disabled>
+                          Select persona…
+                        </option>
+                        {globalPersonas.length > 0 && (
+                          <optgroup label="Available Everywhere">
+                            {globalPersonas.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} (Global)
+                              </option>
+                            ))}
+                          </optgroup>
                         )}
-                        {liveMediaCount > 0 && (
-                          <span className="flex items-center gap-1 text-text-muted">
-                            <ImageIcon className="h-3 w-3" />
-                            {liveMediaCount} media (skipped)
-                          </span>
+                        {localPersonas.length > 0 && (
+                          <optgroup label="Local Personas (This Stream)">
+                            {localPersonas.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} (Local)
+                              </option>
+                            ))}
+                          </optgroup>
                         )}
-                        {liveCleanedSenders > 0 && (
-                          <span className="text-emerald-600 dark:text-emerald-400">
-                            {liveCleanedSenders} sender name
-                            {liveCleanedSenders !== 1 ? "s" : ""} cleaned
-                          </span>
-                        )}
-                      </>
+                      </select>
                     )}
                   </div>
-                )}
+                );
+              })}
+            </div>
 
-                <StepFooter
-                  onNext={handleParseAndNext}
-                  nextDisabled={
-                    !rawText.trim() ||
-                    liveMsgs.length === 0 ||
-                    liveImportable === 0
-                  }
-                  shortcutsEnabled={!confirmExitOpen}
-                  nextContent={
-                    <>
-                      Next
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </>
-                  }
-                />
-              </div>
-            )}
-
-            {/* ─── Step 2: Select range ─────────────────────────────────── */}
-            {step === "range" && (
-              <div className="flex flex-col gap-3 p-3">
-                <div>
-                  <p className="text-xs font-medium text-text-default">
-                    Select chat range
-                  </p>
+            {unmappedCount > 0 && (
+              <div className="flex items-start justify-between gap-2 border border-blue-800 bg-blue-950 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                <div className="flex items-start gap-1.5 max-w-[70%]">
+                  <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span>
+                    {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will
+                    be created as local persona{unmappedCount !== 1 ? "s" : ""}{" "}
+                    for this stream when you import.
+                  </span>
                 </div>
-
-                <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
-                  <div>
-                    Total turns:{" "}
-                    <span className="font-semibold text-text-default">
-                      {parsedTurns.length}
-                    </span>
-                    {" · "}
-                    Selected:{" "}
-                    <span className="font-semibold text-text-default">
-                      {selectedTurns.length}
-                    </span>
-                    {" · "}
-                    Importable:{" "}
-                    <span className="font-semibold text-text-default">
-                      {rangeImportableCount}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="flex flex-col gap-1 text-[11px] text-text-muted">
-                    From turn
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setRangeStart((s) => Math.max(0, s - 1))}
-                        className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
-                        aria-label="decrement start"
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min={1}
-                        max={Math.max(1, parsedTurns.length)}
-                        value={Math.min(
-                          rangeStart + 1,
-                          Math.max(1, parsedTurns.length),
-                        )}
-                        onChange={(e) => {
-                          const max = Math.max(1, parsedTurns.length);
-                          const next =
-                            Math.min(
-                              Math.max(
-                                1,
-                                Number.parseInt(e.target.value || "1", 10) || 1,
-                              ),
-                              max,
-                            ) - 1;
-                          setRangeStart(next);
-                          if (next > rangeEnd) setRangeEnd(next);
-                        }}
-                        className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus:"
-                      />
-                      <button
-                        onClick={() =>
-                          setRangeStart((s) => Math.min(s + 1, rangeEnd))
-                        }
-                        className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
-                        aria-label="increment start"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </label>
-
-                  <label className="flex flex-col gap-1 text-[11px] text-text-muted">
-                    To turn
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          setRangeEnd((e) => Math.max(e - 1, rangeStart))
-                        }
-                        className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
-                        aria-label="decrement end"
-                      >
-                        -
-                      </button>
-                      <input
-                        type="number"
-                        min={1}
-                        max={Math.max(1, parsedTurns.length)}
-                        value={Math.min(
-                          rangeEnd + 1,
-                          Math.max(1, parsedTurns.length),
-                        )}
-                        onChange={(e) => {
-                          const max = Math.max(1, parsedTurns.length);
-                          const next =
-                            Math.min(
-                              Math.max(
-                                1,
-                                Number.parseInt(e.target.value || "1", 10) || 1,
-                              ),
-                              max,
-                            ) - 1;
-                          setRangeEnd(next);
-                          if (next < rangeStart) setRangeStart(next);
-                        }}
-                        className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus:"
-                      />
-                      <button
-                        onClick={() =>
-                          setRangeEnd((e) =>
-                            Math.min(e + 1, parsedTurns.length - 1),
-                          )
-                        }
-                        className=" border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle"
-                        aria-label="increment end"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Preview list with clickable controls to set start/end */}
-                <div className="max-h-48 overflow-y-auto border border-border-default bg-surface-subtle p-2 text-[11px]">
-                  {parsedTurns.length === 0 ? (
-                    <div className="text-text-muted">No turns to preview.</div>
-                  ) : (
-                    parsedTurns.map((t, idx) => {
-                      const isSelected = idx >= rangeStart && idx <= rangeEnd;
-                      // Determine preview + optional size for PDFs when file is available
-                      let preview = "";
-                      let fullPreview = "";
-                      if (t.type === "text") {
-                        fullPreview =
-                          (t.messages && t.messages.join("\n\n")) || "";
-                        preview = t.messages?.[0]?.slice(0, 120) ?? "";
-                      } else if (t.type === "pdf") {
-                        const filename = t.filename ?? "document.pdf";
-                        const matchedFile =
-                          uploads[t.id]?.file ??
-                          findBestPdfForTurn(t, zipPdfIndex);
-                        const sizeStr = matchedFile
-                          ? ` (${formatBytes(matchedFile.size)})`
-                          : "";
-                        preview = `PDF: ${filename}${sizeStr}`;
-                        fullPreview = preview;
-                      } else {
-                        preview = `Media: ${t.mediaKind ?? "file"}`;
-                        fullPreview = preview;
-                      }
-                      return (
-                        <div
-                          key={t.id}
-                          className={`relative flex items-center justify-between gap-3 px-2 py-1  ${isSelected ? "bg-primary-950 border border-border-subtle" : "hover:bg-surface-subtle"}`}
-                        >
-                          <div
-                            className="min-w-0 flex-1 text-[11px]"
-                            onMouseEnter={(e) =>
-                              handlePreviewMouseEnter(e, idx, fullPreview)
-                            }
-                            onMouseLeave={handlePreviewMouseLeave}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-[11px] text-text-muted">
-                                #{idx + 1}
-                              </span>
-                              <span className="font-medium text-text-default truncate">
-                                {t.sender}
-                              </span>
-                            </div>
-                            <div className="truncate text-[10px] text-text-muted">
-                              {preview}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => setRangeStart(idx)}
-                              title="Set as start"
-                              className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
-                            >
-                              Start
-                            </button>
-                            <button
-                              onClick={() => setRangeEnd(idx)}
-                              title="Set as end"
-                              className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
-                            >
-                              End
-                            </button>
-                          </div>
-                          {/* Tooltip is rendered in a portal to avoid affecting layout */}
-                        </div>
+                <div className="shrink-0">
+                  <button
+                    onClick={() => {
+                      const toCreate = mappableSenders.filter(
+                        (sender) => !mapping[sender],
                       );
-                    })
-                  )}
-                </div>
-
-                <StepFooter
-                  onBack={() => setStep("paste")}
-                  onNext={handleRangeNext}
-                  nextDisabled={rangeImportableCount === 0}
-                  shortcutsEnabled={!confirmExitOpen}
-                  nextContent={
-                    <>
-                      Next: Map Personas
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </>
-                  }
-                />
-              </div>
-            )}
-
-            {/* ─── Step 3: Map personas ────────────────────────────────────── */}
-            {step === "map" && (
-              <div className="flex flex-col gap-3 p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-xs font-medium text-text-default">
-                      Map senders
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-text-muted">
-                      {textTurns.length} text turn
-                      {textTurns.length !== 1 ? "s" : ""}
-                      {pdfTurns.length > 0 &&
-                        ` · ${pdfTurns.length} PDF attachment${pdfTurns.length !== 1 ? "s" : ""}`}
-                      {mediaTurns.length > 0 &&
-                        ` · ${mediaTurns.length} media skipped`}
-                    </p>
-                    <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
-                      <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
-                        Using existing local personas: {existingLocalReuseCount}
-                      </span>
-                      <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
-                        Will create on import (local): {step === "map" ? pendingPersonaCreations.length : 0}
-                      </span>
-                    </div>
-                  </div>
-                  {unmappedCount > 0 && (
-                    <span className="flex shrink-0 items-center gap-1 bg-amber-950 px-2 py-1 text-[11px] text-amber-600 dark:text-amber-400">
-                      <AlertTriangle className="h-3 w-3" />
-                      {unmappedCount} unmapped
-                    </span>
-                  )}
-                </div>
-
-                  {mapError && (
-                    <div className="flex items-start gap-1.5 border border-red-800 bg-red-950 px-3 py-2 text-[11px] text-red-600 dark:text-red-400">
-                      <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
-                      <span>{mapError}</span>
-                    </div>
-                  )}
-
-                  {mapNotice && (
-                    <div className="flex items-start gap-1.5 border border-border-subtle bg-amber-950 px-3 py-2 text-[11px] text-amber-700 dark:text-amber-400">
-                      <Info className="mt-0.5 h-3 w-3 shrink-0" />
-                      <span>{mapNotice}</span>
-                    </div>
-                  )}
-
-                <div className="flex flex-col gap-2">
-                  {mappableSenders.map((sender) => {
-                    const assignedId = mapping[sender];
-                    const assignedPersona =
-                      (assignedId && draftPersonas[assignedId]) ||
-                      personas?.find((p) => p.id === assignedId);
-
-                    return (
-                      <div
-                        key={sender}
-                        className="flex items-center gap-3 border border-border-default bg-surface-subtle px-3 py-2"
-                      >
-                        <span className="min-w-0 flex-1 truncate font-mono text-xs text-text-default">
-                          {sender}
-                        </span>
-
-                        {assignedPersona ? (
-                          <div className="flex items-center gap-1.5">
-                            <div
-                              className="flex h-5 w-5 shrink-0 items-center justify-center "
-                              style={{
-                                backgroundColor: `${assignedPersona.color}20`,
-                                color: assignedPersona.color,
-                              }}
-                            >
-                              <DynamicIcon
-                                name={assignedPersona.icon}
-                                className="h-3 w-3"
-                              />
-                            </div>
-                            <span className="text-xs text-text-default">
-                              {assignedPersona.name}
-                            </span>
-                            <span
-                              className={` px-1.5 py-0.5 text-[10px] font-medium ${
-                                isLocalPersona(assignedPersona)
-                                  ? "border border-border-subtle bg-amber-950 text-amber-700 dark:text-amber-400"
-                                  : "border border-border-default bg-surface-subtle text-text-muted"
-                              }`}
-                            >
-                              {getPersonaScopeLabel(assignedPersona)}
-                            </span>
-                            <button
-                              onClick={() =>
-                                setMapping((prev) => {
-                                  const next = { ...prev };
-                                  delete next[sender];
-                                  return next;
-                                })
-                              }
-                              className=" p-0.5 text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val) {
-                                setMapping((prev) => ({
-                                  ...prev,
-                                  [sender]: val,
-                                }));
-                              }
-                            }}
-                            className=" border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default focus:border-border-default focus: disabled:opacity-60"
-                          >
-                            <option value="" disabled>
-                              Select persona…
-                            </option>
-                            {globalPersonas.length > 0 && (
-                              <optgroup label="Available Everywhere">
-                                {globalPersonas.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name} (Global)
-                                  </option>
-                                ))}
-                              </optgroup>
-                            )}
-                            {localPersonas.length > 0 && (
-                              <optgroup label="Local Personas (This Stream)">
-                                {localPersonas.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name} (Local)
-                                  </option>
-                                ))}
-                              </optgroup>
-                            )}
-                          </select>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {unmappedCount > 0 && (
-                  <div className="flex items-start justify-between gap-2 border border-blue-800 bg-blue-950 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
-                    <div className="flex items-start gap-1.5 max-w-[70%]">
-                      <Info className="mt-0.5 h-3 w-3 shrink-0" />
-                      <span>
-                        {unmappedCount} sender{unmappedCount !== 1 ? "s" : ""} will be
-                        created as local persona{unmappedCount !== 1 ? "s" : ""}{" "}
-                        for this stream when you import.
-                      </span>
-                    </div>
-                      <div className="shrink-0">
-                      <button
-                        onClick={() => {
-                          const toCreate = mappableSenders.filter((sender) => !mapping[sender]);
-                          if (toCreate.length === 0) return;
-                          // Build new drafts and mapping entries immediately (local-only)
-                          const prevDrafts = { ...draftPersonas };
-                          const newDrafts: Record<string, {
-                            id: string;
-                            name: string;
-                            color: string;
-                            icon: string;
-                            is_shadow: true;
-                            isDraft: true;
-                          }> = {};
-                          const newMappingEntries: Record<string, string> = {};
-                          for (const [i, sender] of toCreate.entries()) {
-                            // try find existing draft matching sender
-                            const existing = Object.values(prevDrafts).find((d) => normalizePersonaNameKey(d.name) === normalizePersonaNameKey(sender));
-                            if (existing) {
-                              newMappingEntries[sender] = existing.id;
-                              continue;
-                            }
-                            const id = `draft_${Date.now()}_${Math.random().toString(36).slice(2,9)}`;
-                            const draft = {
-                              id,
-                              name: sender,
-                              color: PERSONA_COLORS[i % PERSONA_COLORS.length],
-                              icon: "user",
-                              is_shadow: true as const,
-                              isDraft: true as const,
-                            };
-                            newDrafts[id] = draft;
-                            newMappingEntries[sender] = id;
-                          }
-
-                          setPendingPersonaCreations(toCreate);
-                          if (Object.keys(newDrafts).length > 0) setDraftPersonas((prev) => ({ ...prev, ...newDrafts }));
-                          setMapping((prev) => ({ ...prev, ...newMappingEntries }));
-                        }}
-                        disabled={creatingAllPersonas}
-                        className="bg-blue-950 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-900 disabled:opacity-50 transition-colors border border-blue-800"
-                      >
-                        {creatingAllPersonas ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            Creating...
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="h-3.5 w-3.5" />
-                            Create {unmappedCount} local persona{unmappedCount !== 1 ? "s" : ""}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {hasPdfTurns && allMapped && (
-                  <div className="flex items-start gap-1.5 border border-blue-800 bg-blue-950 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
-                    <Info className="mt-0.5 h-3 w-3 shrink-0" />
-                    <span>
-                      {pdfTurns.length} PDF file
-                      {pdfTurns.length !== 1 ? "s" : ""} detected.
-                      {zipSourceName
-                        ? ` ${autoMatchCount} matched from ZIP.`
-                        : " Select files in the next step."}
-                    </span>
-                  </div>
-                )}
-
-                <StepFooter
-                  onBack={() => setStep("range")}
-                  onNext={() => void handleMapNext()}
-                  nextDisabled={
-                    creatingAllPersonas || !allMapped || (!hasPdfTurns && textTurns.length === 0)
-                  }
-                  shortcutsEnabled={!confirmExitOpen}
-                  nextContent={
-                    hasPdfTurns ? (
-                      <>
-                        Next: Attach PDFs
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </>
-                    ) : (
-                      <>
-                        {creatingAllPersonas ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Check className="h-3.5 w-3.5" />
-                        )}
-                        {creatingAllPersonas
-                          ? "Creating personas..."
-                          : `Import ${textTurns.length} turn${textTurns.length !== 1 ? "s" : ""}`}
-                      </>
-                    )
-                  }
-                />
-              </div>
-            )}
-
-            {/* ─── Step 4: Attach PDFs ─────────────────────────────────────── */}
-            {step === "files" && (
-              <div className="flex flex-col gap-3 p-3">
-                <div>
-                  <p className="text-xs font-medium text-text-default">
-                    Attach PDF files
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-text-muted">
-                    Choose a file for each detected PDF, then press Import.
-                  </p>
-                  {zipSourceName && (
-                    <p className="mt-1 text-[11px] text-blue-600 dark:text-blue-400">
-                      ZIP: {zipSourceName} · {autoMatchCount}/{pdfTurns.length}{" "}
-                      PDF
-                      {pdfTurns.length !== 1 ? "s" : ""} auto-matched.
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {pdfTurns.map((turn) => {
-                    const upload = uploads[turn.id] ?? {
-                      status: "pending" as const,
-                    };
-                    return (
-                      <PdfUploadRow
-                        key={turn.id}
-                        turn={turn}
-                        upload={upload}
-                        onFileSelect={(file, titleHint) => handleFileSelect(turn.id, file, titleHint)}
-                        onRetry={() =>
-                          upload.file &&
-                          handleFileSelect(
-                            turn.id,
-                            upload.file,
-                            turn.preferredTitle ?? turn.filename,
-                          )
+                      if (toCreate.length === 0) return;
+                      // Build new drafts and mapping entries immediately (local-only)
+                      const prevDrafts = { ...draftPersonas };
+                      const newDrafts: Record<
+                        string,
+                        {
+                          id: string;
+                          name: string;
+                          color: string;
+                          icon: string;
+                          is_shadow: true;
+                          isDraft: true;
                         }
-                        onSkip={() =>
-                          setUploads((prev) => ({
-                            ...prev,
-                            [turn.id]: { ...prev[turn.id], status: "skipped" },
-                          }))
+                      > = {};
+                      const newMappingEntries: Record<string, string> = {};
+                      for (const [i, sender] of toCreate.entries()) {
+                        // try find existing draft matching sender
+                        const existing = Object.values(prevDrafts).find(
+                          (d) =>
+                            normalizePersonaNameKey(d.name) ===
+                            normalizePersonaNameKey(sender),
+                        );
+                        if (existing) {
+                          newMappingEntries[sender] = existing.id;
+                          continue;
                         }
-                        onUnskip={() =>
-                          setUploads((prev) => ({
-                            ...prev,
-                            [turn.id]: { ...prev[turn.id], status: "pending" },
-                          }))
-                        }
-                      />
-                    );
-                  })}
-                </div>
+                        const id = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+                        const draft = {
+                          id,
+                          name: sender,
+                          color: PERSONA_COLORS[i % PERSONA_COLORS.length],
+                          icon: "user",
+                          is_shadow: true as const,
+                          isDraft: true as const,
+                        };
+                        newDrafts[id] = draft;
+                        newMappingEntries[sender] = id;
+                      }
 
-                {/* Summary */}
-                <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
-                  <span className="font-semibold text-text-default">
-                    {plannedImportableCount}
-                  </span>{" "}
-                  section{plannedImportableCount !== 1 ? "s" : ""} ready (
-                  {textTurns.length} text
-                  {doneUploadCount + queuedUploadCount > 0 &&
-                    `, ${doneUploadCount + queuedUploadCount} PDF queued`}
-                  ).
-                  {skippedPdfs.length > 0 && (
-                    <span className="ml-1">
-                      {skippedPdfs.length} PDF
-                      {skippedPdfs.length !== 1 ? "s" : ""} skipped.
-                    </span>
-                  )}
-                </div>
-
-                <StepFooter
-                  onBack={() => setStep("map")}
-                  backDisabled={anyUploading}
-                  onNext={() => void handleProcessAndConfirm()}
-                  nextDisabled={!canConfirmFiles}
-                  shortcutsEnabled={!confirmExitOpen}
-                  nextContent={
-                    anyUploading ? (
+                      setPendingPersonaCreations(toCreate);
+                      if (Object.keys(newDrafts).length > 0)
+                        setDraftPersonas((prev) => ({ ...prev, ...newDrafts }));
+                      setMapping((prev) => ({ ...prev, ...newMappingEntries }));
+                    }}
+                    disabled={creatingAllPersonas}
+                    className="bg-blue-950 px-2.5 py-1.5 flex items-center gap-1.5 font-medium hover:bg-blue-900 disabled:opacity-50 transition-colors border border-blue-800"
+                  >
+                    {creatingAllPersonas ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Processing PDFs…
+                        Creating...
                       </>
                     ) : (
                       <>
-                        <Check className="h-3.5 w-3.5" />
-                        Process & Import {plannedImportableCount} section
-                        {plannedImportableCount !== 1 ? "s" : ""}
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Create {unmappedCount} local persona
+                        {unmappedCount !== 1 ? "s" : ""}
                       </>
-                    )
-                  }
-                />
+                    )}
+                  </button>
+                </div>
               </div>
             )}
-          </DialogPanel>
-            </TransitionChild>
-        </div>
-        {/* Portal tooltip: render global tooltip so it doesn't affect modal layout */}
-        {typeof document !== "undefined" &&
-        tooltipVisible &&
-        tooltipContent &&
-        tooltipPos
-          ? createPortal(
-              <div
-                style={{
-                  left: tooltipPos.left,
-                  top: tooltipPos.top,
-                  width: tooltipPos.width,
-                }}
-                className="fixed z-50 border border-border-default bg-surface-default p-2 text-xs text-text-default"
-              >
-                <div className="whitespace-pre-wrap wrap-break-word text-[12px]">
-                  {tooltipContent}
-                </div>
-              </div>,
-              document.body,
-            )
-          : null}
-      </div>
+
+            {hasPdfTurns && allMapped && (
+              <div className="flex items-start gap-1.5 border border-blue-800 bg-blue-950 px-3 py-2 text-[11px] text-blue-600 dark:text-blue-400">
+                <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                <span>
+                  {pdfTurns.length} PDF file
+                  {pdfTurns.length !== 1 ? "s" : ""} detected.
+                  {zipSourceName
+                    ? ` ${autoMatchCount} matched from ZIP.`
+                    : " Select files in the next step."}
+                </span>
+              </div>
+            )}
+
+            <StepFooter
+              onBack={() => setStep("range")}
+              onNext={() => void handleMapNext()}
+              nextDisabled={
+                creatingAllPersonas ||
+                !allMapped ||
+                (!hasPdfTurns && textTurns.length === 0)
+              }
+              shortcutsEnabled={!confirmExitOpen}
+              nextContent={
+                hasPdfTurns ? (
+                  <>
+                    Next: Attach PDFs
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    {creatingAllPersonas ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5" />
+                    )}
+                    {creatingAllPersonas
+                      ? "Creating personas..."
+                      : `Import ${textTurns.length} turn${textTurns.length !== 1 ? "s" : ""}`}
+                  </>
+                )
+              }
+            />
+          </div>
+        )}
+
+        {/* ─── Step 4: Attach PDFs ─────────────────────────────────────── */}
+        {step === "files" && (
+          <div className="flex flex-col gap-3 p-3">
+            <div>
+              <p className="text-xs font-medium text-text-default">
+                Attach PDF files
+              </p>
+              <p className="mt-0.5 text-[11px] text-text-muted">
+                Choose a file for each detected PDF, then press Import.
+              </p>
+              {zipSourceName && (
+                <p className="mt-1 text-[11px] text-blue-600 dark:text-blue-400">
+                  ZIP: {zipSourceName} · {autoMatchCount}/{pdfTurns.length} PDF
+                  {pdfTurns.length !== 1 ? "s" : ""} auto-matched.
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              {pdfTurns.map((turn) => {
+                const upload = uploads[turn.id] ?? {
+                  status: "pending" as const,
+                };
+                return (
+                  <PdfUploadRow
+                    key={turn.id}
+                    turn={turn}
+                    upload={upload}
+                    onFileSelect={(file, titleHint) =>
+                      handleFileSelect(turn.id, file, titleHint)
+                    }
+                    onRetry={() =>
+                      upload.file &&
+                      handleFileSelect(
+                        turn.id,
+                        upload.file,
+                        turn.preferredTitle ?? turn.filename,
+                      )
+                    }
+                    onSkip={() =>
+                      setUploads((prev) => ({
+                        ...prev,
+                        [turn.id]: { ...prev[turn.id], status: "skipped" },
+                      }))
+                    }
+                    onUnskip={() =>
+                      setUploads((prev) => ({
+                        ...prev,
+                        [turn.id]: { ...prev[turn.id], status: "pending" },
+                      }))
+                    }
+                  />
+                );
+              })}
+            </div>
+
+            {/* Summary */}
+            <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
+              <span className="font-semibold text-text-default">
+                {plannedImportableCount}
+              </span>{" "}
+              section{plannedImportableCount !== 1 ? "s" : ""} ready (
+              {textTurns.length} text
+              {doneUploadCount + queuedUploadCount > 0 &&
+                `, ${doneUploadCount + queuedUploadCount} PDF queued`}
+              ).
+              {skippedPdfs.length > 0 && (
+                <span className="ml-1">
+                  {skippedPdfs.length} PDF
+                  {skippedPdfs.length !== 1 ? "s" : ""} skipped.
+                </span>
+              )}
+            </div>
+
+            <StepFooter
+              onBack={() => setStep("map")}
+              backDisabled={anyUploading}
+              onNext={() => void handleProcessAndConfirm()}
+              nextDisabled={!canConfirmFiles}
+              shortcutsEnabled={!confirmExitOpen}
+              nextContent={
+                anyUploading ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Processing PDFs…
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    Process & Import {plannedImportableCount} section
+                    {plannedImportableCount !== 1 ? "s" : ""}
+                  </>
+                )
+              }
+            />
+          </div>
+        )}
+      </ModalShell>
+
+      {/* Portal tooltip: render global tooltip so it doesn't affect modal layout */}
+      {typeof document !== "undefined" &&
+      tooltipVisible &&
+      tooltipContent &&
+      tooltipPos
+        ? createPortal(
+            <div
+              style={{
+                left: tooltipPos.left,
+                top: tooltipPos.top,
+                width: tooltipPos.width,
+              }}
+              className="fixed z-50 border border-border-default bg-surface-default p-2 text-xs text-text-default"
+            >
+              <div className="whitespace-pre-wrap wrap-break-word text-[12px]">
+                {tooltipContent}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
       <ConfirmDialog
         open={confirmExitOpen}
         title="Discard import?"
@@ -2451,8 +2469,7 @@ export function WhatsAppImportModal({
           setStep("files");
         }}
       />
-      </Dialog>
-    </Transition>
+    </>
   );
 }
 
@@ -2488,7 +2505,7 @@ function StepFooter({
             return;
           }
         }
-        
+
         if (!nextDisabled) {
           e.preventDefault();
           onNext();
@@ -2574,7 +2591,17 @@ function PdfUploadRow({
             thumbnailStatus={null}
             documentId={upload.documentId ?? null}
             title={filename}
-            importStatus={isError ? "failed" : isUploading ? "processing" : isQueued ? "queued" : isDone ? "completed" : null}
+            importStatus={
+              isError
+                ? "failed"
+                : isUploading
+                  ? "processing"
+                  : isQueued
+                    ? "queued"
+                    : isDone
+                      ? "completed"
+                      : null
+            }
           />
         ) : (
           <FileText
@@ -2599,7 +2626,10 @@ function PdfUploadRow({
           </p>
           {upload.status === "exists" && upload.existingDocument && (
             <p className="text-[10px] text-text-muted">
-              Already in account: <span className="font-medium text-text-default">{upload.existingDocument.title ?? upload.existingDocument.id}</span>
+              Already in account:{" "}
+              <span className="font-medium text-text-default">
+                {upload.existingDocument.title ?? upload.existingDocument.id}
+              </span>
             </p>
           )}
           {upload.file && (
@@ -2674,11 +2704,11 @@ function PdfUploadRow({
                 <button
                   onClick={() => {
                     try {
-                        const url = `/documents/${upload.existingDocument!.id}`;
-                        window.open(url, "_blank");
-                      } catch {
-                        // ignore
-                      }
+                      const url = `/documents/${upload.existingDocument!.id}`;
+                      window.open(url, "_blank");
+                    } catch {
+                      // ignore
+                    }
                   }}
                   className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
                 >
@@ -2695,7 +2725,8 @@ function PdfUploadRow({
                 className="sr-only"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) onFileSelect(file, turn.preferredTitle ?? turn.filename);
+                  if (file)
+                    onFileSelect(file, turn.preferredTitle ?? turn.filename);
                   e.target.value = "";
                 }}
               />

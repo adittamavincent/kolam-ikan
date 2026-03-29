@@ -1,11 +1,4 @@
-import {
-  Copy,
-  ClipboardPaste,
-  Check,
-  RotateCcw,
-  Play,
-  Zap,
-} from "lucide-react";
+import { RotateCcw, Zap } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -31,17 +24,6 @@ function blocksToText(blocks: MarkdownBlock[]): string {
 export function InteractionSwitcher({
   value,
   onChange,
-  onCopy,
-  onPaste,
-  onParse,
-  onApply,
-  onReset,
-  status = {
-    isApplying: false,
-    canApply: false,
-    canParse: false,
-    hasParsed: false,
-  },
   // Token props
   selectedEntries,
   includeCanvas,
@@ -55,17 +37,6 @@ export function InteractionSwitcher({
 }: {
   value: "ASK" | "GO" | "BOTH";
   onChange: (value: "ASK" | "GO" | "BOTH") => void;
-  onCopy?: () => void;
-  onPaste?: () => void;
-  onParse?: () => void;
-  onApply?: () => void;
-  onReset?: () => void;
-  status?: {
-    isApplying: boolean;
-    canApply: boolean;
-    canParse: boolean;
-    hasParsed: boolean;
-  };
   // Token counter props
   selectedEntries: string[];
   includeCanvas: boolean;
@@ -264,89 +235,30 @@ export function InteractionSwitcher({
         )}
       </div>
 
-      {/* Action Shortcuts */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-surface-subtle p-1 border border-border-subtle">
-          <button
-            onClick={onCopy}
-            title="Copy Generated XML"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group"
-          >
-            <Copy className="h-3.5 w-3.5 text-text-muted group-hover:text-action-primary-bg transition-colors" />
-            <span>Copy XML</span>
-          </button>
-
-          <div className="mx-0.5 h-4 w-px bg-border-subtle" />
-
-          <button
-            onClick={onPaste}
-            title="Paste & Fill Response"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover hover:text-action-primary-bg transition-all group"
-          >
-            <ClipboardPaste className="h-3.5 w-3.5 text-text-muted group-hover:text-action-primary-bg transition-colors" />
-            <span>Paste</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1 bg-surface-subtle p-1 border border-border-subtle">
-          <button
-            onClick={onParse}
-            disabled={!status.canParse}
-            title="Parse Response"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-text-default transition-all group hover:bg-surface-hover hover:text-action-primary-bg disabled:cursor-not-allowed disabled:text-text-muted"
-          >
-            <Play
-              className={`h-3.5 w-3.5 ${status.canParse ? "text-text-muted group-hover:text-action-primary-bg" : "text-text-muted"} transition-colors`}
-            />
-            <span>Parse</span>
-          </button>
-
-          <button
-            onClick={onApply}
-            disabled={!status.canApply || status.isApplying}
-            title="Apply Changes"
-            className={`flex items-center gap-1.5  px-3 py-1.5 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:text-text-muted ${
-              status.canApply
-                ? "bg-primary-950 text-action-primary-bg hover:bg-action-primary-bg hover:text-white"
-                : "text-text-muted hover:bg-surface-hover"
-            }`}
-          >
-            <Check className="h-3.5 w-3.5" />
-            <span>{status.isApplying ? "Applying..." : "Apply"}</span>
-          </button>
-
-          <div className="mx-0.5 h-4 w-px bg-border-subtle" />
-
-          <button
-            onClick={onReset}
-            title="Clear & Reset"
-            className="flex items-center justify-center p-1.5 text-text-muted hover:bg-status-error-bg hover:text-status-error-text transition-all"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {overLimit && (
-          <div className="flex items-center gap-1 bg-status-error-bg p-1 border border-border-subtle">
-            <button
-              onClick={onReduceSelection}
-              title="Select Last 5 Entries"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg transition-all"
-            >
-              <RotateCcw className="h-3 w-3" />
-              <span>Reduce</span>
-            </button>
-            <button
-              onClick={onAutoSummarize}
-              title="Exclude Canvas"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-bold text-status-error-text hover:bg-status-error-bg transition-all"
-            >
-              <Zap className="h-3 w-3" />
-              <span>Drop Canvas</span>
-            </button>
+      {/* Recommendations */}
+      {overLimit && (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="border border-border-subtle bg-status-error-bg px-3 py-2 text-[11px] font-semibold text-status-error-text">
+            This payload is over the recommended token budget.
           </div>
-        )}
-      </div>
+          <button
+            onClick={onReduceSelection}
+            title="Use recent entries only"
+            className="flex items-center gap-1.5 border border-border-subtle bg-status-error-bg px-2.5 py-1.5 text-[10px] font-bold text-status-error-text transition-all"
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>Use recent entries only</span>
+          </button>
+          <button
+            onClick={onAutoSummarize}
+            title="Exclude canvas for this run"
+            className="flex items-center gap-1.5 border border-border-subtle bg-status-error-bg px-2.5 py-1.5 text-[10px] font-bold text-status-error-text transition-all"
+          >
+            <Zap className="h-3 w-3" />
+            <span>Exclude canvas for this run</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

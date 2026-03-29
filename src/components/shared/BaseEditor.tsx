@@ -63,6 +63,36 @@ import type {
 
 export type BaseEditorProps = MarkdownEditorProps;
 
+interface PersistedEditorViewState {
+  cursorAnchor: number;
+  cursorHead: number;
+  scrollLeft: number;
+  scrollTop: number;
+}
+
+const persistedEditorViewState = new Map<string, PersistedEditorViewState>();
+
+function clampSelectionOffset(offset: number, docLength: number) {
+  return Math.max(0, Math.min(offset, docLength));
+}
+
+function captureEditorViewState(view: EditorView): PersistedEditorViewState {
+  return {
+    cursorAnchor: view.state.selection.main.anchor,
+    cursorHead: view.state.selection.main.head,
+    scrollLeft: view.scrollDOM.scrollLeft,
+    scrollTop: view.scrollDOM.scrollTop,
+  };
+}
+
+function persistEditorViewState(
+  viewStateKey: string | undefined,
+  view: EditorView | null,
+) {
+  if (!viewStateKey || !view) return;
+  persistedEditorViewState.set(viewStateKey, captureEditorViewState(view));
+}
+
 const hiddenSyntax = Decoration.replace({});
 
 class ListMarkerWidget extends WidgetType {
@@ -3128,6 +3158,7 @@ export default function BaseEditor({
   onEditorReady,
   onFocusChange,
   highlightTerm,
+  viewStateKey,
 }: BaseEditorProps) {
   const [markdownValue, setMarkdownValue] = useState(() =>
     typeof initialMarkdown === "string"
@@ -3182,6 +3213,10 @@ export default function BaseEditor({
         ...searchKeymap,
       ]),
       EditorView.updateListener.of((update) => {
+        if (update.selectionSet) {
+          persistEditorViewState(viewStateKey, update.view);
+        }
+
         if (update.focusChanged) {
           focusRef.current = update.view.hasFocus;
           focusChangeRef.current?.(focusRef.current);
@@ -3221,11 +3256,38 @@ export default function BaseEditor({
       parent: containerRef.current,
     });
 
+    const savedViewState = viewStateKey
+      ? persistedEditorViewState.get(viewStateKey)
+      : null;
+    if (savedViewState) {
+      const docLength = view.state.doc.length;
+      view.dispatch({
+        selection: EditorSelection.create([
+          EditorSelection.range(
+            clampSelectionOffset(savedViewState.cursorAnchor, docLength),
+            clampSelectionOffset(savedViewState.cursorHead, docLength),
+          ),
+        ]),
+      });
+      window.requestAnimationFrame(() => {
+        view.scrollDOM.scrollLeft = savedViewState.scrollLeft;
+        view.scrollDOM.scrollTop = savedViewState.scrollTop;
+      });
+    }
+
     focusRef.current = view.hasFocus;
     focusChangeRef.current?.(focusRef.current);
     viewRef.current = view;
+    persistEditorViewState(viewStateKey, view);
+
+    const handleScroll = () => {
+      persistEditorViewState(viewStateKey, view);
+    };
+    view.scrollDOM.addEventListener("scroll", handleScroll);
 
     return () => {
+      persistEditorViewState(viewStateKey, view);
+      view.scrollDOM.removeEventListener("scroll", handleScroll);
       focusRef.current = false;
       focusChangeRef.current?.(false);
       view.destroy();
@@ -3237,6 +3299,7 @@ export default function BaseEditor({
     placeholder,
     placeholderCompartment,
     readOnlyCompartment,
+    viewStateKey,
   ]);
 
   useEffect(() => {

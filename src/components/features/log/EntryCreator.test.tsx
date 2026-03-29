@@ -519,4 +519,72 @@ describe("EntryCreator", () => {
 
     expect(await screen.findByDisplayValue("Bring me back")).toBeInTheDocument();
   });
+
+  it("can restore a stash through an external stash action", async () => {
+    const storage = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {
+      value: {
+        getItem: vi.fn((key: string) => storage.get(key) ?? null),
+        setItem: vi.fn((key: string, value: string) => {
+          storage.set(key, value);
+        }),
+        removeItem: vi.fn((key: string) => {
+          storage.delete(key);
+        }),
+        clear: vi.fn(() => {
+          storage.clear();
+        }),
+        key: vi.fn(),
+        get length() {
+          return storage.size;
+        },
+      } as Storage,
+      configurable: true,
+    });
+
+    const onHandled = vi.fn();
+    const { container, rerender } = render(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator streamId="stream-1" onExternalStashActionHandled={onHandled} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTitle("Quick add Myself"));
+
+    const editor = await screen.findByTestId("mock-editor");
+    fireEvent.change(editor, { target: { value: "Restore from dialog" } });
+
+    const entryCreator = container.querySelector(".entry-creator");
+    if (!entryCreator) {
+      throw new Error("Entry creator container not found");
+    }
+
+    fireEvent.contextMenu(entryCreator, { clientX: 120, clientY: 80 });
+    fireEvent.click(await screen.findByRole("button", { name: /stash changes/i }));
+
+    const stashRaw = window.localStorage.getItem("kolam_entry_creator_stash_v1_stream-1");
+    if (!stashRaw) {
+      throw new Error("Expected draft stash to be written");
+    }
+
+    const [stashItem] = JSON.parse(stashRaw) as Array<{ id: string }>;
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <EntryCreator
+          streamId="stream-1"
+          externalStashAction={{
+            nonce: "action-1",
+            stashId: stashItem.id,
+            kind: "pop",
+          }}
+          onExternalStashActionHandled={onHandled}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByDisplayValue("Restore from dialog")).toBeInTheDocument();
+    expect(onHandled).toHaveBeenCalledWith("action-1");
+    vi.restoreAllMocks();
+  });
 });

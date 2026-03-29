@@ -1,8 +1,8 @@
-import { Fragment, useState } from "react";
-import { Dialog, Transition } from "@headlessui/react";
-import { Check, AlertCircle, Loader2, Pencil, X, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Check, AlertCircle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useDomains } from "@/lib/hooks/useDomains";
 import { DynamicIcon } from "@/components/shared/DynamicIcon";
+import { ModalHeader, ModalShell } from "@/components/shared/ModalShell";
 import {
   DEFAULT_DOMAIN_ICON,
   DOMAIN_ICON_OPTIONS,
@@ -54,7 +54,8 @@ export function EditDomainModal({
   domain,
   onDeleteSuccess,
 }: EditDomainModalProps) {
-  const { updateDomain, deleteDomain, duplicateDomain, domains } = useDomains(userId);
+  const { updateDomain, deleteDomain, duplicateDomain, domains } =
+    useDomains(userId);
   const [name, setName] = useState(domain?.name ?? "");
   const [icon, setIcon] = useState(domain?.icon || DEFAULT_DOMAIN_ICON);
   const [error, setError] = useState<string | null>(null);
@@ -116,7 +117,10 @@ export function EditDomainModal({
     }
   };
 
-  const isMutating = updateDomain.isPending || deleteDomain.isPending || duplicateDomain.isPending;
+  const isMutating =
+    updateDomain.isPending ||
+    deleteDomain.isPending ||
+    duplicateDomain.isPending;
 
   const handleDuplicate = async () => {
     if (!domain) return;
@@ -146,173 +150,132 @@ export function EditDomainModal({
   };
 
   return (
-    <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
-        <Transition.Child
-          as={Fragment}
-          enter="ease-out duration-300"
-          enterFrom="opacity-0"
-          enterTo="opacity-100"
-          leave="ease-in duration-200"
-          leaveFrom="opacity-100"
-          leaveTo="opacity-0"
-        >
-          <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm" />
-        </Transition.Child>
+    <ModalShell open={isOpen} onClose={onClose} panelClassName="w-full p-6">
+      <ModalHeader
+        title="Edit Domain"
+        description="Update your domain name and icon."
+        icon={<Pencil className="h-5 w-5" />}
+        onClose={onClose}
+        closeDisabled={isMutating}
+        className="mb-4 px-0 pb-4 pt-0"
+        titleClassName="text-lg font-medium leading-6 text-text-default"
+      />
 
-        <div className="fixed inset-0 overflow-y-auto">
-          <div className="flex min-h-full items-center justify-center p-4 text-center">
-            <Transition.Child
-              as={Fragment}
-              enter="ease-out duration-300"
-              enterFrom="opacity-0"
-              enterTo="opacity-100 scale-100"
-              leave="ease-in duration-200"
-              leaveFrom="opacity-100 scale-100"
-              leaveTo="opacity-0"
+      <form onSubmit={handleSubmit}>
+        <div className="mt-2">
+          <input
+            type="text"
+            className={`block w-full  border px-4 py-3 text-text-default placeholder-text-muted transition-all focus: focus: ${
+              error
+                ? "border-status-error-text focus:border-status-error-text focus:"
+                : "border-border-default focus:border-border-default focus:"
+            }`}
+            placeholder="e.g., My Knowledge Base"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (error) setError(null);
+            }}
+            autoFocus
+          />
+
+          <div className="mt-4">
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
+              Icon
+            </label>
+            <div className="grid grid-cols-6 gap-2">
+              {DOMAIN_ICON_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setIcon(option)}
+                  className={`flex items-center justify-center  border p-2 transition-colors ${
+                    icon === option
+                      ? "border-border-default bg-primary-950 text-action-primary-bg"
+                      : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                  }`}
+                  aria-label={`Select ${option} icon`}
+                >
+                  <DynamicIcon name={option} className="h-4 w-4" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-status-error-text">
+              <AlertCircle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3">
+          <div className="flex gap-3 items-center justify-end">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isMutating}
+              className="inline-flex items-center justify-center gap-2 border border-status-error-text px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden border border-border-default bg-surface-default p-6 text-left align-middle transition-all">
-                <div className="mb-4 flex items-center justify-between">
-                  <Dialog.Title
-                    as="h3"
-                    className="flex items-center gap-2 text-lg font-medium leading-6 text-text-default"
-                  >
-                    <Pencil className="h-5 w-5 text-action-primary-bg" />
-                    Edit Domain
-                  </Dialog.Title>
-                  <button
-                    onClick={onClose}
-                    className=" p-1 transition-colors hover:bg-surface-subtle"
-                    disabled={isMutating}
-                  >
-                    <X className="h-5 w-5 text-text-muted" />
-                  </button>
-                </div>
+              {deleteDomain.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4" />
+                  {confirmDelete ? "Confirm Delete" : "Delete Domain"}
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleDuplicate}
+              disabled={isMutating}
+              className="inline-flex items-center justify-center gap-2 border border-border-default px-4 py-2 text-sm font-medium text-text-default transition-colors hover:bg-surface-subtle"
+            >
+              {duplicateDomain.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Duplicating...
+                </>
+              ) : (
+                <>Duplicate Domain</>
+              )}
+            </button>
+          </div>
 
-                <form onSubmit={handleSubmit}>
-                  <div className="mt-2">
-                    <p className="mb-4 text-sm text-text-muted">
-                      Update your domain name and icon.
-                    </p>
-
-                    <input
-                      type="text"
-                      className={`block w-full  border px-4 py-3 text-text-default placeholder-text-muted transition-all focus: focus: ${
-                        error
-                          ? "border-status-error-text focus:border-status-error-text focus:"
-                          : "border-border-default focus:border-border-default focus:"
-                      }`}
-                      placeholder="e.g., My Knowledge Base"
-                      value={name}
-                      onChange={(event) => {
-                        setName(event.target.value);
-                        if (error) setError(null);
-                      }}
-                      autoFocus
-                    />
-
-                    <div className="mt-4">
-                      <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
-                        Icon
-                      </label>
-                      <div className="grid grid-cols-6 gap-2">
-                        {DOMAIN_ICON_OPTIONS.map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => setIcon(option)}
-                            className={`flex items-center justify-center  border p-2 transition-colors ${
-                              icon === option
-                                ? "border-border-default bg-primary-950 text-action-primary-bg"
-                                : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                            }`}
-                            aria-label={`Select ${option} icon`}
-                          >
-                            <DynamicIcon name={option} className="h-4 w-4" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {error && (
-                      <div className="mt-3 flex items-center gap-2 text-sm text-status-error-text">
-                        <AlertCircle className="h-4 w-4" />
-                        {error}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 flex flex-col gap-3">
-                    <div className="flex gap-3 items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={handleDelete}
-                        disabled={isMutating}
-                        className="inline-flex items-center justify-center gap-2 border border-status-error-text px-4 py-2 text-sm font-medium text-status-error-text transition-colors hover:bg-status-error-bg focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {deleteDomain.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4" />
-                            {confirmDelete ? "Confirm Delete" : "Delete Domain"}
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDuplicate}
-                        disabled={isMutating}
-                        className="inline-flex items-center justify-center gap-2 border border-border-default px-4 py-2 text-sm font-medium text-text-default transition-colors hover:bg-surface-subtle"
-                      >
-                        {duplicateDomain.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Duplicating...
-                          </>
-                        ) : (
-                          <>Duplicate Domain</>
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="flex gap-3 items-center justify-end">
-                      <button
-                        type="button"
-                        className="inline-flex justify-center border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible:"
-                        onClick={onClose}
-                        disabled={isMutating}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={!name.trim() || isMutating}
-                        className="inline-flex items-center justify-center gap-2 border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {updateDomain.isPending ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Check className="h-4 w-4" />
-                            Save Changes
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </form>
-              </Dialog.Panel>
-            </Transition.Child>
+          <div className="flex gap-3 items-center justify-end">
+            <button
+              type="button"
+              className="inline-flex justify-center border border-transparent px-4 py-2 text-sm font-medium text-text-subtle transition-colors hover:bg-surface-subtle focus: focus-visible: focus-visible: focus-visible:"
+              onClick={onClose}
+              disabled={isMutating}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!name.trim() || isMutating}
+              className="inline-flex items-center justify-center gap-2 border border-transparent bg-action-primary-bg px-4 py-2 text-sm font-medium text-action-primary-text transition-all hover:bg-action-primary-hover focus: focus-visible: focus-visible: focus-visible: disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {updateDomain.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </button>
           </div>
         </div>
-      </Dialog>
-    </Transition>
+      </form>
+    </ModalShell>
   );
 }

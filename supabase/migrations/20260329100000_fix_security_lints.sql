@@ -37,44 +37,114 @@ on public.canvas_versions
 for delete
 using (false);
 
-alter function if exists public.update_updated_at_column()
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.update_updated_at_column()') is not null then
+    execute 'alter function public.update_updated_at_column() set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.create_global_stream_for_new_domain()
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.create_global_stream_for_new_domain()') is not null then
+    execute 'alter function public.create_global_stream_for_new_domain() set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.enforce_system_global_stream_rules()
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.enforce_system_global_stream_rules()') is not null then
+    execute 'alter function public.enforce_system_global_stream_rules() set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.cleanup_shadow_persona_from_attachments()
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.cleanup_shadow_persona_from_attachments()') is not null then
+    execute 'alter function public.cleanup_shadow_persona_from_attachments() set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.user_can_access_stream(uuid)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.user_can_access_stream(uuid)') is not null then
+    execute 'alter function public.user_can_access_stream(uuid) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.cleanup_shadow_persona_from_sections()
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.cleanup_shadow_persona_from_sections()') is not null then
+    execute 'alter function public.cleanup_shadow_persona_from_sections() set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.cleanup_unused_shadow_persona(uuid)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.cleanup_unused_shadow_persona(uuid)') is not null then
+    execute 'alter function public.cleanup_unused_shadow_persona(uuid) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.apply_audit_inverse(text, uuid, jsonb)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.apply_audit_inverse(text, uuid, jsonb)') is not null then
+    execute 'alter function public.apply_audit_inverse(text, uuid, jsonb) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.create_canvas_for_new_stream()
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.create_canvas_for_new_stream()') is not null then
+    execute 'alter function public.create_canvas_for_new_stream() set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.create_entry_with_section(uuid, jsonb, uuid, text)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.create_entry_with_section(uuid, jsonb, uuid, text)') is not null then
+    execute 'alter function public.create_entry_with_section(uuid, jsonb, uuid, text) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.create_entry_with_section(uuid, jsonb, uuid, text, boolean)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.create_entry_with_section(uuid, jsonb, uuid, text, boolean)') is not null then
+    execute 'alter function public.create_entry_with_section(uuid, jsonb, uuid, text, boolean) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.get_domain_stats(uuid)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.get_domain_stats(uuid)') is not null then
+    execute 'alter function public.get_domain_stats(uuid) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.jsonb_to_text(jsonb)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.jsonb_to_text(jsonb)') is not null then
+    execute 'alter function public.jsonb_to_text(jsonb) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;
 
-alter function if exists public.revert_bridge_action(uuid)
-  set search_path = public, auth, extensions, pg_temp;
+do $$
+begin
+  if to_regprocedure('public.revert_bridge_action(uuid)') is not null then
+    execute 'alter function public.revert_bridge_action(uuid) set search_path = public, auth, extensions, pg_temp';
+  end if;
+end
+$$;

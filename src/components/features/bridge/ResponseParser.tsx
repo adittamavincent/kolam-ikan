@@ -679,7 +679,9 @@ export const ResponseParser = forwardRef<
             });
           if (sectionError) throw sectionError;
 
+          const { data: bridgeUserData } = await supabase.auth.getUser();
           await supabase.from("audit_logs").insert({
+            user_id: bridgeUserData.user?.id ?? null,
             action: "bridge_log_create",
             target_table: "entries",
             payload: { content: thoughtLog },
@@ -712,7 +714,9 @@ export const ResponseParser = forwardRef<
               .update(buildStoredContentPayload(mergedBlocks))
               .eq("id", canvas.id);
             if (updateError) throw updateError;
+            const { data: bridgeUserData } = await supabase.auth.getUser();
             await supabase.from("audit_logs").insert({
+              user_id: bridgeUserData.user?.id ?? null,
               action: "bridge_canvas_merge",
               target_table: "canvases",
               target_id: canvas.id,

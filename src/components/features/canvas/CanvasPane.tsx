@@ -551,7 +551,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           </div>
         )}
         {/* Editor area */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-24">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-20">
           {canvas ? (
             <MarkdownEditor
               key={`canvas-${canvas.id}-${editorSeed}`}

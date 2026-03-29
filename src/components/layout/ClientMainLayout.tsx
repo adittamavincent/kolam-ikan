@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Menu as MenuIcon,
@@ -71,6 +78,8 @@ function clampSidebarWidth(
 
 export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hasResolvedInitialSidebarRoute, setHasResolvedInitialSidebarRoute] =
+    useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { status, loading, error } = useAuth();
@@ -276,17 +285,20 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
   // Detect "home" route — the root path with no domain param
   const isHomeRoute = pathname === "/";
+  const shouldShowSidebarByRoute = !isHomeRoute;
+  const effectiveSidebarVisible =
+    shouldShowSidebarByRoute &&
+    (sidebarVisible || !hasResolvedInitialSidebarRoute);
 
   // ---------- Route-based auto-show / auto-hide ----------
   const prevPathRef = useRef<string | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const prev = prevPathRef.current;
     prevPathRef.current = pathname;
 
     if (prev === null) {
-      if (isHomeRoute) {
-        setSidebarVisible(false);
-      }
+      setSidebarVisible(!isHomeRoute);
+      setHasResolvedInitialSidebarRoute(true);
       return;
     }
 
@@ -549,11 +561,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       <div
         ref={sidebarRef}
         className={`hidden md:flex overflow-hidden relative z-30 group h-full ${isResizing ? "transition-none" : "transition-[width] duration-300 ease-in-out"}`}
-        style={{ width: sidebarVisible ? sidebarWidth : 0 }}
+        style={{ width: effectiveSidebarVisible ? sidebarWidth : 0 }}
       >
         <div
           className={`flex-1 overflow-hidden h-full transition-all duration-300 ease-in-out ${
-            sidebarVisible
+            effectiveSidebarVisible
               ? "opacity-100 translate-x-0"
               : "opacity-0 -translate-x-2 pointer-events-none"
           }`}
@@ -564,7 +576,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         {/* Resize Handle */}
         <div
           className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors z-50 ${
-            sidebarVisible
+            effectiveSidebarVisible
               ? "hover:bg-primary-9500 active:bg-action-primary-bg"
               : "pointer-events-none"
           } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}

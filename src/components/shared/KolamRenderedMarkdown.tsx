@@ -486,7 +486,11 @@ function renderMarkdownBody(
 
     nodes.push(
       <p className="kolam-paragraph p-1" key={`paragraph-${start}`}>
-        {renderInline(paragraphLines.join(" "), highlightTerm)}
+        {paragraphLines.flatMap((paragraphLine, lineIndex) => {
+          const lineNodes = renderInline(paragraphLine, highlightTerm);
+          if (lineIndex === 0) return lineNodes;
+          return [<br key={`paragraph-${start}-br-${lineIndex}`} />, ...lineNodes];
+        })}
       </p>,
     );
   }

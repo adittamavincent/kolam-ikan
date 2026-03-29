@@ -161,7 +161,7 @@ function parseMarkdownishMessageToBlocks(message: string): PartialBlock[] {
     const paragraphText = paragraphBuffer
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
-      .join(" ");
+      .join("\n");
 
     if (paragraphText.length > 0) {
       blocks.push({

@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
+  Transition,
+} from "@headlessui/react";
 import { LogPane } from "@/components/features/log/LogPane";
 import { CanvasPane } from "@/components/features/canvas/CanvasPane";
 import { BridgeModal } from "@/components/features/bridge/BridgeModal";
@@ -10,8 +17,14 @@ import { useRealtimeEntries } from "@/lib/hooks/useRealtimeEntries";
 import { useLayout } from "@/lib/hooks/useLayout";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { BRIDGE_PROVIDER_PRESETS } from "@/components/features/bridge/bridge-config";
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { Globe, Link2, RotateCcw, Sparkles, Wand2 } from "lucide-react";
+import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  Check,
+  ChevronDown,
+  Globe,
+  RotateCcw,
+  Sparkles,
+} from "lucide-react";
 import { useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 
@@ -30,6 +43,9 @@ export function StreamView({ streamId }: { streamId: string }) {
   const setBridgeDefaults = useUiPreferencesStore(
     (state) => state.setBridgeDefaults,
   );
+  const defaultProviderId = useUiPreferencesStore(
+    (state) => state.bridgeDefaults.providerId,
+  );
   const upsertBridgeSession = useUiPreferencesStore(
     (state) => state.upsertBridgeSession,
   );
@@ -42,7 +58,10 @@ export function StreamView({ streamId }: { streamId: string }) {
 
   const effectiveBridgeSession = hasHydrated ? bridgeSession : undefined;
   const selectedProviderId =
-    effectiveBridgeSession?.providerId ?? "gemini";
+    effectiveBridgeSession?.providerId ?? defaultProviderId;
+  const selectedProviderLabel =
+    BRIDGE_PROVIDER_PRESETS.find((provider) => provider.id === selectedProviderId)
+      ?.label ?? "Gemini";
   useLatestBridgeJob(streamId, selectedProviderId, 4_000);
   const resetBridgeSession = useResetBridgeSession(streamId);
   const hasActiveSession = !!effectiveBridgeSession?.isExternalSessionActive;
@@ -55,18 +74,6 @@ export function StreamView({ streamId }: { streamId: string }) {
     !!effectiveBridgeSession?.lastJobId ||
     automationStatus !== "idle" ||
     hasActiveSession;
-  const queueLabel =
-    automationStatus === "queued"
-      ? "Queued"
-      : automationStatus === "running"
-        ? "Running"
-        : automationStatus === "needs-login"
-          ? "Login"
-          : automationStatus === "succeeded"
-            ? "Ready"
-            : automationStatus === "failed"
-              ? "Failed"
-              : "Idle";
 
   useEffect(() => {
     const onOpenDocumentImport = (ev?: Event) => {
@@ -106,63 +113,67 @@ export function StreamView({ streamId }: { streamId: string }) {
       <CanvasPane streamId={streamId} />
 
       <div className="fixed bottom-4 right-4 z-40 flex items-center gap-0.5 border border-border-default bg-surface-default p-2 shadow-lg backdrop-blur-md transition-all">
-        <div
-          className={`inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold ${
-            hasActiveSession
-              ? "bg-status-success-bg/40 text-status-success-text"
-              : "text-text-muted hover:bg-surface-hover"
-          }`}
-          title={
-            hasActiveSession
-              ? "Active web session. Quick will send follow-up payloads."
-              : "No active web session. Quick will send a full payload."
-          }
-        >
-          <Link2 className="h-3.5 w-3.5" />
-          <span>{hasActiveSession ? "Live" : "Fresh"}</span>
-        </div>
-
-        <div
-          className={`inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold ${
-            automationStatus === "succeeded"
-              ? "bg-status-success-bg/40 text-status-success-text"
-              : automationStatus === "queued" || automationStatus === "running"
-                ? "text-text-default hover:bg-surface-hover"
-                : automationStatus === "needs-login" || automationStatus === "failed"
-                  ? "bg-status-error-bg text-status-error-text"
-                  : "text-text-muted hover:bg-surface-hover"
-          }`}
-          title={`Latest local ${
-            BRIDGE_PROVIDER_PRESETS.find(
-              (provider) => provider.id === selectedProviderId,
-            )?.label ?? "bridge"
-          } runner state`}
-        >
-          <Wand2 className="h-3.5 w-3.5" />
-          <span>{queueLabel}</span>
-        </div>
-
-        <label className="inline-flex h-8 items-center gap-2 px-2 text-text-default hover:bg-surface-hover">
-          <Globe className="h-3.5 w-3.5 text-text-muted" />
-          <select
-            value={selectedProviderId}
-            onChange={(event) => {
-              const providerId = event.target.value as typeof selectedProviderId;
-              setBridgeDefaults({ providerId });
-              if (effectiveBridgeSession) {
-                upsertBridgeSession(streamId, { providerId });
-              }
-            }}
-            className="bg-transparent text-[11px] font-semibold text-text-default outline-none"
+        <Menu as="div" className="relative">
+          <MenuButton
+            className="inline-flex h-8 items-center gap-2 px-2 text-text-default transition-all hover:bg-surface-hover focus:"
             title="Preferred web LLM"
+            aria-label="Preferred web LLM"
           >
-            {BRIDGE_PROVIDER_PRESETS.map((provider) => (
-              <option key={provider.id} value={provider.id}>
-                {provider.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <Globe className="h-3.5 w-3.5 text-text-muted" />
+            <span className="text-[11px] font-semibold text-text-default">
+              {selectedProviderLabel}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
+          </MenuButton>
+          <Transition
+            as={Fragment}
+            enter="transition ease-out duration-100"
+            enterFrom="transform opacity-0 scale-95"
+            enterTo="transform opacity-100 scale-100"
+            leave="transition ease-in duration-75"
+            leaveFrom="transform opacity-100 scale-100"
+            leaveTo="transform opacity-0 scale-95"
+          >
+            <MenuItems
+              anchor={{ to: "bottom end", gap: 6 }}
+              portal
+              className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+            >
+              <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+                Preferred web LLM
+              </div>
+              {BRIDGE_PROVIDER_PRESETS.map((provider) => (
+                <MenuItem key={provider.id}>
+                  {({ focus }) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const providerId = provider.id;
+                        setBridgeDefaults({ providerId });
+                        if (effectiveBridgeSession) {
+                          upsertBridgeSession(streamId, { providerId });
+                        }
+                      }}
+                      className={`${
+                        focus
+                          ? "bg-surface-subtle text-text-default"
+                          : "text-text-subtle"
+                      } flex w-full items-center justify-between px-2 py-1.5 text-xs transition-all duration-200`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Globe className="h-3 w-3" />
+                        {provider.label}
+                      </span>
+                      {selectedProviderId === provider.id && (
+                        <Check className="h-3 w-3 text-action-primary-bg" />
+                      )}
+                    </button>
+                  )}
+                </MenuItem>
+              ))}
+            </MenuItems>
+          </Transition>
+        </Menu>
 
         <div className="flex items-stretch gap-0.5">
           <QuickBridgeControl streamId={streamId} />

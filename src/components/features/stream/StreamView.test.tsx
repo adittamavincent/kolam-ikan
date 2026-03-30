@@ -58,6 +58,14 @@ describe("StreamView", () => {
     expect(screen.getByRole("button", { name: "Detailed" })).toBeInTheDocument();
   });
 
+  it("shows a single combined bridge status pill", () => {
+    render(<StreamView streamId="stream-1" />);
+
+    expect(screen.getByText("Fresh")).toBeInTheDocument();
+    expect(screen.queryByText("Idle")).not.toBeInTheDocument();
+    expect(screen.queryByText("Live")).not.toBeInTheDocument();
+  });
+
   it("opens the detailed bridge flow", () => {
     render(<StreamView streamId="stream-1" />);
 

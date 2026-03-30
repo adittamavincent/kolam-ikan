@@ -59,6 +59,7 @@ const PROVIDER_RUNNER_CONFIGS = {
       '[contenteditable="plaintext-only"]',
     ],
     responseSelectors: [
+      'div[data-is-streaming]',
       '[data-testid*="assistant"]',
       '[data-testid*="message-content"]',
       'article',
@@ -66,7 +67,7 @@ const PROVIDER_RUNNER_CONFIGS = {
     newChatButtonNames: [/new chat/i, /start new/i],
     stopButtonNames: [/stop/i],
     sendButtonNames: [/send/i],
-    copyButtonNames: [/copy/i],
+    copyButtonNames: [/copy/i, /copy response/i],
     loginPatterns: [/log in/i, /sign in/i, /continue with/i],
     modelPickerNames: [/claude/i, /sonnet/i, /haiku/i, /opus/i, /model/i],
   },
@@ -77,7 +78,6 @@ export const DEFAULT_BRIDGE_RUNNER_PROVIDERS = Object.freeze(
 );
 export const LOGIN_REQUIRED_CODE = "LOGIN_REQUIRED";
 export const SESSION_RESET_REQUIRED_CODE = "SESSION_RESET_REQUIRED";
-export const GEMINI_APP_URL = PROVIDER_RUNNER_CONFIGS.gemini.appUrl;
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -85,6 +85,23 @@ function escapeRegExp(value) {
 
 function normalizeText(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function buildResponseStabilityKey(value) {
+  return normalizeText(value)
+    .replace(/\b(copy( response)?|retry|edit|share|like|dislike|good response|bad response)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function responsesRoughlyMatch(candidate, expected) {
+  const candidateNormalized = normalizeText(candidate);
+  const expectedNormalized = normalizeText(expected);
+  if (!candidateNormalized || !expectedNormalized) return false;
+
+  return candidateNormalized === expectedNormalized ||
+    candidateNormalized.includes(expectedNormalized) ||
+    expectedNormalized.includes(candidateNormalized);
 }
 
 function getProviderConfig(provider) {
@@ -137,6 +154,17 @@ async function findVisibleLocatorBySelectors(page, selectors) {
   return null;
 }
 
+async function findLatestVisibleLocatorBySelectors(page, selectors) {
+  for (const selector of selectors) {
+    const locator = page.locator(selector).last();
+    if (await locator.isVisible().catch(() => false)) {
+      return locator;
+    }
+  }
+
+  return null;
+}
+
 async function findVisibleLocatorByRoleNames(page, role, names) {
   for (const name of names) {
     const locator = page.getByRole(role, { name }).last();
@@ -151,6 +179,17 @@ async function findVisibleLocatorByRoleNames(page, role, names) {
 async function findVisibleLocator(page, locators) {
   for (const getLocator of locators) {
     const locator = getLocator();
+    if (await locator.isVisible().catch(() => false)) {
+      return locator;
+    }
+  }
+
+  return null;
+}
+
+async function findVisibleLocatorInScope(scope, locators) {
+  for (const getLocator of locators) {
+    const locator = getLocator(scope);
     if (await locator.isVisible().catch(() => false)) {
       return locator;
     }
@@ -197,16 +236,101 @@ export async function findProviderSendButton(page, provider) {
 
 export async function findProviderCopyButton(page, provider) {
   const config = getProviderConfig(provider);
-  const byRole = await findVisibleLocatorByRoleNames(
-    page,
-    "button",
-    config.copyButtonNames,
-  );
+  let byRole = await findVisibleLocatorByRoleNames(page, "button", config.copyButtonNames);
   if (byRole) return byRole;
 
-  const fallback = page.locator('button[aria-label*="copy" i]').last();
-  if (await fallback.isVisible().catch(() => false)) {
+  let fallback = await findVisibleLocator(page, [
+    () => page.locator('button[aria-label*="copy" i]').last(),
+    () => page.locator('button[title*="copy" i]').last(),
+    () => page.locator('[data-testid*="copy"]').last(),
+  ]);
+  if (fallback) {
     return fallback;
+  }
+
+  if (provider === "claude") {
+    const claudeExactCopyButton = await findVisibleLocator(page, [
+      () =>
+        page
+          .locator(
+            'div[data-is-streaming] + div[role="group"][aria-label="Message actions"] button[data-testid="action-bar-copy"]',
+          )
+          .last(),
+      () =>
+        page
+          .locator(
+            'div[data-is-streaming] + div[role="group"][aria-label="Message actions"] button[aria-label="Copy"]',
+          )
+          .last(),
+      () =>
+        page
+          .locator(
+            '[role="group"][aria-label="Message actions"] button[data-testid="action-bar-copy"]',
+          )
+          .last(),
+    ]);
+    if (claudeExactCopyButton) {
+      return claudeExactCopyButton;
+    }
+
+    const hoverTargets = [
+      () => page.locator("article").last(),
+      ...config.responseSelectors.map((selector) => () => page.locator(selector).last()),
+    ];
+
+    for (const getTarget of hoverTargets) {
+      const target = getTarget();
+      if (!await target.isVisible().catch(() => false)) {
+        continue;
+      }
+
+      await target.hover().catch(() => undefined);
+      await sleep(150);
+
+      const hoveredClaudeExactCopyButton = await findVisibleLocator(page, [
+        () =>
+          page
+            .locator(
+              'div[data-is-streaming] + div[role="group"][aria-label="Message actions"] button[data-testid="action-bar-copy"]',
+            )
+            .last(),
+        () =>
+          page
+            .locator(
+              'div[data-is-streaming] + div[role="group"][aria-label="Message actions"] button[aria-label="Copy"]',
+            )
+            .last(),
+        () =>
+          page
+            .locator(
+              '[role="group"][aria-label="Message actions"] button[data-testid="action-bar-copy"]',
+            )
+            .last(),
+      ]);
+      if (hoveredClaudeExactCopyButton) {
+        return hoveredClaudeExactCopyButton;
+      }
+
+      const scopedByRole = await findVisibleLocatorInScope(
+        target,
+        config.copyButtonNames.map((name) => (scope) =>
+          scope.getByRole("button", { name }).last()),
+      );
+      if (scopedByRole) return scopedByRole;
+
+      const scopedFallback = await findVisibleLocatorInScope(target, [
+        (scope) => scope.locator('button[aria-label*="copy response" i]').last(),
+        (scope) => scope.locator('button[aria-label*="copy" i]').last(),
+        (scope) => scope.locator('button[title*="copy" i]').last(),
+        (scope) => scope.locator('[data-testid*="copy"]').last(),
+        // Claude sometimes renders the action row as unlabeled icon buttons; the first
+        // visible action in the hovered latest response cluster is the copy control.
+        (scope) => scope.locator('button, [role="button"]').first(),
+      ]);
+      if (scopedFallback) {
+        return scopedFallback;
+      }
+    }
   }
 
   return null;
@@ -338,9 +462,35 @@ export async function extractLatestProviderResponse(page, provider) {
     for (const selector of selectors) {
       const nodes = Array.from(document.querySelectorAll(selector));
       for (const node of nodes) {
+        const candidate =
+          node instanceof HTMLElement ? node.cloneNode(true) : node?.cloneNode?.(true);
+        if (candidate instanceof HTMLElement) {
+          candidate
+            .querySelectorAll(
+              [
+                "button",
+                "svg",
+                "form",
+                "nav",
+                "footer",
+                '[role="toolbar"]',
+                '[data-testid*="action"]',
+                '[data-testid*="feedback"]',
+                '[aria-label*="copy" i]',
+                '[aria-label*="retry" i]',
+                '[aria-label*="edit" i]',
+                '[aria-label*="share" i]',
+              ].join(","),
+            )
+            .forEach((child) => child.remove());
+        }
         const text =
-          (node instanceof HTMLElement ? node.innerText : node.textContent)?.trim();
-        if (text) texts.push(text);
+          (candidate instanceof HTMLElement
+            ? candidate.innerText
+            : candidate?.textContent) ??
+          (node instanceof HTMLElement ? node.innerText : node.textContent);
+        const trimmed = text?.trim();
+        if (trimmed) texts.push(trimmed);
       }
       if (texts.length > 0) break;
     }
@@ -349,30 +499,71 @@ export async function extractLatestProviderResponse(page, provider) {
   }, getProviderConfig(provider).responseSelectors);
 }
 
-export async function extractLatestProviderResponseViaCopy(page, provider) {
+async function readClipboardText(page) {
+  return page.evaluate(async () => {
+    try {
+      return await navigator.clipboard.readText();
+    } catch {
+      return "";
+    }
+  });
+}
+
+async function waitForCopiedClipboardText(
+  page,
+  provider,
+  beforeCopy,
+  expectedResponse = "",
+) {
+  const timeoutMs = provider === "claude" ? 3_500 : 1_250;
+  const pollMs = provider === "claude" ? 150 : 100;
+  const started = Date.now();
+  let latestClipboard = "";
+
+  while (Date.now() - started < timeoutMs) {
+    latestClipboard = await readClipboardText(page);
+
+    if (responsesRoughlyMatch(latestClipboard, expectedResponse)) {
+      return latestClipboard;
+    }
+
+    if (
+      latestClipboard.trim() &&
+      (normalizeText(latestClipboard) !== normalizeText(beforeCopy) ||
+        latestClipboard.includes("<response>"))
+    ) {
+      return latestClipboard;
+    }
+
+    await sleep(pollMs);
+  }
+
+  return latestClipboard;
+}
+
+export async function extractLatestProviderResponseViaCopy(
+  page,
+  provider,
+  expectedResponse = "",
+) {
   const copyButton = await findProviderCopyButton(page, provider);
   if (!copyButton) return "";
 
-  const beforeCopy = await page.evaluate(async () => {
-    try {
-      return await navigator.clipboard.readText();
-    } catch {
-      return "";
-    }
-  });
+  const beforeCopy = await readClipboardText(page);
 
-  await copyButton.click();
-  await sleep(250);
-
-  const afterCopy = await page.evaluate(async () => {
-    try {
-      return await navigator.clipboard.readText();
-    } catch {
-      return "";
-    }
-  });
+  await copyButton.click().catch(() => undefined);
+  const afterCopy = await waitForCopiedClipboardText(
+    page,
+    provider,
+    beforeCopy,
+    expectedResponse,
+  );
 
   if (!afterCopy.trim()) return "";
+  if (responsesRoughlyMatch(afterCopy, expectedResponse)) {
+    return afterCopy;
+  }
+
   if (
     normalizeText(afterCopy) === normalizeText(beforeCopy) &&
     !afterCopy.includes("<response>")
@@ -390,6 +581,11 @@ export async function isProviderGenerating(page, provider) {
     getProviderConfig(provider).stopButtonNames,
   );
   return !!stopButton;
+}
+
+async function canProviderResponseBeCopied(page, provider) {
+  const copyButton = await findProviderCopyButton(page, provider);
+  return !!copyButton;
 }
 
 export async function waitForProviderGenerationStart(
@@ -433,6 +629,8 @@ export async function waitForProviderResponse(
   let generatingSeen = false;
   let lastSeen = initialResponse.trim();
   let lastMeaningfulResponse = initialResponse.trim();
+  let lastStableKey = buildResponseStabilityKey(initialResponse);
+  let generationCompletedAt = null;
   const started = Date.now();
 
   const startState = await waitForProviderGenerationStart(
@@ -443,6 +641,7 @@ export async function waitForProviderResponse(
   generatingSeen = startState.sawGenerating;
   lastSeen = startState.baselineResponse.trim() || lastSeen;
   lastMeaningfulResponse = lastSeen;
+  lastStableKey = buildResponseStabilityKey(lastSeen);
 
   while (Date.now() - started < 180_000) {
     if (await isProviderLoginRequired(page, provider)) {
@@ -454,32 +653,73 @@ export async function waitForProviderResponse(
     const stopButtonVisible = await isProviderGenerating(page, provider);
     const response = (await extractLatestProviderResponse(page, provider)).trim();
     const hasNewResponse = !!response && response !== initialResponse.trim();
+    const responseStableKey = buildResponseStabilityKey(response);
 
     if (stopButtonVisible) {
       generatingSeen = true;
+      generationCompletedAt = null;
     }
 
     if (hasNewResponse) {
       lastMeaningfulResponse = response;
     }
 
+    if (!stopButtonVisible && hasNewResponse && generatingSeen) {
+      generationCompletedAt = generationCompletedAt ?? Date.now();
+    }
+
     if (hasNewResponse) {
+      const hasCopyButton = await canProviderResponseBeCopied(page, provider);
+
       if (
-        response === lastSeen &&
+        !stopButtonVisible &&
+        hasCopyButton &&
+        (generatingSeen || response !== startState.baselineResponse.trim())
+      ) {
+        await sleep(200);
+        const settledResponse = (
+          await extractLatestProviderResponse(page, provider)
+        ).trim();
+        if (settledResponse && settledResponse === response) {
+          return settledResponse;
+        }
+        if (!settledResponse) {
+          return lastMeaningfulResponse;
+        }
+        lastMeaningfulResponse = settledResponse;
+        lastSeen = settledResponse;
+        stableCount = 0;
+        await sleep(250);
+        continue;
+      }
+
+      if (
+        provider === "claude" &&
+        !stopButtonVisible &&
+        generationCompletedAt &&
+        Date.now() - generationCompletedAt >= 4_000
+      ) {
+        return lastMeaningfulResponse;
+      }
+
+      if (
+        responseStableKey &&
+        responseStableKey === lastStableKey &&
         !stopButtonVisible &&
         (generatingSeen || response !== startState.baselineResponse.trim())
       ) {
         stableCount += 1;
-        if (stableCount >= 3) {
+        if (stableCount >= 2) {
           return lastMeaningfulResponse;
         }
       } else {
         stableCount = 0;
       }
       lastSeen = response;
+      lastStableKey = responseStableKey || lastStableKey;
     }
 
-    await sleep(generatingSeen ? 1200 : 700);
+    await sleep(generatingSeen ? 700 : 350);
   }
 
   throw new Error(
@@ -492,12 +732,21 @@ export async function getFinalProviderResponse(
   provider,
   fallbackResponse = "",
 ) {
-  const copiedResponse = await extractLatestProviderResponseViaCopy(
-    page,
-    provider,
-  );
-  if (copiedResponse.trim()) {
-    return copiedResponse;
+  const attempts = provider === "claude" ? 8 : 2;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const copiedResponse = await extractLatestProviderResponseViaCopy(
+      page,
+      provider,
+      fallbackResponse,
+    );
+    if (copiedResponse.trim()) {
+      return copiedResponse;
+    }
+
+    if (attempt < attempts - 1) {
+      await sleep(provider === "claude" ? 300 + attempt * 200 : 250 + attempt * 150);
+    }
   }
 
   return fallbackResponse;
@@ -541,62 +790,6 @@ export async function runBridgeJob(page, job, sessionState) {
   sessionState.currentModel = requestedModel || sessionState.currentModel || null;
 
   return finalResponse;
-}
-
-export async function isGeminiLoginRequired(page) {
-  return isProviderLoginRequired(page, "gemini");
-}
-
-export async function findComposer(page) {
-  return findProviderComposer(page, "gemini");
-}
-
-export async function findSendButton(page) {
-  return findProviderSendButton(page, "gemini");
-}
-
-export async function findCopyButton(page) {
-  return findProviderCopyButton(page, "gemini");
-}
-
-export async function ensureGeminiReady(page, requestedModel = "") {
-  return ensureProviderReady(page, "gemini", requestedModel);
-}
-
-export async function startFreshGeminiChat(page) {
-  return startFreshProviderChat(page, "gemini");
-}
-
-export async function submitGeminiPrompt(page, payload, requestedModel = "") {
-  return submitProviderPrompt(page, "gemini", payload, requestedModel);
-}
-
-export async function extractLatestGeminiResponse(page) {
-  return extractLatestProviderResponse(page, "gemini");
-}
-
-export async function extractLatestGeminiResponseViaCopy(page) {
-  return extractLatestProviderResponseViaCopy(page, "gemini");
-}
-
-export async function isGeminiGenerating(page) {
-  return isProviderGenerating(page, "gemini");
-}
-
-export async function waitForGeminiGenerationStart(page, initialResponse = "") {
-  return waitForProviderGenerationStart(page, "gemini", initialResponse);
-}
-
-export async function waitForGeminiResponse(page, initialResponse = "") {
-  return waitForProviderResponse(page, "gemini", initialResponse);
-}
-
-export async function getFinalGeminiResponse(page, fallbackResponse = "") {
-  return getFinalProviderResponse(page, "gemini", fallbackResponse);
-}
-
-export async function runGeminiBridgeJob(page, job, sessionState) {
-  return runBridgeJob(page, { provider: "gemini", ...job }, sessionState);
 }
 
 export { PROVIDER_RUNNER_CONFIGS };

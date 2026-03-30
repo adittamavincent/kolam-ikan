@@ -32,13 +32,21 @@ export function useResetBridgeSession(streamId: string) {
       return true;
     },
     onSuccess: async () => {
-      clearBridgeSession(streamId);
       for (const provider of BRIDGE_JOB_PROVIDERS) {
-        queryClient.setQueryData(latestBridgeJobQueryKey(streamId, provider), null);
-        await queryClient.invalidateQueries({
-          queryKey: latestBridgeJobQueryKey(streamId, provider),
-        });
+        const queryKey = latestBridgeJobQueryKey(streamId, provider);
+        await queryClient.cancelQueries({ queryKey });
+        queryClient.setQueryData(queryKey, null);
       }
+
+      clearBridgeSession(streamId);
+
+      await Promise.all(
+        BRIDGE_JOB_PROVIDERS.map((provider) =>
+          queryClient.invalidateQueries({
+            queryKey: latestBridgeJobQueryKey(streamId, provider),
+          }),
+        ),
+      );
     },
   });
 }

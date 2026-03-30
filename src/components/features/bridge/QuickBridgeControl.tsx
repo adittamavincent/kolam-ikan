@@ -157,6 +157,8 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
     ? bridgeSession?.automationStatus ?? "idle"
     : "idle";
   const latestJob = latestBridgeJob.data;
+  const effectiveLaunchState =
+    bridgeSession ? launchState : "idle";
   const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
   const latestJobMatchesCurrentPayload =
     latestJob?.session_key === currentSessionKey &&
@@ -164,24 +166,26 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   const responseText = latestJob?.raw_response?.trim() ?? "";
   const canRunQuick = payloadReady && !!generatedXML.trim();
   const hasPendingResponse =
+    !!bridgeSession &&
     latestJob?.status === "succeeded" &&
     !!responseText &&
     latestJob?.id !== bridgeSession?.lastAppliedJobId;
   const responseToApply = hasPendingResponse ? responseText : "";
   const isContinuing =
-    (hasHydrated ? bridgeSession?.isExternalSessionActive ?? false : false) ||
-    latestJob?.status === "succeeded";
+    !!bridgeSession &&
+    ((hasHydrated ? bridgeSession?.isExternalSessionActive ?? false : false) ||
+      latestJob?.status === "succeeded");
 
   const phase: QuickPhase =
     hasPendingResponse
       ? "apply"
-      : launchState === "queueing" ||
-          launchState === "queued" ||
+      : effectiveLaunchState === "queueing" ||
+          effectiveLaunchState === "queued" ||
           queueStatus === "queued" ||
           queueStatus === "running" ||
-          launchState === "launching" ||
-          launchState === "done" ||
-          launchState === "opened"
+          effectiveLaunchState === "launching" ||
+          effectiveLaunchState === "done" ||
+          effectiveLaunchState === "opened"
         ? "waiting"
         : "send";
 
@@ -286,8 +290,8 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
 
   const icon =
     phase === "waiting" ||
-        launchState === "queueing" ||
-        launchState === "launching" ||
+        effectiveLaunchState === "queueing" ||
+        effectiveLaunchState === "launching" ||
         parserStatus.isApplying ? (
       <Loader2 className="h-4 w-4 animate-spin" />
     ) : (
@@ -349,6 +353,8 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
           onStatusChange={setParserStatus}
           onApplySuccess={() => {
             if (!latestJob?.id) return;
+            setLaunchState("idle");
+            setIsQueueing(false);
             upsertBridgeSession(streamId, {
               lastAppliedJobId: latestJob.id,
             });

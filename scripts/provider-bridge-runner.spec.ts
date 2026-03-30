@@ -11,7 +11,7 @@ vi.mock("@playwright/test", () => ({
   },
 }));
 
-describe("gemini bridge runner", () => {
+describe("provider bridge runner", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -31,7 +31,7 @@ describe("gemini bridge runner", () => {
   });
 
   it("removes stale Chrome singleton files from the profile directory", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "gemini-runner-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     await fs.mkdir(profileDir, { recursive: true });
     await Promise.all([
@@ -41,7 +41,7 @@ describe("gemini bridge runner", () => {
       fs.writeFile(path.join(profileDir, "Preferences"), "{}"),
     ]);
 
-    const { removeStaleChromeSingletons } = await import("./gemini-bridge-runner.mjs");
+    const { removeStaleChromeSingletons } = await import("./provider-bridge-runner.mjs");
     await removeStaleChromeSingletons(profileDir);
 
     await expect(fs.stat(path.join(profileDir, "Preferences"))).resolves.toBeTruthy();
@@ -51,7 +51,7 @@ describe("gemini bridge runner", () => {
   });
 
   it("backs up a broken headed profile and retries once with a clean directory", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "gemini-runner-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     await fs.mkdir(profileDir, { recursive: true });
     await fs.writeFile(path.join(profileDir, "SingletonLock"), "lock");
@@ -63,7 +63,7 @@ describe("gemini bridge runner", () => {
     const fakeContext = { close: vi.fn() };
     launchPersistentContext.mockRejectedValueOnce(launchError).mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./gemini-bridge-runner.mjs");
+    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
     const context = await launchRunnerContext(profileDir);
 
     expect(context).toBe(fakeContext);
@@ -88,12 +88,12 @@ describe("gemini bridge runner", () => {
 
   it("prefers a branded Chrome channel for headed login", async () => {
     process.env.BRIDGE_RUNNER_BROWSER_CHANNEL = "chrome";
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "gemini-runner-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     const fakeContext = { close: vi.fn() };
     launchPersistentContext.mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./gemini-bridge-runner.mjs");
+    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
     const context = await launchRunnerContext(profileDir);
 
     expect(context).toBe(fakeContext);
@@ -111,12 +111,12 @@ describe("gemini bridge runner", () => {
   it("uses a smaller default viewport and honors browser size overrides", async () => {
     process.env.BRIDGE_RUNNER_BROWSER_WIDTH = "1100";
     process.env.BRIDGE_RUNNER_BROWSER_HEIGHT = "720";
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "gemini-runner-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     const fakeContext = { close: vi.fn() };
     launchPersistentContext.mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./gemini-bridge-runner.mjs");
+    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
     await launchRunnerContext(profileDir);
 
     expect(launchPersistentContext).toHaveBeenCalledWith(
@@ -129,13 +129,13 @@ describe("gemini bridge runner", () => {
 
   it("falls back to the default browser engine when configured Chrome is unavailable", async () => {
     process.env.BRIDGE_RUNNER_BROWSER_CHANNEL = "chrome";
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "gemini-runner-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     const missingChromeError = new Error("Chromium distribution 'chrome' is not found");
     const fakeContext = { close: vi.fn() };
     launchPersistentContext.mockRejectedValueOnce(missingChromeError).mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./gemini-bridge-runner.mjs");
+    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
     const context = await launchRunnerContext(profileDir);
 
     expect(context).toBe(fakeContext);
@@ -166,7 +166,7 @@ describe("gemini bridge runner", () => {
         return process;
       }) as typeof process.once);
 
-      const { installShutdownHandlers } = await import("./gemini-bridge-runner.mjs");
+      const { installShutdownHandlers } = await import("./provider-bridge-runner.mjs");
       installShutdownHandlers(context);
 
       handlers.get("SIGINT")?.();

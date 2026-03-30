@@ -11,7 +11,7 @@ import {
   runBridgeJob,
   SESSION_RESET_REQUIRED_CODE,
   sleep,
-} from "./gemini-bridge-runner-core.mjs";
+} from "./provider-bridge-runner-core.mjs";
 
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false });
@@ -24,7 +24,14 @@ const RUNNER_SECRET = process.env.BRIDGE_RUNNER_SECRET || "";
 const RUNNER_ID = process.env.BRIDGE_RUNNER_ID || "local-bridge-runner";
 const USER_DATA_DIR =
   process.env.BRIDGE_RUNNER_PROFILE_DIR || ".auth/bridge-runner-profile";
-const POLL_MS = Number(process.env.BRIDGE_RUNNER_POLL_INTERVAL_MS || "3000");
+export const DEFAULT_RUNNER_POLL_MS = 1_000;
+const configuredPollMs = Number(
+  process.env.BRIDGE_RUNNER_POLL_INTERVAL_MS || `${DEFAULT_RUNNER_POLL_MS}`,
+);
+const POLL_MS =
+  Number.isFinite(configuredPollMs) && configuredPollMs > 0
+    ? configuredPollMs
+    : DEFAULT_RUNNER_POLL_MS;
 const HEADLESS = process.env.BRIDGE_RUNNER_HEADLESS === "true";
 const RUNNER_BROWSER_CHANNEL = process.env.BRIDGE_RUNNER_BROWSER_CHANNEL || "chrome";
 const RUNNER_BROWSER_PATH = process.env.BRIDGE_RUNNER_BROWSER_PATH || "";
@@ -48,7 +55,7 @@ function parseEnabledProviders() {
     return provider in PROVIDER_RUNNER_CONFIGS && values.indexOf(provider) === index;
   });
 
-  return normalized.length > 0 ? normalized : ["gemini"];
+  return normalized.length > 0 ? normalized : DEFAULT_BRIDGE_RUNNER_PROVIDERS;
 }
 
 const ENABLED_PROVIDERS = parseEnabledProviders();

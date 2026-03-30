@@ -47,7 +47,16 @@ export function useLatestBridgeJob(
       return data as BridgeJob | null;
     },
     enabled: !!streamId,
-    refetchInterval,
+    refetchInterval: (query) => {
+      const latestJob = query.state.data as BridgeJob | null | undefined;
+      if (
+        latestJob?.status === "queued" ||
+        latestJob?.status === "running"
+      ) {
+        return Math.min(refetchInterval, 1_000);
+      }
+      return refetchInterval;
+    },
   });
 
   useEffect(() => {
@@ -110,7 +119,11 @@ export function useCreateBridgeJob(streamId: string) {
 
       return { job: payload.job, deduped: payload.deduped };
     },
-    onSuccess: () => {
+    onSuccess: ({ job }) => {
+      queryClient.setQueryData(
+        latestBridgeJobQueryKey(streamId, job.provider),
+        job,
+      );
       for (const provider of BRIDGE_JOB_PROVIDERS) {
         queryClient.invalidateQueries({
           queryKey: latestBridgeJobQueryKey(streamId, provider),

@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useRef } from "react";
 import { scanMarkdownTableBlock } from "@/lib/markdownTables";
+import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
 
 export type FrontmatterProperty = {
   key: string;
@@ -118,6 +119,14 @@ function formatCalloutTitle(type: string) {
   return type.charAt(0).toUpperCase() + type.slice(1);
 }
 
+function slugifyHeading(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-");
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -177,15 +186,16 @@ function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
         </span>,
       );
     } else if (match[3] && match[4]) {
+      const isInternalAnchor = match[4].startsWith("#");
       nodes.push(
         <a
           className="kolam-inline-link"
           href={match[4]}
           key={nodes.length}
-          rel="noreferrer"
-          target="_blank"
+          rel={isInternalAnchor ? undefined : "noreferrer"}
+          target={isInternalAnchor ? undefined : "_blank"}
         >
-          {highlightPlainText(match[3], highlightTerm)}
+          {renderInline(match[3], highlightTerm)}
         </a>,
       );
     } else if (match[5]) {
@@ -201,19 +211,19 @@ function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
     } else if (match[8]) {
       nodes.push(
         <strong key={nodes.length}>
-          <em>{highlightPlainText(match[8], highlightTerm)}</em>
+          <em>{renderInline(match[8], highlightTerm)}</em>
         </strong>,
       );
     } else if (match[9] || match[10]) {
       nodes.push(
         <strong key={nodes.length}>
-          {highlightPlainText(match[9] ?? match[10], highlightTerm)}
+          {renderInline(match[9] ?? match[10], highlightTerm)}
         </strong>,
       );
     } else if (match[11] || match[12]) {
       nodes.push(
         <em key={nodes.length}>
-          {highlightPlainText(match[11] ?? match[12], highlightTerm)}
+          {renderInline(match[11] ?? match[12], highlightTerm)}
         </em>,
       );
     } else {
@@ -232,41 +242,42 @@ function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
 
 function renderHeading(level: number, text: string, key: string, highlightTerm?: string) {
   const content = renderInline(text, highlightTerm);
+  const id = slugifyHeading(text);
 
   switch (level) {
     case 1:
       return (
-        <h1 className="kolam-heading kolam-heading-1" key={key}>
+        <h1 className="kolam-heading kolam-heading-1" id={id} key={key}>
           {content}
         </h1>
       );
     case 2:
       return (
-        <h2 className="kolam-heading kolam-heading-2" key={key}>
+        <h2 className="kolam-heading kolam-heading-2" id={id} key={key}>
           {content}
         </h2>
       );
     case 3:
       return (
-        <h3 className="kolam-heading kolam-heading-3" key={key}>
+        <h3 className="kolam-heading kolam-heading-3" id={id} key={key}>
           {content}
         </h3>
       );
     case 4:
       return (
-        <h4 className="kolam-heading kolam-heading-4" key={key}>
+        <h4 className="kolam-heading kolam-heading-4" id={id} key={key}>
           {content}
         </h4>
       );
     case 5:
       return (
-        <h5 className="kolam-heading kolam-heading-5" key={key}>
+        <h5 className="kolam-heading kolam-heading-5" id={id} key={key}>
           {content}
         </h5>
       );
     default:
       return (
-        <h6 className="kolam-heading kolam-heading-6" key={key}>
+        <h6 className="kolam-heading kolam-heading-6" id={id} key={key}>
           {content}
         </h6>
       );
@@ -287,6 +298,7 @@ function renderMarkdownBody(
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
   const nodes: React.ReactNode[] = [];
   let i = 0;
+  let activeSection: "citations" | null = null;
 
   while (i < lines.length) {
     const line = lines[i];
@@ -349,6 +361,9 @@ function renderMarkdownBody(
     const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
     if (headingMatch) {
       const level = Math.min(6, headingMatch[1].length);
+      activeSection = /^(citations|references)\s*$/i.test(headingMatch[2].trim())
+        ? "citations"
+        : null;
       nodes.push(renderHeading(level, headingMatch[2], `heading-${i}`, highlightTerm));
       i += 1;
       continue;
@@ -418,6 +433,11 @@ function renderMarkdownBody(
         items.push(
           <li
             className={currentTask ? "kolam-task-item" : undefined}
+            id={
+              activeSection === "citations" && ordered
+                ? `citation-${items.length + 1}`
+                : undefined
+            }
             key={`item-${start}-${lineNumber}`}
             style={{ marginInlineStart: `${indent * 0.75}rem` }}
           >
@@ -503,9 +523,122 @@ export default function KolamRenderedMarkdown({
   highlightTerm,
   onToggleTask,
 }: RendererProps) {
+  const normalizedSource = normalizeOaiCitationsInMarkdown(source);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const flashTimeoutRef = useRef<number | null>(null);
+  const flashStartTimeoutRef = useRef<number | null>(null);
+  const hoverTargetRef = useRef<HTMLElement | null>(null);
+  const activeClickTokenRef = useRef(0);
+
+  const clearHoverTarget = useCallback(() => {
+    hoverTargetRef.current?.classList.remove("kolam-hover-target");
+    hoverTargetRef.current = null;
+  }, []);
+
+  const clearFlashTarget = useCallback(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    root
+      .querySelectorAll(".kolam-transient-target")
+      .forEach((element) => element.classList.remove("kolam-transient-target"));
+  }, []);
+
+  const resolveInternalDestination = useCallback((href: string) => {
+    if (!href.startsWith("#")) return null;
+
+    const root = rootRef.current;
+    if (!root) return null;
+
+    const destination = root.querySelector(href);
+    return destination instanceof HTMLElement ? destination : null;
+  }, []);
+
+  const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const anchor = target.closest("a[href^='#']");
+    if (!(anchor instanceof HTMLAnchorElement)) return;
+
+    const href = anchor.getAttribute("href");
+    if (!href?.startsWith("#")) return;
+
+    const destination = resolveInternalDestination(href);
+    if (!destination) return;
+
+    event.preventDefault();
+    clearHoverTarget();
+    clearFlashTarget();
+    destination.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    if (flashTimeoutRef.current != null) {
+      window.clearTimeout(flashTimeoutRef.current);
+    }
+    if (flashStartTimeoutRef.current != null) {
+      window.clearTimeout(flashStartTimeoutRef.current);
+    }
+
+    activeClickTokenRef.current += 1;
+    const clickToken = activeClickTokenRef.current;
+
+    flashStartTimeoutRef.current = window.setTimeout(() => {
+      if (clickToken !== activeClickTokenRef.current) return;
+      destination.classList.remove("kolam-transient-target");
+      void destination.offsetWidth;
+      destination.classList.add("kolam-transient-target");
+
+      flashTimeoutRef.current = window.setTimeout(() => {
+        if (clickToken !== activeClickTokenRef.current) return;
+        destination.classList.remove("kolam-transient-target");
+        flashTimeoutRef.current = null;
+      }, 1700);
+
+      flashStartTimeoutRef.current = null;
+    }, 420);
+  }, [clearFlashTarget, clearHoverTarget, resolveInternalDestination]);
+
+  const handleMouseOver = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    const anchor = target.closest("a[href^='#']");
+    if (!(anchor instanceof HTMLAnchorElement)) {
+      clearHoverTarget();
+      return;
+    }
+
+    const href = anchor.getAttribute("href");
+    if (!href) {
+      clearHoverTarget();
+      return;
+    }
+
+    const destination = resolveInternalDestination(href);
+    if (!destination) {
+      clearHoverTarget();
+      return;
+    }
+
+    if (hoverTargetRef.current === destination) return;
+
+    clearHoverTarget();
+    destination.classList.add("kolam-hover-target");
+    hoverTargetRef.current = destination;
+  }, [clearHoverTarget, resolveInternalDestination]);
+
+  const handleMouseLeave = useCallback(() => {
+    clearHoverTarget();
+  }, [clearHoverTarget]);
+
   return (
-    <div className="kolam-rendered-markdown">
-      {renderMarkdownBody(source, highlightTerm, onToggleTask)}
+    <div
+      className="kolam-rendered-markdown"
+      onClick={handleClick}
+      onMouseLeave={handleMouseLeave}
+      onMouseOver={handleMouseOver}
+      ref={rootRef}
+    >
+      {renderMarkdownBody(normalizedSource, highlightTerm, onToggleTask)}
     </div>
   );
 }

@@ -78,6 +78,7 @@ import {
   resolveCanvasBlocks,
 } from "./ResponseParser";
 import { blocksToStoredMarkdown } from "@/lib/content-protocol";
+import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
 
 mockSupabase.from.mockImplementation((table: string) => {
   if (table === "canvases") {
@@ -249,6 +250,20 @@ hello
     expect(markdown).toContain("> Line one\n> Line two");
     expect(markdown).toContain("-----");
     expect(markdown).not.toContain("Who Knows Artist: Tevit");
+  });
+
+  it("normalizes ChatGPT contentReference citations before canvas parsing", () => {
+    const normalized = normalizeOaiCitationsInMarkdown(`
+## Song Identified
+Bad Bunny :contentReference[oaicite:0]{index=0}
+`);
+
+    const result = resolveCanvasBlocks(normalized);
+    const markdown = blocksToStoredMarkdown(result.blocks);
+
+    expect(markdown).toContain("[1](#citation-1)");
+    expect(markdown).toContain("## Citations");
+    expect(markdown).toContain("1. OpenAI citation 1");
   });
 
   it("quick-apply creates a branch-linked AI commit, uses the current canvas as diff base, and refreshes the latest snapshot cache", async () => {

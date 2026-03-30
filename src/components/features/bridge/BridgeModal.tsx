@@ -593,6 +593,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                 ref={parserRef}
                 streamId={streamId}
                 interactionMode={interactionMode}
+                aiPersonaLabel={currentProvider.label}
                 pastedXML={effectivePastedXML}
                 onPastedXMLChange={setPastedXML}
                 onStatusChange={setParserStatus}

@@ -8,6 +8,7 @@ import { STREAM_KIND, type BridgeJobStatus } from "@/lib/types";
 import {
   buildQuickBridgePreset,
   composeBridgeInstruction,
+  getBridgeProviderPreset,
   getQuickPayloadVariant,
 } from "./bridge-config";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
@@ -149,6 +150,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   const providerId = hasHydrated
     ? bridgeSession?.providerId ?? bridgeDefaults.providerId
     : "gemini";
+  const providerPreset = getBridgeProviderPreset(providerId);
   const latestBridgeJob = useLatestBridgeJob(streamId, providerId, 4_000);
   const payloadVariant = getQuickPayloadVariant(bridgeSession);
   const queueStatus = hasHydrated
@@ -341,6 +343,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
           ref={parserRef}
           streamId={streamId}
           interactionMode={quickPreset.interactionMode}
+          aiPersonaLabel={providerPreset.label}
           pastedXML={responseToApply}
           onPastedXMLChange={() => undefined}
           onStatusChange={setParserStatus}

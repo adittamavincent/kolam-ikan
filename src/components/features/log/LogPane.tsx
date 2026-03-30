@@ -62,6 +62,10 @@ import { TextInputDialog } from "@/components/shared/TextInputDialog";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import {
+  BRIDGE_JOB_PROVIDER_LABELS,
+  isBridgeJobProvider,
+} from "@/lib/bridge/providers";
+import {
   buildStoredContentPayload,
   cloneStoredContentFields,
   storedContentToBlocks,
@@ -79,6 +83,7 @@ import {
 import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { CANVAS_PREVIEW_OPEN_EVENT } from "@/lib/utils/canvasPreview";
+import type { BridgeJob } from "@/lib/types";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -142,6 +147,45 @@ function countSearchOccurrences(source: string, term: string): number {
 
 function getTimelineItemCollapseKey(item: { type: "entry" | "canvas_snapshot"; data: { id: string } }): string {
   return `${item.type}:${item.data.id}`;
+}
+
+function parseDateMillis(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const millis = new Date(value).getTime();
+  return Number.isFinite(millis) ? millis : null;
+}
+
+function resolveSnapshotAiModelLabel(
+  snapshot: CanvasVersion,
+  bridgeJobs: Pick<BridgeJob, "provider" | "created_at" | "completed_at" | "status">[],
+): string | null {
+  if (!(snapshot.name?.startsWith("AI Bridge") ?? false)) return null;
+
+  const snapshotTime = parseDateMillis(snapshot.created_at);
+  if (snapshotTime === null) return null;
+
+  const bestMatch = bridgeJobs
+    .filter((job) => job.status === "succeeded" || job.status === "running")
+    .map((job) => ({
+      provider: job.provider,
+      referenceTime:
+        parseDateMillis(job.completed_at) ??
+        parseDateMillis(job.created_at),
+    }))
+    .filter(
+      (
+        job,
+      ): job is {
+        provider: string;
+        referenceTime: number;
+      } => job.referenceTime !== null,
+    )
+    .filter((job) => job.referenceTime <= snapshotTime + 60_000)
+    .sort((a, b) => b.referenceTime - a.referenceTime)
+    .find((job) => snapshotTime - job.referenceTime <= 30 * 60_000);
+
+  if (!bestMatch || !isBridgeJobProvider(bestMatch.provider)) return null;
+  return BRIDGE_JOB_PROVIDER_LABELS[bestMatch.provider];
 }
 
 function isEntryLineageSchemaError(error: unknown): boolean {
@@ -794,6 +838,36 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const { timelineItems } = useTimelineItems(streamId, entryList, {
     sortOrder,
   });
+  const { data: bridgeJobs = [] } = useQuery({
+    queryKey: ["bridge-jobs", "stream", streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bridge_jobs")
+        .select("provider, created_at, completed_at, status")
+        .eq("stream_id", streamId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return (data ?? []) as Pick<
+        BridgeJob,
+        "provider" | "created_at" | "completed_at" | "status"
+      >[];
+    },
+    enabled: !!streamId,
+  });
+  const aiModelLabelBySnapshotId = useMemo(() => {
+    const mapping = new Map<string, string>();
+
+    for (const item of timelineItems) {
+      if (item.type !== "canvas_snapshot") continue;
+      const label = resolveSnapshotAiModelLabel(item.data, bridgeJobs);
+      if (label) {
+        mapping.set(item.data.id, label);
+      }
+    }
+
+    return mapping;
+  }, [bridgeJobs, timelineItems]);
   const collapsedEntryIdList = useUiPreferencesStore((state) => {
     return state.logCollapsedItemIdsByStream[streamId] ?? EMPTY_COLLAPSED_ITEM_IDS;
   });
@@ -2597,6 +2671,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                             <CanvasSnapshotCard
                               version={item.data}
                               streamId={streamId}
+                              aiModelLabel={
+                                aiModelLabelBySnapshotId.get(item.data.id) ?? null
+                              }
                               isCollapsed={collapsedEntryIds.has(itemCollapseKey)}
                               onToggleCollapsed={() =>
                                 toggleEntryCollapsed(itemCollapseKey)

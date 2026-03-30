@@ -218,6 +218,34 @@ body {
   box-shadow: inset 0 -1px 0 color-mix(in srgb, #56b6c2 90%, transparent);
 }
 
+.kolam-hover-target {
+  background: color-mix(in srgb, #d19a66 24%, transparent);
+  border-radius: 0.3rem;
+  box-shadow:
+    inset 0 -1px 0 color-mix(in srgb, #d19a66 65%, transparent),
+    0 0 0 1px color-mix(in srgb, #d19a66 16%, transparent);
+}
+
+.kolam-transient-target {
+  animation: kolam-flash-target-line 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  background: color-mix(in srgb, #56b6c2 42%, transparent);
+  border-radius: 0.3rem;
+  box-shadow:
+    inset 0 -1px 0 color-mix(in srgb, #56b6c2 90%, transparent),
+    0 0 0 1px color-mix(in srgb, #56b6c2 24%, transparent);
+}
+
+@keyframes kolam-flash-target-line {
+  0% {
+    background: color-mix(in srgb, #56b6c2 52%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, #56b6c2 88%, transparent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 3px 0 0 transparent;
+  }
+}
+
 ::selection {
   background: #323844;
   color: #d7dae0;
@@ -772,6 +800,32 @@ body {
 .kolam-codemirror-root .cm-kolam-highlight {
   background: #8d6e2c;
   border-radius: 0;
+}
+
+.kolam-codemirror-root .cm-line.cm-kolam-flash-target-line {
+  animation: kolam-flash-target-line 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 0.35rem;
+}
+
+.kolam-codemirror-root .cm-line.cm-kolam-hover-target-line {
+  border-radius: 0.35rem;
+}
+
+.kolam-codemirror-root .cm-kolam-hover-target-range {
+  background: color-mix(in srgb, #d19a66 24%, transparent) !important;
+  border-radius: 0.25rem;
+  box-shadow:
+    inset 0 -1px 0 color-mix(in srgb, #d19a66 65%, transparent),
+    0 0 0 1px color-mix(in srgb, #d19a66 14%, transparent);
+}
+
+.kolam-codemirror-root .cm-kolam-flash-target-range {
+  animation: kolam-flash-target-line 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  background: color-mix(in srgb, #56b6c2 48%, transparent) !important;
+  border-radius: 0.25rem;
+  box-shadow:
+    inset 0 -1px 0 color-mix(in srgb, #56b6c2 90%, transparent),
+    0 0 0 1px color-mix(in srgb, #56b6c2 24%, transparent);
 }
 
 .kolam-codemirror-root .cm-kolam-blockquote {

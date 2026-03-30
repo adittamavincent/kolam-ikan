@@ -556,7 +556,16 @@ export function buildResponseDirective(
 ) {
   const askCore = `Use <log>...</log> for the log entry.
 Write natural prose with blank lines between paragraphs.
-Return only the final answer text inside <log>.`;
+Return only the final answer text inside <log>.
+
+If you cite web sources, use parser-friendly citations:
+- Inline references inside <log> or <canvas>: use markdown links like \`[1](#citation-1)\`, \`[2](#citation-2)\`
+- Put the source list in an optional <citations>...</citations> block
+- Inside <citations>, use a numbered markdown list, one source per line, for example:
+  \`1. [Source title](https://example.com/source-1)\`
+  \`2. [Another source](https://example.com/source-2)\`
+- Citation numbers must match the inline references exactly
+- Do not use \`:contentReference[oaicite:...]\`, footnotes, or bare URLs in prose`;
 
   const canvasRules = canvasIsEmpty
     ? `Canvas is empty. Use <canvas>...</canvas>.
@@ -585,10 +594,13 @@ Do NOT include any canvas-related tags.
 Example response:
 <response>
 <log>
-Your analysis paragraph one goes here.
+Your analysis paragraph one goes here [1](#citation-1).
 
 Another paragraph with further reasoning.
 </log>
+<citations>
+1. [Source title](https://example.com/source-1)
+</citations>
 </response>
 </response_format_ask>`;
 
@@ -602,8 +614,11 @@ Example response:
 <canvas>
 + # Example Title
 + 
-+ - Example bullet
++ - Example bullet [1](#citation-1)
 </canvas>
+<citations>
+1. [Source title](https://example.com/source-1)
+</citations>
 ${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
 </response>
 </response_format_go>`;
@@ -616,15 +631,18 @@ ${goCore}
 Example response:
 <response>
 <log>
-Your reasoning goes here.
+Your reasoning goes here [1](#citation-1).
 </log>
 <canvas>
 + # Title
 + 
 + ## Section
 + - Task one
-+ - Task two
++ - Task two [1](#citation-1)
 </canvas>
+<citations>
+1. [Source title](https://example.com/source-1)
+</citations>
 ${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
 </response>
 </response_format_both>`;
@@ -637,7 +655,7 @@ ${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
 
   return `<response_instructions>
 Return XML only. No code fences. No text outside <response>.
-Preferred tags: <log>, <canvas>, <base>.
+Preferred tags: <log>, <canvas>, <citations>, <base>.
 Legacy tags still work, but prefer the short tags to save tokens.
 
 The user's interaction mode is: ${mode}

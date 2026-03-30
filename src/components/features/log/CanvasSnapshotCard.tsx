@@ -27,6 +27,7 @@ import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-pr
 interface CanvasSnapshotCardProps {
   version: CanvasVersion;
   streamId: string;
+  aiModelLabel?: string | null;
   isCollapsed?: boolean;
   onToggleCollapsed?: () => void;
 }
@@ -34,6 +35,7 @@ interface CanvasSnapshotCardProps {
 export function CanvasSnapshotCard({
   version,
   streamId,
+  aiModelLabel = null,
   isCollapsed = false,
   onToggleCollapsed,
 }: CanvasSnapshotCardProps) {
@@ -52,6 +54,9 @@ export function CanvasSnapshotCard({
   );
 
   const isAIGenerated = version.name?.startsWith("AI Bridge") ?? false;
+  const snapshotTitle = isAIGenerated
+    ? aiModelLabel?.trim() || "AI"
+    : version.name || "Untitled Snapshot";
   const currentContent = (liveContent ?? canvasBlocks ?? null) as PartialBlock[] | null;
   const currentMarkdown = liveMarkdown || canvasMarkdown;
   const snapshotContent = storedContentToBlocks(version);
@@ -73,7 +78,7 @@ export function CanvasSnapshotCard({
         detail: {
           streamId,
           versionId: version.id,
-          versionName: version.name || "Untitled Snapshot",
+          versionName: snapshotTitle,
           versionCreatedAt: version.created_at,
           content: snapshotContent,
           markdown: snapshotMarkdown,
@@ -134,12 +139,6 @@ export function CanvasSnapshotCard({
               <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default">
                 Canvas Snapshot
               </span>
-              {isAIGenerated ? (
-                <span className="inline-flex items-center gap-0.5 border border-border-strong bg-surface-default px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-action-primary-bg">
-                  <Sparkles className="h-2.5 w-2.5" />
-                  AI
-                </span>
-              ) : null}
             </div>
             <span className="shrink-0 font-mono text-[10px] font-medium text-text-subtle">
               {new Date(version.created_at || "").toLocaleString(undefined, {
@@ -155,9 +154,23 @@ export function CanvasSnapshotCard({
         <div className="px-2.5 py-2.5">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium text-text-default">
-                {version.name || "Untitled Snapshot"}
-              </div>
+              {isAIGenerated ? (
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="persona-button-display__icon flex h-4 w-4 shrink-0 items-center justify-center border bg-action-primary-bg/10 text-action-primary-bg">
+                    <Sparkles className="h-2.5 w-2.5" />
+                  </div>
+                  <span className="truncate text-[10px] font-medium tracking-wider text-text-subtle uppercase">
+                    {snapshotTitle}
+                  </span>
+                  <span className="persona-button-display__type-badge shrink-0 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em]">
+                    AI
+                  </span>
+                </div>
+              ) : (
+                <div className="truncate text-xs font-medium text-text-default">
+                  {snapshotTitle}
+                </div>
+              )}
               {version.summary && (
                 <div className="mt-0.5 line-clamp-2 text-[10px] text-text-muted">
                   {version.summary}

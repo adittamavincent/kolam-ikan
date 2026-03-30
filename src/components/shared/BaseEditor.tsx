@@ -56,6 +56,7 @@ import {
   normalizeFrontmatterKey,
   default as KolamRenderedMarkdown,
 } from "@/components/shared/KolamRenderedMarkdown";
+import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
 import type {
   MarkdownEditorProps,
   MarkdownEditorHandle,
@@ -94,6 +95,78 @@ function persistEditorViewState(
 }
 
 const hiddenSyntax = Decoration.replace({});
+const hoverTargetLineEffect = StateEffect.define<
+  | {
+      from: number;
+      to: number;
+    }
+  | null
+>();
+const flashTargetLineEffect = StateEffect.define<
+  | {
+      from: number;
+      to: number;
+    }
+  | null
+>();
+
+const hoverTargetLineField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update: (decorations, transaction) => {
+    const mapped = decorations.map(transaction.changes);
+    const effect = transaction.effects.find((candidate) =>
+      candidate.is(hoverTargetLineEffect),
+    );
+
+    if (!effect) {
+      return mapped;
+    }
+
+    const lineRange = effect.value;
+    if (lineRange == null) {
+      return Decoration.none;
+    }
+
+    return Decoration.set([
+      Decoration.line({
+        attributes: { class: "cm-kolam-hover-target-line" },
+      }).range(lineRange.from),
+      Decoration.mark({
+        class: "cm-kolam-hover-target-range",
+      }).range(lineRange.from, Math.max(lineRange.from, lineRange.to)),
+    ]);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
+const flashTargetLineField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update: (decorations, transaction) => {
+    const mapped = decorations.map(transaction.changes);
+    const effect = transaction.effects.find((candidate) =>
+      candidate.is(flashTargetLineEffect),
+    );
+
+    if (!effect) {
+      return mapped;
+    }
+
+    const lineRange = effect.value;
+    if (lineRange == null) {
+      return Decoration.none;
+    }
+
+    return Decoration.set([
+      Decoration.line({
+        attributes: { class: "cm-kolam-flash-target-line" },
+      }).range(lineRange.from),
+      Decoration.mark({
+        class: "cm-kolam-flash-target-range",
+      }).range(lineRange.from, Math.max(lineRange.from, lineRange.to)),
+    ]);
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
 
 class ListMarkerWidget extends WidgetType {
   constructor(
@@ -192,8 +265,10 @@ function appendInlineMarkdown(target: HTMLElement, text: string) {
       const link = document.createElement("a");
       link.className = "cm-kolam-table-inline-link";
       link.href = match[4];
-      link.rel = "noreferrer";
-      link.target = "_blank";
+      if (!match[4].startsWith("#")) {
+        link.rel = "noreferrer";
+        link.target = "_blank";
+      }
       appendSegment(match[3], match.index + 1, match[3].length, (value) => {
         link.textContent = value;
         target.appendChild(link);
@@ -1959,6 +2034,86 @@ function decorateLink(
   addHiddenDecoration(builder, labelTo, to);
 }
 
+function resolveMarkdownLinkAtOffset(
+  state: EditorState,
+  offset: number,
+): string | null {
+  const line = state.doc.lineAt(offset);
+  const lineOffset = offset - line.from;
+  const pattern = /\[([^\]]+)\]\(([^)\s]+(?:\s[^)]*)?)\)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(line.text)) !== null) {
+    const fullMatch = match[0];
+    const label = match[1];
+    const href = match[2];
+    const start = match.index;
+    const labelStart = start + 1;
+    const labelEnd = labelStart + label.length;
+    const end = start + fullMatch.length;
+
+    if (lineOffset >= start && lineOffset <= end) {
+      if (lineOffset >= labelStart && lineOffset <= labelEnd) {
+        return href;
+      }
+    }
+  }
+
+  return null;
+}
+
+function slugifyHeading(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/\s+/g, "-");
+}
+
+function findInternalAnchorLineFromHref(
+  state: EditorState,
+  href: string,
+): number | null {
+  const fragment = href.replace(/^#/, "").trim().toLowerCase();
+  if (!fragment) return null;
+
+  const lines = getDocumentLines(state.doc);
+
+  const citationMatch = fragment.match(/^citation-(\d+)$/);
+  if (citationMatch) {
+    const citationNumber = Number.parseInt(citationMatch[1], 10);
+    let insideCitations = false;
+
+    for (let row = 0; row < lines.length; row += 1) {
+      const line = lines[row];
+      const headingMatch = line.match(/^#{1,6}\s+(.+)$/);
+      if (headingMatch) {
+        insideCitations = /^(citations|references)\s*$/i.test(
+          headingMatch[1].trim(),
+        );
+        continue;
+      }
+
+      if (!insideCitations) continue;
+
+      const orderedMatch = line.match(/^\s*(\d+)[.)]\s+/);
+      if (orderedMatch && Number.parseInt(orderedMatch[1], 10) === citationNumber) {
+        return state.doc.line(row + 1).from;
+      }
+    }
+  }
+
+  for (let row = 0; row < lines.length; row += 1) {
+    const headingMatch = lines[row].match(/^#{1,6}\s+(.+)$/);
+    if (!headingMatch) continue;
+    if (slugifyHeading(headingMatch[1]) === fragment) {
+      return state.doc.line(row + 1).from;
+    }
+  }
+
+  return null;
+}
+
 function getDocumentLines(doc: EditorState["doc"]) {
   const lines: string[] = [];
   for (let index = 1; index <= doc.lines; index += 1) {
@@ -3161,9 +3316,11 @@ export default function BaseEditor({
   viewStateKey,
 }: BaseEditorProps) {
   const [markdownValue, setMarkdownValue] = useState(() =>
-    typeof initialMarkdown === "string"
-      ? initialMarkdown
-      : blocksToStoredMarkdown(initialContent ?? []),
+    normalizeOaiCitationsInMarkdown(
+      typeof initialMarkdown === "string"
+        ? initialMarkdown
+        : blocksToStoredMarkdown(initialContent ?? []),
+    ),
   );
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -3175,6 +3332,10 @@ export default function BaseEditor({
   const [editableCompartment] = useState(() => new Compartment());
   const [readOnlyCompartment] = useState(() => new Compartment());
   const [placeholderCompartment] = useState(() => new Compartment());
+  const flashTimeoutRef = useRef<number | null>(null);
+  const flashStartTimeoutRef = useRef<number | null>(null);
+  const hoverHrefRef = useRef<string | null>(null);
+  const activeClickTokenRef = useRef(0);
 
   const frontmatter = useMemo(
     () => extractFrontmatter(markdownValue),
@@ -3206,6 +3367,8 @@ export default function BaseEditor({
       markdown({ base: markdownLanguage, codeLanguages: languages }),
       orderedListInputHandler(),
       createLivePreviewExtension({ revealSelection: editable }),
+      hoverTargetLineField,
+      flashTargetLineField,
       Prec.highest(keymap.of(kolamEditorKeymap)),
       keymap.of([
         ...defaultKeymap,
@@ -3240,6 +3403,135 @@ export default function BaseEditor({
           storedContentToBlocks({ raw_markdown: nextMarkdown }),
           nextMarkdown,
         );
+      }),
+      EditorView.domEventHandlers({
+        mousemove: (event, view) => {
+          const position = view.posAtCoords({
+            x: event.clientX,
+            y: event.clientY,
+          });
+
+          if (position == null) {
+            if (hoverHrefRef.current !== null) {
+              hoverHrefRef.current = null;
+              view.dispatch({
+                effects: hoverTargetLineEffect.of(null),
+              });
+            }
+            return false;
+          }
+
+          const href = resolveMarkdownLinkAtOffset(view.state, position);
+          if (!href?.startsWith("#")) {
+            if (hoverHrefRef.current !== null) {
+              hoverHrefRef.current = null;
+              view.dispatch({
+                effects: hoverTargetLineEffect.of(null),
+              });
+            }
+            return false;
+          }
+
+          if (hoverHrefRef.current === href) {
+            return false;
+          }
+
+          hoverHrefRef.current = href;
+          const lineFrom = findInternalAnchorLineFromHref(view.state, href);
+          if (lineFrom == null) {
+            view.dispatch({
+              effects: hoverTargetLineEffect.of(null),
+            });
+            return false;
+          }
+
+          const line = view.state.doc.lineAt(lineFrom);
+          view.dispatch({
+            effects: hoverTargetLineEffect.of({
+              from: line.from,
+              to: line.to,
+            }),
+          });
+          return false;
+        },
+        mouseleave: (_event, view) => {
+          hoverHrefRef.current = null;
+          view.dispatch({
+            effects: hoverTargetLineEffect.of(null),
+          });
+          return false;
+        },
+        click: (event, view) => {
+          const position = view.posAtCoords({
+            x: event.clientX,
+            y: event.clientY,
+          });
+          if (position == null) return false;
+
+          const href = resolveMarkdownLinkAtOffset(view.state, position);
+          if (!href) return false;
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          if (href.startsWith("#")) {
+            const lineFrom = findInternalAnchorLineFromHref(view.state, href);
+            if (lineFrom == null) return false;
+            const line = view.state.doc.lineAt(lineFrom);
+
+            activeClickTokenRef.current += 1;
+            const clickToken = activeClickTokenRef.current;
+            if (flashTimeoutRef.current != null) {
+              window.clearTimeout(flashTimeoutRef.current);
+            }
+            if (flashStartTimeoutRef.current != null) {
+              window.clearTimeout(flashStartTimeoutRef.current);
+            }
+            hoverHrefRef.current = href;
+
+            view.dispatch({
+              effects: [
+                hoverTargetLineEffect.of({
+                  from: line.from,
+                  to: line.to,
+                }),
+                flashTargetLineEffect.of(null),
+              ],
+              selection: EditorSelection.cursor(lineFrom),
+              scrollIntoView: true,
+            });
+
+            flashStartTimeoutRef.current = window.setTimeout(() => {
+              if (clickToken !== activeClickTokenRef.current || !viewRef.current) return;
+              if (!viewRef.current) return;
+
+              viewRef.current.dispatch({
+                effects: flashTargetLineEffect.of({
+                  from: line.from,
+                  to: line.to,
+                }),
+              });
+
+              flashTimeoutRef.current = window.setTimeout(() => {
+                if (clickToken !== activeClickTokenRef.current || !viewRef.current) return;
+                viewRef.current.dispatch({
+                  effects: flashTargetLineEffect.of(null),
+                });
+                flashTimeoutRef.current = null;
+              }, 1600);
+
+              flashStartTimeoutRef.current = null;
+            }, 420);
+            return true;
+          }
+
+          if (!(event.metaKey || event.ctrlKey)) {
+            return false;
+          }
+
+          window.open(href, "_blank", "noopener,noreferrer");
+          return true;
+        },
       }),
       editableCompartment.of(EditorView.editable.of(editable)),
       readOnlyCompartment.of(EditorState.readOnly.of(!editable)),
@@ -3286,6 +3578,15 @@ export default function BaseEditor({
     view.scrollDOM.addEventListener("scroll", handleScroll);
 
     return () => {
+      hoverHrefRef.current = null;
+      if (flashStartTimeoutRef.current != null) {
+        window.clearTimeout(flashStartTimeoutRef.current);
+        flashStartTimeoutRef.current = null;
+      }
+      if (flashTimeoutRef.current != null) {
+        window.clearTimeout(flashTimeoutRef.current);
+        flashTimeoutRef.current = null;
+      }
       persistEditorViewState(viewStateKey, view);
       view.scrollDOM.removeEventListener("scroll", handleScroll);
       focusRef.current = false;
@@ -3349,9 +3650,11 @@ export default function BaseEditor({
 
   useEffect(() => {
     const nextMarkdown =
-      typeof initialMarkdown === "string"
-        ? initialMarkdown
-        : blocksToStoredMarkdown(initialContent ?? []);
+      normalizeOaiCitationsInMarkdown(
+        typeof initialMarkdown === "string"
+          ? initialMarkdown
+          : blocksToStoredMarkdown(initialContent ?? []),
+      );
 
     if (focusRef.current || nextMarkdown === markdownRef.current) {
       return;
@@ -3375,22 +3678,26 @@ export default function BaseEditor({
   }, [initialContent, initialMarkdown]);
 
   const handleMarkdownChange = (nextMarkdown: string) => {
-    markdownRef.current = nextMarkdown;
-    setMarkdownValue(nextMarkdown);
+    const normalizedMarkdown = normalizeOaiCitationsInMarkdown(nextMarkdown);
+    markdownRef.current = normalizedMarkdown;
+    setMarkdownValue(normalizedMarkdown);
 
-    if (viewRef.current && viewRef.current.state.doc.toString() !== nextMarkdown) {
+    if (
+      viewRef.current &&
+      viewRef.current.state.doc.toString() !== normalizedMarkdown
+    ) {
       viewRef.current.dispatch({
         changes: {
           from: 0,
           to: viewRef.current.state.doc.length,
-          insert: nextMarkdown,
+          insert: normalizedMarkdown,
         },
       });
     }
 
     changeRef.current?.(
-      storedContentToBlocks({ raw_markdown: nextMarkdown }),
-      nextMarkdown,
+      storedContentToBlocks({ raw_markdown: normalizedMarkdown }),
+      normalizedMarkdown,
     );
   };
 

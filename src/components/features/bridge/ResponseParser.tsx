@@ -18,6 +18,7 @@ import {
   blocksToStoredMarkdown,
   buildStoredContentPayload,
 } from "@/lib/content-protocol";
+import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
 import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import type { PartialBlock } from "@/lib/types/editor";
@@ -25,6 +26,7 @@ import type { PartialBlock } from "@/lib/types/editor";
 interface ResponseParserProps {
   streamId?: string;
   interactionMode?: "ASK" | "GO" | "BOTH";
+  aiPersonaLabel?: string;
   pastedXML: string;
   onPastedXMLChange: (value: string) => void;
   onApplySuccess?: () => void;
@@ -378,6 +380,18 @@ function extractTagContent(text: string, tagName: string): string | null {
   return match[1].trim();
 }
 
+function appendCitationSection(
+  content: string,
+  citations: string | null,
+): string {
+  if (!citations?.trim()) return content;
+  if (/(^|\n)#{1,6}\s+(citations|references)\s*$/im.test(content)) {
+    return content;
+  }
+
+  return `${content.trimEnd()}\n\n## Citations\n${citations.trim()}`;
+}
+
 export function normalizeBridgeResponseText(text: string) {
   return text
     .trim()
@@ -442,6 +456,7 @@ export const ResponseParser = forwardRef<
     {
       streamId,
       interactionMode = "ASK",
+      aiPersonaLabel = "AI",
       pastedXML,
       onPastedXMLChange,
       onApplySuccess,
@@ -570,6 +585,11 @@ export const ResponseParser = forwardRef<
         "log",
         "thought_log",
       ]);
+      const citationsContent = extractTagContentByAliases(raw, [
+        "citations",
+        "sources",
+        "references",
+      ]);
       const canvasJsonContent = extractTagContentByAliases(raw, [
         "canvas_json",
         "canvas_update_json",
@@ -605,7 +625,12 @@ export const ResponseParser = forwardRef<
       }
 
       if (thoughtContent) {
-        nextThoughtLog = thoughtContent;
+        nextThoughtLog = normalizeOaiCitationsInMarkdown(
+          appendCitationSection(
+            thoughtContent,
+            citationsContent ? normalizeOaiCitationsInMarkdown(citationsContent) : null,
+          ),
+        );
       }
 
       if (canProcessLog && !thoughtContent) {
@@ -616,6 +641,13 @@ export const ResponseParser = forwardRef<
 
       let resolvedBlocks: MarkdownBlock[] | null = null;
       if (canvasContent) {
+        const normalizedCanvasContent =
+          normalizeOaiCitationsInMarkdown(
+            appendCitationSection(
+              canvasContent,
+              citationsContent ? normalizeOaiCitationsInMarkdown(citationsContent) : null,
+            ),
+          );
         const { data: fetchedCanvas, error: currentCanvasError } = await supabase
           .from("canvases")
           .select("id, content_json, updated_at")
@@ -638,8 +670,8 @@ export const ResponseParser = forwardRef<
               format: "json" as const,
             };
           }
-          return resolveCanvasBlocks(canvasContent, currentBlocks);
-        })();
+            return resolveCanvasBlocks(normalizedCanvasContent, currentBlocks);
+          })();
 
         if (result.error) {
           nextCanvasParseError = result.error;
@@ -875,7 +907,7 @@ export const ResponseParser = forwardRef<
             .insert({
               entry_id: createdEntry.id,
               persona_id: aiPersonaId ?? null,
-              persona_name_snapshot: "AI",
+              persona_name_snapshot: aiPersonaLabel,
               ...buildStoredContentPayload(blocks),
               sort_order: 0,
             });

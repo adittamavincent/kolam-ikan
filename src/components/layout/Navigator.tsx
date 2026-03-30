@@ -1312,29 +1312,36 @@ export function Navigator({}: NavigatorProps) {
     onMutate: async ({ id, updates }) => {
       if (!domainId) return;
       await queryClient.cancelQueries({ queryKey: ["streams", domainId] });
+      await queryClient.cancelQueries({ queryKey: ["stream", id] });
       const previousStreams = queryClient.getQueryData<Stream[]>([
         "streams",
         domainId,
       ]);
+      const previousStream = queryClient.getQueryData(["stream", id]);
 
       queryClient.setQueryData<Stream[]>(["streams", domainId], (old) =>
         old?.map((s) => (s.id === id ? { ...s, ...updates } : s)),
       );
+      queryClient.setQueryData(["stream", id], (old: Record<string, unknown> | undefined) =>
+        old ? { ...old, ...updates } : old,
+      );
 
-      return { previousStreams };
+      return { previousStreams, previousStream };
     },
-    onError: (error, _, context) => {
+    onError: (_error, variables, context) => {
       if (context?.previousStreams && domainId) {
         queryClient.setQueryData(
           ["streams", domainId],
           context.previousStreams,
         );
       }
+      queryClient.setQueryData(["stream", variables.id], context?.previousStream);
     },
-    onSettled: () => {
+    onSettled: (_, __, variables) => {
       if (domainId) {
         queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
       }
+      queryClient.invalidateQueries({ queryKey: ["stream", variables.id] });
       if (userId) {
         queryClient.invalidateQueries({ queryKey: ["home-domains", userId] });
         queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
@@ -2195,6 +2202,7 @@ export function Navigator({}: NavigatorProps) {
   useEffect(() => {
     lastNavigatedPathRef.current = null;
     pendingStreamNavigationRef.current = null;
+    setManualActiveNode(null);
     setForceNoHighlight(false);
   }, [pathname]);
 

@@ -15,6 +15,21 @@ type KolamLogStateDetail = {
   [key: string]: unknown;
 };
 
+type LogBranchSnapshot = Pick<
+  LogBranchState,
+  "currentBranch" | "currentBranchHeadId"
+>;
+
+const DEFAULT_LOG_BRANCH_SNAPSHOT: LogBranchSnapshot = {
+  currentBranch: "main",
+  currentBranchHeadId: null,
+};
+
+const logBranchSnapshotCache = new Map<
+  string,
+  LogBranchSnapshot & { snapshot: LogBranchSnapshot }
+>();
+
 declare global {
   interface Window {
     __kolamLogStateByStream?: Record<string, Record<string, unknown>>;
@@ -23,23 +38,39 @@ declare global {
 
 function readCachedLogState(streamId: string) {
   if (typeof window === "undefined" || !streamId) {
-    return {
-      currentBranch: "main",
-      currentBranchHeadId: null,
-    };
+    return DEFAULT_LOG_BRANCH_SNAPSHOT;
   }
 
   const cached = window.__kolamLogStateByStream?.[streamId];
-  return {
-    currentBranch:
-      typeof cached?.currentBranch === "string" && cached.currentBranch.trim()
-        ? cached.currentBranch
-        : "main",
-    currentBranchHeadId:
-      cached?.currentBranchHeadId === undefined
-        ? null
-        : (cached.currentBranchHeadId as string | null),
+  const currentBranch =
+    typeof cached?.currentBranch === "string" && cached.currentBranch.trim()
+      ? cached.currentBranch
+      : DEFAULT_LOG_BRANCH_SNAPSHOT.currentBranch;
+  const currentBranchHeadId =
+    cached?.currentBranchHeadId === undefined
+      ? DEFAULT_LOG_BRANCH_SNAPSHOT.currentBranchHeadId
+      : (cached.currentBranchHeadId as string | null);
+
+  const cachedSnapshot = logBranchSnapshotCache.get(streamId);
+  if (
+    cachedSnapshot?.currentBranch === currentBranch &&
+    cachedSnapshot.currentBranchHeadId === currentBranchHeadId
+  ) {
+    return cachedSnapshot.snapshot;
+  }
+
+  const snapshot = {
+    currentBranch,
+    currentBranchHeadId,
   };
+
+  logBranchSnapshotCache.set(streamId, {
+    currentBranch,
+    currentBranchHeadId,
+    snapshot,
+  });
+
+  return snapshot;
 }
 
 export function dispatchKolamLogState(detail: KolamLogStateDetail) {

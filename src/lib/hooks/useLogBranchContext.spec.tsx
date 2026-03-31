@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React from "react";
+import React, { useEffect } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
@@ -16,6 +16,22 @@ function Probe({ streamId }: { streamId: string }) {
       <span data-testid="head">{currentBranchHeadId ?? ""}</span>
     </div>
   );
+}
+
+function SnapshotProbe({
+  streamId,
+  onSnapshot,
+}: {
+  streamId: string;
+  onSnapshot: (snapshot: ReturnType<typeof useLogBranchContext>) => void;
+}) {
+  const snapshot = useLogBranchContext(streamId);
+
+  useEffect(() => {
+    onSnapshot(snapshot);
+  }, [onSnapshot, snapshot]);
+
+  return null;
 }
 
 describe("useLogBranchContext", () => {
@@ -55,6 +71,39 @@ describe("useLogBranchContext", () => {
     await waitFor(() => {
       expect(screen.getByTestId("branch")).toHaveTextContent("main");
       expect(screen.getByTestId("head")).toHaveTextContent("entry-parent");
+    });
+  });
+
+  it("reuses the same snapshot object when derived branch state is unchanged", async () => {
+    const snapshots: Array<ReturnType<typeof useLogBranchContext>> = [];
+
+    dispatchKolamLogState({
+      streamId: "stream-1",
+      currentBranch: "main",
+      currentBranchHeadId: "entry-parent",
+    });
+
+    render(
+      <SnapshotProbe
+        streamId="stream-1"
+        onSnapshot={(snapshot) => {
+          snapshots.push(snapshot);
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(snapshots).toHaveLength(1);
+    });
+
+    dispatchKolamLogState({
+      streamId: "stream-1",
+      status: "idle",
+      isDirty: false,
+    });
+
+    await waitFor(() => {
+      expect(snapshots).toHaveLength(1);
     });
   });
 });

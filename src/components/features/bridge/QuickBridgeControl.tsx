@@ -14,6 +14,7 @@ import {
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
 import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
+import { useBridgeRunnerStatus } from "@/lib/hooks/useBridgeRunnerStatus";
 import { XMLGenerator } from "./XMLGenerator";
 import { ResponseParser, type ResponseParserHandle } from "./ResponseParser";
 
@@ -29,6 +30,7 @@ type QuickLaunchState =
 
 interface QuickBridgeControlProps {
   streamId: string;
+  onOpenDetailed?: () => void;
 }
 
 const INITIAL_PARSER_STATUS = {
@@ -38,7 +40,10 @@ const INITIAL_PARSER_STATUS = {
   hasParsed: false,
 };
 
-export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
+export function QuickBridgeControl({
+  streamId,
+  onOpenDetailed,
+}: QuickBridgeControlProps) {
   const supabase = createClient();
   const bridgeDefaults = useUiPreferencesStore((state) => state.bridgeDefaults);
   const bridgeSession = useUiPreferencesStore(
@@ -58,6 +63,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   const [parserStatus, setParserStatus] = useState(INITIAL_PARSER_STATUS);
   const createBridgeJob = useCreateBridgeJob(streamId);
   const parserRef = useRef<ResponseParserHandle>(null);
+  const runnerStatus = useBridgeRunnerStatus({ pollIntervalMs: 15_000 });
   const hasHydrated = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -178,7 +184,9 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
       latestJob?.status === "succeeded");
 
   const phase: QuickPhase =
-    hasPendingResponse
+    !runnerStatus.online && !runnerStatus.isChecking && !hasPendingResponse
+      ? "send"
+      : hasPendingResponse
       ? "apply"
       : effectiveLaunchState === "queueing" ||
           effectiveLaunchState === "queued" ||
@@ -263,6 +271,10 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
     if (phase === "waiting" || parserStatus.isApplying) {
       return;
     }
+    if (!runnerStatus.online) {
+      onOpenDetailed?.();
+      return;
+    }
     if (phase === "apply") {
       void applyQuickBridgeResponse();
       return;
@@ -271,7 +283,9 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   };
 
   const label =
-    phase === "waiting"
+    !runnerStatus.online && !runnerStatus.isChecking
+      ? "Manual"
+      : phase === "waiting"
       ? "Waiting"
       : phase === "apply"
         ? parserStatus.isApplying
@@ -282,7 +296,9 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
           : "Quick";
 
   const detail =
-    phase === "apply"
+    !runnerStatus.online && !runnerStatus.isChecking
+      ? "Runner offline"
+      : phase === "apply"
       ? "Apply response to current stream"
       : phase === "waiting"
         ? queueStatus === "needs-login"
@@ -309,7 +325,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   const disabled =
     !hasHydrated ||
     phase === "waiting" ||
-    (phase === "send" && !canRunQuick) ||
+    (phase === "send" && !canRunQuick && runnerStatus.online) ||
     (phase === "apply" && !hasPendingResponse) ||
     createBridgeJob.isPending ||
     isQueueing ||

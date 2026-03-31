@@ -309,6 +309,7 @@ function normalizeAddedCanvasLine(line: string): string {
 function sanitizeCanvasMarkdown(markdown: string): string {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const result: string[] = [];
+  let lastNonEmptyLine = "";
 
   for (let index = 0; index < lines.length; index += 1) {
     const rawLine = lines[index];
@@ -319,15 +320,21 @@ function sanitizeCanvasMarkdown(markdown: string): string {
       continue;
     }
 
+    if (/^#{1,6}\s+/.test(trimmed) && trimmed === lastNonEmptyLine) {
+      continue;
+    }
+
     const inlineBulletMatch = trimmed.match(/^(.+?:\*\*|.+?:)\s+\+\s+\\?\*\s+(.+)$/);
     if (inlineBulletMatch) {
       result.push(inlineBulletMatch[1]);
       result.push(`- ${inlineBulletMatch[2]}`);
+      lastNonEmptyLine = `- ${inlineBulletMatch[2]}`;
       continue;
     }
 
     if (/^\*\*[^*]+:\*\*$/.test(trimmed)) {
       result.push(trimmed);
+      lastNonEmptyLine = trimmed;
       let lookahead = index + 1;
       while (lookahead < lines.length) {
         const candidate = lines[lookahead];
@@ -347,6 +354,7 @@ function sanitizeCanvasMarkdown(markdown: string): string {
           break;
         }
         result.push(`- ${candidateTrimmed}`);
+        lastNonEmptyLine = `- ${candidateTrimmed}`;
         index = lookahead;
         lookahead += 1;
       }
@@ -354,6 +362,7 @@ function sanitizeCanvasMarkdown(markdown: string): string {
     }
 
     result.push(trimmed);
+    lastNonEmptyLine = trimmed;
   }
 
   return trimEmptyOuterMarkdownLines(result.join("\n"));

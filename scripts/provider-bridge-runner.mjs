@@ -1,11 +1,13 @@
 import { config as loadEnv } from "dotenv";
 import fs from "node:fs/promises";
+import http from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { chromium } from "@playwright/test";
 import {
   DEFAULT_BRIDGE_RUNNER_PROVIDERS,
   getRequestedModel,
+  JOB_ABORTED_CODE,
   LOGIN_REQUIRED_CODE,
   PROVIDER_RUNNER_CONFIGS,
   runBridgeJob,
@@ -37,6 +39,14 @@ const RUNNER_BROWSER_CHANNEL = process.env.BRIDGE_RUNNER_BROWSER_CHANNEL || "chr
 const RUNNER_BROWSER_PATH = process.env.BRIDGE_RUNNER_BROWSER_PATH || "";
 const RUNNER_BROWSER_WIDTH = Number(process.env.BRIDGE_RUNNER_BROWSER_WIDTH || "1280");
 const RUNNER_BROWSER_HEIGHT = Number(process.env.BRIDGE_RUNNER_BROWSER_HEIGHT || "820");
+const DEFAULT_HEALTH_PORT = 3001;
+const configuredHealthPort = Number(
+  process.env.BRIDGE_RUNNER_HEALTH_PORT || `${DEFAULT_HEALTH_PORT}`,
+);
+const HEALTH_PORT =
+  Number.isFinite(configuredHealthPort) && configuredHealthPort > 0
+    ? configuredHealthPort
+    : DEFAULT_HEALTH_PORT;
 const CHROME_SINGLETON_FILES = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
 
 if (!RUNNER_SECRET) {
@@ -149,6 +159,29 @@ async function completeJob(job, rawResponse, page, provider, requestedModel) {
   }
 }
 
+async function isJobStillActive(jobId) {
+  const response = await runnerFetch(`/api/bridge/jobs/${jobId}`, {
+    method: "GET",
+  });
+
+  if (response.status === 404) {
+    return false;
+  }
+
+  if (!response.ok) {
+    const payload = await readJsonResponse(response, "Read bridge job");
+    throw new Error(
+      payload?.error
+        ? `Failed to read bridge job (${response.status}): ${payload.error}`
+        : `Failed to read bridge job (${response.status})`,
+    );
+  }
+
+  const payload = await readJsonResponse(response, "Read bridge job");
+  const status = payload?.job?.status;
+  return status === "queued" || status === "running";
+}
+
 async function failJob(job, error, page, provider, requestedModel) {
   const response = await runnerFetch(`/api/bridge/jobs/${job.id}/fail`, {
     method: "POST",
@@ -249,8 +282,77 @@ function isConfiguredBrowserUnavailable(error) {
 }
 
 let activeContext = null;
+let activeHealthServer = null;
 let shutdownPromise = null;
 let signalHandlersInstalled = false;
+
+export function createHealthResponsePayload() {
+  return {
+    status: "ok",
+    runnerId: RUNNER_ID,
+    providers: ENABLED_PROVIDERS,
+  };
+}
+
+function writeHealthResponse(response, statusCode, payload) {
+  response.writeHead(statusCode, {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+  });
+  response.end(JSON.stringify(payload));
+}
+
+export function handleRunnerHealthRequest(request, response) {
+  if (request.method === "OPTIONS") {
+    response.writeHead(204, {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    response.end();
+    return;
+  }
+
+  if (
+    request.method === "GET" &&
+    (request.url === "/" || request.url === "/health")
+  ) {
+    writeHealthResponse(response, 200, createHealthResponsePayload());
+    return;
+  }
+
+  writeHealthResponse(response, 404, { error: "Not found" });
+}
+
+export function createRunnerHealthServer() {
+  return http.createServer(handleRunnerHealthRequest);
+}
+
+export async function startRunnerHealthServer() {
+  const server = createRunnerHealthServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(HEALTH_PORT, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve(undefined);
+    });
+  });
+  activeHealthServer = server;
+  return server;
+}
+
+export async function closeRunnerHealthServer(server = activeHealthServer) {
+  if (!server) return;
+  await new Promise((resolve) => {
+    server.close(() => resolve(undefined));
+  }).catch(() => undefined);
+  if (server === activeHealthServer) {
+    activeHealthServer = null;
+  }
+}
 
 export async function closeRunnerContext(context) {
   if (!context) return;
@@ -273,6 +375,7 @@ export function installShutdownHandlers(context) {
 
     shutdownPromise = (async () => {
       console.log("[bridge-runner] shutting down", { signal });
+      await closeRunnerHealthServer();
       await closeRunnerContext(activeContext);
     })();
 
@@ -370,9 +473,22 @@ export async function main() {
     headless: HEADLESS,
     pollMs: POLL_MS,
     providers: ENABLED_PROVIDERS,
+    healthPort: HEALTH_PORT,
     browserChannel: RUNNER_BROWSER_PATH ? null : launchBrowserChannelLabel(),
     browserPath: RUNNER_BROWSER_PATH || null,
   });
+
+  try {
+    await startRunnerHealthServer();
+    console.log("[bridge-runner] health server ready", {
+      healthUrl: `http://127.0.0.1:${HEALTH_PORT}/health`,
+    });
+  } catch (error) {
+    console.warn("[bridge-runner] health server failed to start; continuing without it", {
+      port: HEALTH_PORT,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   const context = await launchRunnerContext(USER_DATA_DIR);
   installShutdownHandlers(context);
@@ -432,7 +548,16 @@ export async function main() {
       });
 
       try {
-        const response = await runBridgeJob(page, job, sessionState);
+        const response = await runBridgeJob(page, job, sessionState, {
+          shouldAbort: async () => !await isJobStillActive(job.id),
+        });
+        if (!await isJobStillActive(job.id)) {
+          console.log("[bridge-runner] aborted job after reset", {
+            id: job.id,
+            provider,
+          });
+          continue;
+        }
         await completeJob(job, response, page, provider, requestedModel);
         console.log("[bridge-runner] completed job", {
           id: job.id,
@@ -440,6 +565,13 @@ export async function main() {
           model: requestedModel || null,
         });
       } catch (error) {
+        if (error?.code === JOB_ABORTED_CODE) {
+          console.log("[bridge-runner] aborted job", {
+            id: job.id,
+            provider,
+          });
+          continue;
+        }
         if (error?.code === SESSION_RESET_REQUIRED_CODE) {
           sessionState.currentSessionKey = null;
         }

@@ -78,6 +78,7 @@ export const DEFAULT_BRIDGE_RUNNER_PROVIDERS = Object.freeze(
 );
 export const LOGIN_REQUIRED_CODE = "LOGIN_REQUIRED";
 export const SESSION_RESET_REQUIRED_CODE = "SESSION_RESET_REQUIRED";
+export const JOB_ABORTED_CODE = "JOB_ABORTED";
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -87,16 +88,30 @@ function normalizeText(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+export function normalizeBridgeResponseText(value) {
+  const text = String(value || "")
+    .trim()
+    .replace(/^```(?:xml|html|txt)?\s*/i, "")
+    .replace(/\s*```$/, "")
+    .replace(/\\([<>/])/g, "$1")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&");
+
+  const wrapperMatch = text.match(/<response[\s>][\s\S]*?<\/response>/i);
+  return wrapperMatch ? wrapperMatch[0].trim() : text;
+}
+
 function buildResponseStabilityKey(value) {
-  return normalizeText(value)
+  return normalizeText(normalizeBridgeResponseText(value))
     .replace(/\b(copy( response)?|retry|edit|share|like|dislike|good response|bad response)\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 function responsesRoughlyMatch(candidate, expected) {
-  const candidateNormalized = normalizeText(candidate);
-  const expectedNormalized = normalizeText(expected);
+  const candidateNormalized = normalizeText(normalizeBridgeResponseText(candidate));
+  const expectedNormalized = normalizeText(normalizeBridgeResponseText(expected));
   if (!candidateNormalized || !expectedNormalized) return false;
 
   return candidateNormalized === expectedNormalized ||
@@ -118,7 +133,7 @@ function hasXmlTagContent(text, tagName) {
 
 function bridgeResponseNeedsRepair(payload, responseText) {
   const mode = extractBridgeInteractionMode(payload);
-  const response = String(responseText || "");
+  const response = normalizeBridgeResponseText(responseText);
   const hasResponseWrapper =
     /<response[\s>]/i.test(response) && /<\/response>/i.test(response);
   const hasLog = ["log", "thought_log", "answer", "final", "reply"].some((tag) =>
@@ -294,6 +309,14 @@ export async function findProviderSendButton(page, provider) {
   }
 
   return null;
+}
+
+export async function findProviderStopButton(page, provider) {
+  return findVisibleLocatorByRoleNames(
+    page,
+    "button",
+    getProviderConfig(provider).stopButtonNames,
+  );
 }
 
 export async function findProviderCopyButton(page, provider) {
@@ -637,12 +660,23 @@ export async function extractLatestProviderResponseViaCopy(
 }
 
 export async function isProviderGenerating(page, provider) {
-  const stopButton = await findVisibleLocatorByRoleNames(
-    page,
-    "button",
-    getProviderConfig(provider).stopButtonNames,
-  );
+  const stopButton = await findProviderStopButton(page, provider);
   return !!stopButton;
+}
+
+async function abortBridgeJobIfRequested(page, provider, shouldAbort) {
+  if (!shouldAbort || !await shouldAbort()) {
+    return false;
+  }
+
+  const stopButton = await findProviderStopButton(page, provider);
+  if (stopButton) {
+    await stopButton.click().catch(() => undefined);
+  }
+
+  const error = new Error(`${getProviderConfig(provider).label} bridge job aborted`);
+  error.code = JOB_ABORTED_CODE;
+  throw error;
 }
 
 async function canProviderResponseBeCopied(page, provider) {
@@ -654,11 +688,15 @@ export async function waitForProviderGenerationStart(
   page,
   provider,
   initialResponse = "",
+  options = {},
 ) {
+  const { shouldAbort } = options;
   const started = Date.now();
   const initial = initialResponse.trim();
 
   while (Date.now() - started < 20_000) {
+    await abortBridgeJobIfRequested(page, provider, shouldAbort);
+
     if (await isProviderLoginRequired(page, provider)) {
       const error = new Error(`${getProviderConfig(provider).label} login required`);
       error.code = LOGIN_REQUIRED_CODE;
@@ -686,7 +724,9 @@ export async function waitForProviderResponse(
   page,
   provider,
   initialResponse = "",
+  options = {},
 ) {
+  const { shouldAbort } = options;
   let stableCount = 0;
   let generatingSeen = false;
   let lastSeen = initialResponse.trim();
@@ -699,6 +739,7 @@ export async function waitForProviderResponse(
     page,
     provider,
     initialResponse,
+    { shouldAbort },
   );
   generatingSeen = startState.sawGenerating;
   lastSeen = startState.baselineResponse.trim() || lastSeen;
@@ -709,6 +750,8 @@ export async function waitForProviderResponse(
     startState.baselineResponse.trim() !== initialResponse.trim();
 
   while (Date.now() - started < 180_000) {
+    await abortBridgeJobIfRequested(page, provider, shouldAbort);
+
     if (await isProviderLoginRequired(page, provider)) {
       const error = new Error(`${getProviderConfig(provider).label} login required`);
       error.code = LOGIN_REQUIRED_CODE;
@@ -817,7 +860,8 @@ export async function getFinalProviderResponse(
   return fallbackResponse;
 }
 
-export async function runBridgeJob(page, job, sessionState) {
+export async function runBridgeJob(page, job, sessionState, options = {}) {
+  const { shouldAbort } = options;
   const provider = job.provider || "gemini";
   const requestedModel = getRequestedModel(job, provider);
 
@@ -833,10 +877,7 @@ export async function runBridgeJob(page, job, sessionState) {
     throw error;
   }
 
-  const shouldResetForFullPayload =
-    job.payload_variant === "full" &&
-    sessionState.currentSessionKey &&
-    sessionState.currentSessionKey !== job.session_key;
+  const shouldResetForFullPayload = job.payload_variant === "full";
   const shouldResetForModelChange =
     requestedModel &&
     sessionState.currentModel &&
@@ -847,12 +888,18 @@ export async function runBridgeJob(page, job, sessionState) {
     sessionState.currentSessionKey = null;
   }
 
+  await abortBridgeJobIfRequested(page, provider, shouldAbort);
   const initialResponse = await extractLatestProviderResponse(page, provider);
   await submitProviderPrompt(page, provider, job.payload, requestedModel);
-  const response = await waitForProviderResponse(page, provider, initialResponse);
-  let finalResponse = await getFinalProviderResponse(page, provider, response);
+  const response = await waitForProviderResponse(page, provider, initialResponse, {
+    shouldAbort,
+  });
+  let finalResponse = normalizeBridgeResponseText(
+    await getFinalProviderResponse(page, provider, response),
+  );
 
   for (let repairAttempt = 0; repairAttempt < 2; repairAttempt += 1) {
+    await abortBridgeJobIfRequested(page, provider, shouldAbort);
     const repairState = bridgeResponseNeedsRepair(job.payload, finalResponse);
     if (!repairState.needsRepair) break;
 
@@ -862,12 +909,14 @@ export async function runBridgeJob(page, job, sessionState) {
       page,
       provider,
       finalResponse,
+      { shouldAbort },
     );
     finalResponse = await getFinalProviderResponse(
       page,
       provider,
       repairedResponse,
     );
+    finalResponse = normalizeBridgeResponseText(finalResponse);
   }
 
   sessionState.currentSessionKey = job.session_key;

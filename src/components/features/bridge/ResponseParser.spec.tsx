@@ -411,6 +411,66 @@ hello
     expect(patched).not.toContain("+ *");
   });
 
+  it("collapses duplicate consecutive headings after applying messy correction diffs", () => {
+    const currentMarkdown = `# Song Identification: "Acho PR"
+## Track Details
+- **Artist:** Bad Bunny (feat. Arcángel, De La Ghetto, & Ñengo Flow)
+- **Album:** *Nadie Sabe Lo Que Va a Pasar Mañana* (2023)
+- **Genre:** Trap / Reggaeton (with a melodic outro)
+## Key Lyrics Provided
+> "Otro sunset bonito que veo en San Juan / Disfrutando de toda' esas cosas que extrañan los que se van..."
+## Context & Themes
+- **Location:** San Juan, Puerto Rico.
+- **Theme:** Nostalgia, gratitude, and a connection to one's homeland.
+- **Composition:** The song transitions from hard-hitting verses into this atmospheric, reflective closing section.`;
+
+    const diff = `
+  - # Song Identification: "Acho PR"
+
+<!-- end list -->
+
+  + # Song Identification: "DtMF" (Debí Tirar Más Fotos)
+  + ## Track Details
+      * **Artist:** Bad Bunny
+
+<!-- end list -->
+
+  -   * **Album:** *Nadie Sabe Lo Que Va a Pasar Mañana* (2023)
+  -   * **Genre:** Trap / Reggaeton (with a melodic outro)
+
+<!-- end list -->
+
+  +   * **Album:** *Nadie Sabe Lo Que Va a Pasar Mañana* (2023)
+  +   * **Genre:** Melodic Trap / Latin Pop / Bolero-inspired
+
+\`\`\`
+## Key Lyrics Provided
+
+> "Otro sunset bonito que veo en San Juan / Disfrutando de toda' esas cosas que extrañan los que se van..."
+
+## Context & Themes
+
+  * **Location:** San Juan, Puerto Rico.
+\`\`\`
+
+<!-- end list -->
+
+  -   * **Theme:** Nostalgia, gratitude, and a connection to one's homeland.
+  -   * **Composition:** The song transitions from hard-hitting verses into this atmospheric, reflective closing section.
+
+<!-- end list -->
+
+  +   * **Theme:** Regret, nostalgia for a past love, and appreciation for his island home.
+  +   * **Composition:** Known for its sentimental tone and "bolero" influence; the lyrics provided appear at both the beginning and the end of the track.
+`;
+
+    const patched = applyCanvasMarkdownDiff(currentMarkdown, diff);
+
+    expect(patched.match(/^## Track Details$/gm)?.length).toBe(1);
+    expect(patched).toContain('# Song Identification: "DtMF" (Debí Tirar Más Fotos)');
+    expect(patched).toContain("- **Genre:** Melodic Trap / Latin Pop / Bolero-inspired");
+  });
+
   it("normalizes ChatGPT contentReference citations before canvas parsing", () => {
     const normalized = normalizeOaiCitationsInMarkdown(`
 ## Song Identified

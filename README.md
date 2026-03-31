@@ -42,6 +42,7 @@ npm run bridge:runner
 
 The runner can now poll multiple providers through `BRIDGE_RUNNER_PROVIDERS` and can pin provider-specific default models with `BRIDGE_RUNNER_MODEL_CHATGPT`, `BRIDGE_RUNNER_MODEL_GEMINI`, and `BRIDGE_RUNNER_MODEL_CLAUDE`.
 If the headed browser window feels too large, set `BRIDGE_RUNNER_BROWSER_WIDTH` and `BRIDGE_RUNNER_BROWSER_HEIGHT` to override the default `1280x820` viewport.
+The runner also exposes a lightweight health endpoint on `BRIDGE_RUNNER_HEALTH_PORT` (default `3001`). Use `BRIDGE_RUNNER_HEALTH_URL` for server-side checks, and `NEXT_PUBLIC_BRIDGE_RUNNER_HEALTH_PORT` or `NEXT_PUBLIC_BRIDGE_RUNNER_HEALTH_URL` when the browser should probe the local runner directly. The app's `/api/bridge/status` route is best-effort only and is authoritative only when the Next.js server can reach that health URL.
 
 Start local Supabase:
 

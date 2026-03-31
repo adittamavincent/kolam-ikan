@@ -3,6 +3,7 @@ import {
   extractLatestProviderResponseViaCopy,
   getFinalProviderResponse,
   LOGIN_REQUIRED_CODE,
+  normalizeBridgeResponseText,
   SESSION_RESET_REQUIRED_CODE,
   runBridgeJob,
   submitProviderPrompt,
@@ -38,6 +39,8 @@ function createFakePage(options: {
   let copyVisibilityChecks = 0;
   let pendingClipboardText: string | null = null;
   let pendingClipboardReadsRemaining = 0;
+  const gotoUrls: string[] = [];
+  let stopClicks = 0;
   const stopSteps = options.stopVisible ?? [false];
   const responses = options.responses ?? [""];
 
@@ -203,7 +206,9 @@ function createFakePage(options: {
 
   return {
     url: () => "https://gemini.google.com/app",
-    goto: async () => undefined,
+    goto: async (value: string) => {
+      gotoUrls.push(value);
+    },
     waitForLoadState: async () => undefined,
     keyboard: {
       insertText: async (value: string) => {
@@ -316,6 +321,10 @@ function createFakePage(options: {
           return /send/i.test(String(name));
         },
         click: async () => {
+          if (/stop/i.test(String(name))) {
+            stopClicks += 1;
+            return;
+          }
           if (/copy/i.test(String(name))) {
             triggerCopy();
           }
@@ -332,10 +341,21 @@ function createFakePage(options: {
     },
     __getInsertedText: () => insertedText,
     __getInsertedTexts: () => insertedTexts,
+    __getGotoUrls: () => gotoUrls,
+    __getStopClicks: () => stopClicks,
   };
 }
 
 describe("provider bridge runner core", () => {
+  it("normalizes escaped bridge responses down to the XML wrapper", () => {
+    const raw =
+      '\\<button disabled=""\\>Personal Context\\</button\\>\\<response\\><log>Hello</log><canvas>+ World</canvas></response>';
+
+    expect(normalizeBridgeResponseText(raw)).toBe(
+      "<response><log>Hello</log><canvas>+ World</canvas></response>",
+    );
+  });
+
   it("inserts the whole prompt as text before sending", async () => {
     const page = createFakePage({});
 
@@ -364,6 +384,27 @@ describe("provider bridge runner core", () => {
     await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe("Draft");
   });
 
+  it("aborts the provider run and clicks stop when reset cancels the job", async () => {
+    const page = createFakePage({
+      responses: ["", "", "Draft", "Draft"],
+      stopVisible: [true, true, true, true],
+    });
+    let abortChecks = 0;
+
+    await expect(
+      waitForProviderResponse(page, "gemini", "", {
+        shouldAbort: async () => {
+          abortChecks += 1;
+          return abortChecks >= 2;
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "JOB_ABORTED",
+    });
+
+    expect(page.__getStopClicks()).toBeGreaterThan(0);
+  });
+
   it("returns as soon as the provider is done and the response is copyable", async () => {
     const page = createFakePage({
       responses: ["", "Draft", "Draft", "Draft"],
@@ -371,6 +412,62 @@ describe("provider bridge runner core", () => {
     });
 
     await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe("Draft");
+  });
+
+  it("starts a fresh provider chat for every cold-boot full payload", async () => {
+    const page = createFakePage({
+      responseBatches: [
+        [""],
+        [
+          "",
+          "<response><log>Fresh log</log><canvas>+ Fresh canvas</canvas></response>",
+          "<response><log>Fresh log</log><canvas>+ Fresh canvas</canvas></response>",
+        ],
+      ],
+      stopVisible: [true, false, false, false],
+      copyVisible: false,
+    });
+
+    await runBridgeJob(
+      page,
+      {
+        provider: "gemini",
+        payload_variant: "full",
+        session_key: "gemini:stream-cold-1",
+        payload: "Target: BOTH\n<instruction>cold boot</instruction>",
+      },
+      { currentSessionKey: "gemini:older-stream", currentModel: null },
+    );
+
+    expect(page.__getGotoUrls()).toContain("https://gemini.google.com/app");
+  });
+
+  it("does not force a fresh chat for matching follow-up payloads", async () => {
+    const page = createFakePage({
+      responseBatches: [
+        [""],
+        [
+          "",
+          "<response><log>Followup log</log><canvas>+ Followup canvas</canvas></response>",
+          "<response><log>Followup log</log><canvas>+ Followup canvas</canvas></response>",
+        ],
+      ],
+      stopVisible: [true, false, false, false],
+      copyVisible: false,
+    });
+
+    await runBridgeJob(
+      page,
+      {
+        provider: "gemini",
+        payload_variant: "followup",
+        session_key: "gemini:stream-cold-1",
+        payload: "Target: BOTH\n<instruction>continue</instruction>",
+      },
+      { currentSessionKey: "gemini:stream-cold-1", currentModel: null },
+    );
+
+    expect(page.__getGotoUrls()).toEqual([]);
   });
 
   it("accepts a stable response even when no generating state is observed", async () => {

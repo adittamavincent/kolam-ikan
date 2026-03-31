@@ -34,6 +34,7 @@ import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
 import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
 import { BridgeResponsePreviewModal } from "./BridgeResponsePreviewModal";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
+import { useBridgeRunnerStatus } from "@/lib/hooks/useBridgeRunnerStatus";
 
 interface QuickBridgeDialogProps {
   isOpen: boolean;
@@ -84,6 +85,10 @@ export function QuickBridgeDialog({
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const createBridgeJob = useCreateBridgeJob(streamId);
   const resetBridgeSession = useResetBridgeSession(streamId);
+  const runnerStatus = useBridgeRunnerStatus({
+    enabled: isOpen,
+    pollIntervalMs: isOpen ? 10_000 : undefined,
+  });
 
   const { data: streamMeta } = useQuery({
     queryKey: ["bridge-stream-meta", streamId],
@@ -288,7 +293,7 @@ export function QuickBridgeDialog({
       onClick: onClose,
       tone: "secondary" as const,
     },
-    ...(phase === "compose"
+    ...(phase === "compose" && runnerStatus.online
       ? [
           {
             label: `Queue to ${providerPreset.label}`,
@@ -306,6 +311,21 @@ export function QuickBridgeDialog({
               launchState === "launching" ||
               launchState === "queueing" ||
               createBridgeJob.isPending,
+            tone: "primary" as const,
+          },
+        ]
+      : []),
+    ...(phase === "compose" && !runnerStatus.online
+      ? [
+          {
+            label: runnerStatus.isChecking ? "Checking runner..." : "Retry connection",
+            icon: runnerStatus.isChecking ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Rocket className="h-4 w-4" />
+            ),
+            onClick: () => void runnerStatus.checkNow(),
+            disabled: runnerStatus.isChecking,
             tone: "primary" as const,
           },
         ]
@@ -363,6 +383,17 @@ export function QuickBridgeDialog({
             <>
               <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                 <div className="min-w-0 space-y-4">
+                  {!runnerStatus.online && (
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                      <div className="font-semibold">
+                        Local runner is offline - Manual mode
+                      </div>
+                      <p className="mt-1">
+                        Copy the prompt below, run it in {providerPreset.label} yourself, then continue in Detailed to paste and submit the response.
+                      </p>
+                    </div>
+                  )}
+
                   {launchState === "error" && (
                     <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
                       Quick could not open or queue the provider handoff. You can still use the fallback copy/open controls below.
@@ -453,7 +484,9 @@ export function QuickBridgeDialog({
                   </div>
 
                   <div className="border border-border-default bg-surface-default p-3 text-xs text-text-muted">
-                    Quick will enqueue a bridge job for the local runner. Manual copy/open fallback stays available if you need it.
+                    {runnerStatus.online
+                      ? "Quick will enqueue a bridge job for the local runner. Manual copy/open fallback stays available if you need it."
+                      : "Quick is in manual fallback right now. Use Detailed for the paste-and-submit step."}
                   </div>
 
                   <div className="flex flex-wrap gap-2">
@@ -468,6 +501,16 @@ export function QuickBridgeDialog({
                       <Settings2 className="h-3.5 w-3.5" />
                       Open Detailed
                     </button>
+                    {!runnerStatus.online && (
+                      <button
+                        type="button"
+                        onClick={() => void navigator.clipboard.writeText(generatedXML)}
+                        className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                      >
+                        <ClipboardPaste className="h-3.5 w-3.5" />
+                        Copy prompt
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

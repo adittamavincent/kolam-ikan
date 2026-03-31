@@ -35,14 +35,21 @@ import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
 import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 import { BridgeResponsePreviewModal } from "./BridgeResponsePreviewModal";
+import { useBridgeRunnerStatus } from "@/lib/hooks/useBridgeRunnerStatus";
 
 interface BridgeModalProps {
   isOpen: boolean;
   onClose: () => void;
   streamId: string;
+  initialManualMode?: boolean;
 }
 
-export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
+export function BridgeModal({
+  isOpen,
+  onClose,
+  streamId,
+  initialManualMode = false,
+}: BridgeModalProps) {
   const supabase = createClient();
   const bridgeDefaults = useUiPreferencesStore((state) => state.bridgeDefaults);
   const bridgeSession = useUiPreferencesStore(
@@ -87,6 +94,10 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
   );
   const createBridgeJob = useCreateBridgeJob(streamId);
   const resetBridgeSession = useResetBridgeSession(streamId);
+  const runnerStatus = useBridgeRunnerStatus({
+    enabled: isOpen,
+    pollIntervalMs: isOpen ? 10_000 : undefined,
+  });
 
   const { data: streamMeta, isLoading: isStreamMetaLoading } = useQuery({
     queryKey: ["bridge-stream-meta", streamId],
@@ -158,6 +169,18 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
   const handleParse = () => parserRef.current?.parse();
   const handleApply = () => parserRef.current?.apply();
+  const handleSubmitResponse = async () => {
+    const didApply = await parserRef.current?.quickApply();
+    if (
+      didApply &&
+      latestBridgeJob.data?.id &&
+      latestBridgeJob.data?.raw_response?.trim() === effectivePastedXML.trim()
+    ) {
+      upsertBridgeSession(streamId, {
+        lastAppliedJobId: latestBridgeJob.data.id,
+      });
+    }
+  };
   const handleReset = () => {
     setIsResetDialogOpen(true);
   };
@@ -203,9 +226,6 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     });
   };
 
-  const resetDialogTitle = "Clear all inputs and results?";
-  const resetDialogDescription =
-    "This resets your instructions and parsed output. Changes cannot be undone.";
   const automatedResponse = latestBridgeJob.data?.raw_response?.trim() ?? "";
   const effectivePastedXML = pastedXML.trim() ? pastedXML : automatedResponse;
   const responsePreviewText = effectivePastedXML;
@@ -222,6 +242,14 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     !!bridgeSession?.isExternalSessionActive ||
     !!pastedXML.trim() ||
     !!responsePreviewText;
+  const isAutomationActive =
+    automationStatus === "queued" || automationStatus === "running";
+  const resetDialogTitle = isAutomationActive
+    ? "Stop and reset this bridge run?"
+    : "Clear all inputs and results?";
+  const resetDialogDescription = isAutomationActive
+    ? "This stops the active bridge run, clears the current bridge session, and removes queued or running jobs for this stream."
+    : "This resets your instructions and parsed output. Changes cannot be undone.";
 
   const handleDone = () => {
     setBridgeDefaults({
@@ -287,7 +315,11 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
     ...(shouldShowReset
       ? [
           {
-            label: resetBridgeSession.isPending ? "Resetting..." : "Reset",
+            label: resetBridgeSession.isPending
+              ? "Stopping..."
+              : isAutomationActive
+                ? "Stop & Reset"
+                : "Reset",
             onClick: handleReset,
             disabled: resetBridgeSession.isPending,
             tone: "secondary" as const,
@@ -299,21 +331,37 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
       onClick: handleDone,
       tone: "secondary" as const,
     },
-    {
-      label: `Queue to ${currentProvider.label}`,
-      icon: createBridgeJob.isPending ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Rocket className="h-4 w-4" />
-      ),
-      onClick: () => void handleQueueDetailed(),
-      disabled:
-        !payloadReady ||
-        !generatedXML.trim() ||
-        createBridgeJob.isPending ||
-        resetBridgeSession.isPending,
-      tone: "primary" as const,
-    },
+    ...(runnerStatus.online
+      ? [
+          {
+            label: `Queue to ${currentProvider.label}`,
+            icon: createBridgeJob.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Rocket className="h-4 w-4" />
+            ),
+            onClick: () => void handleQueueDetailed(),
+            disabled:
+              !payloadReady ||
+              !generatedXML.trim() ||
+              createBridgeJob.isPending ||
+              resetBridgeSession.isPending,
+            tone: "primary" as const,
+          },
+        ]
+      : [
+          {
+            label: runnerStatus.isChecking ? "Checking runner..." : "Retry runner",
+            icon: runnerStatus.isChecking ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Rocket className="h-4 w-4" />
+            ),
+            onClick: () => void runnerStatus.checkNow(),
+            disabled: runnerStatus.isChecking,
+            tone: "primary" as const,
+          },
+        ]),
   ];
 
   return (
@@ -350,6 +398,39 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
 
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           <div className="flex min-w-0 flex-col gap-6 px-6 py-5">
+            {!runnerStatus.online && (
+              <section className="border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">
+                      Local runner is offline - Manual mode
+                    </div>
+                    <p className="mt-1 text-xs text-status-error-text/90">
+                      Copy the generated payload into {currentProvider.label}, then paste the response back below and submit it through the same parser/apply flow.
+                    </p>
+                    {initialManualMode && (
+                      <p className="mt-1 text-xs text-status-error-text/90">
+                        Quick detected the offline runner and sent you here for the manual handoff.
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void runnerStatus.checkNow()}
+                    disabled={runnerStatus.isChecking}
+                    className="inline-flex items-center gap-2 border border-status-error-border bg-white/20 px-3 py-2 text-xs font-semibold text-status-error-text disabled:opacity-70"
+                  >
+                    {runnerStatus.isChecking ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Rocket className="h-3.5 w-3.5" />
+                    )}
+                    {runnerStatus.isChecking ? "Checking..." : "Retry connection"}
+                  </button>
+                </div>
+              </section>
+            )}
+
             <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <section className="min-w-0 space-y-4 border border-border-default bg-surface-subtle p-5">
                 <div>
@@ -421,9 +502,9 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                   </label>
                 </div>
                 <div className="text-xs text-text-muted">
-                  Detailed can queue the local runner directly, and it still
-                  keeps the manual open/copy workflow available when you want
-                  it.
+                  {runnerStatus.online
+                    ? "Detailed can queue the local runner directly, and it still keeps the manual open/copy workflow available when you want it."
+                    : "Manual mode is active right now, so copy/open is the primary path until the runner comes back online."}
                 </div>
                 <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
                   <span className="border border-border-subtle bg-surface-default px-2 py-1">
@@ -496,8 +577,9 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                     Generated Payload
                   </h3>
                   <p className="mt-1 text-xs text-text-muted">
-                    Queue this to the local runner, copy it manually, or open
-                    the provider now and paste there.
+                    {runnerStatus.online
+                      ? "Queue this to the local runner, copy it manually, or open the provider now and paste there."
+                      : "Step 1: copy this prompt, then open the provider and paste it there yourself."}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -505,7 +587,7 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                     onClick={handleCopyXML}
                     className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
                   >
-                    Copy payload
+                    Copy prompt
                   </button>
                   <button
                     onClick={handleOpenProvider}
@@ -539,8 +621,9 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                     Returned Response
                   </h3>
                   <p className="mt-1 text-xs text-text-muted">
-                    Paste the provider output here, then parse and apply from
-                    this section.
+                    {runnerStatus.online
+                      ? "Paste the provider output here, then parse and apply from this section."
+                      : "Step 2: paste the provider output here, then submit it back through the existing parser/apply flow."}
                   </p>
                   {latestBridgeJob.data?.raw_response && (
                     <p className="mt-1 text-xs text-text-muted">
@@ -563,6 +646,13 @@ export function BridgeModal({ isOpen, onClose, streamId }: BridgeModalProps) {
                     className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover disabled:text-text-muted"
                   >
                     Preview response
+                  </button>
+                  <button
+                    onClick={() => void handleSubmitResponse()}
+                    disabled={!parserStatus.canParse || parserStatus.isApplying}
+                    className="bg-action-primary-bg px-3 py-2 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover disabled:bg-action-primary-disabled"
+                  >
+                    {parserStatus.isApplying ? "Submitting..." : "Submit response"}
                   </button>
                   <button
                     onClick={handleParse}

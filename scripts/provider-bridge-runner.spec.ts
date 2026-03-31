@@ -15,6 +15,8 @@ describe("provider bridge runner", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    process.env.BRIDGE_RUNNER_SECRET = "test-secret";
+    delete process.env.BRIDGE_RUNNER_HEALTH_PORT;
     delete process.env.BRIDGE_RUNNER_HEADLESS;
     delete process.env.BRIDGE_RUNNER_BROWSER_CHANNEL;
     delete process.env.BRIDGE_RUNNER_BROWSER_PATH;
@@ -23,6 +25,8 @@ describe("provider bridge runner", () => {
   });
 
   afterEach(() => {
+    delete process.env.BRIDGE_RUNNER_SECRET;
+    delete process.env.BRIDGE_RUNNER_HEALTH_PORT;
     delete process.env.BRIDGE_RUNNER_HEADLESS;
     delete process.env.BRIDGE_RUNNER_BROWSER_CHANNEL;
     delete process.env.BRIDGE_RUNNER_BROWSER_PATH;
@@ -178,5 +182,48 @@ describe("provider bridge runner", () => {
       process.exit = originalExit;
       onceSpy.mockRestore();
     }
+  });
+
+  it("serves runner health payload for GET /health", async () => {
+    const {
+      createHealthResponsePayload,
+      handleRunnerHealthRequest,
+    } = await import("./provider-bridge-runner.mjs");
+
+    const writeHead = vi.fn();
+    const end = vi.fn();
+
+    handleRunnerHealthRequest(
+      { method: "GET", url: "/health" },
+      { writeHead, end },
+    );
+
+    expect(writeHead).toHaveBeenCalledWith(
+      200,
+      expect.objectContaining({
+        "Access-Control-Allow-Origin": "*",
+        "Content-Type": "application/json; charset=utf-8",
+      }),
+    );
+    expect(end).toHaveBeenCalledWith(
+      JSON.stringify(createHealthResponsePayload()),
+    );
+  });
+
+  it("keeps the health server payload available on the root path too", async () => {
+    const {
+      createHealthResponsePayload,
+      handleRunnerHealthRequest,
+    } = await import("./provider-bridge-runner.mjs");
+
+    const end = vi.fn();
+    handleRunnerHealthRequest(
+      { method: "GET", url: "/" },
+      { writeHead: vi.fn(), end },
+    );
+
+    expect(end).toHaveBeenCalledWith(
+      JSON.stringify(createHealthResponsePayload()),
+    );
   });
 });

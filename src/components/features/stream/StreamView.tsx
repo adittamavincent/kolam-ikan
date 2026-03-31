@@ -28,8 +28,13 @@ import {
 import { useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 
+interface BridgeModalSeed {
+  openedFromQuickManual?: boolean;
+}
+
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
+  const [bridgeModalSeed, setBridgeModalSeed] = useState<BridgeModalSeed | null>(null);
   const [isDocumentImportOpen, setIsDocumentImportOpen] = useState(false);
   const [incomingDocumentFiles, setIncomingDocumentFiles] = useState<Array<{
     file: File;
@@ -69,6 +74,8 @@ export function StreamView({ streamId }: { streamId: string }) {
     !!effectiveBridgeSession?.sessionMemory.trim() ||
     !!effectiveBridgeSession?.lastInstruction.trim();
   const automationStatus = effectiveBridgeSession?.automationStatus ?? "idle";
+  const isAutomationActive =
+    automationStatus === "queued" || automationStatus === "running";
   const shouldShowReset =
     hasSessionMemory ||
     !!effectiveBridgeSession?.lastJobId ||
@@ -176,9 +183,16 @@ export function StreamView({ streamId }: { streamId: string }) {
         </Menu>
 
         <div className="flex items-stretch gap-0.5">
-          <QuickBridgeControl streamId={streamId} />
+          <QuickBridgeControl
+            streamId={streamId}
+            onOpenDetailed={() => {
+              setBridgeModalSeed({ openedFromQuickManual: true });
+              setIsBridgeOpen(true);
+            }}
+          />
           <button
             onClick={() => {
+              setBridgeModalSeed(null);
               setIsBridgeOpen(true);
             }}
             className="inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold text-text-default transition-all hover:bg-surface-hover hover:text-text-default"
@@ -192,12 +206,20 @@ export function StreamView({ streamId }: { streamId: string }) {
           <button
             onClick={() => void resetBridgeSession.mutateAsync()}
             className="inline-flex items-center gap-1.5 px-2 py-2 text-[11px] font-semibold text-text-muted hover:bg-surface-hover hover:text-text-default"
-            title="Reset current bridge session"
+            title={
+              isAutomationActive
+                ? "Stop and reset current bridge session"
+                : "Reset current bridge session"
+            }
             disabled={resetBridgeSession.isPending}
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">
-              {resetBridgeSession.isPending ? "Resetting" : "Reset"}
+              {resetBridgeSession.isPending
+                ? "Stopping"
+                : isAutomationActive
+                  ? "Stop"
+                  : "Reset"}
             </span>
           </button>
         )}
@@ -205,8 +227,12 @@ export function StreamView({ streamId }: { streamId: string }) {
 
       <BridgeModal
         isOpen={isBridgeOpen}
-        onClose={() => setIsBridgeOpen(false)}
+        onClose={() => {
+          setIsBridgeOpen(false);
+          setBridgeModalSeed(null);
+        }}
         streamId={streamId}
+        initialManualMode={bridgeModalSeed?.openedFromQuickManual ?? false}
       />
 
       <DocumentImportModal

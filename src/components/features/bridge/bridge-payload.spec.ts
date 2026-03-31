@@ -211,6 +211,85 @@ describe("buildBridgePayload followup", () => {
     expect(payload).toContain("<system_directive>");
   });
 
+  it("derives a cold-boot instruction from log context when the input is empty", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Round",
+        stream_kind: "REGULAR",
+        domain: { name: "Pond" },
+      },
+      interactionMode: "BOTH",
+      includeCanvas: true,
+      canvas: null,
+      entries: [
+        {
+          ...makeEntry("entry-1", "2026-03-31T09:31:41.000Z"),
+          sections: [
+            {
+              id: "section-1",
+              persona_name_snapshot: "Vincent",
+              persona: { name: "Vincent", is_shadow: false },
+              section_type: "PERSONA",
+              content_json: [
+                {
+                  id: "block-1",
+                  type: "paragraph",
+                  content: [{ type: "text", text: "What song is this?" }],
+                  children: [],
+                },
+              ],
+              raw_markdown: null,
+              section_attachments: [],
+            },
+          ],
+        } as unknown as EntryWithSections,
+      ],
+      includeGlobalStream: false,
+      additionalGlobalStreamIds: [],
+      globalStreamsMeta: [],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: null,
+      userInput: "   ",
+      payloadVariant: "full",
+      sessionLoadedAt: null,
+    });
+
+    expect(payload).toContain('<instruction state="derived_from_log_context">');
+    expect(payload).toContain("No explicit instruction was provided for this cold-boot turn.");
+    expect(payload).toContain("Infer the user's request from the most recent relevant content");
+    expect(payload).toContain("Do not mention unrelated prior chats");
+    expect(payload).toContain("What song is this?");
+  });
+
+  it("keeps BOTH mode strict by requiring canvas instead of allowing omission", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Round",
+        stream_kind: "REGULAR",
+        domain: { name: "Pond" },
+      },
+      interactionMode: "BOTH",
+      includeCanvas: true,
+      canvas: null,
+      entries: [],
+      includeGlobalStream: false,
+      additionalGlobalStreamIds: [],
+      globalStreamsMeta: [],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: null,
+      userInput: "Identify the song and keep a quick note in canvas.",
+      payloadVariant: "full",
+      sessionLoadedAt: null,
+    });
+
+    expect(payload).toContain("In BOTH mode, <canvas> is mandatory.");
+    expect(payload).not.toContain(
+      "omit <canvas> entirely and respond only with <log> when the mode allows it.",
+    );
+  });
+
   it("keeps session/meta acknowledgements out of the canvas surface", () => {
     const payload = buildBridgePayload({
       stream: {
@@ -235,7 +314,9 @@ describe("buildBridgePayload followup", () => {
 
     expect(payload).toContain("Canvas is a whiteboard/artifact surface, not the conversation surface.");
     expect(payload).toContain("Do NOT use <canvas> for session acknowledgements");
-    expect(payload).toContain("omit <canvas> entirely");
+    expect(payload).toContain(
+      "create a minimal durable note that captures the answer in revisit-friendly form",
+    );
     expect(payload).toContain('placeholder text like "awaiting further instructions"');
   });
 });

@@ -12,6 +12,7 @@ const {
   mockLatestBridgeJobData,
   mockQuickApply,
   mockParserPastedXmlRef,
+  mockRunnerStatus,
 } = vi.hoisted(() => ({
   mockUseQuery: vi.fn(),
   mockCreateBridgeJob: {
@@ -21,6 +22,17 @@ const {
   mockLatestBridgeJobData: { current: null as null | Record<string, unknown> },
   mockQuickApply: vi.fn(),
   mockParserPastedXmlRef: { current: "" },
+  mockRunnerStatus: {
+    online: true,
+    isChecking: false,
+    checkNow: vi.fn(),
+    status: {
+      online: true,
+      runnerId: "local-bridge-runner" as string | undefined,
+      providers: ["gemini"] as string[] | undefined,
+    },
+    mode: "online",
+  },
 }));
 
 vi.mock("@tanstack/react-query", async () => {
@@ -38,6 +50,10 @@ vi.mock("@/lib/supabase/client", () => ({
 vi.mock("@/lib/hooks/useBridgeJobs", () => ({
   useLatestBridgeJob: () => ({ data: mockLatestBridgeJobData.current }),
   useCreateBridgeJob: () => mockCreateBridgeJob,
+}));
+
+vi.mock("@/lib/hooks/useBridgeRunnerStatus", () => ({
+  useBridgeRunnerStatus: () => mockRunnerStatus,
 }));
 
 vi.mock("./XMLGenerator", () => ({
@@ -88,6 +104,14 @@ describe("QuickBridgeControl", () => {
     mockLatestBridgeJobData.current = null;
     mockQuickApply.mockResolvedValue(false);
     mockParserPastedXmlRef.current = "";
+    mockRunnerStatus.online = true;
+    mockRunnerStatus.isChecking = false;
+    mockRunnerStatus.mode = "online";
+    mockRunnerStatus.status = {
+      online: true,
+      runnerId: "local-bridge-runner",
+      providers: ["gemini"],
+    };
     mockCreateBridgeJob.mutateAsync.mockResolvedValue({
       job: {
         id: "job-1",
@@ -182,6 +206,30 @@ describe("QuickBridgeControl", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /quick/i })).toBeEnabled();
     });
+  });
+
+  it("opens detailed manual mode instead of queueing when the runner is offline", async () => {
+    const user = userEvent.setup();
+    const onOpenDetailed = vi.fn();
+    mockRunnerStatus.online = false;
+    mockRunnerStatus.mode = "offline";
+    mockRunnerStatus.status = {
+      online: false,
+      runnerId: undefined,
+      providers: undefined,
+    };
+
+    render(
+      <QuickBridgeControl
+        streamId="stream-1"
+        onOpenDetailed={onOpenDetailed}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /manual/i }));
+
+    expect(onOpenDetailed).toHaveBeenCalledTimes(1);
+    expect(mockCreateBridgeJob.mutateAsync).not.toHaveBeenCalled();
   });
 
   it("returns to Quick from apply phase after the bridge session is reset", async () => {

@@ -226,6 +226,48 @@ type IncrementalBridgeContextArgs = {
   globalCanvases: Array<Record<string, unknown>> | undefined;
 };
 
+function buildColdBootInstruction(
+  userInput: string,
+  entries: EntryWithSections[] | undefined,
+) {
+  const trimmed = userInput.trim();
+  if (trimmed) {
+    return `<instruction state="provided">
+${trimmed}
+</instruction>`;
+  }
+
+  const latestEntry = [...(entries ?? [])].reverse().find((entry) =>
+    entry.sections.some((section) => {
+      const raw = typeof section.raw_markdown === "string" ? section.raw_markdown.trim() : "";
+      const content = canvasToMarkdown(
+        (section.content_json as unknown as MarkdownBlock[] | undefined) || [],
+      ).trim();
+      return Boolean(raw || content);
+    }),
+  );
+
+  const latestSectionText = latestEntry?.sections
+    .map((section) => {
+      const raw = typeof section.raw_markdown === "string" ? section.raw_markdown.trim() : "";
+      const content = canvasToMarkdown(
+        (section.content_json as unknown as MarkdownBlock[] | undefined) || [],
+      ).trim();
+      return raw || content;
+    })
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+
+  return `<instruction state="derived_from_log_context">
+No explicit instruction was provided for this cold-boot turn.
+Infer the user's request from the most recent relevant content in <log_context>.
+Respond only to the request supported by the supplied stream/global context.
+Do not mention unrelated prior chats, saved memory, project names, or preferences unless they appear in this payload.
+${latestSectionText ? `Latest relevant content:\n${latestSectionText}` : ""}
+</instruction>`;
+}
+
 function hasTimestampAfter(
   value: string | null | undefined,
   thresholdMs: number | null,
@@ -352,6 +394,7 @@ export function buildBridgePayload({
           )
           .join("\n\n")}\n</attached_files>\n\n`
       : "";
+  const instructionSection = buildColdBootInstruction(userInput, entries);
 
   return `<session_boot phase="cold_boot">
 This is the cold-boot prompt for a fresh Kolam Ikan bridge session.
@@ -414,9 +457,7 @@ ${entryToMarkdown(entry)}
     : ""
 }
 
-<instruction>
-${userInput}
-</instruction>`;
+${instructionSection}`;
 }
 
 function buildBridgeFollowupPayload({
@@ -614,6 +655,7 @@ Every line inside <canvas> must start with one of:
 - \` \` (single space) — unchanged context line (use sparingly for clarity)
 Do not use code fences.`;
 
+  const allowCanvasOmission = mode !== "BOTH";
   const goCore = `Use <canvas>...</canvas>.
 
 ${canvasRules}
@@ -623,7 +665,9 @@ ${canvasUpdatedAt ? `Also echo <base>${canvasUpdatedAt}</base> exactly.` : ""}
 Canvas is a whiteboard/artifact surface, not the conversation surface.
 Only put durable working content in <canvas>: plans, outlines, checklists, notes, drafts, specifications, or other reference material the user would want to revisit visually.
 Do NOT use <canvas> for session acknowledgements, boot/init messages, meta-instructions, status banners, "ready" messages, summaries of the protocol, or placeholder text like "awaiting further instructions".
-If the user has not asked for any actual whiteboard/artifact content yet, omit <canvas> entirely and respond only with <log> when the mode allows it.
+${allowCanvasOmission
+    ? "If the user has not asked for any actual whiteboard/artifact content yet, omit <canvas> entirely and respond only with <log> when the mode allows it."
+    : "In BOTH mode, <canvas> is mandatory. If the user did not explicitly ask for whiteboard content, create a minimal durable note that captures the answer in revisit-friendly form instead of omitting <canvas>."}
 Do not write raw markdown lines outside the diff prefixes.`;
 
   const askDirective = `<response_format_ask>

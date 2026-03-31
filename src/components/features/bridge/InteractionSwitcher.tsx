@@ -187,76 +187,69 @@ export function InteractionSwitcher({
   }, [tokens, overLimit, onTokenUpdate]);
 
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      {/* Interaction Mode Toggle */}
-      <div className="flex w-full max-w-sm border border-border-subtle bg-surface-hover p-1">
-        {(["ASK", "GO", "BOTH"] as const).map((mode) => (
-          <button
-            key={mode}
-            onClick={() => onChange(mode)}
-            className={`relative flex-1  py-2.5 text-xs font-bold tracking-widest transition-all duration-300 ease-out ${
-              value === mode
-                ? "bg-surface-elevated text-action-primary-bg   z-10"
-                : "text-text-muted hover:text-text-default hover:bg-surface-hover"
-            }`}
-          >
-            {mode}
-          </button>
-        ))}
-      </div>
-
-      {/* Token Indicator */}
-      <div
-        className={`flex items-center gap-3 border border-border-subtle px-3 py-1.5 transition-all ${overLimit ? "bg-status-error-bg" : "bg-surface-subtle"}`}
-      >
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-text-muted uppercase leading-none tracking-tight">
-            Tokens
-          </span>
-          <div className="flex items-center gap-1.5 mt-1">
-            <span
-              className={`text-sm font-bold tabular-nums ${overLimit ? "text-status-error-text" : "text-action-primary-bg"}`}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-stretch gap-2 h-9">
+        {/* Interaction Mode Toggle */}
+        <div className="flex flex-1 border border-border-subtle bg-surface-subtle p-0.5">
+          {(["ASK", "GO", "BOTH"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => onChange(mode)}
+              className={`relative flex-1 text-[10px] font-bold tracking-widest transition-all duration-200 ease-out ${
+                value === mode
+                  ? "bg-surface-elevated text-action-primary-bg font-black z-10"
+                  : "text-text-muted hover:text-text-default hover:bg-surface-hover"
+              }`}
             >
-              {tokens.toLocaleString()}
+              {mode}
+            </button>
+          ))}
+        </div>
+
+        {/* Token Indicator */}
+        <div
+          className={`flex items-center px-2 border border-border-subtle transition-all cursor-default min-w-[70px] justify-center ${
+            overLimit ? "bg-status-error-bg" : "bg-surface-default"
+          }`}
+          title={`${tokens.toLocaleString()} / ${tokenLimit.toLocaleString()} tokens`}
+        >
+          <div className="flex flex-col items-center">
+            <span
+              className={`text-[11px] font-bold tabular-nums leading-none ${
+                overLimit ? "text-status-error-text" : "text-action-primary-bg"
+              }`}
+            >
+              {tokens > 999 ? `${(tokens / 1000).toFixed(1)}k` : tokens}
             </span>
-            <span className="text-[10px] text-text-muted">
-              / {tokenLimit.toLocaleString()}
+            <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter mt-0.5">
+              Tokens
             </span>
           </div>
         </div>
-
-        {overLimit && (
-          <div className="flex items-center gap-1.5 ml-1 animate-pulse">
-            <div className="h-2 w-2 bg-status-error-text" />
-            <span className="text-[10px] font-bold text-status-error-text uppercase">
-              Limit
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Recommendations */}
       {overLimit && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="border border-border-subtle bg-status-error-bg px-3 py-2 text-[11px] font-semibold text-status-error-text">
-            This payload is over the recommended token budget.
+        <div className="flex flex-col gap-1.5">
+          <div className="border border-border-default bg-status-error-bg/20 px-2 py-1.5 text-[10px] font-medium text-status-error-text leading-tight">
+            Payload over limit. Reduce selection to proceed.
           </div>
-          <button
-            onClick={onReduceSelection}
-            title="Use recent entries only"
-            className="flex items-center gap-1.5 border border-border-subtle bg-status-error-bg px-2.5 py-1.5 text-[10px] font-bold text-status-error-text transition-all"
-          >
-            <RotateCcw className="h-3 w-3" />
-            <span>Use recent entries only</span>
-          </button>
-          <button
-            onClick={onAutoSummarize}
-            title="Exclude canvas for this run"
-            className="flex items-center gap-1.5 border border-border-subtle bg-status-error-bg px-2.5 py-1.5 text-[10px] font-bold text-status-error-text transition-all"
-          >
-            <Zap className="h-3 w-3" />
-            <span>Exclude canvas for this run</span>
-          </button>
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={onReduceSelection}
+              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
+            >
+              <RotateCcw className="h-3 w-3 text-status-error-text" />
+              <span>Use recent only</span>
+            </button>
+            <button
+              onClick={onAutoSummarize}
+              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
+            >
+              <Zap className="h-3 w-3 text-status-warning-text" />
+              <span>Exclude canvas</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

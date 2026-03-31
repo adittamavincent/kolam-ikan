@@ -27,6 +27,8 @@ export type ModalFooterAction = {
   disabled?: boolean;
   placement?: "start" | "end";
   tone?: ModalFooterActionTone;
+  title?: string;
+  "data-phase"?: string;
 };
 
 type ModalShellProps = {
@@ -235,6 +237,8 @@ function ModalFooterActionButton({ action }: { action: ModalFooterAction }) {
         "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
         getFooterActionToneClassName(action.tone ?? "secondary"),
       )}
+      title={action.title}
+      data-phase={action["data-phase"]}
     >
       {action.icon}
       {action.label}

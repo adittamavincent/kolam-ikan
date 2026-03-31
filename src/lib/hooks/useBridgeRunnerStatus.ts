@@ -45,11 +45,8 @@ export function useBridgeRunnerStatus({
 
   const checkNow = useCallback(async () => {
     if (!enabled) {
-      const offline = { online: false } satisfies BridgeStatusResult;
-      setStatus(offline);
-      setMode("offline");
       setIsChecking(false);
-      return offline;
+      return { online: false } satisfies BridgeStatusResult;
     }
 
     if (inFlightRef.current) {
@@ -95,8 +92,6 @@ export function useBridgeRunnerStatus({
 
   useEffect(() => {
     if (!enabled) {
-      setStatus({ online: false });
-      setMode("offline");
       setIsChecking(false);
       return;
     }

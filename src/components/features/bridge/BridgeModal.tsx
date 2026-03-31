@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -13,10 +13,12 @@ import {
   Globe,
   Layers3,
   Loader2,
+  RotateCcw,
   Rocket,
   Send,
   Settings2,
   Sparkles,
+  Wand2,
 } from "lucide-react";
 import { InteractionSwitcher } from "./InteractionSwitcher";
 import { ContextBag } from "./ContextBag";
@@ -311,57 +313,125 @@ export function BridgeModal({
       lastJobError: "",
     });
   };
+  const responseText = latestBridgeJob.data?.raw_response?.trim() ?? "";
+  const hasPendingResponse =
+    !!bridgeSession &&
+    latestBridgeJob.data?.status === "succeeded" &&
+    !!responseText &&
+    latestBridgeJob.data?.id !== bridgeSession?.lastAppliedJobId;
+
+  const isContinuing =
+    !!bridgeSession &&
+    (bridgeSession?.isExternalSessionActive ||
+      latestBridgeJob.data?.status === "succeeded");
+
+  const queueStatus = bridgeSession?.automationStatus ?? "idle";
+
+  const phase =
+    !runnerStatus.online && !runnerStatus.isChecking && !hasPendingResponse
+      ? "send"
+      : hasPendingResponse
+        ? "apply"
+        : bridgeSession?.automationStatus === "queued" ||
+          bridgeSession?.automationStatus === "running"
+          ? "waiting"
+          : "send";
+
+  useEffect(() => {
+    // Automatically parse when an automated response arrives or state is ready
+    if (phase === "apply" && effectivePastedXML && !parserStatus.hasParsed) {
+      parserRef.current?.parse();
+    }
+  }, [phase, effectivePastedXML, parserStatus.hasParsed]);
+
+  const label =
+    !runnerStatus.online && !runnerStatus.isChecking
+      ? "Manual"
+      : phase === "waiting"
+        ? "Waiting"
+        : phase === "apply"
+          ? parserStatus.isApplying
+            ? "Applying"
+            : "Apply"
+          : isContinuing
+            ? "Continue"
+            : "Quick";
+
+  const detail =
+    !runnerStatus.online && !runnerStatus.isChecking
+      ? "Runner offline"
+      : phase === "apply"
+        ? "Apply latest response"
+        : phase === "waiting"
+          ? queueStatus === "running"
+            ? "Executing"
+            : "Queued"
+          : isContinuing
+            ? "Continue current session"
+            : "Send full detailed payload";
+
+  const icon =
+    phase === "waiting" || parserStatus.isApplying ? (
+      <Loader2 className="h-4 w-4 animate-spin" />
+    ) : (
+      <Wand2 className="h-4 w-4" />
+    );
+
+  const buttonDisabled =
+    phase === "waiting" ||
+    (phase === "send" &&
+      (!payloadReady || !generatedXML.trim()) &&
+      runnerStatus.online) ||
+    (phase === "apply" && !hasPendingResponse) ||
+    createBridgeJob.isPending ||
+    resetBridgeSession.isPending ||
+    parserStatus.isApplying;
+
+  const handleActionClick = () => {
+    if (phase === "waiting" || parserStatus.isApplying) return;
+
+    if (!runnerStatus.online && !runnerStatus.isChecking) {
+      // Stay in manual mode, user handles XML manually
+      return;
+    }
+
+    if (phase === "apply") {
+      void handleApply();
+      return;
+    }
+
+    void handleQueueDetailed();
+  };
+
   const footerActions: ModalFooterAction[] = [
     ...(shouldShowReset
       ? [
-          {
-            label: resetBridgeSession.isPending
-              ? "Stopping..."
-              : isAutomationActive
-                ? "Stop & Reset"
-                : "Reset",
-            onClick: handleReset,
-            disabled: resetBridgeSession.isPending,
-            tone: "secondary" as const,
-          },
-        ]
+        {
+          label: resetBridgeSession.isPending
+            ? "Stopping..."
+            : isAutomationActive
+              ? "Stop & Reset"
+              : "Reset",
+          onClick: handleReset,
+          disabled: resetBridgeSession.isPending,
+          tone: "secondary" as const,
+        },
+      ]
       : []),
     {
-      label: "Cancel",
+      label: "Done",
       onClick: handleDone,
       tone: "secondary" as const,
     },
-    ...(runnerStatus.online
-      ? [
-          {
-            label: `Queue to ${currentProvider.label}`,
-            icon: createBridgeJob.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Rocket className="h-4 w-4" />
-            ),
-            onClick: () => void handleQueueDetailed(),
-            disabled:
-              !payloadReady ||
-              !generatedXML.trim() ||
-              createBridgeJob.isPending ||
-              resetBridgeSession.isPending,
-            tone: "primary" as const,
-          },
-        ]
-      : [
-          {
-            label: runnerStatus.isChecking ? "Checking runner..." : "Retry runner",
-            icon: runnerStatus.isChecking ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Rocket className="h-4 w-4" />
-            ),
-            onClick: () => void runnerStatus.checkNow(),
-            disabled: runnerStatus.isChecking,
-            tone: "primary" as const,
-          },
-        ]),
+    {
+      label,
+      title: `${label} · ${detail}`,
+      icon,
+      onClick: handleActionClick,
+      disabled: buttonDisabled,
+      tone: phase === "waiting" ? ("secondary" as const) : ("primary" as const),
+      "data-phase": phase === "send" || phase === "apply" ? "active" : "idle",
+    },
   ];
 
   return (
@@ -396,54 +466,16 @@ export function BridgeModal({
           }
         />
 
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-          <div className="flex min-w-0 flex-col gap-6 px-6 py-5">
-            {!runnerStatus.online && (
-              <section className="border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="font-semibold">
-                      Local runner is offline - Manual mode
-                    </div>
-                    <p className="mt-1 text-xs text-status-error-text/90">
-                      Copy the generated payload into {currentProvider.label}, then paste the response back below and submit it through the same parser/apply flow.
-                    </p>
-                    {initialManualMode && (
-                      <p className="mt-1 text-xs text-status-error-text/90">
-                        Quick detected the offline runner and sent you here for the manual handoff.
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void runnerStatus.checkNow()}
-                    disabled={runnerStatus.isChecking}
-                    className="inline-flex items-center gap-2 border border-status-error-border bg-white/20 px-3 py-2 text-xs font-semibold text-status-error-text disabled:opacity-70"
-                  >
-                    {runnerStatus.isChecking ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Rocket className="h-3.5 w-3.5" />
-                    )}
-                    {runnerStatus.isChecking ? "Checking..." : "Retry connection"}
-                  </button>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
+          {/* Left Sidebar: Configuration & Context */}
+          <aside className="w-full lg:w-[320px] xl:w-[380px] shrink-0 border-b lg:border-b-0 lg:border-r border-border-default overflow-y-auto bg-surface-subtle flex flex-col">
+            <div className="flex flex-col p-4 divide-y divide-border-default">
+              {/* Goal Section */}
+              <section className="min-w-0 py-4 first:pt-0">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">
+                  <Layers3 className="h-3 w-3" />
+                  Execution Goal
                 </div>
-              </section>
-            )}
-
-            <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-              <section className="min-w-0 space-y-4 border border-border-default bg-surface-subtle p-5">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
-                    <Layers3 className="h-4 w-4" />
-                    Goal
-                  </div>
-                  <p className="mt-1 text-xs text-text-muted">
-                    Choose how much the AI should answer, update, or do both for
-                    this run.
-                  </p>
-                </div>
-
                 <InteractionSwitcher
                   value={interactionMode}
                   onChange={setInteractionMode}
@@ -462,245 +494,219 @@ export function BridgeModal({
                   }
                   onAutoSummarize={() => setIncludeCanvas(false)}
                 />
-
-                <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
-                  <span className="border border-border-subtle bg-surface-default px-2 py-1">
-                    Session aware
-                  </span>
-                  <span className="border border-border-subtle bg-surface-default px-2 py-1">
-                    Last mode: {bridgeSession?.lastMode ?? "none"}
-                  </span>
-                  <span className="border border-border-subtle bg-surface-default px-2 py-1">
-                    Quick default: {bridgeDefaults.quickPreset}
-                  </span>
-                </div>
               </section>
 
-              <section className="min-w-0 space-y-4 border border-border-default bg-surface-subtle p-5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
-                  <Send className="h-4 w-4" />
-                  Destination
-                </div>
-                <div className="grid gap-3">
-                  <label className="space-y-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-                      Provider
+              {/* Destination Section */}
+              <section className="min-w-0 py-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                    <Send className="h-3 w-3" />
+                    Provider
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="border border-border-subtle bg-surface-hover px-1.5 py-0.5 text-[9px] font-bold tracking-tighter text-text-muted uppercase">
+                      {currentProvider.hostLabel}
                     </span>
-                    <select
-                      value={providerId}
-                      onChange={(event) =>
-                        setProviderId(event.target.value as typeof providerId)
-                      }
-                      className="w-full border border-border-default bg-surface-default px-3 py-2 text-sm text-text-default"
-                    >
-                      {BRIDGE_PROVIDER_PRESETS.map((provider) => (
-                        <option key={provider.id} value={provider.id}>
-                          {provider.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                    {bridgeSession?.sessionMemory && (
+                      <span className="border border-border-subtle bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-bold tracking-tighter text-action-primary-bg uppercase">
+                        Memory Active
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs text-text-muted">
-                  {runnerStatus.online
-                    ? "Detailed can queue the local runner directly, and it still keeps the manual open/copy workflow available when you want it."
-                    : "Manual mode is active right now, so copy/open is the primary path until the runner comes back online."}
+                <select
+                  value={providerId}
+                  onChange={(event) =>
+                    setProviderId(event.target.value as typeof providerId)
+                  }
+                  className="w-full border border-border-default bg-surface-default px-2 py-1.5 text-xs text-text-default focus:border-action-primary-bg outline-none"
+                >
+                  {BRIDGE_PROVIDER_PRESETS.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.label}
+                    </option>
+                  ))}
+                </select>
+              </section>
+
+              {/* Context Section */}
+              <section className="min-w-0 py-4 last:pb-0">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-text-muted mb-4">
+                  <Sparkles className="h-3 w-3" />
+                  Context Material
                 </div>
-                <div className="flex flex-wrap gap-2 text-[11px] text-text-muted">
-                  <span className="border border-border-subtle bg-surface-default px-2 py-1">
-                    {currentProvider.hostLabel}
-                  </span>
-                  {bridgeSession?.sessionMemory && (
-                    <span className="border border-border-subtle bg-surface-default px-2 py-1">
-                      Session memory ready
-                    </span>
-                  )}
-                </div>
+                <ContextBag
+                  streamId={streamId}
+                  selectedEntries={selectedEntries}
+                  onSelectionChange={setSelectedEntries}
+                  includeCanvas={includeCanvas}
+                  onIncludeCanvasChange={setIncludeCanvas}
+                  includeGlobalStream={userGlobalStreamChoice}
+                  onIncludeGlobalStreamChange={setUserGlobalStreamChoice}
+                  globalStreamName={globalStreamName}
+                  globalStreamDisabled={
+                    currentStreamIsGlobal || !includeGlobalAvailable
+                  }
+                  globalStreamLoading={
+                    isStreamMetaLoading || isGlobalStreamLoading
+                  }
+                  currentStreamIsGlobal={currentStreamIsGlobal}
+                  disableSelectAll={tokenOverLimit}
+                />
               </section>
             </div>
+          </aside>
 
-            <section className="min-w-0 space-y-3">
-              <div>
-                <h3 className="text-sm font-semibold text-text-default">
-                  Context
-                </h3>
-                <p className="mt-1 text-xs text-text-muted">
-                  Include only the material that should shape this response.
-                </p>
-              </div>
+          {/* Main Execution Area */}
+          <main className="flex-1 min-w-0 overflow-y-auto bg-surface-default flex flex-col">
+            <div className="flex flex-col gap-4 p-4 flex-1 min-h-0">
+              {!runnerStatus.online && (
+                <section className="border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-xs uppercase tracking-wider">
+                        Runner Offline — Manual Handoff
+                      </div>
+                      <p className="mt-1 text-[11px] leading-relaxed opacity-90">
+                        Copy the payload, run it in {currentProvider.label}, then paste the response below.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void runnerStatus.checkNow()}
+                      disabled={runnerStatus.isChecking}
+                      className="inline-flex items-center gap-2 border border-status-error-border bg-surface-default/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-status-error-text whitespace-nowrap"
+                    >
+                      {runnerStatus.isChecking ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-3 w-3" />
+                      )}
+                      {runnerStatus.isChecking ? "Checking..." : "Retry"}
+                    </button>
+                  </div>
+                </section>
+              )}
 
-              <ContextBag
-                streamId={streamId}
-                selectedEntries={selectedEntries}
-                onSelectionChange={setSelectedEntries}
-                includeCanvas={includeCanvas}
-                onIncludeCanvasChange={setIncludeCanvas}
-                includeGlobalStream={userGlobalStreamChoice}
-                onIncludeGlobalStreamChange={setUserGlobalStreamChoice}
-                globalStreamName={globalStreamName}
-                globalStreamDisabled={
-                  currentStreamIsGlobal || !includeGlobalAvailable
-                }
-                globalStreamLoading={
-                  isStreamMetaLoading || isGlobalStreamLoading
-                }
-                currentStreamIsGlobal={currentStreamIsGlobal}
-                disableSelectAll={tokenOverLimit}
-              />
-            </section>
+              {phase !== "apply" && (
+                <>
+                  {/* Step 0: Request */}
+                  <section className="min-w-0 flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-muted">
+                        <Settings2 className="h-3.5 w-3.5" />
+                        1. Instructions
+                      </div>
+                    </div>
+                    <textarea
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      placeholder="What should the AI accomplish with this context?"
+                      className="min-h-[70px] w-full resize-none border border-border-default bg-surface-subtle px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted focus:border-action-primary-bg outline-none"
+                    />
+                  </section>
 
-            <section className="min-w-0 flex flex-col gap-1.5 border border-border-default bg-surface-subtle p-5">
-              <div className="flex items-center gap-2 text-sm font-semibold text-text-default">
-                <Settings2 className="h-4 w-4" />
-                Request
-              </div>
-              <label className="text-sm font-semibold text-text-default">
-                What should the AI do?
-              </label>
-              <p className="mb-1 text-xs text-text-muted">
-                Keep it outcome-focused. Detailed mode is where you tune the
-                protocol manually.
-              </p>
-              <textarea
-                value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                placeholder="What would you like to accomplish?"
-                className="min-h-25 w-full resize-y border border-border-default bg-surface-hover px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted focus:border-border-default focus:bg-surface-default"
-                rows={3}
-              />
-            </section>
+                  {/* Step 2: Payload Generation */}
+                  <section className="min-w-0 flex flex-col gap-0 flex-1 min-h-0">
+                    <div className="mb-0 flex flex-col items-start gap-3 pb-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-muted">
+                          2. Build Payload
+                        </div>
+                        <p className="text-[11px] text-text-muted max-w-sm">
+                          {runnerStatus.online
+                            ? "Process this through the local runner or use the manual handoff tags below."
+                            : "Copy the generated prompt and send it to the provider manually."}
+                        </p>
+                      </div>
+                      {!runnerStatus.online && (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={handleCopyXML}
+                            className="border border-border-default bg-surface-default px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors"
+                          >
+                            Copy Prompt
+                          </button>
+                          <button
+                            onClick={handleOpenProvider}
+                            className="bg-action-primary-bg px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                          >
+                            Open {currentProvider.label}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <XMLGenerator
+                      interactionMode={interactionMode}
+                      selectedEntries={selectedEntries}
+                      includeCanvas={includeCanvas}
+                      includeGlobalStream={includeGlobalStream}
+                      globalStreamIds={
+                        includeGlobalAvailable ? domainGlobalStreamIds : []
+                      }
+                      globalStreamName={globalStreamName}
+                      userInput={userInput}
+                      streamId={streamId}
+                      sessionLoadedAt={bridgeSession?.externalSessionLoadedAt}
+                      onXMLGenerated={setGeneratedXML}
+                      onPayloadReadyChange={setPayloadReady}
+                    />
+                  </section>
+                </>
+              )}
 
-            <section className="min-w-0 border border-border-default bg-surface-subtle p-5">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-text-default">
-                    Generated Payload
-                  </h3>
-                  <p className="mt-1 text-xs text-text-muted">
-                    {runnerStatus.online
-                      ? "Queue this to the local runner, copy it manually, or open the provider now and paste there."
-                      : "Step 1: copy this prompt, then open the provider and paste it there yourself."}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleCopyXML}
-                    className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
-                  >
-                    Copy prompt
-                  </button>
-                  <button
-                    onClick={handleOpenProvider}
-                    className="bg-action-primary-bg px-3 py-2 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover"
-                  >
-                    Open {currentProvider.label}
-                  </button>
-                </div>
-              </div>
-              <XMLGenerator
-                interactionMode={interactionMode}
-                selectedEntries={selectedEntries}
-                includeCanvas={includeCanvas}
-                includeGlobalStream={includeGlobalStream}
-                globalStreamIds={
-                  includeGlobalAvailable ? domainGlobalStreamIds : []
-                }
-                globalStreamName={globalStreamName}
-                userInput={userInput}
-                streamId={streamId}
-                sessionLoadedAt={bridgeSession?.externalSessionLoadedAt}
-                onXMLGenerated={setGeneratedXML}
-                onPayloadReadyChange={setPayloadReady}
-              />
-            </section>
+              {(phase === "apply" || !runnerStatus.online || !!pastedXML) && (
+                /* Step 3: Response Handling */
+                <section className="min-w-0 flex flex-col gap-0 flex-1 min-h-0">
+                  <div className="mb-0 flex flex-wrap items-start gap-0">
+                    <div className="space-y-1 pb-4">
+                      <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-muted">
+                        3. Apply Response
+                      </div>
+                      <p className="text-[11px] text-text-muted max-w-sm">
+                        {(!runnerStatus.online || !!pastedXML)
+                          ? "Review changes and apply them back to your workspace."
+                          : "Once a response is received, it will be parsed and displayed here for review."}
+                      </p>
+                    </div>
+                    {(!runnerStatus.online && !pastedXML) && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={handlePasteResult}
+                          className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                        >
+                          <ClipboardPaste className="h-3 w-3" />
+                          Import Response
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-            <section className="min-w-0 border border-border-default bg-surface-subtle p-5">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-text-default">
-                    Returned Response
-                  </h3>
-                  <p className="mt-1 text-xs text-text-muted">
-                    {runnerStatus.online
-                      ? "Paste the provider output here, then parse and apply from this section."
-                      : "Step 2: paste the provider output here, then submit it back through the existing parser/apply flow."}
-                  </p>
-                  {latestBridgeJob.data?.raw_response && (
-                    <p className="mt-1 text-xs text-text-muted">
-                      Latest runner response is loaded automatically. You can
-                      still paste a different response over it.
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handlePasteResult}
-                    className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
-                  >
-                    <ClipboardPaste className="h-3.5 w-3.5" />
-                    Paste from clipboard
-                  </button>
-                  <button
-                    onClick={() => setIsResponsePreviewOpen(true)}
-                    disabled={!responsePreviewText}
-                    className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover disabled:text-text-muted"
-                  >
-                    Preview response
-                  </button>
-                  <button
-                    onClick={() => void handleSubmitResponse()}
-                    disabled={!parserStatus.canParse || parserStatus.isApplying}
-                    className="bg-action-primary-bg px-3 py-2 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover disabled:bg-action-primary-disabled"
-                  >
-                    {parserStatus.isApplying ? "Submitting..." : "Submit response"}
-                  </button>
-                  <button
-                    onClick={handleParse}
-                    disabled={!parserStatus.canParse}
-                    className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover disabled:text-text-muted"
-                  >
-                    Parse now
-                  </button>
-                  <button
-                    onClick={handleApply}
-                    disabled={!parserStatus.canApply || parserStatus.isApplying}
-                    className="bg-action-primary-bg px-3 py-2 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover disabled:bg-action-primary-disabled"
-                  >
-                    {parserStatus.isApplying
-                      ? "Applying..."
-                      : "Apply parsed changes"}
-                  </button>
-                  <button
-                    onClick={handleReset}
-                    disabled={resetBridgeSession.isPending}
-                    className="border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
-                  >
-                    {resetBridgeSession.isPending ? "Resetting..." : "Reset"}
-                  </button>
-                </div>
-              </div>
-              <ResponseParser
-                ref={parserRef}
-                streamId={streamId}
-                interactionMode={interactionMode}
-                aiPersonaLabel={currentProvider.label}
-                pastedXML={effectivePastedXML}
-                onPastedXMLChange={setPastedXML}
-                onStatusChange={setParserStatus}
-                onApplySuccess={() => {
-                  if (
-                    latestBridgeJob.data?.id &&
-                    latestBridgeJob.data?.raw_response?.trim() ===
-                      effectivePastedXML.trim()
-                  ) {
-                    upsertBridgeSession(streamId, {
-                      lastAppliedJobId: latestBridgeJob.data.id,
-                    });
-                  }
-                }}
-              />
-            </section>
-          </div>
+                  <ResponseParser
+                    ref={parserRef}
+                    streamId={streamId}
+                    interactionMode={interactionMode}
+                    aiPersonaLabel={currentProvider.label}
+                    pastedXML={effectivePastedXML}
+                    onPastedXMLChange={setPastedXML}
+                    onStatusChange={setParserStatus}
+                    onApplySuccess={() => {
+                      if (
+                        latestBridgeJob.data?.id &&
+                        latestBridgeJob.data?.raw_response?.trim() ===
+                        effectivePastedXML.trim()
+                      ) {
+                        upsertBridgeSession(streamId, {
+                          lastAppliedJobId: latestBridgeJob.data.id,
+                        });
+                      }
+                    }}
+                  />
+
+                </section>
+              )}
+            </div>
+          </main>
         </div>
       </ModalShell>
       <ConfirmDialog

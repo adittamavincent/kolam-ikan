@@ -1073,8 +1073,8 @@ export const ResponseParser = forwardRef<
     const handleApply = async (parsedOverride?: ParsedBridgeResponse) => {
       if (!streamId) return false;
       const parsed = parsedOverride ?? latestParsedRef.current;
-      const nextThoughtLog = parsed?.thoughtLog ?? thoughtLog;
-      const nextMergedBlocks = parsed?.mergedBlocks ?? mergedBlocks;
+      const nextThoughtLog = hasParsed ? editableThoughtLog : (parsed?.thoughtLog ?? thoughtLog);
+      const nextMergedBlocks = hasParsed ? editableCanvasBlocks : (parsed?.mergedBlocks ?? mergedBlocks);
       const nextChanges = parsed?.changes ?? changes;
 
       setApplyError(null);
@@ -1385,225 +1385,80 @@ export const ResponseParser = forwardRef<
       setChanges((prev) => prev.map((change) => ({ ...change, decision })));
     };
 
+    const [editableThoughtLog, setEditableThoughtLog] = useState<string>("");
+    const [editableCanvasMarkdown, setEditableCanvasMarkdown] = useState<string>("");
+    const [editableCanvasBlocks, setEditableCanvasBlocks] = useState<MarkdownBlock[]>([]);
+
+    useEffect(() => {
+      if (thoughtLog !== null) {
+        setEditableThoughtLog(thoughtLog);
+      }
+    }, [thoughtLog]);
+
+    useEffect(() => {
+      if (mergedBlocks) {
+        setEditableCanvasMarkdown(blocksToStoredMarkdown(mergedBlocks as PartialBlock[]));
+        setEditableCanvasBlocks(mergedBlocks);
+      }
+    }, [mergedBlocks]);
+
     return (
-      <div className="mt-4 space-y-4">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-text-default">
-            Paste Response XML
-          </label>
-          <p className="mb-2 text-xs text-text-muted">
-            Paste the model output in the same XML structure to parse and merge
-            safely.
-          </p>
-          <textarea
-            value={pastedXML}
-            onChange={(e) => onPastedXMLChange(e.target.value)}
-            className="w-full border border-border-default bg-surface-subtle p-3 font-mono text-[12px] leading-5 text-text-default focus:border-border-default focus: focus: "
-            rows={6}
-            placeholder={`Paste the LLM response here. Expected format:\n<response>\n  ${canProcessLog ? "<thought_log>...</thought_log>" : ""}${canProcessLog && canProcessCanvas ? "\n  " : ""}${canProcessCanvas ? "<canvas_update>markdown or JSON</canvas_update>" : ""}\n</response>`}
-          />
-        </div>
-
-        {parseError && (
-          <div className=" bg-status-error-bg p-3 text-sm text-status-error-text border border-border-default">
-            Error: {parseError}
+      <div className="flex flex-col gap-4 flex-1 min-h-0">
+        {(!hasParsed && !isApplying) && (
+          <div className="border border-border-default bg-surface-subtle p-8 text-center">
+            <p className="text-sm text-text-muted">
+              Waiting for response or import to review the execution plan.
+            </p>
           </div>
         )}
 
-        {ignoredTags.length > 0 && (
-          <div className=" border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
-            Ignored tags: {ignoredTags.join(", ")}
+        {(parseError || applyError) && (
+          <div className="bg-status-error-bg p-3 text-sm text-status-error-text border border-border-default">
+            Error: {parseError || applyError}
           </div>
         )}
 
-        {conflictWarning && (
-          <div className=" border border-border-default bg-status-error-bg p-3 text-xs text-status-error-text">
-            {conflictWarning}
-          </div>
-        )}
-
-        {canvasParseError && canProcessCanvas && (
-          <div className="flex items-center justify-between border border-border-default bg-surface-subtle p-3 text-xs text-text-muted">
-            <span>{canvasParseError}</span>
-            <button
-              onClick={handlePlainTextImport}
-              className=" bg-action-primary-bg px-2 py-1 text-[11px] text-action-primary-text hover:bg-action-primary-hover"
-            >
-              Import as Plain Text
-            </button>
-          </div>
-        )}
-
-        {(thoughtLog || incomingBlocks) && (
-          <div className=" border border-border-default bg-surface-subtle p-3 text-xs space-y-2">
-            <div className="font-medium text-text-default">Parsed Content</div>
+        {hasParsed && (
+          <div className="flex flex-col gap-4 flex-1 min-h-0">
+            {/* Log Pane */}
             {thoughtLog && (
-              <div>
-                <span className="font-medium text-text-muted">
-                  Thought Log → New Entry:
-                </span>
-                <div className="mt-1 max-h-32 overflow-y-auto bg-surface-default p-2 text-text-default whitespace-pre-wrap">
-                  {thoughtLog}
+              <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-[150px]">
+                <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                  Log Pane (New Entry)
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <textarea
+                    value={editableThoughtLog}
+                    onChange={(e) => setEditableThoughtLog(e.target.value)}
+                    placeholder="The AI's reasoning or the content for the new log entry..."
+                    className="w-full h-full p-4 text-xs font-mono bg-transparent resize-none outline-none text-text-default placeholder:text-text-muted leading-relaxed"
+                  />
                 </div>
               </div>
             )}
+
+            {/* Canvas Pane */}
             {incomingBlocks && (
-              <div>
-                <span className="font-medium text-text-muted">
-                  Canvas Update: {incomingBlocks.length} block
-                  {incomingBlocks.length !== 1 ? "s" : ""}
-                </span>
+              <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-[150px]">
+                <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                  Canvas Pane (Proposed Merged Content)
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                  <textarea
+                    value={editableCanvasMarkdown}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditableCanvasMarkdown(val);
+                      setEditableCanvasBlocks(toParagraphBlocks(val));
+                    }}
+                    placeholder="The final proposed markdown for the canvas..."
+                    className="w-full h-full p-4 text-xs font-mono bg-transparent resize-none outline-none text-text-default placeholder:text-text-muted leading-relaxed"
+                  />
+                </div>
               </div>
             )}
           </div>
         )}
-
-        {changes.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex gap-2">
-                {(["current", "incoming", "merged"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setPreviewMode(mode)}
-                    className={` px-3 py-1 text-xs ${
-                      previewMode === mode
-                        ? "bg-action-primary-bg text-action-primary-text"
-                        : "bg-surface-subtle text-text-default hover:bg-surface-hover"
-                    }`}
-                  >
-                    {mode[0].toUpperCase() + mode.slice(1)}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 text-xs">
-                <button
-                  onClick={() => bulkDecision("accept")}
-                  className=" bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
-                >
-                  Merge All
-                </button>
-                <button
-                  onClick={() => bulkDecision("reject")}
-                  className=" bg-surface-subtle px-2 py-1 text-text-default hover:bg-surface-hover"
-                >
-                  Reject All
-                </button>
-              </div>
-            </div>
-
-            <div className="divide-y divide-border-subtle overflow-hidden border border-border-default bg-surface-default">
-              {changes.map((change) => (
-                <div
-                  key={change.id}
-                  className="flex flex-col md:flex-row items-stretch group hover:bg-surface-subtle transition-colors"
-                >
-                  {/* Meta info & Labels */}
-                  <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-center px-4 py-2 bg-surface-hover md:w-32 border-b md:border-b-0 md:border-r border-border-subtle">
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wider ${change.type === "add" ? "text-status-success-text" : "text-action-primary-bg"}`}
-                    >
-                      {change.type === "add" ? "New" : "Update"}
-                    </span>
-                    {change.originalId && (
-                      <span className="text-[9px] text-text-muted font-mono truncate max-w-full md:mt-1 opacity-50 group-hover:opacity-100 transition-opacity">
-                        ID: {change.originalId.slice(0, 8)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Content area */}
-                  <div className="flex-1 flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-border-subtle">
-                    {change.current && (
-                      <div className="flex-1 p-3 flex flex-col gap-1 min-w-0">
-                        <span className="text-[9px] font-bold text-text-muted uppercase">
-                          Current
-                        </span>
-                        <div className="text-[12px] text-text-muted line-clamp-3 md:line-clamp-6 leading-relaxed">
-                          {extractBlockText(change.current)}
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex-1 p-3 flex flex-col gap-1 min-w-0 bg-surface-subtle">
-                      <span className="text-[9px] font-bold text-text-muted uppercase">
-                        Incoming
-                      </span>
-                      <div className="text-[12px] text-text-default font-medium leading-relaxed">
-                        {extractBlockText(change.incoming)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex p-2 items-center justify-center gap-1.5 bg-surface-subtle border-t md:border-t-0 md:border-l border-border-subtle min-w-30">
-                    <button
-                      onClick={() => updateDecision(change.id, "accept")}
-                      title="Accept"
-                      className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
-                        change.decision === "accept"
-                          ? "bg-action-primary-bg text-action-primary-text"
-                          : "text-text-muted hover:text-text-default hover:bg-surface-hover"
-                      }`}
-                    >
-                      Accept
-                    </button>
-                    {change.type === "modify" && (
-                      <button
-                        onClick={() => updateDecision(change.id, "both")}
-                        title="Keep both"
-                        className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
-                          change.decision === "both"
-                            ? "bg-action-primary-bg text-action-primary-text"
-                            : "text-text-muted hover:text-text-default hover:bg-surface-hover"
-                        }`}
-                      >
-                        Both
-                      </button>
-                    )}
-                    <button
-                      onClick={() => updateDecision(change.id, "reject")}
-                      title="Reject"
-                      className={`flex-1  px-2 py-1.5 text-xs font-bold transition-all ${
-                        change.decision === "reject"
-                          ? "bg-action-primary-bg text-action-primary-text"
-                          : "text-text-muted hover:text-text-default hover:bg-surface-hover"
-                      }`}
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {applyError && (
-          <div className=" bg-status-error-bg p-3 text-sm text-status-error-text border border-border-default">
-            Error: {applyError}
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={parseResponse}
-            className=" bg-action-primary-bg px-4 py-2 text-action-primary-text hover:bg-action-primary-hover transition-colors"
-          >
-            Parse Response
-          </button>
-          <button
-            onClick={handleApplyClick}
-            disabled={isApplying || (!thoughtLog && !mergedBlocks)}
-            className=" bg-surface-subtle px-4 py-2 text-text-default hover:bg-surface-hover transition-colors disabled:opacity-50"
-          >
-            {isApplying ? "Applying..." : "Apply Changes"}
-          </button>
-          {usePlainText && (
-            <span className="text-xs text-text-muted self-center">
-              Canvas imported as plain text
-            </span>
-          )}
-        </div>
       </div>
     );
   },

@@ -63,24 +63,12 @@ export function XMLGenerator({
   };
 
   return (
-    <div className={compact ? "space-y-3" : "mt-6 space-y-3"}>
-      <div>
-        <label className="text-sm font-semibold text-text-default">
-          Ready-to-Send Payload
-        </label>
-        <p className="text-xs text-text-muted mt-0.5 mb-2">
-          {isReady
-            ? "Review and copy this payload before switching to your AI destination."
-            : "Loading bridge context before the payload is ready to send."}
-        </p>
-      </div>
-
-      <div className="relative group border border-border-default bg-[#0d1117] overflow-hidden">
+    <div className="flex flex-1 flex-col min-h-0 w-full">
+      <div className="relative group border border-border-default bg-[#0d1117] flex-1 flex flex-col min-h-0 overflow-hidden">
         <textarea
           readOnly
-          rows={6}
           value={currentXML}
-          className="min-h-35 w-full resize-y bg-[#0d1117] p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9]"
+          className="flex-1 min-h-[150px] w-full resize-y bg-[#0d1117] p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] outline-none"
         />
         <div className="absolute top-2 right-2">
           <button

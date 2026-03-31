@@ -102,19 +102,19 @@ export function ContextBag({
   const isLoadingEntries = isEntriesLoading;
 
   return (
-    <div className="mb-6 border border-border-default bg-surface-subtle p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-text-default">Selected context</h3>
-        <span className=" bg-surface-subtle px-2.5 py-1 text-[10px] font-bold tracking-wider text-text-muted">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-bold tracking-wider text-text-muted">
           {selectedEntries.length} SELECTED
         </span>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         <label className="flex items-center gap-2.5 text-text-default text-sm cursor-pointer select-none">
           <input
             type="checkbox"
             checked={includeCanvas}
             onChange={(e) => onIncludeCanvasChange(e.target.checked)}
+            className="accent-action-primary-bg"
           />
           Include current canvas
         </label>
@@ -142,62 +142,55 @@ export function ContextBag({
                 }`}
               />
               Include Domain Global Stream
-              
             </span>
             {globalStreamLoading && (
               <span className="ml-1 inline-block h-3 w-3 animate-spin border-2 border-border-default border-t-action-primary-bg" />
             )}
           </label>
-          {!globalStreamLoading &&
-            globalStreamName &&
-            !globalStreamDisabled && (
-              <p className="ml-7 text-[11px] text-text-muted">
-                {globalStreamName}
-              </p>
-            )}
-          <p className="ml-7 text-[11px] text-text-muted">
+          {!globalStreamLoading && globalStreamName && !globalStreamDisabled && (
+            <p className="ml-7 text-[11px] text-text-muted">{globalStreamName}</p>
+          )}
+          <p className="ml-7 text-[11px] text-text-muted leading-relaxed">
             {globalStreamLoading
-              ? "Checking global stream for this domain..."
+              ? "Checking global stream..."
               : currentStreamIsGlobal
-                ? "Current stream is already global — its context is included by default."
+                ? "Current stream is global — context included by default."
                 : globalStreamDisabled
-                  ? "No global stream found in this domain."
-                  : "Carries domain-wide backstory into bridge prompts."}
+                  ? "No global stream found."
+                  : "Carries domain-wide backstory."}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs mt-1">
           <button
             onClick={selectAll}
             disabled={disableSelectAll || isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted text-[10px] uppercase font-bold"
           >
-            Select All
+            All
           </button>
           <button
             onClick={selectLastFive}
             disabled={isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted text-[10px] uppercase font-bold"
           >
             Last 5
           </button>
           <button
             onClick={clearAll}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 font-medium text-text-default hover:bg-surface-elevated transition-all"
+            className=" border border-border-default bg-surface-default px-3 py-1.5 text-text-default hover:bg-surface-elevated transition-all text-[10px] uppercase font-bold"
           >
             Clear
           </button>
         </div>
-        <div className="max-h-56 space-y-3 overflow-y-auto border border-border-default bg-surface-default p-3 text-xs">
+        <div className="space-y-3 border border-border-default bg-surface-default p-3 text-xs">
           {isLoadingEntries ? (
-            <div className="text-text-muted animate-pulse">
-              Loading entries...
-            </div>
+            <div className="text-text-muted animate-pulse">Loading entries...</div>
           ) : groupedEntries.length === 0 ? (
             <div className="text-text-muted">No entries yet.</div>
           ) : (
             groupedEntries.map(([dateKey, group]) => (
               <div key={dateKey} className="space-y-2">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted border-b border-border-subtle pb-1">
                   {dateKey}
                 </div>
                 {group?.map((entry) => {
@@ -217,12 +210,12 @@ export function ContextBag({
                         onChange={() => toggleEntry(entry.id)}
                       />
                       <div>
-                        <div className="text-[12px] font-medium text-text-default leading-snug">
+                        <div className="text-[11px] font-medium text-text-default leading-snug">
                           {preview.slice(0, 80)}
                         </div>
-                        <div className="text-[10px] text-text-muted mt-0.5">
+                        <div className="text-[9px] text-text-muted mt-0.5 uppercase">
                           {entry.created_at
-                            ? new Date(entry.created_at).toLocaleString()
+                            ? new Date(entry.created_at).toLocaleTimeString()
                             : "Unknown time"}
                         </div>
                       </div>

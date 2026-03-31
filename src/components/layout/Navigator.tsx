@@ -148,6 +148,22 @@ type PersistedCanvasDraftState = {
   version?: number;
 };
 
+function deepCloneDraftValue<T>(value: T): T {
+  try {
+    if (typeof structuredClone === "function") {
+      return structuredClone(value);
+    }
+  } catch {
+    // Fall through to JSON clone below.
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return value;
+  }
+}
+
 function copyLocalEntryCreatorDraftState(
   oldStreamId: string,
   newStreamId: string,
@@ -186,16 +202,18 @@ function copyLocalCanvasDraftState(oldStreamId: string, newStreamId: string) {
     const dirtySet = new Set(state._dirtyStreamsArr ?? []);
 
     if (oldStreamId in nextLive) {
-      nextLive[newStreamId] = nextLive[oldStreamId];
+      nextLive[newStreamId] = deepCloneDraftValue(nextLive[oldStreamId]);
     }
     if (oldStreamId in nextMarkdown) {
       nextMarkdown[newStreamId] = nextMarkdown[oldStreamId];
     }
     if (oldStreamId in nextDbSync) {
-      nextDbSync[newStreamId] = nextDbSync[oldStreamId];
+      nextDbSync[newStreamId] = deepCloneDraftValue(nextDbSync[oldStreamId]);
     }
     if (oldStreamId in nextLocalSave) {
-      nextLocalSave[newStreamId] = nextLocalSave[oldStreamId];
+      nextLocalSave[newStreamId] = deepCloneDraftValue(
+        nextLocalSave[oldStreamId],
+      );
     }
     if (dirtySet.has(oldStreamId)) {
       dirtySet.add(newStreamId);

@@ -86,10 +86,156 @@ describe("buildBridgePayload followup", () => {
       sessionLoadedAt: "2026-03-29T10:00:00.000Z",
     });
 
-    expect(payload).toContain("<session_followup>");
+    expect(payload).toContain('<session_followup phase="continue">');
+    expect(payload).toContain("<continue_response_rules>");
     expect(payload).toContain("<incremental_context>");
+    expect(payload).toContain("cold-boot prompt");
+    expect(payload).toContain("diff/update packet");
+    expect(payload).toContain("append-ready log entry");
+    expect(payload).toContain("always return a concise append-ready log entry");
+    expect(payload).toContain("unified git-style diff patch");
+    expect(payload).toContain("Treat <changed_canvas> as a reference snapshot");
     expect(payload).toContain("Canvas delta");
     expect(payload).toContain("Apply the new changes only.");
+    expect(payload).toContain('<incremental_instruction state="provided">');
+    expect(payload).toContain("Example continue response:");
     expect(payload).not.toContain("<system_directive>");
+  });
+
+  it("tells empty continue turns not to invent new content", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Current Stream",
+        stream_kind: "REGULAR",
+        domain: { name: "Demo Domain" },
+      },
+      interactionMode: "BOTH",
+      includeCanvas: true,
+      canvas: makeCanvas("2026-03-29T10:05:00.000Z", "Canvas delta"),
+      entries: [],
+      includeGlobalStream: false,
+      additionalGlobalStreamIds: [],
+      globalStreamsMeta: [],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: null,
+      userInput: "   ",
+      payloadVariant: "followup",
+      sessionLoadedAt: "2026-03-29T10:00:00.000Z",
+    });
+
+    expect(payload).toContain('<incremental_instruction state="empty">');
+    expect(payload).toContain("No new user instruction was provided");
+    expect(payload).toContain("Do not invent new recommendations");
+    expect(payload).toContain("Only reflect the delta");
+  });
+
+  it("preserves structured canvas markdown in followup snapshots", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Current Stream",
+        stream_kind: "REGULAR",
+        domain: { name: "Demo Domain" },
+      },
+      interactionMode: "BOTH",
+      includeCanvas: true,
+      canvas: {
+        id: "canvas-1",
+        stream_id: "stream-1",
+        updated_at: "2026-03-29T10:05:00.000Z",
+        content_json: [
+          {
+            id: "heading-1",
+            type: "heading",
+            props: { level: 2 },
+            content: [{ type: "text", text: "Next Steps" }],
+            children: [],
+          },
+          {
+            id: "bullet-1",
+            type: "bulletListItem",
+            content: [{ type: "text", text: "Search exact lyrics" }],
+            children: [],
+          },
+          {
+            id: "bullet-2",
+            type: "bulletListItem",
+            content: [{ type: "text", text: "Check recent Bad Bunny tracks" }],
+            children: [],
+          },
+        ],
+      },
+      entries: [],
+      includeGlobalStream: false,
+      additionalGlobalStreamIds: [],
+      globalStreamsMeta: [],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: null,
+      userInput: "",
+      payloadVariant: "followup",
+      sessionLoadedAt: "2026-03-29T10:00:00.000Z",
+    });
+
+    expect(payload).toContain("## Next Steps");
+    expect(payload).toContain("- Search exact lyrics");
+    expect(payload).toContain("- Check recent Bad Bunny tracks");
+  });
+
+  it("frames the full payload as a cold-boot session setup without replacing provider behavior", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Current Stream",
+        stream_kind: "REGULAR",
+        domain: { name: "Demo Domain" },
+      },
+      interactionMode: "ASK",
+      includeCanvas: false,
+      canvas: null,
+      entries: [],
+      includeGlobalStream: false,
+      additionalGlobalStreamIds: [],
+      globalStreamsMeta: [],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: null,
+      userInput: "Introduce the session.",
+      payloadVariant: "full",
+      sessionLoadedAt: null,
+    });
+
+    expect(payload).toContain('<session_boot phase="cold_boot">');
+    expect(payload).toContain("structured XML is only an output transport layer");
+    expect(payload).toContain("provider/company system prompt style");
+    expect(payload).toContain("Later continuation prompts");
+    expect(payload).toContain("<system_directive>");
+  });
+
+  it("keeps session/meta acknowledgements out of the canvas surface", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Current Stream",
+        stream_kind: "REGULAR",
+        domain: { name: "Demo Domain" },
+      },
+      interactionMode: "BOTH",
+      includeCanvas: true,
+      canvas: null,
+      entries: [],
+      includeGlobalStream: false,
+      additionalGlobalStreamIds: [],
+      globalStreamsMeta: [],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: null,
+      userInput: "Start the session.",
+      payloadVariant: "full",
+      sessionLoadedAt: null,
+    });
+
+    expect(payload).toContain("Canvas is a whiteboard/artifact surface, not the conversation surface.");
+    expect(payload).toContain("Do NOT use <canvas> for session acknowledgements");
+    expect(payload).toContain("omit <canvas> entirely");
+    expect(payload).toContain('placeholder text like "awaiting further instructions"');
   });
 });

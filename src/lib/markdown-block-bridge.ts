@@ -53,6 +53,18 @@ function parseBulletListLine(line: string): string | null {
   return match[1];
 }
 
+function parseTaskListLine(
+  line: string,
+): { checked: boolean; text: string } | null {
+  const { withoutIndent } = getLineIndent(line);
+  const match = withoutIndent.match(/^[-*]\s+\[([ xX])\]\s*(.*)$/);
+  if (!match) return null;
+  return {
+    checked: match[1].toLowerCase() === "x",
+    text: match[2],
+  };
+}
+
 function parseOrderedListLine(line: string): string | null {
   const { withoutIndent } = getLineIndent(line);
   const match = withoutIndent.match(/^\d+[.)]\s+(.*)$/);
@@ -69,6 +81,7 @@ function parseHeadingLine(line: string): { level: number; text: string } | null 
 
 function isBlockBoundary(line: string): boolean {
   return (
+    parseTaskListLine(line) !== null ||
     parseBulletListLine(line) !== null ||
     parseOrderedListLine(line) !== null ||
     parseHeadingLine(line) !== null
@@ -119,6 +132,18 @@ export function blocksToBridgeMarkdown(
 
       if (block.type === "bulletListItem") {
         target.push(`${indentStr}- ${wrapWithMeta(text, meta)}`);
+        if (Array.isArray(block.children) && block.children.length > 0) {
+          for (const child of block.children) renderBlock(child, target, indent + 2);
+        }
+        return;
+      }
+
+      if (block.type === "checkListItem") {
+        const checked =
+          Boolean((block.props as Record<string, unknown> | undefined)?.checked);
+        target.push(
+          `${indentStr}- [${checked ? "x" : " "}] ${wrapWithMeta(text, meta)}`,
+        );
         if (Array.isArray(block.children) && block.children.length > 0) {
           for (const child of block.children) renderBlock(child, target, indent + 2);
         }
@@ -233,11 +258,12 @@ export function bridgeMarkdownToBlocks(
     }
 
     const { depth } = getLineIndent(line);
+    const taskItem = parseTaskListLine(line);
     const bulletText = parseBulletListLine(line);
     const orderedText = parseOrderedListLine(line);
 
-    if (bulletText !== null || orderedText !== null) {
-      const rawText = bulletText ?? orderedText ?? "";
+    if (taskItem !== null || bulletText !== null || orderedText !== null) {
+      const rawText = taskItem?.text ?? bulletText ?? orderedText ?? "";
       const parts = parseInline(rawText);
       const content =
         parts.length > 0
@@ -249,10 +275,19 @@ export function bridgeMarkdownToBlocks(
           : null;
       const node: MarkdownBlock = {
         id: genId(),
-        type: bulletText !== null ? "bulletListItem" : "numberedListItem",
-        props: bnMeta
-          ? ({ md: bnMeta } as unknown as Record<string, Json>)
-          : undefined,
+        type:
+          taskItem !== null
+            ? "checkListItem"
+            : bulletText !== null
+              ? "bulletListItem"
+              : "numberedListItem",
+        props:
+          taskItem !== null || bnMeta
+            ? ({
+                ...(taskItem !== null ? { checked: taskItem.checked } : {}),
+                ...(bnMeta ? { md: bnMeta } : {}),
+              } as unknown as Record<string, Json>)
+            : undefined,
         content,
       };
 

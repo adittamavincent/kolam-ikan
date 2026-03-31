@@ -10,6 +10,8 @@ const {
   mockCanvasDraftActions,
   mockCanvasSelectMaybeSingle,
   mockCanvasSelectSingle,
+  mockCanvasInsert,
+  mockCanvasInsertSelectSingle,
   mockCanvasUpdate,
   mockCanvasUpdateEq,
   mockEntriesInsert,
@@ -31,7 +33,7 @@ const {
   },
   mockBranchContext: {
     currentBranch: "main",
-    currentBranchHeadId: "entry-parent",
+    currentBranchHeadId: "entry-parent" as string | null,
   },
   mockCanvasDraftActions: {
     setLiveContent: vi.fn(),
@@ -42,6 +44,8 @@ const {
   },
   mockCanvasSelectMaybeSingle: vi.fn(),
   mockCanvasSelectSingle: vi.fn(),
+  mockCanvasInsert: vi.fn(),
+  mockCanvasInsertSelectSingle: vi.fn(),
   mockCanvasUpdate: vi.fn(),
   mockCanvasUpdateEq: vi.fn(),
   mockEntriesInsert: vi.fn(),
@@ -71,6 +75,7 @@ vi.mock("@/lib/hooks/useCanvasDraft", () => ({
 }));
 
 import {
+  applyCanvasMarkdownDiff,
   ResponseParser,
   type ResponseParserHandle,
   extractTagContentByAliases,
@@ -89,6 +94,7 @@ mockSupabase.from.mockImplementation((table: string) => {
           single: mockCanvasSelectSingle,
         }),
       }),
+      insert: mockCanvasInsert,
       update: mockCanvasUpdate,
     };
   }
@@ -156,6 +162,12 @@ mockCanvasUpdate.mockImplementation(() => ({
   eq: mockCanvasUpdateEq,
 }));
 
+mockCanvasInsert.mockImplementation(() => ({
+  select: () => ({
+    single: mockCanvasInsertSelectSingle,
+  }),
+}));
+
 mockEntriesInsert.mockImplementation(() => ({
   select: () => ({
     single: mockEntriesInsertSelectSingle,
@@ -169,6 +181,8 @@ mockBranchesUpdate.mockImplementation(() => ({
 describe("ResponseParser helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockBranchContext.currentBranch = "main";
+    mockBranchContext.currentBranchHeadId = "entry-parent";
   });
 
   it("normalizes escaped xml-like bridge responses", () => {
@@ -195,6 +209,8 @@ hello
     const preferred = "<response><log>hello</log><canvas>+ test</canvas></response>";
     const legacy =
       "<response><thought_log>hello</thought_log><canvas_update>+ test</canvas_update></response>";
+    const relaxed =
+      "<response><final>hello</final><artifact>+ test</artifact><citation_list>1. [A](https://example.com)</citation_list></response>";
 
     expect(extractTagContentByAliases(preferred, ["log", "thought_log"])).toBe(
       "hello",
@@ -205,6 +221,15 @@ hello
     expect(
       extractTagContentByAliases(legacy, ["canvas", "canvas_update"]),
     ).toBe("+ test");
+    expect(
+      extractTagContentByAliases(relaxed, ["log", "thought_log", "answer", "final", "reply"]),
+    ).toBe("hello");
+    expect(
+      extractTagContentByAliases(relaxed, ["canvas", "canvas_update", "artifact"]),
+    ).toBe("+ test");
+    expect(
+      extractTagContentByAliases(relaxed, ["citations", "sources", "references", "citation_list"]),
+    ).toBe("1. [A](https://example.com)");
   });
 
   it("parses prefixed canvas diff lines into separate markdown blocks", () => {
@@ -252,6 +277,140 @@ hello
     expect(markdown).not.toContain("Who Knows Artist: Tevit");
   });
 
+  it("preserves checklist markdown so task items stay editor-recognizable", () => {
+    const result = resolveCanvasBlocks(`
+## Next Steps
+- [ ] Gather additional context
+- [x] Perform web search
+`);
+
+    const markdown = blocksToStoredMarkdown(result.blocks);
+
+    expect(result.blocks[1]?.type).toBe("checkListItem");
+    expect(result.blocks[1]?.props).toMatchObject({ checked: false });
+    expect(result.blocks[2]?.type).toBe("checkListItem");
+    expect(result.blocks[2]?.props).toMatchObject({ checked: true });
+    expect(markdown).toContain("- [ ] Gather additional context");
+    expect(markdown).toContain("- [x] Perform web search");
+    expect(markdown).not.toContain("\n[ ] Gather additional context");
+  });
+
+  it("treats plain markdown bullet lists as appendable markdown instead of diff removals", () => {
+    const currentBlocks: Parameters<typeof resolveCanvasBlocks>[1] = [
+      {
+        id: "existing-block",
+        type: "paragraph",
+        content: [{ type: "text", text: "Existing canvas content" }],
+        children: [],
+      },
+    ];
+
+    const result = resolveCanvasBlocks(
+      `
+# New Section
+
+- First bullet
+- Second bullet
+`,
+      currentBlocks,
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.format).toBe("markdown");
+    const markdown = blocksToStoredMarkdown([
+      ...currentBlocks,
+      ...result.blocks,
+    ]);
+    expect(markdown).toContain("Existing canvas content");
+    expect(markdown).toContain("# New Section");
+    expect(markdown).toContain("- First bullet");
+    expect(markdown).toContain("- Second bullet");
+  });
+
+  it("applies messy continue diffs against raw markdown without duplicating canvas content", () => {
+    const currentMarkdown = `# Song Information: "En Casita"
+## Track Details
+- **Artist:** Bad Bunny (feat. Gabriela Berlingeri)
+- **Album:** *Las Que No Iban a Salir* (2020)
+- **Genre:** Latin Trap / Lo-fi
+## Key Lyrics Breakdown
+> "Otro sunset bonito que veo en San Juan / Disfrutando de toda' esas cosas que extranan los que se van..."
+- **Theme:** Appreciation for the simple beauty of home during isolation.
+- **Context:** The song was recorded and released during the COVID-19 quarantine, focusing on the desire to be with someone while staying safe at home ("en casita").
+- **Cultural Note:** Refers to the Puerto Rican diaspora (those who "leave") and the unique atmosphere of San Juan sunsets.`;
+
+    const diff = `
+  - # Song Information: "En Casita"
+
+<!-- end list -->
+
+  + # Song Information: "En Casita"
+
+      - ## Track Details
+      -   * **Artist:** Bad Bunny (feat. Gabriela Berlingeri)
+      -   * **Album:** *Las Que No Iban a Salir* (2020)
+      -   * **Genre:** Latin Trap / Lo-fi
+
+<!-- end list -->
+
+  + ## Track Details
+
+  + 
+  + **Artist:** Bad Bunny (feat. Gabriela Berlingeri)
+
+  + 
+  + **Album:** *Las Que No Iban a Salir* (2020)
+
+  + 
+  + **Genre:** Latin Trap / Lo-fi
+
+    ## Key Lyrics Breakdown
+
+    > "Otro sunset bonito que veo en San Juan / Disfrutando de toda' esas cosas que extranan los que se van..."
+
+<!-- end list -->
+
+  -   * **Theme:** Appreciation for the simple beauty of home during isolation.
+  -   * **Context:** The song was recorded and released during the COVID-19 quarantine, focusing on the desire to be with someone while staying safe at home ("en casita").
+  -   * **Cultural Note:** Refers to the Puerto Rican diaspora (those who "leave") and the unique atmosphere of San Juan sunsets.
+
+<!-- end list -->
+
+  + **Theme:** Appreciation for the simple beauty of home during isolation.
+  + 
+  + **Context:** The song was recorded and released during the COVID-19 quarantine, focusing on the desire to be with someone while staying safe at home ("en casita").
+  + 
+  + **Cultural Note:** Refers to the Puerto Rican diaspora (those who "leave") and the unique atmosphere of San Juan sunsets.
+`;
+
+    const patched = applyCanvasMarkdownDiff(currentMarkdown, diff);
+
+    expect(patched).not.toContain("<!-- end list -->");
+    expect(patched.match(/# Song Information: "En Casita"/g)?.length).toBe(1);
+    expect(patched).toContain("## Track Details");
+    expect(patched).toContain("**Artist:** Bad Bunny (feat. Gabriela Berlingeri)");
+    expect(patched).not.toContain("- **Artist:** Bad Bunny (feat. Gabriela Berlingeri)");
+    expect(patched).not.toContain("- **Theme:** Appreciation for the simple beauty of home during isolation.");
+  });
+
+  it("normalizes malformed inline list markers in canvas diff output", () => {
+    const diff = `
+  + # Song Profile: "En Casita"
+  + **Artist:** Bad Bunny (feat. Gabriela Berlingeri)
+  + **Album:** *Las Que No Iban a Salir* (2020)
+  + **Key Themes:** + \\* Quarantine and social distancing
+  +   * Nostalgia for Puerto Rico (San Juan)
+  +   * Appreciation for simple moments/sunsets
+`;
+
+    const patched = applyCanvasMarkdownDiff("", diff);
+
+    expect(patched).toContain('**Key Themes:**\n- Quarantine and social distancing');
+    expect(patched).toContain("- Nostalgia for Puerto Rico (San Juan)");
+    expect(patched).toContain("- Appreciation for simple moments/sunsets");
+    expect(patched).not.toContain("+ *");
+  });
+
   it("normalizes ChatGPT contentReference citations before canvas parsing", () => {
     const normalized = normalizeOaiCitationsInMarkdown(`
 ## Song Identified
@@ -286,6 +445,7 @@ Bad Bunny :contentReference[oaicite:0]{index=0}
       data: {
         id: "canvas-1",
         content_json: currentCanvasBlocks,
+        raw_markdown: "- kuberitahu\n<!-- end list -->",
         updated_at: "2026-03-29T13:17:40.87026+00:00",
       },
       error: null,
@@ -377,7 +537,7 @@ AI summary paragraph.
       }),
     );
     const updatedCanvasMarkdown = mockCanvasUpdate.mock.calls[0]?.[0]?.raw_markdown;
-    expect(updatedCanvasMarkdown).toContain("<!-- end list -->");
+    expect(updatedCanvasMarkdown).not.toContain("<!-- end list -->");
     expect(updatedCanvasMarkdown).not.toContain("- kuberitahu");
     expect(mockCanvasUpdateEq).toHaveBeenCalledWith("id", "canvas-1");
 
@@ -388,5 +548,241 @@ AI summary paragraph.
         args.queryKey[1] === "stream-1",
     );
     expect(latestSnapshotInvalidation).toBe(true);
+
+    const quickEntriesInvalidation = invalidateQueriesSpy.mock.calls.some(
+      ([args]) =>
+        Array.isArray(args?.queryKey) &&
+        args.queryKey[0] === "bridge-quick-entries" &&
+        args.queryKey[1] === "stream-1",
+    );
+    expect(quickEntriesInvalidation).toBe(true);
+  });
+
+  it("synthesizes a minimal log entry when BOTH mode returns only canvas output", async () => {
+    mockCanvasSelectMaybeSingle.mockResolvedValue({
+      data: {
+        id: "canvas-1",
+        content_json: [],
+        raw_markdown: "",
+        updated_at: "2026-03-29T13:17:40.87026+00:00",
+      },
+      error: null,
+    });
+    mockCanvasSelectSingle.mockResolvedValue({
+      data: { id: "canvas-1" },
+      error: null,
+    });
+    mockCanvasUpdateEq.mockResolvedValue({ error: null });
+    mockEntriesInsertSelectSingle.mockResolvedValue({
+      data: { id: "entry-new" },
+      error: null,
+    });
+    mockSectionsInsert.mockResolvedValue({ error: null });
+    mockBranchesSelectMaybeSingle.mockResolvedValue({
+      data: { id: "branch-1" },
+      error: null,
+    });
+    mockBranchesInsertSelectSingle.mockResolvedValue({
+      data: { id: "branch-1" },
+      error: null,
+    });
+    mockBranchesUpdateEq.mockResolvedValue({ error: null });
+    mockPersonasMaybeSingle.mockResolvedValue({
+      data: { id: "persona-ai" },
+      error: null,
+    });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockCanvasVersionInsert.mockResolvedValue({ error: null });
+
+    const xml = `<response>
+<canvas>
++ # New canvas note
+</canvas>
+<base>2026-03-29T13:17:40.87026+00:00</base>
+</response>`;
+
+    const ref = createRef<ResponseParserHandle>();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ResponseParser
+          ref={ref}
+          streamId="stream-1"
+          interactionMode="BOTH"
+          pastedXML={xml}
+          onPastedXMLChange={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(ref.current).not.toBeNull());
+
+    const didApply = await ref.current?.quickApply();
+
+    expect(didApply).toBe(true);
+    expect(mockEntriesInsert).toHaveBeenCalled();
+    expect(mockSectionsInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        persona_name_snapshot: "AI",
+        raw_markdown: expect.stringContaining("Updated the canvas for this turn."),
+      }),
+    );
+  });
+
+  it("appends AI log entries to the live branch head even when the branch hook is stale", async () => {
+    mockBranchContext.currentBranchHeadId = null;
+    mockCanvasSelectMaybeSingle.mockResolvedValue({
+      data: {
+        id: "canvas-1",
+        content_json: [],
+        raw_markdown: "",
+        updated_at: "2026-03-29T13:17:40.87026+00:00",
+      },
+      error: null,
+    });
+    mockCanvasSelectSingle.mockResolvedValue({
+      data: { id: "canvas-1" },
+      error: null,
+    });
+    mockCanvasUpdateEq.mockResolvedValue({ error: null });
+    mockEntriesInsertSelectSingle.mockResolvedValue({
+      data: { id: "entry-new" },
+      error: null,
+    });
+    mockSectionsInsert.mockResolvedValue({ error: null });
+    mockBranchesSelectMaybeSingle.mockResolvedValue({
+      data: { id: "branch-1", head_commit_id: "entry-db-head" },
+      error: null,
+    });
+    mockBranchesInsertSelectSingle.mockResolvedValue({
+      data: { id: "branch-1", head_commit_id: null },
+      error: null,
+    });
+    mockBranchesUpdateEq.mockResolvedValue({ error: null });
+    mockPersonasMaybeSingle.mockResolvedValue({
+      data: { id: "persona-ai" },
+      error: null,
+    });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockCanvasVersionInsert.mockResolvedValue({ error: null });
+
+    const xml = `<response>
+<log>
+Append this AI note.
+</log>
+<canvas>
++ # Canvas note
+</canvas>
+<base>2026-03-29T13:17:40.87026+00:00</base>
+</response>`;
+
+    const ref = createRef<ResponseParserHandle>();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ResponseParser
+          ref={ref}
+          streamId="stream-1"
+          interactionMode="BOTH"
+          pastedXML={xml}
+          onPastedXMLChange={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(ref.current).not.toBeNull());
+
+    const didApply = await ref.current?.quickApply();
+
+    expect(didApply).toBe(true);
+    expect(mockEntriesInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stream_id: "stream-1",
+        is_draft: false,
+        parent_commit_id: "entry-db-head",
+      }),
+    );
+  });
+
+  it("creates a missing canvas row when BOTH mode returns canvas content for a stream without one", async () => {
+    mockCanvasSelectMaybeSingle
+      .mockResolvedValueOnce({
+        data: null,
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: null,
+        error: null,
+      });
+    mockCanvasInsertSelectSingle.mockResolvedValue({
+      data: { id: "canvas-new" },
+      error: null,
+    });
+    mockEntriesInsertSelectSingle.mockResolvedValue({
+      data: { id: "entry-new" },
+      error: null,
+    });
+    mockSectionsInsert.mockResolvedValue({ error: null });
+    mockBranchesSelectMaybeSingle.mockResolvedValue({
+      data: { id: "branch-1" },
+      error: null,
+    });
+    mockBranchesInsertSelectSingle.mockResolvedValue({
+      data: { id: "branch-1" },
+      error: null,
+    });
+    mockBranchesUpdateEq.mockResolvedValue({ error: null });
+    mockPersonasMaybeSingle.mockResolvedValue({
+      data: { id: "persona-ai" },
+      error: null,
+    });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockCanvasVersionInsert.mockResolvedValue({ error: null });
+
+    const xml = `<response>
+<log>
+These lyrics are from **"Otro Atardecer"**.
+</log>
+<canvas>
++ # Song: "Otro Atardecer"
++ 
++ ## Key Themes
++ - San Juan sunset imagery
++ - Nostalgia for island life
+</canvas>
+<base>2026-03-31T03:19:31.315891+00:00</base>
+</response>`;
+
+    const ref = createRef<ResponseParserHandle>();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ResponseParser
+          ref={ref}
+          streamId="stream-1"
+          interactionMode="BOTH"
+          pastedXML={xml}
+          onPastedXMLChange={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(ref.current).not.toBeNull());
+
+    const didApply = await ref.current?.quickApply();
+
+    expect(didApply).toBe(true);
+    expect(mockCanvasInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stream_id: "stream-1",
+        raw_markdown: expect.stringContaining('# Song: "Otro Atardecer"'),
+      }),
+    );
+    expect(mockCanvasVersionInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canvas_id: "canvas-new",
+        stream_id: "stream-1",
+      }),
+    );
   });
 });

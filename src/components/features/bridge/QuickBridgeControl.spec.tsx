@@ -6,7 +6,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickBridgeControl } from "./QuickBridgeControl";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 
-const { mockUseQuery, mockCreateBridgeJob, mockLatestBridgeJobData, mockQuickApply } = vi.hoisted(() => ({
+const {
+  mockUseQuery,
+  mockCreateBridgeJob,
+  mockLatestBridgeJobData,
+  mockQuickApply,
+  mockParserPastedXmlRef,
+} = vi.hoisted(() => ({
   mockUseQuery: vi.fn(),
   mockCreateBridgeJob: {
     mutateAsync: vi.fn(),
@@ -14,6 +20,7 @@ const { mockUseQuery, mockCreateBridgeJob, mockLatestBridgeJobData, mockQuickApp
   },
   mockLatestBridgeJobData: { current: null as null | Record<string, unknown> },
   mockQuickApply: vi.fn(),
+  mockParserPastedXmlRef: { current: "" },
 }));
 
 vi.mock("@tanstack/react-query", async () => {
@@ -53,21 +60,23 @@ vi.mock("./XMLGenerator", () => ({
 }));
 
 vi.mock("./ResponseParser", () => ({
-  ResponseParser: React.forwardRef(function MockResponseParser(props, ref) {
+  ResponseParser: React.forwardRef(function MockResponseParser(
+    props: { pastedXML?: string },
+    ref,
+  ) {
+    React.useEffect(() => {
+      mockParserPastedXmlRef.current = props.pastedXML ?? "";
+    }, [props.pastedXML]);
     React.useImperativeHandle(
       ref,
       () => ({
         parse: async () => undefined,
         reset: () => undefined,
         quickApply: async () => {
-          const result = await mockQuickApply();
-          if (result) {
-            props.onApplySuccess?.();
-          }
-          return result;
+          return await mockQuickApply();
         },
       }),
-      [props],
+      [],
     );
     return null;
   }),
@@ -78,6 +87,7 @@ describe("QuickBridgeControl", () => {
     vi.clearAllMocks();
     mockLatestBridgeJobData.current = null;
     mockQuickApply.mockResolvedValue(false);
+    mockParserPastedXmlRef.current = "";
     mockCreateBridgeJob.mutateAsync.mockResolvedValue({
       job: {
         id: "job-1",
@@ -213,5 +223,47 @@ describe("QuickBridgeControl", () => {
     });
 
     expect(screen.queryByRole("button", { name: /waiting/i })).not.toBeInTheDocument();
+  });
+
+  it("targets the newest succeeded job response after a previous apply", async () => {
+    const user = userEvent.setup();
+
+    mockLatestBridgeJobData.current = {
+      id: "job-1",
+      status: "succeeded",
+      raw_response: "<response><log>first</log><canvas>+ first</canvas></response>",
+    };
+    mockQuickApply.mockResolvedValue(true);
+
+    const { rerender } = render(<QuickBridgeControl streamId="stream-1" />);
+
+    expect(screen.getByRole("button", { name: /apply/i })).toBeEnabled();
+    expect(mockParserPastedXmlRef.current).toContain("<log>first</log>");
+
+    await user.click(screen.getByRole("button", { name: /apply/i }));
+
+    await waitFor(() => {
+      expect(useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.lastAppliedJobId)
+        .toBe("job-1");
+    });
+
+    mockLatestBridgeJobData.current = {
+      id: "job-2",
+      status: "succeeded",
+      raw_response: "<response><log>second</log><canvas>- old\n+ new</canvas></response>",
+    };
+    rerender(<QuickBridgeControl streamId="stream-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /apply/i })).toBeEnabled();
+    });
+    expect(mockParserPastedXmlRef.current).toContain("<log>second</log>");
+
+    await user.click(screen.getByRole("button", { name: /apply/i }));
+
+    await waitFor(() => {
+      expect(useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.lastAppliedJobId)
+        .toBe("job-2");
+    });
   });
 });

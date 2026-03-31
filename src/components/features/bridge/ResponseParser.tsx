@@ -17,6 +17,9 @@ import { Json } from "@/lib/types/database.types";
 import {
   blocksToStoredMarkdown,
   buildStoredContentPayload,
+  storedContentToBlocks,
+  storedContentToMarkdown,
+  trimEmptyOuterMarkdownLines,
 } from "@/lib/content-protocol";
 import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
 import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
@@ -131,6 +134,21 @@ function toParagraphBlocks(text: string): MarkdownBlock[] {
       continue;
     }
 
+    const taskMatch = line.match(/^[-*]\s+\[([ xX])\]\s*(.*)$/);
+    if (taskMatch) {
+      flushParagraph();
+      blocks.push({
+        id: crypto.randomUUID(),
+        type: "checkListItem",
+        props: {
+          checked: (taskMatch[1].toLowerCase() === "x") as unknown as Json,
+        },
+        content: [{ type: "text", text: taskMatch[2] }],
+        children: [],
+      });
+      continue;
+    }
+
     const bulletMatch = line.match(/^[-*]\s+(.+)$/);
     if (bulletMatch) {
       flushParagraph();
@@ -224,6 +242,192 @@ function resolveIncomingBlocks(raw: string): {
   }
 }
 
+function parseCanvasDiffLine(line: string): {
+  type: "add" | "remove" | "context" | "ignore" | "other";
+  content: string;
+} {
+  const trimmedStart = line.trimStart();
+  if (!trimmedStart) {
+    return { type: "other", content: "" };
+  }
+  if (trimmedStart === "<!-- end list -->") {
+    return { type: "ignore", content: "" };
+  }
+  if (trimmedStart === "+" || trimmedStart === "+ ") {
+    return { type: "add", content: "" };
+  }
+  if (trimmedStart.startsWith("+ ")) {
+    return { type: "add", content: trimmedStart.slice(2) };
+  }
+  if (trimmedStart === "-" || trimmedStart === "- ") {
+    return { type: "remove", content: "" };
+  }
+  if (trimmedStart.startsWith("- ")) {
+    return { type: "remove", content: trimmedStart.slice(2) };
+  }
+  if (line.startsWith(" ")) {
+    return { type: "context", content: line.slice(1) };
+  }
+  return { type: "other", content: trimmedStart };
+}
+
+function stripNestedCanvasPrefixes(line: string): string {
+  let normalized = line.trim().replace(/\\\*/g, "*");
+
+  while (/^[+-]\s+/.test(normalized)) {
+    normalized = normalized.replace(/^[+-]\s+/, "").trimStart();
+  }
+
+  return normalized;
+}
+
+function normalizeComparableCanvasLine(line: string): string {
+  const trimmed = stripNestedCanvasPrefixes(line);
+  if (!trimmed || trimmed === "<!-- end list -->") return "";
+
+  let normalized = trimmed;
+  if (normalized.startsWith("* ")) {
+    normalized = `- ${normalized.slice(2)}`;
+  }
+  normalized = normalized.replace(/^-\s+\*\s+/, "- ");
+  return normalized.replace(/\s+/g, " ").trim();
+}
+
+function normalizeLooseCanvasLine(line: string): string {
+  return normalizeComparableCanvasLine(line).replace(/^[-*]\s+/, "");
+}
+
+function normalizeAddedCanvasLine(line: string): string {
+  const trimmed = stripNestedCanvasPrefixes(line);
+  if (!trimmed || trimmed === "<!-- end list -->") return "";
+  if (trimmed.startsWith("* ")) {
+    return `- ${trimmed.slice(2)}`;
+  }
+  return trimmed;
+}
+
+function sanitizeCanvasMarkdown(markdown: string): string {
+  const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+  const result: string[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index];
+    const trimmed = rawLine.trim();
+
+    if (!trimmed || trimmed === "<!-- end list -->") {
+      result.push(trimmed === "<!-- end list -->" ? "" : rawLine);
+      continue;
+    }
+
+    const inlineBulletMatch = trimmed.match(/^(.+?:\*\*|.+?:)\s+\+\s+\\?\*\s+(.+)$/);
+    if (inlineBulletMatch) {
+      result.push(inlineBulletMatch[1]);
+      result.push(`- ${inlineBulletMatch[2]}`);
+      continue;
+    }
+
+    if (/^\*\*[^*]+:\*\*$/.test(trimmed)) {
+      result.push(trimmed);
+      let lookahead = index + 1;
+      while (lookahead < lines.length) {
+        const candidate = lines[lookahead];
+        const candidateTrimmed = candidate.trim();
+        if (!candidateTrimmed) {
+          result.push("");
+          index = lookahead;
+          break;
+        }
+        if (
+          candidateTrimmed.startsWith("#") ||
+          candidateTrimmed.startsWith(">") ||
+          candidateTrimmed.startsWith("- ") ||
+          candidateTrimmed.startsWith("* ") ||
+          candidateTrimmed.startsWith("1. ")
+        ) {
+          break;
+        }
+        result.push(`- ${candidateTrimmed}`);
+        index = lookahead;
+        lookahead += 1;
+      }
+      continue;
+    }
+
+    result.push(trimmed);
+  }
+
+  return trimEmptyOuterMarkdownLines(result.join("\n"));
+}
+
+function findMatchingCanvasLine(
+  lines: string[],
+  startIndex: number,
+  target: string,
+) {
+  const comparableTarget = normalizeComparableCanvasLine(target);
+  const looseComparableTarget = normalizeLooseCanvasLine(target);
+  for (let index = startIndex; index < lines.length; index += 1) {
+    const comparableCurrent = normalizeComparableCanvasLine(lines[index]);
+    if (
+      comparableCurrent === comparableTarget ||
+      normalizeLooseCanvasLine(lines[index]) === looseComparableTarget
+    ) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+export function applyCanvasMarkdownDiff(
+  currentMarkdown: string,
+  diffText: string,
+): string {
+  const source = currentMarkdown.replace(/\r\n/g, "\n");
+  const currentLines = source.length > 0 ? source.split("\n") : [];
+  const diffLines = diffText.replace(/\r\n/g, "\n").split("\n");
+  const result: string[] = [];
+  let cursor = 0;
+
+  const flushUntil = (index: number) => {
+    while (cursor < index && cursor < currentLines.length) {
+      result.push(currentLines[cursor]);
+      cursor += 1;
+    }
+  };
+
+  for (const line of diffLines) {
+    const parsed = parseCanvasDiffLine(line);
+    if (parsed.type === "ignore") continue;
+
+    if (parsed.type === "add") {
+      result.push(normalizeAddedCanvasLine(parsed.content));
+      continue;
+    }
+
+    if (parsed.type === "remove") {
+      const matchIndex = findMatchingCanvasLine(currentLines, cursor, parsed.content);
+      if (matchIndex !== -1) {
+        flushUntil(matchIndex);
+        cursor = matchIndex + 1;
+      }
+      continue;
+    }
+
+    if (parsed.type === "context") {
+      const matchIndex = findMatchingCanvasLine(currentLines, cursor, parsed.content);
+      if (matchIndex !== -1) {
+        flushUntil(matchIndex);
+        result.push(currentLines[matchIndex]);
+        cursor = matchIndex + 1;
+      }
+      continue;
+    }
+  }
+
+  flushUntil(currentLines.length);
+  return sanitizeCanvasMarkdown(result.join("\n"));
+}
+
 function applyDiffToBlocks(
   currentBlocks: MarkdownBlock[],
   diffText: string,
@@ -285,6 +489,7 @@ export function resolveCanvasBlocks(
 ): {
   blocks: MarkdownBlock[];
   format: "json" | "markdown" | "diff";
+  hasRemovals?: boolean;
   error?: string;
 } {
   const trimmed = raw.trim();
@@ -358,15 +563,33 @@ export function resolveCanvasBlocks(
     })
     .join("\n");
 
-  const hasDiffMarkers = loosenedDiffText.split("\n").some((l) => {
-    const t = l.trim();
-    return t.startsWith("+") || t.startsWith("-");
+  const loosenedLines = loosenedDiffText.split("\n");
+  const hasAdditionMarkers = loosenedLines.some((line) => {
+    const trimmedLine = line.trim();
+    return (
+      trimmedLine === "+" ||
+      trimmedLine === "+ " ||
+      trimmedLine.startsWith("+ ")
+    );
   });
+  const hasContextMarkers = loosenedLines.some((line) => {
+    return line.startsWith(" ") && line.trim().length > 0;
+  });
+  const hasRemovalMarkers = loosenedLines.some((line) => {
+    const trimmedLine = line.trim();
+    return (
+      trimmedLine === "-" ||
+      trimmedLine === "- " ||
+      trimmedLine.startsWith("- ")
+    );
+  });
+  const hasDiffMarkers = hasAdditionMarkers || (hasRemovalMarkers && hasContextMarkers);
 
   if (hasDiffMarkers) {
     return {
       blocks: applyDiffToBlocks(currentBlocks, loosenedDiffText),
       format: "diff",
+      hasRemovals: hasRemovalMarkers,
     };
   }
 
@@ -584,23 +807,30 @@ export const ResponseParser = forwardRef<
       const thoughtContent = extractTagContentByAliases(raw, [
         "log",
         "thought_log",
+        "answer",
+        "final",
+        "reply",
       ]);
       const citationsContent = extractTagContentByAliases(raw, [
         "citations",
         "sources",
         "references",
+        "citation_list",
       ]);
       const canvasJsonContent = extractTagContentByAliases(raw, [
         "canvas_json",
         "canvas_update_json",
+        "artifact_json",
       ]);
       const canvasMarkdownContent = extractTagContentByAliases(raw, [
         "canvas_md",
         "canvas_update_md",
+        "artifact_md",
       ]);
       const canvasDefaultContent = extractTagContentByAliases(raw, [
         "canvas",
         "canvas_update",
+        "artifact",
       ]);
       const canvasContent =
         canvasJsonContent ?? canvasMarkdownContent ?? canvasDefaultContent;
@@ -612,6 +842,7 @@ export const ResponseParser = forwardRef<
         | {
             id: string;
             content_json: Json | null;
+            raw_markdown: string | null;
             updated_at: string | null;
           }
         | null
@@ -619,7 +850,7 @@ export const ResponseParser = forwardRef<
 
       if (!thoughtContent && !canvasContent) {
         throw new Error(
-          "Could not find log/canvas tags in the response. Use <log>...</log> and/or <canvas>...</canvas> (legacy <thought_log>/<canvas_update> also works). " +
+          "Could not find log/canvas tags in the response. Use <log>...</log> and/or <canvas>...</canvas> (aliases like <answer>, <final>, <reply>, or <artifact> also work). " +
             "Make sure the LLM response contains the expected XML structure.",
         );
       }
@@ -630,12 +861,6 @@ export const ResponseParser = forwardRef<
             thoughtContent,
             citationsContent ? normalizeOaiCitationsInMarkdown(citationsContent) : null,
           ),
-        );
-      }
-
-      if (canProcessLog && !thoughtContent) {
-        warnings.push(
-          "No <thought_log> found — expected for this interaction mode.",
         );
       }
 
@@ -650,7 +875,7 @@ export const ResponseParser = forwardRef<
           );
         const { data: fetchedCanvas, error: currentCanvasError } = await supabase
           .from("canvases")
-          .select("id, content_json, updated_at")
+          .select("id, content_json, raw_markdown, updated_at")
           .eq("stream_id", streamId)
           .maybeSingle();
         if (currentCanvasError) throw currentCanvasError;
@@ -660,6 +885,7 @@ export const ResponseParser = forwardRef<
         }
         const currentBlocks =
           (fetchedCanvas?.content_json as unknown as MarkdownBlock[]) || [];
+        const currentCanvasMarkdown = storedContentToMarkdown(fetchedCanvas ?? {});
 
         const result = (() => {
           if (canvasJsonContent) {
@@ -677,16 +903,37 @@ export const ResponseParser = forwardRef<
           nextCanvasParseError = result.error;
           warnings.push("Canvas update could not be parsed");
         } else {
-          resolvedBlocks = result.blocks;
-          nextIncomingBlocks = result.blocks;
           if (result.format === "diff") {
+            const patchedMarkdown = applyCanvasMarkdownDiff(
+              currentCanvasMarkdown,
+              normalizedCanvasContent,
+            );
+            const patchedBlocks = storedContentToBlocks({
+              raw_markdown: patchedMarkdown,
+            }) as MarkdownBlock[];
+            resolvedBlocks = patchedBlocks;
+            nextIncomingBlocks = patchedBlocks;
             nextCanvasApplyMode = "replace";
+          } else {
+            resolvedBlocks = result.blocks;
+            nextIncomingBlocks = result.blocks;
           }
           if (result.format === "markdown") {
             warnings.push("Canvas update parsed in compact markdown mode.");
           } else if (result.format === "diff") {
             warnings.push("Canvas update applied via git-diff mode.");
           }
+        }
+      }
+
+      if (canProcessLog && !nextThoughtLog) {
+        if (canvasContent) {
+          nextThoughtLog = "Updated the canvas for this turn.";
+          warnings.push("No <log> found — inserted a minimal delta note.");
+        } else {
+          warnings.push(
+            "No <thought_log> found — expected for this interaction mode.",
+          );
         }
       }
 
@@ -700,7 +947,7 @@ export const ResponseParser = forwardRef<
         if (currentCanvasRecord === undefined) {
           const { data: fetchedCanvas, error: currentCanvasError } = await supabase
             .from("canvases")
-            .select("id, content_json, updated_at")
+            .select("id, content_json, raw_markdown, updated_at")
             .eq("stream_id", streamId)
             .maybeSingle();
           if (currentCanvasError) throw currentCanvasError;
@@ -724,7 +971,7 @@ export const ResponseParser = forwardRef<
         if (currentCanvasRecord === undefined) {
           const { data: fetchedCanvas, error: currentCanvasError } = await supabase
             .from("canvases")
-            .select("id, content_json, updated_at")
+            .select("id, content_json, raw_markdown, updated_at")
             .eq("stream_id", streamId)
             .maybeSingle();
           if (currentCanvasError) throw currentCanvasError;
@@ -825,19 +1072,23 @@ export const ResponseParser = forwardRef<
       setIsApplying(true);
       try {
         let createdEntryId: string | null = null;
+        let appliedBranchHeadId: string | null = currentBranchHeadId;
 
         if (nextThoughtLog) {
           const blocks = toParagraphBlocks(nextThoughtLog);
 
           const { data: existingBranch, error: existingBranchError } = await supabase
             .from("branches")
-            .select("id")
+            .select("id, head_commit_id")
             .eq("stream_id", streamId)
             .eq("name", currentBranch)
             .maybeSingle();
           if (existingBranchError) throw existingBranchError;
 
           let branchId = existingBranch?.id ?? null;
+          let branchHeadId =
+            (existingBranch as { head_commit_id?: string | null } | null)?.head_commit_id ??
+            currentBranchHeadId;
           if (!branchId) {
             const { data: createdBranch, error: branchInsertError } = await supabase
               .from("branches")
@@ -845,11 +1096,14 @@ export const ResponseParser = forwardRef<
                 stream_id: streamId,
                 name: currentBranch,
               })
-              .select("id")
+              .select("id, head_commit_id")
               .single();
             if (branchInsertError || !createdBranch) throw branchInsertError;
             branchId = createdBranch.id;
+            branchHeadId =
+              (createdBranch as { head_commit_id?: string | null }).head_commit_id ?? branchHeadId;
           }
+          appliedBranchHeadId = branchHeadId ?? null;
 
           // Ensure we have a dedicated AI persona (system-level). Try to find
           // an existing system AI persona, otherwise create one.
@@ -895,7 +1149,7 @@ export const ResponseParser = forwardRef<
             .insert({
               stream_id: streamId,
               is_draft: false,
-              parent_commit_id: currentBranchHeadId,
+              parent_commit_id: branchHeadId ?? null,
             })
             .select("id")
             .single();
@@ -939,6 +1193,9 @@ export const ResponseParser = forwardRef<
           queryClient.invalidateQueries({
             queryKey: ["bridge-token-entries", streamId],
           });
+          queryClient.invalidateQueries({
+            queryKey: ["bridge-quick-entries", streamId],
+          });
           queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
           queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
           queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
@@ -959,79 +1216,93 @@ export const ResponseParser = forwardRef<
             .from("canvases")
             .select("id")
             .eq("stream_id", streamId)
-            .single();
+            .maybeSingle();
           if (error) throw error;
-          if (canvas?.id) {
-            const nextRawMarkdown = blocksToStoredMarkdown(
-              nextMergedBlocks as PartialBlock[],
-            );
-            const nextStoredPayload = buildStoredContentPayload(
-              nextMergedBlocks,
-              nextRawMarkdown,
-            );
+
+          const nextRawMarkdown = blocksToStoredMarkdown(
+            nextMergedBlocks as PartialBlock[],
+          );
+          const nextStoredPayload = buildStoredContentPayload(
+            nextMergedBlocks,
+            nextRawMarkdown,
+          );
+
+          let canvasId = canvas?.id ?? null;
+          if (canvasId) {
             const { error: updateError } = await supabase
               .from("canvases")
               .update(nextStoredPayload)
-              .eq("id", canvas.id);
+              .eq("id", canvasId);
             if (updateError) throw updateError;
-
-            queryClient.setQueryData(["canvas", streamId], (previous: Record<
-              string,
-              unknown
-            > | undefined) => ({
-              ...(previous ?? {}),
-              id: canvas.id,
-              stream_id: streamId,
-              ...nextStoredPayload,
-            }));
-            setLiveContent(streamId, nextMergedBlocks as unknown as PartialBlock[]);
-            setLiveMarkdown(streamId, nextRawMarkdown);
-            markClean(streamId);
-            setSyncStatus(streamId, "idle");
-            setLocalStatus(streamId, "saved");
-
-            const { data: bridgeUserData } = await supabase.auth.getUser();
-            await supabase.from("audit_logs").insert({
-              user_id: bridgeUserData.user?.id ?? null,
-              action: "bridge_canvas_merge",
-              target_table: "canvases",
-              target_id: canvas.id,
-              payload: {
-                changes: nextChanges.map((change: BlockChange) => ({
-                  id: change.id,
-                  type: change.type,
-                  decision: change.decision,
-                  originalId: change.originalId ?? null,
-                })),
-              } as unknown as Json,
-            });
-
-            // Auto-save a canvas snapshot so it appears in the timeline
-            const { data: userData } = await supabase.auth.getUser();
-            const summaryText = nextThoughtLog
-              ? nextThoughtLog.length > 200
-                ? nextThoughtLog.slice(0, 200) + "…"
-                : nextThoughtLog
-              : null;
-            await supabase.from("canvas_versions").insert({
-              canvas_id: canvas.id,
-              stream_id: streamId,
-              branch_name: currentBranch,
-              source_entry_id: createdEntryId ?? currentBranchHeadId,
-              ...nextStoredPayload,
-              name: "AI Bridge Update",
-              summary: summaryText,
-              created_by: userData.user?.id ?? null,
-            });
-
-            queryClient.invalidateQueries({ queryKey: ["canvas", streamId] });
-            queryClient.invalidateQueries({
-              queryKey: ["canvas-versions", streamId],
-            });
-            queryClient.invalidateQueries({
-              queryKey: ["canvas-latest-version", streamId],
-            });
+          } else {
+            const { data: createdCanvas, error: insertError } = await supabase
+              .from("canvases")
+              .insert({
+                stream_id: streamId,
+                ...nextStoredPayload,
+              })
+              .select("id")
+              .single();
+            if (insertError || !createdCanvas?.id) throw insertError;
+            canvasId = createdCanvas.id;
           }
+
+          queryClient.setQueryData(["canvas", streamId], (previous: Record<
+            string,
+            unknown
+          > | undefined) => ({
+            ...(previous ?? {}),
+            id: canvasId,
+            stream_id: streamId,
+            ...nextStoredPayload,
+          }));
+          setLiveContent(streamId, nextMergedBlocks as unknown as PartialBlock[]);
+          setLiveMarkdown(streamId, nextRawMarkdown);
+          markClean(streamId);
+          setSyncStatus(streamId, "idle");
+          setLocalStatus(streamId, "saved");
+
+          const { data: bridgeUserData } = await supabase.auth.getUser();
+          await supabase.from("audit_logs").insert({
+            user_id: bridgeUserData.user?.id ?? null,
+            action: "bridge_canvas_merge",
+            target_table: "canvases",
+            target_id: canvasId,
+            payload: {
+              changes: nextChanges.map((change: BlockChange) => ({
+                id: change.id,
+                type: change.type,
+                decision: change.decision,
+                originalId: change.originalId ?? null,
+              })),
+            } as unknown as Json,
+          });
+
+          // Auto-save a canvas snapshot so it appears in the timeline
+          const { data: userData } = await supabase.auth.getUser();
+          const summaryText = nextThoughtLog
+            ? nextThoughtLog.length > 200
+              ? nextThoughtLog.slice(0, 200) + "…"
+              : nextThoughtLog
+            : null;
+          await supabase.from("canvas_versions").insert({
+            canvas_id: canvasId,
+            stream_id: streamId,
+            branch_name: currentBranch,
+            source_entry_id: createdEntryId ?? appliedBranchHeadId,
+            ...nextStoredPayload,
+            name: "AI Bridge Update",
+            summary: summaryText,
+            created_by: userData.user?.id ?? null,
+          });
+
+          queryClient.invalidateQueries({ queryKey: ["canvas", streamId] });
+          queryClient.invalidateQueries({
+            queryKey: ["canvas-versions", streamId],
+          });
+          queryClient.invalidateQueries({
+            queryKey: ["canvas-latest-version", streamId],
+          });
         }
         onApplySuccess?.();
         return true;

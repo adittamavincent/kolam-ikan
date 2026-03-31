@@ -170,6 +170,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
     latestJob?.status === "succeeded" &&
     !!responseText &&
     latestJob?.id !== bridgeSession?.lastAppliedJobId;
+  const pendingResponseJobId = hasPendingResponse ? latestJob?.id ?? null : null;
   const responseToApply = hasPendingResponse ? responseText : "";
   const isContinuing =
     !!bridgeSession &&
@@ -195,8 +196,15 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   }, [responseToApply]);
 
   const applyQuickBridgeResponse = async () => {
-    if (!hasPendingResponse) return;
-    await parserRef.current?.quickApply();
+    if (!hasPendingResponse || !pendingResponseJobId) return;
+    const didApply = await parserRef.current?.quickApply();
+    if (!didApply) return;
+
+    setLaunchState("idle");
+    setIsQueueing(false);
+    upsertBridgeSession(streamId, {
+      lastAppliedJobId: pendingResponseJobId,
+    });
   };
 
   const queueQuickBridge = async () => {
@@ -344,6 +352,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
           onPayloadReadyChange={setPayloadReady}
         />
         <ResponseParser
+          key={pendingResponseJobId ?? "bridge-response-parser"}
           ref={parserRef}
           streamId={streamId}
           interactionMode={quickPreset.interactionMode}
@@ -351,14 +360,6 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
           pastedXML={responseToApply}
           onPastedXMLChange={() => undefined}
           onStatusChange={setParserStatus}
-          onApplySuccess={() => {
-            if (!latestJob?.id) return;
-            setLaunchState("idle");
-            setIsQueueing(false);
-            upsertBridgeSession(streamId, {
-              lastAppliedJobId: latestJob.id,
-            });
-          }}
         />
       </div>
 

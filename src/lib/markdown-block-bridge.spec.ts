@@ -96,6 +96,33 @@ describe("markdown block bridge", () => {
     expect(markdown).toBe("# misal\n## nya\nsatu");
   });
 
+  it("round-trips checklist items as task markdown", () => {
+    const markdown = blocksToBridgeMarkdown([
+      {
+        id: "task-1",
+        type: "checkListItem",
+        props: { checked: false },
+        content: [{ type: "text", text: "Gather additional context", styles: {} }],
+      },
+      {
+        id: "task-2",
+        type: "checkListItem",
+        props: { checked: true },
+        content: [{ type: "text", text: "Perform web search", styles: {} }],
+      },
+    ] as MarkdownBlock[]);
+
+    expect(markdown).toBe("- [ ] Gather additional context\n- [x] Perform web search");
+
+    const blocks = bridgeMarkdownToBlocks(markdown);
+    expect(blocks[0]?.type).toBe("checkListItem");
+    expect(blocks[0]?.props).toMatchObject({ checked: false });
+    expect(textOf(blocks[0])).toBe("Gather additional context");
+    expect(blocks[1]?.type).toBe("checkListItem");
+    expect(blocks[1]?.props).toMatchObject({ checked: true });
+    expect(textOf(blocks[1])).toBe("Perform web search");
+  });
+
   it("fails fast with a timeout instead of getting stuck in a long parse", () => {
     expect(() => bridgeMarkdownToBlocks("1. Item", { timeoutMs: 0 })).toThrow(
       MarkdownBridgeTimeoutError,

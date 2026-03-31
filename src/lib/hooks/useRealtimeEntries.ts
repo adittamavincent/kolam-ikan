@@ -34,6 +34,9 @@ export function useRealtimeEntries(streamId: string) {
           queryClient.invalidateQueries({
             queryKey: ["bridge-token-entries", streamId],
           });
+          queryClient.invalidateQueries({
+            queryKey: ["bridge-quick-entries", streamId],
+          });
           queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
         },
       )

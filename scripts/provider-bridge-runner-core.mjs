@@ -104,6 +104,79 @@ function responsesRoughlyMatch(candidate, expected) {
     expectedNormalized.includes(candidateNormalized);
 }
 
+function extractBridgeInteractionMode(payload) {
+  const match = String(payload || "").match(/Target:\s*(ASK|GO|BOTH)\b/i);
+  return match ? match[1].toUpperCase() : "ASK";
+}
+
+function hasXmlTagContent(text, tagName) {
+  const match = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i").exec(
+    String(text || ""),
+  );
+  return !!match && match[1].trim().length > 0;
+}
+
+function bridgeResponseNeedsRepair(payload, responseText) {
+  const mode = extractBridgeInteractionMode(payload);
+  const response = String(responseText || "");
+  const hasResponseWrapper =
+    /<response[\s>]/i.test(response) && /<\/response>/i.test(response);
+  const hasLog = ["log", "thought_log", "answer", "final", "reply"].some((tag) =>
+    hasXmlTagContent(response, tag),
+  );
+  const hasCanvas = [
+    "canvas",
+    "canvas_update",
+    "canvas_md",
+    "canvas_update_md",
+    "canvas_json",
+    "canvas_update_json",
+    "artifact",
+    "artifact_md",
+    "artifact_json",
+  ].some((tag) => hasXmlTagContent(response, tag));
+
+  const missingLog = (mode === "ASK" || mode === "BOTH") && !hasLog;
+  const missingCanvas = (mode === "GO" || mode === "BOTH") && !hasCanvas;
+
+  return {
+    mode,
+    missingLog,
+    missingCanvas,
+    needsRepair: !hasResponseWrapper || missingLog || missingCanvas,
+  };
+}
+
+function buildBridgeRepairPrompt(payload, responseText) {
+  const { mode, missingLog, missingCanvas } = bridgeResponseNeedsRepair(
+    payload,
+    responseText,
+  );
+  const requiredTags =
+    mode === "BOTH"
+      ? "both a non-empty <log> and a non-empty <canvas>"
+      : mode === "GO"
+        ? "a non-empty <canvas>"
+        : "a non-empty <log>";
+  const missingBits = [
+    !/<response[\s>]/i.test(String(responseText || "")) ||
+    !/<\/response>/i.test(String(responseText || ""))
+      ? "<response> wrapper"
+      : null,
+    missingLog ? "<log>" : null,
+    missingCanvas ? "<canvas>" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return `Rewrite your last answer only.
+Return XML only with exactly one <response>...</response> wrapper.
+The required output for this bridge turn is ${requiredTags}.
+Your previous answer was missing or invalid for: ${missingBits || "required XML structure"}.
+Do not omit required tags. Do not explain the mistake. Do not add commentary outside XML.
+Preserve the same meaning and same bridge intent, but fix the structure now.`;
+}
+
 function getProviderConfig(provider) {
   const config = PROVIDER_RUNNER_CONFIGS[provider];
   if (!config) {
@@ -146,17 +219,6 @@ export function sleep(ms) {
 async function findVisibleLocatorBySelectors(page, selectors) {
   for (const selector of selectors) {
     const locator = page.locator(selector).first();
-    if (await locator.isVisible().catch(() => false)) {
-      return locator;
-    }
-  }
-
-  return null;
-}
-
-async function findLatestVisibleLocatorBySelectors(page, selectors) {
-  for (const selector of selectors) {
-    const locator = page.locator(selector).last();
     if (await locator.isVisible().catch(() => false)) {
       return locator;
     }
@@ -642,6 +704,9 @@ export async function waitForProviderResponse(
   lastSeen = startState.baselineResponse.trim() || lastSeen;
   lastMeaningfulResponse = lastSeen;
   lastStableKey = buildResponseStabilityKey(lastSeen);
+  const baselineChanged =
+    !!startState.baselineResponse.trim() &&
+    startState.baselineResponse.trim() !== initialResponse.trim();
 
   while (Date.now() - started < 180_000) {
     if (await isProviderLoginRequired(page, provider)) {
@@ -674,7 +739,7 @@ export async function waitForProviderResponse(
       if (
         !stopButtonVisible &&
         hasCopyButton &&
-        (generatingSeen || response !== startState.baselineResponse.trim())
+        (generatingSeen || baselineChanged)
       ) {
         await sleep(200);
         const settledResponse = (
@@ -706,7 +771,7 @@ export async function waitForProviderResponse(
         responseStableKey &&
         responseStableKey === lastStableKey &&
         !stopButtonVisible &&
-        (generatingSeen || response !== startState.baselineResponse.trim())
+        (generatingSeen || baselineChanged)
       ) {
         stableCount += 1;
         if (stableCount >= 2) {
@@ -785,7 +850,26 @@ export async function runBridgeJob(page, job, sessionState) {
   const initialResponse = await extractLatestProviderResponse(page, provider);
   await submitProviderPrompt(page, provider, job.payload, requestedModel);
   const response = await waitForProviderResponse(page, provider, initialResponse);
-  const finalResponse = await getFinalProviderResponse(page, provider, response);
+  let finalResponse = await getFinalProviderResponse(page, provider, response);
+
+  for (let repairAttempt = 0; repairAttempt < 2; repairAttempt += 1) {
+    const repairState = bridgeResponseNeedsRepair(job.payload, finalResponse);
+    if (!repairState.needsRepair) break;
+
+    const repairPrompt = buildBridgeRepairPrompt(job.payload, finalResponse);
+    await submitProviderPrompt(page, provider, repairPrompt, requestedModel);
+    const repairedResponse = await waitForProviderResponse(
+      page,
+      provider,
+      finalResponse,
+    );
+    finalResponse = await getFinalProviderResponse(
+      page,
+      provider,
+      repairedResponse,
+    );
+  }
+
   sessionState.currentSessionKey = job.session_key;
   sessionState.currentModel = requestedModel || sessionState.currentModel || null;
 

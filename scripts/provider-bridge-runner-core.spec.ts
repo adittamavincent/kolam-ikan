@@ -15,6 +15,7 @@ function createFakePage(options: {
   hasComposer?: boolean;
   stopVisible?: boolean[];
   responses?: string[];
+  responseBatches?: string[][];
   copyVisible?: boolean;
   copyVisibleAfterHover?: boolean;
   copyVisibleAfterChecks?: number;
@@ -25,7 +26,10 @@ function createFakePage(options: {
   clipboardSettlesAfterReads?: number;
 }) {
   let responseIndex = 0;
+  let responseReadCount = 0;
   let insertedText = "";
+  const insertedTexts: string[] = [];
+  const batchResponseIndexes: number[] = [];
   let clipboardText =
     options.initialClipboardText ?? options.responses?.[0] ?? "";
   const copiedClipboardText =
@@ -36,6 +40,28 @@ function createFakePage(options: {
   let pendingClipboardReadsRemaining = 0;
   const stopSteps = options.stopVisible ?? [false];
   const responses = options.responses ?? [""];
+
+  const readResponse = () => {
+    responseReadCount += 1;
+
+    if (options.responseBatches?.length) {
+      const batchIndex = Math.min(
+        insertedTexts.length,
+        options.responseBatches.length - 1,
+      );
+      const batch = options.responseBatches[batchIndex] ?? [""];
+      const currentIndex = batchResponseIndexes[batchIndex] ?? 0;
+      const step = Math.min(currentIndex, batch.length - 1);
+      const value = batch[step];
+      batchResponseIndexes[batchIndex] = currentIndex + 1;
+      return value;
+    }
+
+    const step = Math.min(responseIndex, responses.length - 1);
+    const value = responses[step];
+    responseIndex += 1;
+    return value;
+  };
 
   const readClipboard = () => {
     if (pendingClipboardText !== null) {
@@ -182,6 +208,7 @@ function createFakePage(options: {
     keyboard: {
       insertText: async (value: string) => {
         insertedText = value;
+        insertedTexts.push(value);
       },
       press: async () => undefined,
     },
@@ -274,7 +301,7 @@ function createFakePage(options: {
         },
         isVisible: async () => {
           if (/stop/i.test(String(name))) {
-            const step = Math.min(responseIndex, stopSteps.length - 1);
+            const step = Math.min(responseReadCount, stopSteps.length - 1);
             return stopSteps[step];
           }
           if (/copy/i.test(String(name))) {
@@ -301,12 +328,10 @@ function createFakePage(options: {
         return readClipboard();
       }
 
-      const step = Math.min(responseIndex, responses.length - 1);
-      const value = responses[step];
-      responseIndex += 1;
-      return value;
+      return readResponse();
     },
     __getInsertedText: () => insertedText,
+    __getInsertedTexts: () => insertedTexts,
   };
 }
 
@@ -346,6 +371,18 @@ describe("provider bridge runner core", () => {
     });
 
     await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe("Draft");
+  });
+
+  it("accepts a stable response even when no generating state is observed", async () => {
+    const page = createFakePage({
+      responses: ["Immediate answer", "Immediate answer", "Immediate answer"],
+      stopVisible: [false, false, false, false],
+      copyVisible: false,
+    });
+
+    await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe(
+      "Immediate answer",
+    );
   });
 
   it("treats Claude toolbar text as non-meaningful when settling the response", async () => {
@@ -492,6 +529,45 @@ describe("provider bridge runner core", () => {
       ),
     ).rejects.toMatchObject({ code: SESSION_RESET_REQUIRED_CODE });
   });
+
+  it(
+    "asks the provider to repair BOTH responses when log or canvas is missing",
+    async () => {
+      const page = createFakePage({
+        responseBatches: [
+          [""],
+          [
+            "",
+            "<response><log>Only log</log></response>",
+            "<response><log>Only log</log></response>",
+          ],
+          [
+            "<response><log>Fixed log</log><canvas>+ Fixed canvas</canvas></response>",
+            "<response><log>Fixed log</log><canvas>+ Fixed canvas</canvas></response>",
+          ],
+        ],
+        stopVisible: [true, false, true, false, false, false],
+        copyVisible: false,
+      });
+
+      const result = await runBridgeJob(
+        page,
+        {
+          provider: "gemini",
+          payload_variant: "full",
+          session_key: "gemini:stream-1",
+          payload: "Target: BOTH\n<instruction>test</instruction>",
+        },
+        { currentSessionKey: null, currentModel: null },
+      );
+
+      expect(result).toContain("<log>Fixed log</log>");
+      expect(result).toContain("<canvas>+ Fixed canvas</canvas>");
+      expect(page.__getInsertedTexts()).toHaveLength(2);
+      expect(page.__getInsertedTexts()[1]).toContain("Rewrite your last answer only.");
+    },
+    10_000,
+  );
 
   it("surfaces login-required pages", async () => {
     const page = createFakePage({

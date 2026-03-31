@@ -119,9 +119,9 @@ export function useCreateBridgeJob(streamId: string) {
 
       return { job: payload.job, deduped: payload.deduped };
     },
-    onSuccess: ({ job }) => {
+    onSuccess: ({ job }, input) => {
       queryClient.setQueryData(
-        latestBridgeJobQueryKey(streamId, job.provider),
+        latestBridgeJobQueryKey(streamId, input.provider),
         job,
       );
       for (const provider of BRIDGE_JOB_PROVIDERS) {

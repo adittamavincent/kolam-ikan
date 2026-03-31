@@ -61,6 +61,16 @@ function fallbackMarkdownToBlocks(markdown: string): PartialBlock[] {
     }
 
     const bulletMatch = line.match(/^[-*]\s+(.*)$/);
+    const taskMatch = line.match(/^[-*]\s+\[([ xX])\]\s*(.*)$/);
+    if (taskMatch) {
+      blocks.push({
+        type: "checkListItem",
+        props: { checked: taskMatch[1].toLowerCase() === "x" },
+        content: toTextContent(taskMatch[2]),
+      });
+      continue;
+    }
+
     if (bulletMatch) {
       blocks.push({
         type: "bulletListItem",

@@ -8,6 +8,7 @@ import {
   EntryWithSections,
   STREAM_KIND,
 } from "@/lib/types";
+import { blocksToStoredMarkdown } from "@/lib/content-protocol";
 import type { BridgePayloadVariant } from "./bridge-config";
 
 interface UseBridgePayloadOptions {
@@ -352,7 +353,15 @@ export function buildBridgePayload({
           .join("\n\n")}\n</attached_files>\n\n`
       : "";
 
-  return `<system_directive>
+  return `<session_boot phase="cold_boot">
+This is the cold-boot prompt for a fresh Kolam Ikan bridge session.
+Treat this first user message as the full session introduction, source-of-truth context, and response contract for the rest of this provider conversation.
+Your structured XML is only an output transport layer. Keep using your normal assistant behavior, your provider/company system prompt style, and your best response quality inside the tags you return.
+Do not let the XML wrapper make the answer stiff, robotic, or less helpful.
+Later continuation prompts in this same conversation may send only changed context and a diff-style instruction instead of repeating everything.
+</session_boot>
+
+<system_directive>
 Target: ${interactionMode}
 Stream: ${(stream?.name as string | undefined) || ""} ${isGlobal ? "(Global)" : ""}
 Domain: ${domainName}
@@ -444,6 +453,7 @@ function buildBridgeFollowupPayload({
   const hasGlobalChanges =
     includeGlobalStream &&
     ((globalEntries?.length ?? 0) > 0 || (globalCanvases?.length ?? 0) > 0);
+  const trimmedInstruction = userInput.trim();
 
   const incrementalSections = [
     hasCanvasChanges
@@ -480,10 +490,22 @@ ${globalEntries?.map((entry) => entryToMarkdown(entry)).join("\n\n") || ""}
     .filter(Boolean)
     .join("\n\n");
 
-  return `<session_followup>
+  const incrementalInstructionSection = trimmedInstruction
+    ? `<incremental_instruction state="provided">
+${trimmedInstruction}
+</incremental_instruction>`
+    : `<incremental_instruction state="empty">
+No new user instruction was provided for this continue turn.
+Do not invent new recommendations, extra analysis, or adjacent ideas.
+Only reflect the delta contained in <incremental_context>.
+</incremental_instruction>`;
+
+  return `<session_followup phase="continue">
 Continue the active Kolam Ikan bridge session that is already loaded in this provider conversation.
-Reuse the original bridge rules, response XML format, and parsing contract from the earlier full payload.
-Only respond to this incremental follow-up and only use the changed context below.
+The earlier cold-boot prompt already established the full session context, response XML contract, and baseline rules.
+This continuation message is only a diff/update packet, not a brand-new session introduction.
+Keep using your normal assistant behavior and provider/company system prompt style inside the structured XML you return.
+Use the prior session context together with the changed context below, and focus only on what has changed or what this new instruction asks.
 
 Target: ${interactionMode}
 Stream: ${(stream?.name as string | undefined) || ""} ${isGlobal ? "(Global)" : ""}
@@ -491,28 +513,39 @@ Domain: ${domainName}
 Session window start: ${sessionWindow}
 </session_followup>
 
+<continue_response_rules>
+Use the same XML wrapper and parser contract from the cold-boot turn.
+For <log>: always return a concise append-ready log entry for this turn. Do not rewrite or summarize prior log entries, and do not add generic greetings, confirmations, or filler. Keep it to the new delta only.
+For <canvas>: return only a unified git-style diff patch against the already-loaded canvas in this provider conversation. Never restate the full canvas. Remove old lines with \`- \`, add new lines with \`+ \`, and include unchanged context lines with a single leading space only when needed for orientation.
+Treat <changed_canvas> as a reference snapshot of the new desired state, not as an output template. Use it to compute the diff against the previously loaded canvas, then output only the patch lines.
+Treat <incremental_context> as delta-only context. It may overlap with earlier session memory, so do not echo it back wholesale.
+If <incremental_instruction> is empty, do not invent recommendations or tangential additions. Mirror only the supplied delta.
+
+Example continue response:
+<response>
+<log>
+Updated the track identification and canvas notes for this turn.
+</log>
+<canvas>
+- # Track Profile: "San Juan"
++ # Track Profile: "En Casita"
+  ## Context & Significance
+- **Themes:** Nostalgia, appreciation for Puerto Rico, and the feeling of home.
++ **Themes:** Home, longing, and the simple beauty of Puerto Rico.
+</canvas>
+<base>${(canvas?.updated_at as string | undefined) || "BASE_TIMESTAMP_FROM_COLD_BOOT"}</base>
+</response>
+</continue_response_rules>
+
 <incremental_context>
 ${incrementalSections || "No new stream, canvas, or global-context changes were detected since the active session started."}
 </incremental_context>
 
-<incremental_instruction>
-${userInput}
-</incremental_instruction>`;
+${incrementalInstructionSection}`;
 }
 
 export function canvasToMarkdown(blocks: MarkdownBlock[]): string {
-  return blocks.map(blockToMarkdown).join("\n\n");
-}
-
-function blockToMarkdown(block: MarkdownBlock): string {
-  if (block.type === "heading") {
-    const level = (block.props?.level as number) || 1;
-    return `${"#".repeat(level)} ${extractText(block)}`;
-  }
-  if (block.type === "paragraph") {
-    return extractText(block);
-  }
-  return extractText(block);
+  return blocksToStoredMarkdown(blocks);
 }
 
 function extractText(block: MarkdownBlock): string {
@@ -533,6 +566,9 @@ export function entryToMarkdown(entry: EntryWithSections): string {
     let content = canvasToMarkdown(
       (section.content_json as unknown as MarkdownBlock[] | undefined) || [],
     );
+    if (!content.trim() && typeof section.raw_markdown === "string") {
+      content = section.raw_markdown;
+    }
 
     if (section.section_attachments && section.section_attachments.length > 0) {
       const links = section.section_attachments
@@ -584,6 +620,10 @@ ${canvasRules}
 
 ${canvasUpdatedAt ? `Also echo <base>${canvasUpdatedAt}</base> exactly.` : ""}
 
+Canvas is a whiteboard/artifact surface, not the conversation surface.
+Only put durable working content in <canvas>: plans, outlines, checklists, notes, drafts, specifications, or other reference material the user would want to revisit visually.
+Do NOT use <canvas> for session acknowledgements, boot/init messages, meta-instructions, status banners, "ready" messages, summaries of the protocol, or placeholder text like "awaiting further instructions".
+If the user has not asked for any actual whiteboard/artifact content yet, omit <canvas> entirely and respond only with <log> when the mode allows it.
 Do not write raw markdown lines outside the diff prefixes.`;
 
   const askDirective = `<response_format_ask>
@@ -628,6 +668,12 @@ ${askCore}
 
 ${goCore}
 
+BOTH mode is strict:
+- <log> is required
+- <canvas> is required
+- Before sending, self-check that both tags are present and non-empty inside one <response> wrapper
+- If either tag is missing, rewrite your answer before sending it
+
 Example response:
 <response>
 <log>
@@ -657,6 +703,8 @@ ${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
 Return XML only. No code fences. No text outside <response>.
 Preferred tags: <log>, <canvas>, <citations>, <base>.
 Legacy tags still work, but prefer the short tags to save tokens.
+This structure is for machine parsing only. Inside those tags, write with your normal high-quality assistant voice and reasoning style.
+Follow the provider's existing system prompt quality bar; the XML wrapper does not replace it.
 
 The user's interaction mode is: ${mode}
 ${mode === "ASK" ? "- ASK mode: Generate a thought log entry only (left pillar / log)." : ""}${mode === "GO" ? "- GO mode: Generate a canvas update only (right pillar / canvas)." : ""}${mode === "BOTH" ? "- BOTH mode: Generate both a thought log entry AND a canvas update." : ""}

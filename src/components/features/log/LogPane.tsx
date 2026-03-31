@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
+import { dispatchKolamLogState } from "@/lib/hooks/useLogBranchContext";
 import {
   CanvasVersion,
   EntryWithSections,
@@ -875,6 +876,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     () => new Set(collapsedEntryIdList),
     [collapsedEntryIdList],
   );
+  const seenSnapshotCollapseKeysRef = useRef<Set<string>>(new Set());
+  const hasInitializedSnapshotCollapseRef = useRef(false);
   const setCollapsedLogItemsForStream = useUiPreferencesStore(
     (state) => state.setCollapsedLogItemsForStream,
   );
@@ -2400,6 +2403,40 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   ]);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+    if (isEntriesLoading || isEntriesFetching) return;
+
+    const snapshotKeys = branchTimelineItems
+      .filter((item) => item.type === "canvas_snapshot")
+      .map(getTimelineItemCollapseKey);
+
+    if (!hasInitializedSnapshotCollapseRef.current) {
+      seenSnapshotCollapseKeysRef.current = new Set(snapshotKeys);
+      hasInitializedSnapshotCollapseRef.current = true;
+      return;
+    }
+
+    const newSnapshotKeys = snapshotKeys.filter(
+      (key) => !seenSnapshotCollapseKeysRef.current.has(key),
+    );
+    if (!newSnapshotKeys.length) return;
+
+    newSnapshotKeys.forEach((key) => seenSnapshotCollapseKeysRef.current.add(key));
+    setCollapsedLogItemsForStream(streamId, [
+      ...collapsedEntryIdList,
+      ...newSnapshotKeys,
+    ]);
+  }, [
+    branchTimelineItems,
+    collapsedEntryIdList,
+    hasHydrated,
+    isEntriesFetching,
+    isEntriesLoading,
+    setCollapsedLogItemsForStream,
+    streamId,
+  ]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const onExport = () => {
@@ -2544,28 +2581,24 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    window.dispatchEvent(
-      new CustomEvent("kolam_log_state", {
-        detail: {
-          streamId,
-          currentBranch,
-          commitCount: visibleEntries.length,
-          canvasCommitCount: branchCanvasCommitCount,
-          collapsedEntryCount: collapsedVisibleCount,
-          allEntriesCollapsed: allVisibleCollapsed,
-          showStash: isStashDialogOpen,
-          stashCount,
-          graphView,
-          sortOrder,
-          searchTerm,
-          occurrenceCount: occurrenceTargets.length,
-          activeOccurrenceIndex:
-            activeOccurrenceIndex !== null ? activeOccurrenceIndex + 1 : 0,
-          branchNames,
-          currentBranchHeadId,
-        },
-      }),
-    );
+    dispatchKolamLogState({
+      streamId,
+      currentBranch,
+      commitCount: visibleEntries.length,
+      canvasCommitCount: branchCanvasCommitCount,
+      collapsedEntryCount: collapsedVisibleCount,
+      allEntriesCollapsed: allVisibleCollapsed,
+      showStash: isStashDialogOpen,
+      stashCount,
+      graphView,
+      sortOrder,
+      searchTerm,
+      occurrenceCount: occurrenceTargets.length,
+      activeOccurrenceIndex:
+        activeOccurrenceIndex !== null ? activeOccurrenceIndex + 1 : 0,
+      branchNames,
+      currentBranchHeadId,
+    });
   }, [
     streamId,
     currentBranch,

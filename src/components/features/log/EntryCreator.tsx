@@ -12,6 +12,7 @@ import React, {
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { dispatchKolamLogState } from "@/lib/hooks/useLogBranchContext";
 import {
   MarkdownEditor,
   type MarkdownEditorHandle,
@@ -988,17 +989,13 @@ export function EntryCreator({
     setActiveInstances(ids);
     const syncStatus = status === "error" ? "error" : headerCloudStatus;
     
-    window.dispatchEvent(
-      new CustomEvent("kolam_log_state", {
-        detail: {
-          streamId,
-          status,
-          localStatus,
-          syncStatus,
-          isDirty: headerDirty,
-        },
-      }),
-    );
+    dispatchKolamLogState({
+      streamId,
+      status,
+      localStatus,
+      syncStatus,
+      isDirty: headerDirty,
+    });
   }, [
     sections,
     setActiveInstances,
@@ -1478,6 +1475,20 @@ export function EntryCreator({
       await refetchBranches();
       queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
       queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["latest-entry-id", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
+      queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-quick-entries", streamId],
+      });
+      queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-domains"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
 
       // Reset to empty state (no auto-default persona)
       resetComposerState();

@@ -21,6 +21,22 @@ import {
 } from "@/lib/types";
 import { cloneStoredContentFields } from "@/lib/content-protocol";
 
+function deepCloneDraftValue<T>(value: T): T {
+  try {
+    if (typeof structuredClone === "function") {
+      return structuredClone(value);
+    }
+  } catch {
+    // Fall through to JSON clone below.
+  }
+
+  try {
+    return JSON.parse(JSON.stringify(value)) as T;
+  } catch {
+    return value;
+  }
+}
+
 function isMissingDuplicateDomainRpcError(error: unknown) {
   const rpcError = error as Partial<PostgrestError> | null;
   const message = (rpcError?.message ?? "").toLowerCase();
@@ -78,16 +94,20 @@ export function useDomains(userId: string) {
 
       for (const [oldStreamId, newStreamId] of streamMap.entries()) {
         if (oldStreamId in nextLive) {
-          nextLive[newStreamId] = nextLive[oldStreamId];
+          nextLive[newStreamId] = deepCloneDraftValue(nextLive[oldStreamId]);
         }
         if (oldStreamId in nextMarkdown) {
           nextMarkdown[newStreamId] = nextMarkdown[oldStreamId];
         }
         if (oldStreamId in nextDbSync) {
-          nextDbSync[newStreamId] = nextDbSync[oldStreamId];
+          nextDbSync[newStreamId] = deepCloneDraftValue(
+            nextDbSync[oldStreamId],
+          );
         }
         if (oldStreamId in nextLocalSave) {
-          nextLocalSave[newStreamId] = nextLocalSave[oldStreamId];
+          nextLocalSave[newStreamId] = deepCloneDraftValue(
+            nextLocalSave[oldStreamId],
+          );
         }
         if (dirtySet.has(oldStreamId)) {
           dirtySet.add(newStreamId);

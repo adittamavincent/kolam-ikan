@@ -249,12 +249,10 @@ export function DomainSwitcher({
                 )}
               </>
             )}
-            {/* Active Indicator */}
-            {activeDomainId === domain.id && (
+            {/* Active / Pending Indicator */}
+            {(activeDomainId === domain.id ||
+              (pendingDomainId === domain.id && isNavigating)) && (
               <div className="absolute -left-2 h-5 w-1 bg-action-primary-bg" />
-            )}
-            {pendingDomainId === domain.id && isNavigating && (
-              <span className="absolute -bottom-1 -right-1 h-2 w-2 bg-action-primary-bg shadow-[0_0_0_2px_var(--bg-surface-default)]" />
             )}
           </button>
         ))}

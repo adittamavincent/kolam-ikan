@@ -211,8 +211,10 @@ describe("buildBridgePayload followup", () => {
     expect(payload).toContain("provider/company system prompt style");
     expect(payload).toContain("Later continuation prompts");
     expect(payload).toContain("<system_directive>");
-    expect(payload).toContain("Always include <assistant_identity>");
+    expect(payload).toContain("Include <assistant_identity> when the assistant/product/provider/model can be stated confidently.");
     expect(payload).toContain("model: <exact model if known, otherwise unknown>");
+    expect(payload).toContain("assistant: Example Assistant");
+    expect(payload).not.toContain("assistant: ChatGPT");
   });
 
   it("derives a cold-boot instruction from log context when the input is empty", () => {
@@ -261,8 +263,9 @@ describe("buildBridgePayload followup", () => {
 
     expect(payload).toContain('<instruction state="derived_from_log_context">');
     expect(payload).toContain("No explicit instruction was provided for this cold-boot turn.");
-    expect(payload).toContain("Infer the user's request from the most recent relevant content");
+    expect(payload).toContain("Infer the user's request from the latest user-facing question and the immediately adjacent content");
     expect(payload).toContain("Do not mention unrelated prior chats");
+    expect(payload).toContain("Latest relevant excerpt:");
     expect(payload).toContain("What song is this?");
   });
 
@@ -322,5 +325,31 @@ describe("buildBridgePayload followup", () => {
       "create a minimal durable note that captures the answer in revisit-friendly form",
     );
     expect(payload).toContain('placeholder text like "awaiting further instructions"');
+  });
+
+  it("omits empty canvas and global context blocks in full payloads", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Current Stream",
+        stream_kind: "REGULAR",
+        domain: { name: "Demo Domain" },
+      },
+      interactionMode: "ASK",
+      includeCanvas: true,
+      canvas: null,
+      entries: [],
+      includeGlobalStream: true,
+      additionalGlobalStreamIds: ["global-1"],
+      globalStreamsMeta: [{ id: "global-1", name: "Global User Entry" }],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: "Global User Entry",
+      userInput: "Identify the song.",
+      payloadVariant: "full",
+      sessionLoadedAt: null,
+    });
+
+    expect(payload).not.toContain("<canvas_state>");
+    expect(payload).not.toContain("<global_context>");
   });
 });

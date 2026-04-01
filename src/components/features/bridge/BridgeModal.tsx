@@ -32,6 +32,7 @@ import {
   BRIDGE_PROVIDER_PRESETS,
   getBridgeSessionLaunchUrl,
   getBridgeProviderPreset,
+  getQuickPayloadVariant,
 } from "./bridge-config";
 import {
   buildBridgeSessionKey,
@@ -255,6 +256,7 @@ export function BridgeModal({
   const automatedResponse = latestBridgeJob.data?.raw_response?.trim() ?? "";
   const effectivePastedXML = pastedXML.trim() ? pastedXML : automatedResponse;
   const responsePreviewText = effectivePastedXML;
+  const payloadVariant = getQuickPayloadVariant(bridgeSession);
   const effectiveInteractionMode =
     !pastedXML.trim() && automatedResponse
       ? (bridgeSession?.lastMode ?? interactionMode)
@@ -317,7 +319,7 @@ export function BridgeModal({
     const result = await createBridgeJob.mutateAsync({
       provider: providerId,
       payload: generatedXML,
-      payloadVariant: bridgeSession?.isExternalSessionActive ? "followup" : "full",
+      payloadVariant,
       sessionKey: currentSessionKey,
       runnerDetails: {
         source: "detailed-bridge",
@@ -731,6 +733,7 @@ export function BridgeModal({
                       globalStreamName={globalStreamName}
                       userInput={userInput}
                       streamId={streamId}
+                      payloadVariant={payloadVariant}
                       sessionLoadedAt={bridgeSession?.externalSessionLoadedAt}
                       onXMLGenerated={setGeneratedXML}
                       onPayloadReadyChange={setPayloadReady}

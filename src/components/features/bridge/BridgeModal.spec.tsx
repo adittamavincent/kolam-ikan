@@ -11,6 +11,7 @@ const {
   mockLatestBridgeJobData,
   mockRunnerStatus,
   mockContextBagProps,
+  mockXMLGeneratorProps,
 } = vi.hoisted(() => ({
   mockUseQuery: vi.fn(),
   mockLatestBridgeJobData: { current: null as null | Record<string, unknown> },
@@ -26,6 +27,9 @@ const {
     mode: "online",
   },
   mockContextBagProps: {
+    current: null as null | Record<string, unknown>,
+  },
+  mockXMLGeneratorProps: {
     current: null as null | Record<string, unknown>,
   },
 }));
@@ -73,7 +77,10 @@ vi.mock("./ContextBag", () => ({
 }));
 
 vi.mock("./XMLGenerator", () => ({
-  XMLGenerator: () => null,
+  XMLGenerator: (props: Record<string, unknown>) => {
+    mockXMLGeneratorProps.current = props;
+    return null;
+  },
 }));
 
 vi.mock("./BridgeResponsePreviewModal", () => ({
@@ -156,6 +163,7 @@ vi.mock("./ResponseParser", () => ({
 describe("BridgeModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockXMLGeneratorProps.current = null;
     mockLatestBridgeJobData.current = {
       id: "job-1",
       status: "succeeded",
@@ -250,6 +258,23 @@ describe("BridgeModal", () => {
 
     render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
 
-    expect(screen.getByRole("button", { name: "Paste Response" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Paste" })).toBeInTheDocument();
+  });
+
+  it("passes followup payload settings to XMLGenerator for active external sessions", async () => {
+    useUiPreferencesStore.getState().upsertBridgeSession("stream-1", {
+      isExternalSessionActive: true,
+      externalSessionLoadedAt: "2026-04-01T15:51:23.274Z",
+    });
+    mockLatestBridgeJobData.current = null;
+
+    render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
+
+    await waitFor(() => {
+      expect(mockXMLGeneratorProps.current).toMatchObject({
+        payloadVariant: "followup",
+        sessionLoadedAt: "2026-04-01T15:51:23.274Z",
+      });
+    });
   });
 });

@@ -247,24 +247,31 @@ ${trimmed}
     }),
   );
 
-  const latestSectionText = latestEntry?.sections
+  const latestSections = latestEntry?.sections ?? [];
+  const latestSectionText = latestSections
     .map((section) => {
-      const raw = typeof section.raw_markdown === "string" ? section.raw_markdown.trim() : "";
+      const raw =
+        typeof section.raw_markdown === "string" ? section.raw_markdown.trim() : "";
       const content = canvasToMarkdown(
         (section.content_json as unknown as MarkdownBlock[] | undefined) || [],
       ).trim();
       return raw || content;
     })
     .filter(Boolean)
+    .slice(-2)
     .join("\n\n")
     .trim();
+  const latestExcerpt =
+    latestSectionText.length > 700
+      ? `${latestSectionText.slice(0, 697).trimEnd()}...`
+      : latestSectionText;
 
   return `<instruction state="derived_from_log_context">
 No explicit instruction was provided for this cold-boot turn.
-Infer the user's request from the most recent relevant content in <log_context>.
+Infer the user's request from the latest user-facing question and the immediately adjacent content in <log_context>.
 Respond only to the request supported by the supplied stream/global context.
 Do not mention unrelated prior chats, saved memory, project names, or preferences unless they appear in this payload.
-${latestSectionText ? `Latest relevant content:\n${latestSectionText}` : ""}
+${latestExcerpt ? `Latest relevant excerpt:\n${latestExcerpt}` : ""}
 </instruction>`;
 }
 
@@ -357,6 +364,16 @@ export function buildBridgePayload({
   const canvasContent = (canvas?.content_json as MarkdownBlock[] | undefined) || [];
   const canvasIsEmpty =
     canvasContent.length === 0 || canvasContent.every((block) => !extractText(block).trim());
+  const hasCanvasState = includeCanvas && !canvasIsEmpty;
+  const nonEmptyGlobalCanvases = (globalCanvases ?? []).filter((canvasItem) =>
+    ((canvasItem.content_json as MarkdownBlock[] | undefined) || []).some((block) =>
+      extractText(block).trim(),
+    ),
+  );
+  const hasGlobalContext =
+    includeGlobalStream &&
+    additionalGlobalStreamIds.length > 0 &&
+    ((globalEntries?.length ?? 0) > 0 || nonEmptyGlobalCanvases.length > 0);
 
   const responseFormatDirective = buildResponseDirective(
     interactionMode,
@@ -413,7 +430,7 @@ ${responseFormatDirective}
 </system_directive>
 
 ${filesStr}${
-    includeCanvas
+    hasCanvasState
       ? `<canvas_state>
 ${canvasToMarkdown(canvasContent)}
 </canvas_state>`
@@ -425,12 +442,12 @@ ${entries?.map((entry) => entryToMarkdown(entry)).join("\n\n") || ""}
 </log_context>
 
 ${
-  includeGlobalStream && additionalGlobalStreamIds.length > 0
+  hasGlobalContext
     ? `<global_context>
 ${globalStreamName || "Domain Global Streams"}
 
 <global_canvases>
-${(globalCanvases ?? [])
+${nonEmptyGlobalCanvases
   .map((canvasItem) => {
     const streamId = canvasItem.stream_id as string;
     const streamName = streamNameById.get(streamId) || streamId;
@@ -640,7 +657,7 @@ export function buildResponseDirective(
 Write natural prose with blank lines between paragraphs.
 Return only the final answer text inside <log>.
 
-If you cite web sources, use parser-friendly citations:
+Only include <citations> when you actually relied on external sources. If you cite web sources, use parser-friendly citations:
 - Inline references inside <log> or <canvas>: use markdown links like \`[1](#citation-1)\`, \`[2](#citation-2)\`
 - Put the source list in an optional <citations>...</citations> block
 - Inside <citations>, use a numbered markdown list, one source per line, for example:
@@ -683,9 +700,9 @@ Do NOT include any canvas-related tags.
 Example response:
 <response>
 <assistant_identity>
-assistant: ChatGPT
-provider: OpenAI
-model: GPT-4.1
+assistant: Example Assistant
+provider: Example Provider
+model: unknown
 </assistant_identity>
 <log>
 Your analysis paragraph one goes here [1](#citation-1).
@@ -706,9 +723,9 @@ Do NOT include any log tags in GO mode.
 Example response:
 <response>
 <assistant_identity>
-assistant: ChatGPT
-provider: OpenAI
-model: GPT-4.1
+assistant: Example Assistant
+provider: Example Provider
+model: unknown
 </assistant_identity>
 <canvas>
 + # Example Title
@@ -736,9 +753,9 @@ BOTH mode is strict:
 Example response:
 <response>
 <assistant_identity>
-assistant: ChatGPT
-provider: OpenAI
-model: GPT-4.1
+assistant: Example Assistant
+provider: Example Provider
+model: unknown
 </assistant_identity>
 <log>
 Your reasoning goes here [1](#citation-1).
@@ -766,19 +783,19 @@ ${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
   return `<response_instructions>
 Return XML only. No code fences. No text outside <response>.
 Preferred tags: <assistant_identity>, <log>, <canvas>, <citations>, <base>.
-Always include <assistant_identity> inside <response> before the other content.
+Include <assistant_identity> when the assistant/product/provider/model can be stated confidently.
 Inside <assistant_identity>, identify the assistant/product/provider/model currently answering.
 Use this compact text format:
 assistant: <product or assistant name>
 provider: <company or platform>
 model: <exact model if known, otherwise unknown>
 If you do not know the exact model, say \`unknown\` instead of guessing.
-Legacy tags still work, but prefer the short tags to save tokens.
+If identity is unavailable or uncertain, omit <assistant_identity> instead of guessing.
 This structure is for machine parsing only. Inside those tags, write with your normal high-quality assistant voice and reasoning style.
-Follow the provider's existing system prompt quality bar; the XML wrapper does not replace it.
+The XML wrapper does not replace the provider's normal assistant behavior.
 
 The user's interaction mode is: ${mode}
-${mode === "ASK" ? "- ASK mode: Generate a thought log entry only (left pillar / log)." : ""}${mode === "GO" ? "- GO mode: Generate a canvas update only (right pillar / canvas)." : ""}${mode === "BOTH" ? "- BOTH mode: Generate both a thought log entry AND a canvas update." : ""}
+${mode === "ASK" ? "- ASK mode: Generate a log entry only." : ""}${mode === "GO" ? "- GO mode: Generate a canvas update only." : ""}${mode === "BOTH" ? "- BOTH mode: Generate both a log entry and a canvas update." : ""}
 
 ${modeDirectives[mode] || modeDirectives.ASK}
 </response_instructions>`;

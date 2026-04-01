@@ -10,6 +10,7 @@ import {
 } from "@/components/shared/ModalShell";
 import {
   ClipboardPaste,
+  Copy,
   Globe,
   Layers3,
   Loader2,
@@ -69,7 +70,7 @@ export function BridgeModal({
   const [interactionMode, setInteractionMode] = useState<"ASK" | "GO" | "BOTH">(
     bridgeSession?.lastMode ?? "ASK",
   );
-  const [selectedEntries, setSelectedEntries] = useState<string[]>([]);
+  const [selectedEntries, setSelectedEntries] = useState<string[] | null>(null);
   const [includeCanvas, setIncludeCanvas] = useState(true);
   const [userGlobalStreamChoice, setUserGlobalStreamChoice] =
     useState<boolean>(true);
@@ -136,6 +137,28 @@ export function BridgeModal({
       enabled: !!streamMeta?.domain_id,
     });
 
+  const { data: bridgeEntryIds = [] } = useQuery({
+    queryKey: ["bridge-entry-defaults", streamId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("entries")
+        .select("id")
+        .eq("stream_id", streamId)
+        .eq("is_draft", false)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? [])
+        .map((entry) =>
+          typeof (entry as { id?: unknown }).id === "string"
+            ? (entry as { id: string }).id
+            : null,
+        )
+        .filter((id): id is string => !!id);
+    },
+    enabled: isOpen && !!streamId,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const isGlobal = (s: { stream_kind: string }) =>
     s.stream_kind === STREAM_KIND.GLOBAL;
 
@@ -151,6 +174,17 @@ export function BridgeModal({
       : domainGlobalStreams.length > 1
         ? `${domainGlobalStreams.length} global streams`
         : null;
+
+  const effectiveSelectedEntries = selectedEntries ?? bridgeEntryIds;
+
+  const handleSelectionChange = (entries: string[]) => {
+    setSelectedEntries(entries);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedEntries(null);
+    onClose();
+  };
 
   const handleCopyXML = async () => {
     if (!generatedXML) return;
@@ -179,7 +213,7 @@ export function BridgeModal({
 
   const resetLocalState = () => {
     setInteractionMode("ASK");
-    setSelectedEntries([]);
+    setSelectedEntries(null);
     setIncludeCanvas(true);
     setUserGlobalStreamChoice(true);
     setUserInput("");
@@ -209,7 +243,7 @@ export function BridgeModal({
       lastMode: interactionMode,
       lastInstruction: userInput,
       lastContextRecipe: {
-        entrySelection: "last-5",
+        entrySelection: "all",
         includeCanvas,
         includeGlobalStream,
       },
@@ -261,13 +295,13 @@ export function BridgeModal({
       lastMode: interactionMode,
       lastInstruction: userInput,
       lastContextRecipe: {
-        entrySelection: "last-5",
+        entrySelection: "all",
         includeCanvas,
         includeGlobalStream,
       },
       lastUsedAt: new Date().toISOString(),
     });
-    onClose();
+    handleCloseModal();
   };
 
   const handleQueueDetailed = async () => {
@@ -299,7 +333,7 @@ export function BridgeModal({
       lastMode: interactionMode,
       lastInstruction: userInput,
       lastContextRecipe: {
-        entrySelection: "last-5",
+        entrySelection: "all",
         includeCanvas,
         includeGlobalStream,
       },
@@ -309,7 +343,7 @@ export function BridgeModal({
       lastJobId: result.job.id,
       lastJobStatus: result.job.status as BridgeJobStatus,
       lastJobError: "",
-      sentEntryIds: selectedEntries,
+      sentEntryIds: effectiveSelectedEntries,
     });
   };
   const responseText = latestBridgeJob.data?.raw_response?.trim() ?? "";
@@ -460,7 +494,7 @@ export function BridgeModal({
     <>
       <ModalShell
         open={isOpen}
-        onClose={onClose}
+        onClose={handleCloseModal}
         panelClassName="mx-auto flex max-h-[90vh] w-full flex-col overflow-hidden"
         bodyClassName="flex min-h-0 flex-1 flex-col"
         footerActions={footerActions}
@@ -469,7 +503,7 @@ export function BridgeModal({
           title="Detailed Bridge"
           description="Build the payload, choose context deliberately, then bring the AI response back here to parse and apply."
           icon={<Sparkles className="h-5 w-5" />}
-          onClose={onClose}
+          onClose={handleCloseModal}
           meta={
             streamMeta?.name ? (
               <div className="flex flex-wrap items-center gap-2 text-sm text-text-muted">
@@ -501,7 +535,7 @@ export function BridgeModal({
                 <InteractionSwitcher
                   value={interactionMode}
                   onChange={setInteractionMode}
-                  selectedEntries={selectedEntries}
+                  selectedEntries={effectiveSelectedEntries}
                   includeCanvas={includeCanvas}
                   streamId={streamId}
                   includeGlobalStream={includeGlobalStream}
@@ -512,7 +546,7 @@ export function BridgeModal({
                     setTokenOverLimit(over);
                   }}
                   onReduceSelection={() =>
-                    setSelectedEntries((prev) => prev.slice(0, 5))
+                    handleSelectionChange(effectiveSelectedEntries.slice(0, 5))
                   }
                   onAutoSummarize={() => setIncludeCanvas(false)}
                 />
@@ -559,8 +593,8 @@ export function BridgeModal({
                 </div>
                 <ContextBag
                   streamId={streamId}
-                  selectedEntries={selectedEntries}
-                  onSelectionChange={setSelectedEntries}
+                  selectedEntries={effectiveSelectedEntries}
+                  onSelectionChange={handleSelectionChange}
                   sentEntryIds={bridgeSession?.sentEntryIds ?? []}
                   lastUsedAt={bridgeSession?.lastUsedAt ?? null}
                   includeCanvas={includeCanvas}
@@ -583,7 +617,7 @@ export function BridgeModal({
 
           {/* Main Execution Area */}
           <main className="flex-1 min-w-0 overflow-y-auto bg-surface-default flex flex-col">
-            <div className="flex flex-col gap-6 p-6 flex-1 min-h-0">
+            <div className="flex flex-col gap-6 p-4 flex-1 min-h-0">
               {!runnerStatus.online && (
                 <section className="border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -657,12 +691,38 @@ export function BridgeModal({
                           >
                             Open {currentProvider.label}
                           </button>
+                          <button
+                            onClick={handlePasteResult}
+                            className="inline-flex items-center gap-2 border border-border-default bg-surface-default px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors"
+                          >
+                            <ClipboardPaste className="h-3 w-3" />
+                            Paste Response
+                          </button>
+                        </div>
+                      )}
+                      {runnerStatus.online && (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            onClick={handleCopyXML}
+                            disabled={!payloadReady}
+                            className="inline-flex items-center gap-2 border border-border-default bg-surface-default px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <Copy className="h-3 w-3" />
+                            Copy
+                          </button>
+                          <button
+                            onClick={handlePasteResult}
+                            className="inline-flex items-center gap-2 border border-border-default bg-surface-default px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors"
+                          >
+                            <ClipboardPaste className="h-3 w-3" />
+                            Paste
+                          </button>
                         </div>
                       )}
                     </div>
                     <XMLGenerator
                       interactionMode={interactionMode}
-                      selectedEntries={selectedEntries}
+                      selectedEntries={effectiveSelectedEntries}
                       includeCanvas={includeCanvas}
                       includeGlobalStream={includeGlobalStream}
                       globalStreamIds={
@@ -674,6 +734,7 @@ export function BridgeModal({
                       sessionLoadedAt={bridgeSession?.externalSessionLoadedAt}
                       onXMLGenerated={setGeneratedXML}
                       onPayloadReadyChange={setPayloadReady}
+                      showInlineCopyButton={false}
                     />
                   </section>
                 </>
@@ -700,7 +761,7 @@ export function BridgeModal({
                           className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-action-primary-text hover:bg-action-primary-hover transition-colors"
                         >
                           <ClipboardPaste className="h-3 w-3" />
-                          Import Response
+                          Paste Response
                         </button>
                       </div>
                     )}
@@ -727,7 +788,7 @@ export function BridgeModal({
                       }
                       setParserStatus((prev) => ({ ...prev, isApplying: false }));
                       setUserInput("");
-                      onClose();
+                      handleCloseModal();
                     }}
                   />
 

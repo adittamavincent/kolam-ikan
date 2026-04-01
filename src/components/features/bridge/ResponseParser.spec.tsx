@@ -76,6 +76,7 @@ vi.mock("@/lib/hooks/useCanvasDraft", () => ({
 
 import {
   applyCanvasMarkdownDiff,
+  detectBridgeAssistantIdentity,
   ResponseParser,
   type ResponseParserHandle,
   extractTagContentByAliases,
@@ -230,6 +231,36 @@ hello
     expect(
       extractTagContentByAliases(relaxed, ["citations", "sources", "references", "citation_list"]),
     ).toBe("1. [A](https://example.com)");
+  });
+
+  it("detects assistant identity from structured metadata and model hints", () => {
+    const identity = detectBridgeAssistantIdentity(`<response>
+<assistant_identity>
+assistant: ChatGPT
+provider: OpenAI
+model: GPT-4.1
+</assistant_identity>
+<log>Hello</log>
+</response>`);
+
+    expect(identity).toMatchObject({
+      assistant: "ChatGPT",
+      provider: "OpenAI",
+      model: "GPT-4.1",
+      displayLabel: "ChatGPT (GPT-4.1)",
+      source: "assistant_identity",
+    });
+
+    const heuristicIdentity = detectBridgeAssistantIdentity(
+      `<response><log>Provider: Anthropic\nModel: Claude Sonnet 4</log></response>`,
+    );
+
+    expect(heuristicIdentity).toMatchObject({
+      assistant: "Claude",
+      provider: "Anthropic",
+      model: "Claude Sonnet 4",
+      displayLabel: "Claude Sonnet 4",
+    });
   });
 
   it("parses prefixed canvas diff lines into separate markdown blocks", () => {
@@ -842,6 +873,84 @@ These lyrics are from **"Otro Atardecer"**.
       expect.objectContaining({
         canvas_id: "canvas-new",
         stream_id: "stream-1",
+      }),
+    );
+  });
+
+  it("uses the parsed assistant identity as the persona snapshot when applying", async () => {
+    mockCanvasSelectMaybeSingle.mockResolvedValue({
+      data: {
+        id: "canvas-1",
+        content_json: [],
+        raw_markdown: "",
+        updated_at: "2026-03-29T13:17:40.87026+00:00",
+      },
+      error: null,
+    });
+    mockCanvasSelectSingle.mockResolvedValue({
+      data: { id: "canvas-1" },
+      error: null,
+    });
+    mockCanvasUpdateEq.mockResolvedValue({ error: null });
+    mockEntriesInsertSelectSingle.mockResolvedValue({
+      data: { id: "entry-new" },
+      error: null,
+    });
+    mockSectionsInsert.mockResolvedValue({ error: null });
+    mockBranchesSelectMaybeSingle.mockResolvedValue({
+      data: { id: "branch-1" },
+      error: null,
+    });
+    mockBranchesInsertSelectSingle.mockResolvedValue({
+      data: { id: "branch-1" },
+      error: null,
+    });
+    mockBranchesUpdateEq.mockResolvedValue({ error: null });
+    mockPersonasMaybeSingle.mockResolvedValue({
+      data: { id: "persona-ai" },
+      error: null,
+    });
+    mockAuditInsert.mockResolvedValue({ error: null });
+    mockCanvasVersionInsert.mockResolvedValue({ error: null });
+
+    const xml = `<response>
+<assistant_identity>
+assistant: ChatGPT
+provider: OpenAI
+model: GPT-4.1
+</assistant_identity>
+<log>
+Apply this with the detected identity.
+</log>
+<canvas>
++ # Canvas note
+</canvas>
+<base>2026-03-29T13:17:40.87026+00:00</base>
+</response>`;
+
+    const ref = createRef<ResponseParserHandle>();
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ResponseParser
+          ref={ref}
+          streamId="stream-1"
+          interactionMode="BOTH"
+          aiPersonaLabel="Gemini"
+          pastedXML={xml}
+          onPastedXMLChange={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(ref.current).not.toBeNull());
+
+    const didApply = await ref.current?.quickApply();
+
+    expect(didApply).toBe(true);
+    expect(mockSectionsInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        persona_name_snapshot: "ChatGPT (GPT-4.1)",
       }),
     );
   });

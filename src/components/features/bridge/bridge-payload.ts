@@ -564,6 +564,11 @@ If <incremental_instruction> is empty, do not invent recommendations or tangenti
 
 Example continue response:
 <response>
+<assistant_identity>
+assistant: Gemini
+provider: Google
+model: Gemini 2.5 Pro
+</assistant_identity>
 <log>
 Updated the track identification and canvas notes for this turn.
 </log>
@@ -677,6 +682,11 @@ Do NOT include any canvas-related tags.
 
 Example response:
 <response>
+<assistant_identity>
+assistant: ChatGPT
+provider: OpenAI
+model: GPT-4.1
+</assistant_identity>
 <log>
 Your analysis paragraph one goes here [1](#citation-1).
 
@@ -695,6 +705,11 @@ Do NOT include any log tags in GO mode.
 
 Example response:
 <response>
+<assistant_identity>
+assistant: ChatGPT
+provider: OpenAI
+model: GPT-4.1
+</assistant_identity>
 <canvas>
 + # Example Title
 + 
@@ -720,6 +735,11 @@ BOTH mode is strict:
 
 Example response:
 <response>
+<assistant_identity>
+assistant: ChatGPT
+provider: OpenAI
+model: GPT-4.1
+</assistant_identity>
 <log>
 Your reasoning goes here [1](#citation-1).
 </log>
@@ -745,7 +765,14 @@ ${canvasUpdatedAt ? `<base>${canvasUpdatedAt}</base>` : ""}
 
   return `<response_instructions>
 Return XML only. No code fences. No text outside <response>.
-Preferred tags: <log>, <canvas>, <citations>, <base>.
+Preferred tags: <assistant_identity>, <log>, <canvas>, <citations>, <base>.
+Always include <assistant_identity> inside <response> before the other content.
+Inside <assistant_identity>, identify the assistant/product/provider/model currently answering.
+Use this compact text format:
+assistant: <product or assistant name>
+provider: <company or platform>
+model: <exact model if known, otherwise unknown>
+If you do not know the exact model, say \`unknown\` instead of guessing.
 Legacy tags still work, but prefer the short tags to save tokens.
 This structure is for machine parsing only. Inside those tags, write with your normal high-quality assistant voice and reasoning style.
 Follow the provider's existing system prompt quality bar; the XML wrapper does not replace it.

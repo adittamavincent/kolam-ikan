@@ -3,17 +3,20 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BridgeModal } from "./BridgeModal";
+import { QuickBridgeDialog } from "./QuickBridgeDialog";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 
 const {
   mockUseQuery,
   mockLatestBridgeJobData,
+  mockApply,
+  mockQuickApply,
   mockRunnerStatus,
-  mockContextBagProps,
 } = vi.hoisted(() => ({
   mockUseQuery: vi.fn(),
   mockLatestBridgeJobData: { current: null as null | Record<string, unknown> },
+  mockApply: vi.fn(),
+  mockQuickApply: vi.fn(),
   mockRunnerStatus: {
     online: true,
     isChecking: false,
@@ -24,9 +27,6 @@ const {
       providers: ["gemini"] as string[] | undefined,
     },
     mode: "online",
-  },
-  mockContextBagProps: {
-    current: null as null | Record<string, unknown>,
   },
 }));
 
@@ -59,17 +59,6 @@ vi.mock("@/lib/hooks/useResetBridgeSession", () => ({
 
 vi.mock("@/lib/hooks/useBridgeRunnerStatus", () => ({
   useBridgeRunnerStatus: () => mockRunnerStatus,
-}));
-
-vi.mock("./InteractionSwitcher", () => ({
-  InteractionSwitcher: () => null,
-}));
-
-vi.mock("./ContextBag", () => ({
-  ContextBag: (props: Record<string, unknown>) => {
-    mockContextBagProps.current = props;
-    return null;
-  },
 }));
 
 vi.mock("./XMLGenerator", () => ({
@@ -118,10 +107,8 @@ vi.mock("@/components/shared/ModalShell", () => ({
 vi.mock("./ResponseParser", () => ({
   ResponseParser: React.forwardRef(function MockResponseParser(
     {
-      onApplySuccess,
       onStatusChange,
     }: {
-      onApplySuccess?: () => void;
       onStatusChange?: (status: {
         isApplying: boolean;
         canApply: boolean;
@@ -141,27 +128,25 @@ vi.mock("./ResponseParser", () => ({
     }, [onStatusChange]);
 
     React.useImperativeHandle(ref, () => ({
-      apply: () => {
-        onApplySuccess?.();
-      },
-      parse: async () => undefined,
+      parse: () => undefined,
+      apply: async () => await mockApply(),
+      quickApply: async () => await mockQuickApply(),
       reset: () => undefined,
-      quickApply: async () => true,
     }));
 
-    return null;
+    return <div>ResponseParser</div>;
   }),
 }));
 
-describe("BridgeModal", () => {
+describe("QuickBridgeDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockApply.mockResolvedValue(true);
+    mockQuickApply.mockResolvedValue(false);
     mockLatestBridgeJobData.current = {
       id: "job-1",
       status: "succeeded",
-      raw_response: "<response><log>done</log></response>",
-      error_message: "",
-      completed_at: "2026-04-01T09:00:00.000Z",
+      raw_response: "<response><log>delta</log><canvas>+ note</canvas></response>",
     };
 
     useUiPreferencesStore.setState({
@@ -175,7 +160,7 @@ describe("BridgeModal", () => {
     useUiPreferencesStore.getState().upsertBridgeSession("stream-1", {
       providerId: "gemini",
       lastMode: "BOTH",
-      automationStatus: "running",
+      automationStatus: "succeeded",
     });
 
     mockUseQuery.mockImplementation(
@@ -189,67 +174,43 @@ describe("BridgeModal", () => {
                 domain_id: "domain-1",
                 stream_kind: "REGULAR",
               },
-              isLoading: false,
             };
           case "streams":
-            return {
-              data: [],
-              isLoading: false,
-            };
-          case "bridge-entry-defaults":
-            return {
-              data: ["entry-1", "entry-2", "entry-3"],
-              isLoading: false,
-            };
+            return { data: [] };
+          case "bridge-quick-entries":
+            return { data: [] };
+          case "bridge-quick-canvas":
+            return { data: { content_json: [] } };
           default:
-            return { data: undefined, isLoading: false };
+            return { data: undefined };
         }
       },
     );
   });
 
-  it("marks the latest automated response as applied before closing", async () => {
+  it("applies the reviewed parser state instead of reparsing with quickApply", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
 
     render(
-      <BridgeModal
+      <QuickBridgeDialog
         isOpen
         onClose={onClose}
+        onOpenDetailed={vi.fn()}
         streamId="stream-1"
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Apply" }));
+    await user.click(screen.getByRole("button", { name: "Apply Response" }));
 
     await waitFor(() => {
-      expect(
-        useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"],
-      ).toMatchObject({
-        lastAppliedJobId: "job-1",
-        automationStatus: "succeeded",
-        lastJobId: "job-1",
-      });
+      expect(mockApply).toHaveBeenCalledTimes(1);
     });
 
+    expect(mockQuickApply).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it("auto-selects all stream entries in the context bag by default", async () => {
-    render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
-
-    await waitFor(() => {
-      expect(mockContextBagProps.current).toMatchObject({
-        selectedEntries: ["entry-1", "entry-2", "entry-3"],
-      });
-    });
-  });
-
-  it("shows a paste response button before the apply phase", async () => {
-    mockLatestBridgeJobData.current = null;
-
-    render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
-
-    expect(screen.getByRole("button", { name: "Paste Response" })).toBeInTheDocument();
+    expect(
+      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.lastAppliedJobId,
+    ).toBe("job-1");
   });
 });

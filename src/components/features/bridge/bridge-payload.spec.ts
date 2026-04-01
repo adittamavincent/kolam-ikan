@@ -99,6 +99,8 @@ describe("buildBridgePayload followup", () => {
     expect(payload).toContain("Apply the new changes only.");
     expect(payload).toContain('<incremental_instruction state="provided">');
     expect(payload).toContain("Example continue response:");
+    expect(payload).toContain("<assistant_identity>");
+    expect(payload).toContain("model: Gemini 2.5 Pro");
     expect(payload).not.toContain("<system_directive>");
   });
 
@@ -209,6 +211,8 @@ describe("buildBridgePayload followup", () => {
     expect(payload).toContain("provider/company system prompt style");
     expect(payload).toContain("Later continuation prompts");
     expect(payload).toContain("<system_directive>");
+    expect(payload).toContain("Always include <assistant_identity>");
+    expect(payload).toContain("model: <exact model if known, otherwise unknown>");
   });
 
   it("derives a cold-boot instruction from log context when the input is empty", () => {

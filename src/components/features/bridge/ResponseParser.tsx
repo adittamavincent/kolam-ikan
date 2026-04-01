@@ -71,7 +71,133 @@ interface ParsedBridgeResponse {
   usePlainText: boolean;
   canvasApplyMode: "merge" | "replace";
   mergedBlocks: MarkdownBlock[] | null;
+  assistantIdentity: BridgeAssistantIdentity | null;
 }
+
+type BridgeAssistantIdentitySource =
+  | "assistant_identity"
+  | "top_level_tags"
+  | "inline_fields"
+  | "json_fields"
+  | "heuristic"
+  | "fallback";
+
+export interface BridgeAssistantIdentity {
+  assistant: string | null;
+  provider: string | null;
+  model: string | null;
+  displayLabel: string;
+  source: BridgeAssistantIdentitySource;
+  raw: string | null;
+}
+
+type BridgeAssistantIdentityCandidate = Partial<
+  Pick<BridgeAssistantIdentity, "assistant" | "provider" | "model">
+>;
+
+const KNOWN_ASSISTANT_HINTS: Array<{
+  provider: string;
+  assistant: string;
+  modelPatterns: RegExp[];
+  assistantPatterns?: RegExp[];
+}> = [
+  {
+    provider: "OpenAI",
+    assistant: "ChatGPT",
+    modelPatterns: [
+      /\b(gpt[-\s]?(?:5(?:\.\d+)?|4\.5|4\.1(?:[-\s]?(?:mini|nano))?|4o(?:[-\s]?mini)?|3\.5(?:[-\s]?turbo)?))\b/i,
+      /\b(o[134](?:[-\s]?(?:mini|pro))?)\b/i,
+    ],
+    assistantPatterns: [/\bchatgpt\b/i, /\bopenai\b/i],
+  },
+  {
+    provider: "Anthropic",
+    assistant: "Claude",
+    modelPatterns: [
+      /\b(claude(?:[-\s]?(?:3(?:\.\d+)?|4))?(?:[-\s]?(?:haiku|sonnet|opus))?(?:\s*\d(?:\.\d+)?)?)\b/i,
+    ],
+    assistantPatterns: [/\bclaude\b/i, /\banthropic\b/i],
+  },
+  {
+    provider: "Google",
+    assistant: "Gemini",
+    modelPatterns: [
+      /\b(gemini(?:[-\s]?(?:1\.5|2\.0|2\.5))?(?:[-\s]?(?:flash(?:-lite)?|pro|thinking))?)\b/i,
+    ],
+    assistantPatterns: [/\bgemini\b/i, /\bgoogle\b/i],
+  },
+  {
+    provider: "xAI",
+    assistant: "Grok",
+    modelPatterns: [/\b(grok(?:[-\s]?\d+)?)\b/i],
+    assistantPatterns: [/\bgrok\b/i, /\bx\.?ai\b/i],
+  },
+  {
+    provider: "Perplexity",
+    assistant: "Perplexity",
+    modelPatterns: [
+      /\b(sonar(?:[-\s]?(?:reasoning|pro|deep research))?)\b/i,
+      /\b(perplexity(?:[-\s]?(?:pro|deep research))?)\b/i,
+    ],
+    assistantPatterns: [/\bperplexity\b/i],
+  },
+  {
+    provider: "Meta",
+    assistant: "Llama",
+    modelPatterns: [
+      /\b(llama(?:[-\s]?\d+(?:\.\d+)?)?(?:[-\s]?(?:instruct|vision))?)\b/i,
+    ],
+    assistantPatterns: [/\bllama\b/i, /\bmeta\b/i],
+  },
+  {
+    provider: "Mistral",
+    assistant: "Mistral",
+    modelPatterns: [
+      /\b(mistral(?:[-\s]?(?:small|medium|large|next|nemo)))\b/i,
+    ],
+    assistantPatterns: [/\bmistral\b/i],
+  },
+  {
+    provider: "DeepSeek",
+    assistant: "DeepSeek",
+    modelPatterns: [
+      /\b(deepseek(?:[-\s]?(?:r\d+|v\d+|reasoner|chat|coder))?)\b/i,
+    ],
+    assistantPatterns: [/\bdeepseek\b/i],
+  },
+  {
+    provider: "Cohere",
+    assistant: "Cohere",
+    modelPatterns: [/\b(command[-\s]?(?:r|r\+|a)?)\b/i],
+    assistantPatterns: [/\bcohere\b/i],
+  },
+  {
+    provider: "Alibaba",
+    assistant: "Qwen",
+    modelPatterns: [
+      /\b(qwen(?:[-\s]?\d+(?:\.\d+)?)?(?:[-\s]?(?:coder|vl|max|plus|turbo))?)\b/i,
+    ],
+    assistantPatterns: [/\bqwen\b/i],
+  },
+  {
+    provider: "Microsoft",
+    assistant: "Copilot",
+    modelPatterns: [/\b(copilot)\b/i],
+    assistantPatterns: [/\bcopilot\b/i, /\bmicrosoft\b/i],
+  },
+  {
+    provider: "OpenRouter",
+    assistant: "OpenRouter",
+    modelPatterns: [/\b(openrouter)\b/i],
+    assistantPatterns: [/\bopenrouter\b/i],
+  },
+  {
+    provider: "Poe",
+    assistant: "Poe",
+    modelPatterns: [/\b(poe)\b/i],
+    assistantPatterns: [/\bpoe\b/i],
+  },
+];
 
 const BlockArraySchema = z.array(BlockSchema);
 
@@ -645,6 +771,371 @@ export function extractTagContentByAliases(text: string, tagNames: string[]) {
   return null;
 }
 
+function cleanIdentityValue(value: string | null | undefined) {
+  if (!value) return null;
+  const cleaned = value
+    .replace(/<\/?[^>]+>/g, " ")
+    .replace(/[`"'“”]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return null;
+  if (/^(unknown|n\/a|na|unspecified|not sure)$/i.test(cleaned)) {
+    return null;
+  }
+  return cleaned;
+}
+
+function canonicalizeProvider(value: string | null | undefined) {
+  const cleaned = cleanIdentityValue(value);
+  if (!cleaned) return null;
+  const normalized = cleaned.toLowerCase();
+
+  if (normalized.includes("openai") || normalized.includes("chatgpt")) {
+    return "OpenAI";
+  }
+  if (normalized.includes("anthropic") || normalized.includes("claude")) {
+    return "Anthropic";
+  }
+  if (normalized.includes("google") || normalized.includes("gemini")) {
+    return "Google";
+  }
+  if (normalized.includes("xai") || normalized.includes("x.ai") || normalized.includes("grok")) {
+    return "xAI";
+  }
+  if (normalized.includes("perplexity") || normalized.includes("sonar")) {
+    return "Perplexity";
+  }
+  if (normalized.includes("meta") || normalized.includes("llama")) {
+    return "Meta";
+  }
+  if (normalized.includes("mistral")) {
+    return "Mistral";
+  }
+  if (normalized.includes("deepseek")) {
+    return "DeepSeek";
+  }
+  if (normalized.includes("cohere") || normalized.includes("command")) {
+    return "Cohere";
+  }
+  if (normalized.includes("qwen")) {
+    return "Alibaba";
+  }
+  if (normalized.includes("microsoft") || normalized.includes("copilot")) {
+    return "Microsoft";
+  }
+  if (normalized.includes("openrouter")) {
+    return "OpenRouter";
+  }
+  if (normalized.includes("poe")) {
+    return "Poe";
+  }
+
+  return cleaned;
+}
+
+function canonicalizeAssistant(value: string | null | undefined) {
+  const cleaned = cleanIdentityValue(value);
+  if (!cleaned) return null;
+  const normalized = cleaned.toLowerCase();
+
+  if (normalized.includes("chatgpt") || normalized.includes("gpt")) {
+    return "ChatGPT";
+  }
+  if (normalized.includes("claude")) {
+    return "Claude";
+  }
+  if (normalized.includes("gemini")) {
+    return "Gemini";
+  }
+  if (normalized.includes("grok")) {
+    return "Grok";
+  }
+  if (normalized.includes("perplexity") || normalized.includes("sonar")) {
+    return "Perplexity";
+  }
+  if (normalized.includes("llama")) {
+    return "Llama";
+  }
+  if (normalized.includes("mistral")) {
+    return "Mistral";
+  }
+  if (normalized.includes("deepseek")) {
+    return "DeepSeek";
+  }
+  if (normalized.includes("cohere") || normalized.includes("command")) {
+    return "Cohere";
+  }
+  if (normalized.includes("qwen")) {
+    return "Qwen";
+  }
+  if (normalized.includes("copilot")) {
+    return "Copilot";
+  }
+  if (normalized.includes("openrouter")) {
+    return "OpenRouter";
+  }
+  if (normalized.includes("poe")) {
+    return "Poe";
+  }
+
+  return cleaned;
+}
+
+function pickFirstValue(
+  candidates: Array<string | null | undefined>,
+) {
+  for (const candidate of candidates) {
+    const cleaned = cleanIdentityValue(candidate);
+    if (cleaned) return cleaned;
+  }
+  return null;
+}
+
+function buildAssistantDisplayLabel(
+  identity: BridgeAssistantIdentityCandidate,
+  fallbackLabel: string,
+) {
+  const assistant = canonicalizeAssistant(identity.assistant);
+  const provider = canonicalizeProvider(identity.provider);
+  const model = cleanIdentityValue(identity.model);
+
+  if (model) {
+    const comparableModel = model.toLowerCase();
+    if (assistant && comparableModel.includes(assistant.toLowerCase())) {
+      return model;
+    }
+    if (provider && comparableModel.includes(provider.toLowerCase())) {
+      return model;
+    }
+    if (assistant) {
+      return `${assistant} (${model})`;
+    }
+    if (provider) {
+      return `${provider} (${model})`;
+    }
+    return model;
+  }
+
+  return assistant ?? provider ?? fallbackLabel;
+}
+
+function extractTagAttributes(
+  text: string,
+  tagNames: string[],
+) {
+  for (const tagName of tagNames) {
+    const pattern = new RegExp(`<${tagName}\\b([^>]*)>`, "i");
+    const match = pattern.exec(text);
+    if (match?.[1]) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+function extractAttributeValue(
+  attributes: string | null,
+  keys: string[],
+) {
+  if (!attributes) return null;
+  for (const key of keys) {
+    const pattern = new RegExp(`${key}\\s*=\\s*["']([^"']+)["']`, "i");
+    const match = pattern.exec(attributes);
+    if (match?.[1]) {
+      return cleanIdentityValue(match[1]);
+    }
+  }
+  return null;
+}
+
+function extractIdentityFieldsFromText(text: string) {
+  const source = text.replace(/\r\n/g, "\n");
+  return {
+    assistant: pickFirstValue([
+      source.match(/\bassistant(?:\s+name|\s+identity|\s+product)?\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+      source.match(/\bname\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+      source.match(/\bwho\s+are\s+you\s*[:?-]?\s*([^\n<]+)/i)?.[1],
+    ]),
+    provider: pickFirstValue([
+      source.match(/\bprovider(?:\s+name)?\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+      source.match(/\bvendor\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+      source.match(/\bcompany\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+    ]),
+    model: pickFirstValue([
+      source.match(/\bmodel(?:\s+name|\s+id)?\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+      source.match(/\bengine\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+    ]),
+  };
+}
+
+function extractIdentityFieldsFromJson(text: string) {
+  return {
+    assistant: pickFirstValue([
+      text.match(/"(?:assistant|assistant_name|name|product)"\s*:\s*"([^"]+)"/i)?.[1],
+    ]),
+    provider: pickFirstValue([
+      text.match(/"(?:provider|vendor|company)"\s*:\s*"([^"]+)"/i)?.[1],
+    ]),
+    model: pickFirstValue([
+      text.match(/"(?:model|model_name|model_id|engine)"\s*:\s*"([^"]+)"/i)?.[1],
+    ]),
+  };
+}
+
+function detectKnownAssistantIdentity(text: string) {
+  for (const hint of KNOWN_ASSISTANT_HINTS) {
+    const matchedModel = hint.modelPatterns
+      .map((pattern) => pattern.exec(text)?.[1])
+      .find(Boolean);
+    if (matchedModel) {
+      return {
+        provider: hint.provider,
+        assistant: hint.assistant,
+        model: cleanIdentityValue(matchedModel),
+      };
+    }
+
+    const matchedAssistant = hint.assistantPatterns?.some((pattern) =>
+      pattern.test(text),
+    );
+    if (matchedAssistant) {
+      return {
+        provider: hint.provider,
+        assistant: hint.assistant,
+        model: null,
+      };
+    }
+  }
+
+  return null;
+}
+
+export function detectBridgeAssistantIdentity(
+  rawText: string,
+  fallbackLabel = "AI",
+): BridgeAssistantIdentity | null {
+  const normalized = normalizeBridgeResponseText(rawText);
+  if (!normalized) return null;
+
+  const identityTagNames = [
+    "assistant_identity",
+    "identity",
+    "model_identity",
+    "assistant_metadata",
+    "metadata",
+  ];
+  const identityBlock = extractTagContentByAliases(normalized, identityTagNames);
+  const identityAttributes = extractTagAttributes(normalized, identityTagNames);
+
+  const fromIdentityBlock = identityBlock
+    ? {
+        assistant: pickFirstValue([
+          extractTagContentByAliases(identityBlock, [
+            "assistant",
+            "assistant_name",
+            "name",
+            "product",
+          ]),
+          extractAttributeValue(identityAttributes, ["assistant", "assistant_name", "name"]),
+          extractIdentityFieldsFromText(identityBlock).assistant,
+        ]),
+        provider: pickFirstValue([
+          extractTagContentByAliases(identityBlock, ["provider", "vendor", "company"]),
+          extractAttributeValue(identityAttributes, ["provider", "vendor", "company"]),
+          extractIdentityFieldsFromText(identityBlock).provider,
+        ]),
+        model: pickFirstValue([
+          extractTagContentByAliases(identityBlock, ["model", "model_name", "model_id", "engine"]),
+          extractAttributeValue(identityAttributes, ["model", "model_name", "model_id", "engine"]),
+          extractIdentityFieldsFromText(identityBlock).model,
+        ]),
+      }
+    : null;
+
+  const fromTopLevelTags = {
+    assistant: pickFirstValue([
+      extractTagContentByAliases(normalized, ["assistant_name", "assistant"]),
+    ]),
+    provider: pickFirstValue([
+      extractTagContentByAliases(normalized, ["provider", "vendor", "company"]),
+    ]),
+    model: pickFirstValue([
+      extractTagContentByAliases(normalized, ["model", "model_name", "model_id", "engine"]),
+    ]),
+  };
+  const fromInlineFields = extractIdentityFieldsFromText(identityBlock ?? normalized);
+  const fromJsonFields = extractIdentityFieldsFromJson(identityBlock ?? normalized);
+  const fromHeuristics = detectKnownAssistantIdentity(identityBlock ?? normalized);
+
+  const sources: Array<{
+    source: BridgeAssistantIdentitySource;
+    candidate: BridgeAssistantIdentityCandidate | null;
+    raw: string | null;
+  }> = [
+    {
+      source: "assistant_identity",
+      candidate: fromIdentityBlock,
+      raw: identityBlock,
+    },
+    {
+      source: "top_level_tags",
+      candidate: fromTopLevelTags,
+      raw: null,
+    },
+    {
+      source: "inline_fields",
+      candidate: fromInlineFields,
+      raw: identityBlock ?? normalized,
+    },
+    {
+      source: "json_fields",
+      candidate: fromJsonFields,
+      raw: identityBlock ?? normalized,
+    },
+    {
+      source: "heuristic",
+      candidate: fromHeuristics,
+      raw: identityBlock ?? normalized,
+    },
+  ];
+
+  for (const entry of sources) {
+    const provider = canonicalizeProvider(entry.candidate?.provider);
+    const model = cleanIdentityValue(entry.candidate?.model);
+    const assistant = pickFirstValue([
+      canonicalizeAssistant(entry.candidate?.assistant),
+      canonicalizeAssistant(model),
+      canonicalizeAssistant(provider),
+    ]);
+    if (!assistant && !provider && !model) {
+      continue;
+    }
+
+    return {
+      assistant,
+      provider,
+      model,
+      displayLabel: buildAssistantDisplayLabel(
+        { assistant, provider, model },
+        fallbackLabel,
+      ),
+      source: entry.source,
+      raw: cleanIdentityValue(entry.raw),
+    };
+  }
+
+  return fallbackLabel
+    ? {
+        assistant: cleanIdentityValue(fallbackLabel),
+        provider: null,
+        model: null,
+        displayLabel: fallbackLabel,
+        source: "fallback",
+        raw: null,
+      }
+    : null;
+}
+
 function mergeChangesIntoBlocks(
   currentBlocks: MarkdownBlock[],
   incomingBlocks: MarkdownBlock[] | null,
@@ -721,6 +1212,8 @@ export const ResponseParser = forwardRef<
     const [lastParsedContent, setLastParsedContent] = useState<string | null>(
       null,
     );
+    const [assistantIdentity, setAssistantIdentity] =
+      useState<BridgeAssistantIdentity | null>(null);
 
 
     const supabase = createClient();
@@ -745,6 +1238,7 @@ export const ResponseParser = forwardRef<
       setCanvasParseError(null);
       setUsePlainText(false);
       setCanvasApplyMode("merge");
+      setAssistantIdentity(null);
       latestParsedRef.current = null;
       onPastedXMLChange("");
       setLastParsedContent(null);
@@ -822,6 +1316,10 @@ export const ResponseParser = forwardRef<
         throw new Error("No response to parse");
       }
 
+      const nextAssistantIdentity = detectBridgeAssistantIdentity(
+        raw,
+        aiPersonaLabel,
+      );
       const nextIgnored: string[] = [];
       const warnings: string[] = [];
       let nextThoughtLog: string | null = null;
@@ -1060,6 +1558,7 @@ export const ResponseParser = forwardRef<
         usePlainText: nextUsePlainText,
         canvasApplyMode: nextCanvasApplyMode,
         mergedBlocks: merged,
+        assistantIdentity: nextAssistantIdentity,
       };
     };
 
@@ -1075,6 +1574,7 @@ export const ResponseParser = forwardRef<
       setCanvasParseError(parsed.canvasParseError);
       setUsePlainText(parsed.usePlainText);
       setCanvasApplyMode(parsed.canvasApplyMode);
+      setAssistantIdentity(parsed.assistantIdentity);
       latestParsedRef.current = parsed;
     };
 
@@ -1096,6 +1596,10 @@ export const ResponseParser = forwardRef<
       const nextThoughtLog = parsed?.thoughtLog ?? thoughtLog;
       const nextMergedBlocks = parsed?.mergedBlocks ?? mergedBlocks;
       const nextChanges = parsed?.changes ?? changes;
+      const nextAssistantLabel =
+        parsed?.assistantIdentity?.displayLabel ??
+        assistantIdentity?.displayLabel ??
+        aiPersonaLabel;
 
       setApplyError(null);
       setIsApplying(true);
@@ -1213,7 +1717,7 @@ export const ResponseParser = forwardRef<
             .insert({
               entry_id: createdEntry.id,
               persona_id: aiPersonaId ?? null,
-              persona_name_snapshot: aiPersonaLabel,
+              persona_name_snapshot: nextAssistantLabel,
               ...buildStoredContentPayload(blocks),
               sort_order: 0,
             });
@@ -1414,6 +1918,18 @@ export const ResponseParser = forwardRef<
 
         {hasParsed && (
           <div className="flex flex-col gap-4 flex-1 min-h-0">
+            {assistantIdentity && assistantIdentity.source !== "fallback" && (
+              <div className="border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
+                Parsed assistant:{" "}
+                <span className="font-semibold text-text-default">
+                  {assistantIdentity.displayLabel}
+                </span>
+                {assistantIdentity.provider &&
+                assistantIdentity.provider !== assistantIdentity.displayLabel ? (
+                  <span> · {assistantIdentity.provider}</span>
+                ) : null}
+              </div>
+            )}
             {/* Log Pane */}
             {thoughtLog && (
               <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-37.5">

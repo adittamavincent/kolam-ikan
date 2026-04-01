@@ -19,6 +19,7 @@ interface XMLGeneratorProps {
   onXMLGenerated?: (xml: string) => void;
   onPayloadReadyChange?: (ready: boolean) => void;
   compact?: boolean;
+  showInlineCopyButton?: boolean;
 }
 
 export function XMLGenerator({
@@ -35,6 +36,7 @@ export function XMLGenerator({
   onXMLGenerated,
   onPayloadReadyChange,
   compact = false,
+  showInlineCopyButton = true,
 }: XMLGeneratorProps) {
   void compact;
   const [copied, setCopied] = useState(false);
@@ -71,24 +73,26 @@ export function XMLGenerator({
           value={currentXML}
           className="flex-1 min-h-37.5 w-full resize-y bg-[#0d1117] p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] outline-none"
         />
-        <div className="absolute top-2 right-2">
-          <button
-            onClick={copyToClipboard}
-            disabled={!isReady}
-            className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-all ${
-              copied
-                ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
-                : "border-border-default bg-surface-elevated text-white hover:bg-surface-hover"
-            } ${!isReady ? "cursor-not-allowed opacity-60" : ""}`}
-          >
-            {copied ? (
-              <Check className="h-3.5 w-3.5" />
-            ) : (
-              <Copy className="h-3.5 w-3.5" />
-            )}
-            {copied ? "Copied!" : "Copy"}
-          </button>
-        </div>
+        {showInlineCopyButton && (
+          <div className="absolute top-2 right-2">
+            <button
+              onClick={copyToClipboard}
+              disabled={!isReady}
+              className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-all ${
+                copied
+                  ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
+                  : "border-border-default bg-surface-elevated text-white hover:bg-surface-hover"
+              } ${!isReady ? "cursor-not-allowed opacity-60" : ""}`}
+            >
+              {copied ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -208,7 +208,7 @@ export function InteractionSwitcher({
 
         {/* Token Indicator */}
         <div
-          className={`flex items-center px-2 border border-border-subtle transition-all cursor-default min-w-[70px] justify-center ${
+          className={`flex items-center px-2 border border-border-subtle transition-all cursor-default min-w-17.5 justify-center ${
             overLimit ? "bg-status-error-bg" : "bg-surface-default"
           }`}
           title={`${tokens.toLocaleString()} / ${tokenLimit.toLocaleString()} tokens`}

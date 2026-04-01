@@ -134,6 +134,7 @@ function escapeRegExp(value: string) {
 function highlightPlainText(
   text: string,
   highlightTerm?: string,
+  keyPrefix = "text",
 ): React.ReactNode[] {
   if (!highlightTerm?.trim()) return [text];
 
@@ -148,7 +149,10 @@ function highlightPlainText(
     }
 
     nodes.push(
-      <mark className="kolam-search-hit" key={`hit-${nodes.length}-${match.index}`}>
+      <mark
+        className="kolam-search-hit"
+        key={`${keyPrefix}-hit-${nodes.length}-${match.index}`}
+      >
         {match[0]}
       </mark>,
     );
@@ -162,7 +166,11 @@ function highlightPlainText(
   return nodes.length ? nodes : [text];
 }
 
-function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
+function renderInline(
+  text: string,
+  highlightTerm?: string,
+  keyPrefix = "inline",
+): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   const pattern =
     /(\[\[([^[\]]+)\]\]|\[([^\]]+)\]\(([^)]+)\)|`([^`]+)`|==([^=]+)==|~~([^~]+)~~|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_|%%([\s\S]*?)%%)/g;
@@ -171,7 +179,13 @@ function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
 
   while ((match = pattern.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      nodes.push(...highlightPlainText(text.slice(lastIndex, match.index), highlightTerm));
+      nodes.push(
+        ...highlightPlainText(
+          text.slice(lastIndex, match.index),
+          highlightTerm,
+          `${keyPrefix}-text-${lastIndex}-${match.index}`,
+        ),
+      );
     }
 
     if (match[13]) {
@@ -179,10 +193,12 @@ function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
       continue;
     }
 
+    const inlineKey = `${keyPrefix}-${match.index}-${pattern.lastIndex}`;
+
     if (match[2]) {
       nodes.push(
-        <span className="kolam-inline-link" key={nodes.length}>
-          {highlightPlainText(match[2], highlightTerm)}
+        <span className="kolam-inline-link" key={`${inlineKey}-wikilink`}>
+          {highlightPlainText(match[2], highlightTerm, `${inlineKey}-wikilink-text`)}
         </span>,
       );
     } else if (match[3] && match[4]) {
@@ -191,39 +207,55 @@ function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
         <a
           className="kolam-inline-link"
           href={match[4]}
-          key={nodes.length}
+          key={`${inlineKey}-link`}
           rel={isInternalAnchor ? undefined : "noreferrer"}
           target={isInternalAnchor ? undefined : "_blank"}
         >
-          {renderInline(match[3], highlightTerm)}
+          {renderInline(match[3], highlightTerm, `${inlineKey}-link-children`)}
         </a>,
       );
     } else if (match[5]) {
       nodes.push(
-        <code className="kolam-inline-code" key={nodes.length}>
-          {highlightPlainText(match[5], highlightTerm)}
+        <code className="kolam-inline-code" key={`${inlineKey}-code`}>
+          {highlightPlainText(match[5], highlightTerm, `${inlineKey}-code-text`)}
         </code>,
       );
     } else if (match[6]) {
-      nodes.push(<mark key={nodes.length}>{highlightPlainText(match[6], highlightTerm)}</mark>);
+      nodes.push(
+        <mark key={`${inlineKey}-mark`}>
+          {highlightPlainText(match[6], highlightTerm, `${inlineKey}-mark-text`)}
+        </mark>,
+      );
     } else if (match[7]) {
-      nodes.push(<del key={nodes.length}>{highlightPlainText(match[7], highlightTerm)}</del>);
+      nodes.push(
+        <del key={`${inlineKey}-del`}>
+          {highlightPlainText(match[7], highlightTerm, `${inlineKey}-del-text`)}
+        </del>,
+      );
     } else if (match[8]) {
       nodes.push(
-        <strong key={nodes.length}>
-          <em>{renderInline(match[8], highlightTerm)}</em>
+        <strong key={`${inlineKey}-strong-em`}>
+          <em>{renderInline(match[8], highlightTerm, `${inlineKey}-strong-em-children`)}</em>
         </strong>,
       );
     } else if (match[9] || match[10]) {
       nodes.push(
-        <strong key={nodes.length}>
-          {renderInline(match[9] ?? match[10], highlightTerm)}
+        <strong key={`${inlineKey}-strong`}>
+          {renderInline(
+            match[9] ?? match[10],
+            highlightTerm,
+            `${inlineKey}-strong-children`,
+          )}
         </strong>,
       );
     } else if (match[11] || match[12]) {
       nodes.push(
-        <em key={nodes.length}>
-          {renderInline(match[11] ?? match[12], highlightTerm)}
+        <em key={`${inlineKey}-em`}>
+          {renderInline(
+            match[11] ?? match[12],
+            highlightTerm,
+            `${inlineKey}-em-children`,
+          )}
         </em>,
       );
     } else {
@@ -234,14 +266,20 @@ function renderInline(text: string, highlightTerm?: string): React.ReactNode[] {
   }
 
   if (lastIndex < text.length) {
-    nodes.push(...highlightPlainText(text.slice(lastIndex), highlightTerm));
+    nodes.push(
+      ...highlightPlainText(
+        text.slice(lastIndex),
+        highlightTerm,
+        `${keyPrefix}-tail-${lastIndex}-${text.length}`,
+      ),
+    );
   }
 
   return nodes;
 }
 
 function renderHeading(level: number, text: string, key: string, highlightTerm?: string) {
-  const content = renderInline(text, highlightTerm);
+  const content = renderInline(text, highlightTerm, `heading-${key}`);
   const id = slugifyHeading(text);
 
   switch (level) {
@@ -325,7 +363,13 @@ function renderMarkdownBody(
           <div className="kolam-code-header">
             <span>{language || "plain text"}</span>
           </div>
-          <code>{highlightPlainText(codeLines.join("\n"), highlightTerm)}</code>
+          <code>
+            {highlightPlainText(
+              codeLines.join("\n"),
+              highlightTerm,
+              `code-${start}`,
+            )}
+          </code>
         </pre>,
       );
       continue;
@@ -349,7 +393,7 @@ function renderMarkdownBody(
           key={`callout-${start}`}
           open={foldState !== "-"}
         >
-          <summary>{renderInline(title, highlightTerm)}</summary>
+          <summary>{renderInline(title, highlightTerm, `callout-${start}-summary`)}</summary>
           <div className="kolam-callout-body">
             {renderMarkdownBody(innerLines.join("\n"), highlightTerm, onToggleTask)}
           </div>
@@ -389,7 +433,11 @@ function renderMarkdownBody(
                   key={index}
                   style={{ textAlign: tableBlock.model.alignments[index] }}
                 >
-                  {renderInline(cell.content, highlightTerm)}
+                  {renderInline(
+                    cell.content,
+                    highlightTerm,
+                    `table-${start}-head-${index}`,
+                  )}
                 </th>
               ))}
             </tr>
@@ -402,7 +450,11 @@ function renderMarkdownBody(
                     key={cellIndex}
                     style={{ textAlign: tableBlock.model.alignments[cellIndex] }}
                   >
-                    {renderInline(cell.content, highlightTerm)}
+                    {renderInline(
+                      cell.content,
+                      highlightTerm,
+                      `table-${start}-row-${rowIndex}-cell-${cellIndex}`,
+                    )}
                   </td>
                 ))}
               </tr>
@@ -449,10 +501,10 @@ function renderMarkdownBody(
                   onChange={() => onToggleTask?.(lineNumber, !checked)}
                   type="checkbox"
                 />
-                <span>{renderInline(text, highlightTerm)}</span>
+                <span>{renderInline(text, highlightTerm, `list-${start}-item-${lineNumber}`)}</span>
               </label>
             ) : (
-              renderInline(text, highlightTerm)
+              renderInline(text, highlightTerm, `list-${start}-item-${lineNumber}`)
             )}
           </li>,
         );
@@ -507,7 +559,11 @@ function renderMarkdownBody(
     nodes.push(
       <p className="kolam-paragraph p-1" key={`paragraph-${start}`}>
         {paragraphLines.flatMap((paragraphLine, lineIndex) => {
-          const lineNodes = renderInline(paragraphLine, highlightTerm);
+          const lineNodes = renderInline(
+            paragraphLine,
+            highlightTerm,
+            `paragraph-${start}-line-${lineIndex}`,
+          );
           if (lineIndex === 0) return lineNodes;
           return [<br key={`paragraph-${start}-br-${lineIndex}`} />, ...lineNodes];
         })}

@@ -17,6 +17,8 @@ export function ContextBag({
   globalStreamLoading,
   currentStreamIsGlobal,
   disableSelectAll,
+  sentEntryIds,
+  lastUsedAt,
 }: {
   streamId: string;
   selectedEntries: string[];
@@ -30,6 +32,8 @@ export function ContextBag({
   globalStreamLoading?: boolean;
   currentStreamIsGlobal: boolean;
   disableSelectAll?: boolean;
+  sentEntryIds?: string[];
+  lastUsedAt?: string | null;
 }) {
   const supabase = createClient();
   const isGlobalToggleDisabled = globalStreamDisabled || !!globalStreamLoading;
@@ -40,7 +44,7 @@ export function ContextBag({
       const { data, error } = await supabase
         .from("entries")
         .select(
-          "id, created_at, sections(id, persona_name_snapshot, search_text)",
+          "id, created_at, updated_at, sections(id, persona_name_snapshot, search_text)",
         )
         .eq("stream_id", streamId)
         .eq("is_draft", false)
@@ -104,7 +108,7 @@ export function ContextBag({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold tracking-wider text-text-muted">
+        <span className="text-[10px] font-bold tracking-wider text-text-muted text-nowrap">
           {selectedEntries.length} SELECTED
         </span>
       </div>
@@ -198,25 +202,42 @@ export function ContextBag({
                     entry.sections?.[0]?.search_text ||
                     entry.sections?.[0]?.persona_name_snapshot ||
                     "Empty entry";
+                  
+                  const isAlreadySent = sentEntryIds?.includes(entry.id);
+                  const hasModifications = !!entry.updated_at && !!lastUsedAt && new Date(entry.updated_at).getTime() > new Date(lastUsedAt).getTime();
+                  const isDisabled = isAlreadySent && !hasModifications;
+
                   return (
                     <label
                       key={entry.id}
-                      className="flex items-start gap-3 p-1.5 hover:bg-surface-subtle transition-colors cursor-pointer select-none"
+                      className={`flex items-start gap-3 p-1.5 transition-colors select-none ${
+                        isDisabled 
+                          ? "opacity-50 cursor-default" 
+                          : "hover:bg-surface-subtle cursor-pointer"
+                      }`}
                     >
                       <input
                         type="checkbox"
-                        className="mt-0.5 accent-action-primary-bg"
+                        className="mt-0.5 accent-action-primary-bg disabled:opacity-50"
                         checked={selectedEntries.includes(entry.id)}
-                        onChange={() => toggleEntry(entry.id)}
+                        onChange={() => !isDisabled && toggleEntry(entry.id)}
+                        disabled={isDisabled}
                       />
-                      <div>
-                        <div className="text-[11px] font-medium text-text-default leading-snug">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-medium text-text-default leading-snug truncate">
                           {preview.slice(0, 80)}
                         </div>
-                        <div className="text-[9px] text-text-muted mt-0.5 uppercase">
-                          {entry.created_at
-                            ? new Date(entry.created_at).toLocaleTimeString()
-                            : "Unknown time"}
+                        <div className="text-[9px] text-text-muted mt-0.5 uppercase flex items-center justify-between">
+                          <span>
+                            {entry.created_at
+                              ? new Date(entry.created_at).toLocaleTimeString()
+                              : "Unknown time"}
+                          </span>
+                          {isAlreadySent && (
+                            <span className={`font-bold ml-2 ${hasModifications ? "text-action-primary-bg" : "text-text-muted"}`}>
+                              {hasModifications ? "AMENDED" : "SENT"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </label>

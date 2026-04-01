@@ -163,6 +163,14 @@ export function QuickBridgeControl({
     ? bridgeSession?.automationStatus ?? "idle"
     : "idle";
   const latestJob = latestBridgeJob.data;
+  const liveQueueStatus =
+    latestJob?.status === "queued" || latestJob?.status === "running"
+      ? latestJob.status
+      : latestJob?.status === "succeeded"
+        ? "succeeded"
+        : latestJob?.status === "failed"
+          ? "failed"
+          : queueStatus;
   const effectiveLaunchState =
     bridgeSession ? launchState : "idle";
   const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
@@ -190,8 +198,8 @@ export function QuickBridgeControl({
       ? "apply"
       : effectiveLaunchState === "queueing" ||
           effectiveLaunchState === "queued" ||
-          queueStatus === "queued" ||
-          queueStatus === "running" ||
+          liveQueueStatus === "queued" ||
+          liveQueueStatus === "running" ||
           effectiveLaunchState === "launching" ||
           effectiveLaunchState === "done" ||
           effectiveLaunchState === "opened"
@@ -199,9 +207,41 @@ export function QuickBridgeControl({
         : "send";
 
   useEffect(() => {
-    if (!responseToApply.trim()) return;
-    void parserRef.current?.parse();
-  }, [responseToApply]);
+    if (
+      latestJob?.status &&
+      (latestJob.id !== bridgeSession?.lastJobId ||
+        latestJob.status !== bridgeSession?.automationStatus ||
+        latestJob.status !== bridgeSession?.lastJobStatus ||
+        (latestJob.error_message ?? "") !== (bridgeSession?.lastJobError ?? "") ||
+        (latestJob.completed_at ?? null) !== (bridgeSession?.lastJobCompletedAt ?? null))
+    ) {
+      upsertBridgeSession(streamId, {
+        automationStatus:
+          latestJob.status === "queued" || latestJob.status === "running"
+            ? latestJob.status
+            : latestJob.status === "succeeded"
+              ? "succeeded"
+              : "failed",
+        lastJobId: latestJob.id,
+        lastJobStatus: latestJob.status as BridgeJobStatus,
+        lastJobError: latestJob.error_message ?? "",
+        lastJobCompletedAt: latestJob.completed_at ?? null,
+      });
+    }
+  }, [
+    latestJob?.completed_at,
+    latestJob?.error_message,
+    latestJob?.id,
+    latestJob?.status,
+    bridgeSession?.automationStatus,
+    bridgeSession?.lastJobCompletedAt,
+    bridgeSession?.lastJobError,
+    bridgeSession?.lastJobId,
+    bridgeSession?.lastJobStatus,
+    streamId,
+    upsertBridgeSession,
+  ]);
+
 
   const applyQuickBridgeResponse = async () => {
     if (!hasPendingResponse || !pendingResponseJobId) return;
@@ -212,6 +252,11 @@ export function QuickBridgeControl({
     setIsQueueing(false);
     upsertBridgeSession(streamId, {
       lastAppliedJobId: pendingResponseJobId,
+      automationStatus: "succeeded",
+      lastJobId: pendingResponseJobId,
+      lastJobStatus: latestJob?.status as BridgeJobStatus,
+      lastJobError: latestJob?.error_message ?? "",
+      lastJobCompletedAt: latestJob?.completed_at ?? null,
     });
   };
 
@@ -303,9 +348,11 @@ export function QuickBridgeControl({
       : phase === "waiting"
         ? queueStatus === "needs-login"
           ? "Login needed"
-          : queueStatus === "failed"
+          : liveQueueStatus === "needs-login"
+          ? "Login needed"
+          : liveQueueStatus === "failed"
             ? "Failed"
-            : queueStatus === "running"
+            : liveQueueStatus === "running"
               ? "Waiting"
               : "Queued"
         : isContinuing

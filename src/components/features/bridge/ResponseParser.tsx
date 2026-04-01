@@ -25,6 +25,7 @@ import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
 import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import type { PartialBlock } from "@/lib/types/editor";
+import { MarkdownEditor } from "@/components/shared/MarkdownEditor";
 
 interface ResponseParserProps {
   streamId?: string;
@@ -43,7 +44,7 @@ interface ResponseParserProps {
 
 export interface ResponseParserHandle {
   parse: () => void;
-  apply: () => void;
+  apply: () => Promise<boolean>;
   quickApply: () => Promise<boolean>;
   reset: () => void;
 }
@@ -697,26 +698,30 @@ export const ResponseParser = forwardRef<
     ref,
   ) => {
     const [parseError, setParseError] = useState<string | null>(null);
-    const [ignoredTags, setIgnoredTags] = useState<string[]>([]);
+    const [, setIgnoredTags] = useState<string[]>([]);
     const [thoughtLog, setThoughtLog] = useState<string | null>(null);
     const [incomingBlocks, setIncomingBlocks] = useState<
       MarkdownBlock[] | null
     >(null);
     const [changes, setChanges] = useState<BlockChange[]>([]);
-    const [conflictWarning, setConflictWarning] = useState<string | null>(null);
+    const [, setConflictWarning] = useState<string | null>(null);
     const [applyError, setApplyError] = useState<string | null>(null);
     const [isApplying, setIsApplying] = useState(false);
     const [, setParseWarnings] = useState<string[]>([]);
-    const [canvasParseError, setCanvasParseError] = useState<string | null>(
+    const [, setCanvasParseError] = useState<string | null>(
       null,
     );
-    const [previewMode, setPreviewMode] = useState<
+    const [previewMode] = useState<
       "current" | "incoming" | "merged"
     >("merged");
-    const [usePlainText, setUsePlainText] = useState(false);
+    const [, setUsePlainText] = useState(false);
     const [canvasApplyMode, setCanvasApplyMode] = useState<"merge" | "replace">(
       "merge",
     );
+    const [lastParsedContent, setLastParsedContent] = useState<string | null>(
+      null,
+    );
+
 
     const supabase = createClient();
     const { currentBranch, currentBranchHeadId } = useLogBranchContext(streamId ?? "");
@@ -742,7 +747,9 @@ export const ResponseParser = forwardRef<
       setCanvasApplyMode("merge");
       latestParsedRef.current = null;
       onPastedXMLChange("");
+      setLastParsedContent(null);
     };
+
 
     useImperativeHandle(ref, () => ({
       parse: parseResponse,
@@ -781,9 +788,9 @@ export const ResponseParser = forwardRef<
       streamId,
     ]);
 
-    const canApply = !isApplying && (!!thoughtLog || !!mergedBlocks);
+    const canApply = !isApplying && ((!!thoughtLog && canProcessLog) || (!!mergedBlocks && canProcessCanvas));
     const canParse = !!pastedXML.trim();
-    const hasParsed = !!thoughtLog || !!incomingBlocks;
+    const hasParsed = !!thoughtLog || !!incomingBlocks || !!mergedBlocks;
 
     useEffect(() => {
       onStatusChange?.({
@@ -793,6 +800,17 @@ export const ResponseParser = forwardRef<
         hasParsed,
       });
     }, [isApplying, canApply, canParse, hasParsed, onStatusChange]);
+
+    useEffect(() => {
+      if (canParse && pastedXML !== lastParsedContent && !parseError) {
+        void parseResponse();
+      }
+      // parseResponse is intentionally omitted to avoid re-running on every render.
+      // It closes over the latest state and is only triggered by parse guard inputs.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canParse, pastedXML, lastParsedContent, parseError]);
+
+
 
     const parseCurrentResponse = async (): Promise<ParsedBridgeResponse> => {
       if (!streamId) {
@@ -1064,17 +1082,19 @@ export const ResponseParser = forwardRef<
       try {
         const parsed = await parseCurrentResponse();
         applyParsedState(parsed);
+        setLastParsedContent(pastedXML);
       } catch (err) {
         latestParsedRef.current = null;
         setParseError((err as Error).message);
       }
     };
 
+
     const handleApply = async (parsedOverride?: ParsedBridgeResponse) => {
       if (!streamId) return false;
       const parsed = parsedOverride ?? latestParsedRef.current;
-      const nextThoughtLog = hasParsed ? editableThoughtLog : (parsed?.thoughtLog ?? thoughtLog);
-      const nextMergedBlocks = hasParsed ? editableCanvasBlocks : (parsed?.mergedBlocks ?? mergedBlocks);
+      const nextThoughtLog = parsed?.thoughtLog ?? thoughtLog;
+      const nextMergedBlocks = parsed?.mergedBlocks ?? mergedBlocks;
       const nextChanges = parsed?.changes ?? changes;
 
       setApplyError(null);
@@ -1083,7 +1103,7 @@ export const ResponseParser = forwardRef<
         let createdEntryId: string | null = null;
         let appliedBranchHeadId: string | null = currentBranchHeadId;
 
-        if (nextThoughtLog) {
+        if (nextThoughtLog && canProcessLog) {
           const blocks = toParagraphBlocks(nextThoughtLog);
 
           const { data: existingBranch, error: existingBranchError } = await supabase
@@ -1098,6 +1118,29 @@ export const ResponseParser = forwardRef<
           let branchHeadId =
             (existingBranch as { head_commit_id?: string | null } | null)?.head_commit_id ??
             currentBranchHeadId;
+          if (!branchHeadId) {
+            const cachedLatestEntryId = queryClient.getQueryData<string>([
+              "latest-entry-id",
+              streamId,
+            ]);
+            if (typeof cachedLatestEntryId === "string" && cachedLatestEntryId.trim()) {
+              branchHeadId = cachedLatestEntryId;
+            } else {
+              const { data: latestEntry, error: latestEntryError } = await supabase
+                .from("entries")
+                .select("id")
+                .eq("stream_id", streamId)
+                .eq("is_draft", false)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (latestEntryError) throw latestEntryError;
+              branchHeadId =
+                latestEntry && typeof (latestEntry as { id?: unknown }).id === "string"
+                  ? ((latestEntry as { id?: string }).id ?? null)
+                  : null;
+            }
+          }
           if (!branchId) {
             const { data: createdBranch, error: branchInsertError } = await supabase
               .from("branches")
@@ -1220,7 +1263,7 @@ export const ResponseParser = forwardRef<
           });
         }
 
-        if (nextMergedBlocks) {
+        if (nextMergedBlocks && canProcessCanvas) {
           const { data: canvas, error } = await supabase
             .from("canvases")
             .select("id")
@@ -1307,6 +1350,9 @@ export const ResponseParser = forwardRef<
 
           queryClient.invalidateQueries({ queryKey: ["canvas", streamId] });
           queryClient.invalidateQueries({
+            queryKey: ["bridge-quick-canvas", streamId],
+          });
+          queryClient.invalidateQueries({
             queryKey: ["canvas-versions", streamId],
           });
           queryClient.invalidateQueries({
@@ -1325,8 +1371,12 @@ export const ResponseParser = forwardRef<
 
     const quickApplyResponse = async () => {
       try {
-        const parsed = await parseCurrentResponse();
+        const parsed =
+          latestParsedRef.current && lastParsedContent === pastedXML
+            ? latestParsedRef.current
+            : await parseCurrentResponse();
         applyParsedState(parsed);
+        setLastParsedContent(pastedXML);
         if (!parsed.thoughtLog && !parsed.mergedBlocks) {
           return false;
         }
@@ -1338,72 +1388,16 @@ export const ResponseParser = forwardRef<
       }
     };
 
-    const handleApplyClick = () => {
-      void handleApply();
-    };
-
-    const handlePlainTextImport = () => {
-      if (!canProcessCanvas) return;
-      const raw =
-        extractTagContentByAliases(normalizeBridgeResponseText(pastedXML), [
-          "canvas_md",
-          "canvas_update_md",
-        ]) ??
-        extractTagContentByAliases(normalizeBridgeResponseText(pastedXML), [
-          "canvas",
-          "canvas_update",
-        ]) ??
-        extractTagContentByAliases(normalizeBridgeResponseText(pastedXML), [
-          "canvas_json",
-          "canvas_update_json",
-        ]) ??
-        "";
-      const blocks = toParagraphBlocks(raw);
-      setIncomingBlocks(blocks);
-      setChanges(
-        blocks.map((block) => ({
-          id: block.id,
-          type: "add",
-          incoming: block,
-          decision: "accept",
-        })),
-      );
-      setUsePlainText(true);
-      setCanvasParseError(null);
-      setCanvasApplyMode("replace");
-    };
-
-    const updateDecision = (id: string, decision: ChangeDecision) => {
-      setChanges((prev) =>
-        prev.map((change) =>
-          change.id === id ? { ...change, decision } : change,
-        ),
-      );
-    };
-
-    const bulkDecision = (decision: ChangeDecision) => {
-      setChanges((prev) => prev.map((change) => ({ ...change, decision })));
-    };
-
-    const [editableThoughtLog, setEditableThoughtLog] = useState<string>("");
-    const [editableCanvasMarkdown, setEditableCanvasMarkdown] = useState<string>("");
-    const [editableCanvasBlocks, setEditableCanvasBlocks] = useState<MarkdownBlock[]>([]);
-
-    useEffect(() => {
-      if (thoughtLog !== null) {
-        setEditableThoughtLog(thoughtLog);
-      }
-    }, [thoughtLog]);
-
-    useEffect(() => {
-      if (mergedBlocks) {
-        setEditableCanvasMarkdown(blocksToStoredMarkdown(mergedBlocks as PartialBlock[]));
-        setEditableCanvasBlocks(mergedBlocks);
-      }
-    }, [mergedBlocks]);
+    const displayCanvasMarkdown = useMemo(
+      () =>
+        mergedBlocks
+          ? blocksToStoredMarkdown(mergedBlocks as PartialBlock[])
+          : "",
+      [mergedBlocks],
+    );
 
     return (
-      <div className="flex flex-col gap-4 flex-1 min-h-0">
+      <div className="bridge-response-parser flex flex-col gap-4 flex-1 min-h-0">
         {(!hasParsed && !isApplying) && (
           <div className="border border-border-default bg-surface-subtle p-8 text-center">
             <p className="text-sm text-text-muted">
@@ -1422,38 +1416,38 @@ export const ResponseParser = forwardRef<
           <div className="flex flex-col gap-4 flex-1 min-h-0">
             {/* Log Pane */}
             {thoughtLog && (
-              <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-[150px]">
+              <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-37.5">
                 <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
                   Log Pane (New Entry)
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  <textarea
-                    value={editableThoughtLog}
-                    onChange={(e) => setEditableThoughtLog(e.target.value)}
-                    placeholder="The AI's reasoning or the content for the new log entry..."
-                    className="w-full h-full p-4 text-xs font-mono bg-transparent resize-none outline-none text-text-default placeholder:text-text-muted leading-relaxed"
-                  />
+                  <div className="section-editor-surface markdown-editor-readonly prose prose-sm max-w-none dark:prose-invert min-h-full">
+                    <MarkdownEditor
+                      key={`bridge-log-${lastParsedContent ?? "empty"}`}
+                      initialMarkdown={thoughtLog}
+                      editable={false}
+                      placeholder="The AI's reasoning or the content for the new log entry..."
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Canvas Pane */}
-            {incomingBlocks && (
-              <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-[150px]">
+            {mergedBlocks && (
+              <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-37.5">
                 <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
                   Canvas Pane (Proposed Merged Content)
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  <textarea
-                    value={editableCanvasMarkdown}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEditableCanvasMarkdown(val);
-                      setEditableCanvasBlocks(toParagraphBlocks(val));
-                    }}
-                    placeholder="The final proposed markdown for the canvas..."
-                    className="w-full h-full p-4 text-xs font-mono bg-transparent resize-none outline-none text-text-default placeholder:text-text-muted leading-relaxed"
-                  />
+                  <div className="section-editor-surface markdown-editor-readonly prose prose-sm max-w-none dark:prose-invert min-h-full">
+                    <MarkdownEditor
+                      key={`bridge-canvas-${lastParsedContent ?? "empty"}-${canvasApplyMode}`}
+                      initialMarkdown={displayCanvasMarkdown}
+                      editable={false}
+                      placeholder="The final proposed markdown for the canvas..."
+                    />
+                  </div>
                 </div>
               </div>
             )}

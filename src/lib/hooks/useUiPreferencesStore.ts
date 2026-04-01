@@ -36,6 +36,7 @@ export interface BridgeStreamSession {
   lastJobStatus: BridgeJobStatus | null;
   lastJobError: string;
   lastJobCompletedAt: string | null;
+  sentEntryIds: string[];
 }
 
 export interface BridgePreferencesPayload {
@@ -167,6 +168,7 @@ function createDefaultBridgeSession(): BridgeStreamSession {
     lastJobStatus: null,
     lastJobError: "",
     lastJobCompletedAt: null,
+    sentEntryIds: [],
   };
 }
 
@@ -206,6 +208,7 @@ function normalizeBridgeSession(
     lastJobError: (session?.lastJobError ?? base.lastJobError).trim(),
     lastJobCompletedAt:
       session?.lastJobCompletedAt ?? base.lastJobCompletedAt,
+    sentEntryIds: session?.sentEntryIds ?? base.sentEntryIds,
   };
 }
 

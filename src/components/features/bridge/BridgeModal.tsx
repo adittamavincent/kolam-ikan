@@ -14,7 +14,6 @@ import {
   Layers3,
   Loader2,
   RotateCcw,
-  Rocket,
   Send,
   Settings2,
   Sparkles,
@@ -33,7 +32,10 @@ import {
   getBridgeSessionLaunchUrl,
   getBridgeProviderPreset,
 } from "./bridge-config";
-import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
+import {
+  buildBridgeSessionKey,
+  type BridgeRunnerStatus,
+} from "@/lib/bridge/bridge-jobs";
 import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 import { BridgeResponsePreviewModal } from "./BridgeResponsePreviewModal";
@@ -52,6 +54,7 @@ export function BridgeModal({
   streamId,
   initialManualMode = false,
 }: BridgeModalProps) {
+  void initialManualMode;
   const supabase = createClient();
   const bridgeDefaults = useUiPreferencesStore((state) => state.bridgeDefaults);
   const bridgeSession = useUiPreferencesStore(
@@ -169,20 +172,7 @@ export function BridgeModal({
     }
   };
 
-  const handleParse = () => parserRef.current?.parse();
   const handleApply = () => parserRef.current?.apply();
-  const handleSubmitResponse = async () => {
-    const didApply = await parserRef.current?.quickApply();
-    if (
-      didApply &&
-      latestBridgeJob.data?.id &&
-      latestBridgeJob.data?.raw_response?.trim() === effectivePastedXML.trim()
-    ) {
-      upsertBridgeSession(streamId, {
-        lastAppliedJobId: latestBridgeJob.data.id,
-      });
-    }
-  };
   const handleReset = () => {
     setIsResetDialogOpen(true);
   };
@@ -231,6 +221,14 @@ export function BridgeModal({
   const automatedResponse = latestBridgeJob.data?.raw_response?.trim() ?? "";
   const effectivePastedXML = pastedXML.trim() ? pastedXML : automatedResponse;
   const responsePreviewText = effectivePastedXML;
+  const effectiveInteractionMode =
+    !pastedXML.trim() && automatedResponse
+      ? (bridgeSession?.lastMode ?? interactionMode)
+      : interactionMode;
+  const effectiveProviderId =
+    !pastedXML.trim() && automatedResponse
+      ? (bridgeSession?.providerId ?? providerId)
+      : providerId;
   const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
   const latestJobMatchesCurrentPayload =
     latestBridgeJob.data?.session_key === currentSessionKey &&
@@ -311,6 +309,7 @@ export function BridgeModal({
       lastJobId: result.job.id,
       lastJobStatus: result.job.status as BridgeJobStatus,
       lastJobError: "",
+      sentEntryIds: selectedEntries,
     });
   };
   const responseText = latestBridgeJob.data?.raw_response?.trim() ?? "";
@@ -319,6 +318,10 @@ export function BridgeModal({
     latestBridgeJob.data?.status === "succeeded" &&
     !!responseText &&
     latestBridgeJob.data?.id !== bridgeSession?.lastAppliedJobId;
+  const isApplyingLatestAutomatedResponse =
+    hasPendingResponse &&
+    !pastedXML.trim() &&
+    !!latestBridgeJob.data?.id;
 
   const isContinuing =
     !!bridgeSession &&
@@ -337,12 +340,31 @@ export function BridgeModal({
           ? "waiting"
           : "send";
 
+  // Sync job status back to session preferences
   useEffect(() => {
-    // Automatically parse when an automated response arrives or state is ready
-    if (phase === "apply" && effectivePastedXML && !parserStatus.hasParsed) {
-      parserRef.current?.parse();
+    if (
+      latestBridgeJob.data?.status &&
+      latestBridgeJob.data.status !== bridgeSession?.automationStatus
+    ) {
+      upsertBridgeSession(streamId, {
+        automationStatus: latestBridgeJob.data.status as BridgeRunnerStatus,
+        lastJobId: latestBridgeJob.data.id,
+        lastJobStatus: latestBridgeJob.data.status as BridgeJobStatus,
+        lastJobError: latestBridgeJob.data.error_message || "",
+        lastJobCompletedAt: latestBridgeJob.data.completed_at || null,
+      });
     }
-  }, [phase, effectivePastedXML, parserStatus.hasParsed]);
+  }, [
+    latestBridgeJob.data?.status,
+    latestBridgeJob.data?.id,
+    latestBridgeJob.data?.error_message,
+    latestBridgeJob.data?.completed_at,
+    streamId,
+    bridgeSession?.automationStatus,
+    upsertBridgeSession,
+  ]);
+
+
 
   const label =
     !runnerStatus.online && !runnerStatus.isChecking
@@ -468,7 +490,7 @@ export function BridgeModal({
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
           {/* Left Sidebar: Configuration & Context */}
-          <aside className="w-full lg:w-[320px] xl:w-[380px] shrink-0 border-b lg:border-b-0 lg:border-r border-border-default overflow-y-auto bg-surface-subtle flex flex-col">
+          <aside className="w-full lg:w-[320px] xl:w-95 shrink-0 border-b lg:border-b-0 lg:border-r border-border-default overflow-y-auto bg-surface-subtle flex flex-col">
             <div className="flex flex-col p-4 divide-y divide-border-default">
               {/* Goal Section */}
               <section className="min-w-0 py-4 first:pt-0">
@@ -539,6 +561,8 @@ export function BridgeModal({
                   streamId={streamId}
                   selectedEntries={selectedEntries}
                   onSelectionChange={setSelectedEntries}
+                  sentEntryIds={bridgeSession?.sentEntryIds ?? []}
+                  lastUsedAt={bridgeSession?.lastUsedAt ?? null}
                   includeCanvas={includeCanvas}
                   onIncludeCanvasChange={setIncludeCanvas}
                   includeGlobalStream={userGlobalStreamChoice}
@@ -559,7 +583,7 @@ export function BridgeModal({
 
           {/* Main Execution Area */}
           <main className="flex-1 min-w-0 overflow-y-auto bg-surface-default flex flex-col">
-            <div className="flex flex-col gap-4 p-4 flex-1 min-h-0">
+            <div className="flex flex-col gap-6 p-6 flex-1 min-h-0">
               {!runnerStatus.online && (
                 <section className="border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text">
                   <div className="flex flex-wrap items-center justify-between gap-3">
@@ -602,13 +626,13 @@ export function BridgeModal({
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
                       placeholder="What should the AI accomplish with this context?"
-                      className="min-h-[70px] w-full resize-none border border-border-default bg-surface-subtle px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted focus:border-action-primary-bg outline-none"
+                      className="min-h-17.5 w-full resize-none border border-border-default bg-surface-subtle px-4 py-3 text-sm leading-relaxed text-text-default placeholder:text-text-muted focus:border-action-primary-bg outline-none"
                     />
                   </section>
 
                   {/* Step 2: Payload Generation */}
                   <section className="min-w-0 flex flex-col gap-0 flex-1 min-h-0">
-                    <div className="mb-0 flex flex-col items-start gap-3 pb-4">
+                    <div className="flex flex-col items-start gap-3 pb-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-muted">
                           2. Build Payload
@@ -658,8 +682,8 @@ export function BridgeModal({
               {(phase === "apply" || !runnerStatus.online || !!pastedXML) && (
                 /* Step 3: Response Handling */
                 <section className="min-w-0 flex flex-col gap-0 flex-1 min-h-0">
-                  <div className="mb-0 flex flex-wrap items-start gap-0">
-                    <div className="space-y-1 pb-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4 pb-3">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-muted">
                         3. Apply Response
                       </div>
@@ -685,21 +709,25 @@ export function BridgeModal({
                   <ResponseParser
                     ref={parserRef}
                     streamId={streamId}
-                    interactionMode={interactionMode}
-                    aiPersonaLabel={currentProvider.label}
+                    interactionMode={effectiveInteractionMode}
+                    aiPersonaLabel={getBridgeProviderPreset(effectiveProviderId).label}
                     pastedXML={effectivePastedXML}
                     onPastedXMLChange={setPastedXML}
                     onStatusChange={setParserStatus}
                     onApplySuccess={() => {
-                      if (
-                        latestBridgeJob.data?.id &&
-                        latestBridgeJob.data?.raw_response?.trim() ===
-                        effectivePastedXML.trim()
-                      ) {
+                      if (isApplyingLatestAutomatedResponse && latestBridgeJob.data?.id) {
                         upsertBridgeSession(streamId, {
                           lastAppliedJobId: latestBridgeJob.data.id,
+                          automationStatus: "succeeded",
+                          lastJobId: latestBridgeJob.data.id,
+                          lastJobStatus: latestBridgeJob.data.status as BridgeJobStatus,
+                          lastJobError: latestBridgeJob.data.error_message ?? "",
+                          lastJobCompletedAt: latestBridgeJob.data.completed_at ?? null,
                         });
                       }
+                      setParserStatus((prev) => ({ ...prev, isApplying: false }));
+                      setUserInput("");
+                      onClose();
                     }}
                   />
 

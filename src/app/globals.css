@@ -705,6 +705,31 @@ body {
   line-height: 1.45;
 }
 
+.bridge-response-parser .section-editor-surface {
+  padding: 0 !important;
+}
+
+.bridge-response-parser .markdown-editor-readonly,
+.bridge-response-parser .markdown-editor-readonly .kolam-editor-shell,
+.bridge-response-parser .markdown-editor-readonly .kolam-codemirror-frame {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+.bridge-response-parser .markdown-editor-readonly .kolam-rendered-markdown {
+  gap: 0.35rem;
+}
+
+.bridge-response-parser .markdown-editor-readonly .kolam-paragraph,
+.bridge-response-parser .markdown-editor-readonly .kolam-list {
+  margin: 0;
+}
+
+.bridge-response-parser .markdown-editor-readonly .kolam-paragraph {
+  line-height: 1.4;
+}
+
 .kolam-codemirror-root .cm-scroller {
   overflow: auto;
 }

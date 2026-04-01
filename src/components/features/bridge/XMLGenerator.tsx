@@ -36,6 +36,7 @@ export function XMLGenerator({
   onPayloadReadyChange,
   compact = false,
 }: XMLGeneratorProps) {
+  void compact;
   const [copied, setCopied] = useState(false);
   const { payload: currentXML, isReady } = useBridgePayload({
     streamId,
@@ -68,7 +69,7 @@ export function XMLGenerator({
         <textarea
           readOnly
           value={currentXML}
-          className="flex-1 min-h-[150px] w-full resize-y bg-[#0d1117] p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] outline-none"
+          className="flex-1 min-h-37.5 w-full resize-y bg-[#0d1117] p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] outline-none"
         />
         <div className="absolute top-2 right-2">
           <button

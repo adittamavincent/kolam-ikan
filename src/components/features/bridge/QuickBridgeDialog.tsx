@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
@@ -12,6 +12,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { ResponseParser, type ResponseParserHandle } from "./ResponseParser";
 import {
   ModalHeader,
   ModalShell,
@@ -81,14 +82,23 @@ export function QuickBridgeDialog({
   const [generatedXML, setGeneratedXML] = useState("");
   const [payloadReady, setPayloadReady] = useState(false);
   const [launchState, setLaunchState] = useState<QuickLaunchState>("idle");
+  const [parserStatus, setParserStatus] = useState({
+    isApplying: false,
+    canApply: false,
+    canParse: false,
+    hasParsed: false,
+  });
+
   const [isResponsePreviewOpen, setIsResponsePreviewOpen] = useState(false);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const parserRef = useRef<ResponseParserHandle>(null);
   const createBridgeJob = useCreateBridgeJob(streamId);
   const resetBridgeSession = useResetBridgeSession(streamId);
   const runnerStatus = useBridgeRunnerStatus({
     enabled: isOpen,
     pollIntervalMs: isOpen ? 10_000 : undefined,
   });
+
 
   const { data: streamMeta } = useQuery({
     queryKey: ["bridge-stream-meta", streamId],
@@ -187,6 +197,10 @@ export function QuickBridgeDialog({
   const latestJobMatchesCurrentPayload =
     latestJob?.session_key === currentSessionKey && latestJob?.payload === generatedXML;
   const responseText = latestJob?.raw_response?.trim() ?? "";
+  const hasPendingAutomatedResponse =
+    latestJob?.status === "succeeded" &&
+    !!responseText &&
+    latestJob?.id !== bridgeSession?.lastAppliedJobId;
 
   const phase: QuickPhase =
     queueStatus === "succeeded" && responseText
@@ -200,6 +214,17 @@ export function QuickBridgeDialog({
           launchState === "opened"
         ? "waiting"
         : "compose";
+
+  const handleApply = async () => {
+    const didApply = await parserRef.current?.apply();
+    if (didApply && hasPendingAutomatedResponse && latestBridgeJob.data?.id) {
+      upsertBridgeSession(streamId, {
+        lastAppliedJobId: latestBridgeJob.data.id,
+      });
+      onClose();
+    }
+  };
+
 
   const queueQuickBridge = async () => {
     if (!payloadReady || !generatedXML.trim()) return;
@@ -266,7 +291,9 @@ export function QuickBridgeDialog({
     setPayloadReady(false);
     setLaunchState("idle");
     setIsResponsePreviewOpen(false);
+    parserRef.current?.reset();
   };
+
 
   const confirmReset = async () => {
     setIsResetDialogOpen(false);
@@ -333,13 +360,19 @@ export function QuickBridgeDialog({
     ...(phase === "accepting"
       ? [
           {
-            label: "View response",
-            icon: <Rocket className="h-4 w-4" />,
-            onClick: () => setIsResponsePreviewOpen(true),
+            label: parserStatus.isApplying ? "Applying..." : "Apply Response",
+            icon: parserStatus.isApplying ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Rocket className="h-4 w-4" />
+            ),
+            onClick: () => void handleApply(),
+            disabled: !parserStatus.canApply || parserStatus.isApplying,
             tone: "primary" as const,
           },
         ]
       : []),
+
   ];
 
   return (
@@ -635,61 +668,57 @@ export function QuickBridgeDialog({
           )}
 
           {phase === "accepting" && (
-            <div className="mx-auto flex min-w-0 max-w-2xl flex-col gap-5 py-6">
-              <section className="border border-status-success-bg bg-status-success-bg/40 p-6">
+            <div className="flex h-full flex-col gap-5 overflow-hidden">
+              <section className="border border-status-success-bg bg-status-success-bg/40 p-4">
                 <div className="flex items-start gap-4">
-                  <CheckCircle2 className="mt-1 h-6 w-6 text-status-success-text" />
-                  <div className="space-y-2">
-                    <div className="text-lg font-semibold text-status-success-text">
+                  <CheckCircle2 className="mt-1 h-5 w-5 text-status-success-text" />
+                  <div className="flex-1 space-y-1">
+                    <div className="text-sm font-semibold text-status-success-text">
                       Response captured successfully
                     </div>
-                    <p className="text-sm text-text-default">
-                      Quick has the raw provider response now. Review it in a focused preview modal, or open Detailed if you want to parse and apply changes.
+                    <p className="text-xs text-text-default">
+                      Quick has the raw provider response now. Review and apply changes below, or switch to Detailed for fine-grained control.
                     </p>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setIsResponsePreviewOpen(true)}
-                        className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-2 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover"
-                      >
-                        View response
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          onOpenDetailed();
-                        }}
-                        className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
-                      >
-                        <Settings2 className="h-3.5 w-3.5" />
-                        Open Detailed
-                      </button>
-                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsResponsePreviewOpen(true)}
+                      className="border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-hover transition-colors"
+                    >
+                      View Raw
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenDetailed();
+                      }}
+                      className="border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-hover transition-colors"
+                    >
+                      Open Detailed
+                    </button>
                   </div>
                 </div>
               </section>
 
-              <section className="grid min-w-0 gap-3 md:grid-cols-2">
-                <div className="border border-border-default bg-surface-subtle p-4">
-                  <div className="text-sm font-semibold text-text-default">
-                    Session status
-                  </div>
-                  <p className="mt-2 text-xs text-text-muted">
-                    The local runner finished this run and returned the response to Kolam Ikan.
-                  </p>
-                </div>
-                <div className="border border-border-default bg-surface-subtle p-4">
-                  <div className="text-sm font-semibold text-text-default">
-                    Next move
-                  </div>
-                  <p className="mt-2 text-xs text-text-muted">
-                    Stay in Quick to inspect the response, or switch to Detailed only when you want parser/apply tools.
-                  </p>
-                </div>
-              </section>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <ResponseParser
+                  ref={parserRef}
+                  streamId={streamId}
+                  interactionMode={quickPreset.interactionMode}
+                  aiPersonaLabel={providerPreset.label}
+                  pastedXML={responseText}
+                  onPastedXMLChange={() => {}}
+                  onStatusChange={setParserStatus}
+                  onApplySuccess={() => {
+                    // Handled in handleApply
+                  }}
+                />
+              </div>
             </div>
           )}
+
         </div>
 
       </ModalShell>

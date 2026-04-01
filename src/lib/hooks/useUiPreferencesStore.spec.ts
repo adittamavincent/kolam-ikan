@@ -108,6 +108,7 @@ describe("useUiPreferencesStore", () => {
               lastJobStatus: "succeeded",
               lastJobError: "",
               lastJobCompletedAt: "2026-03-29T10:02:00.000Z",
+              sentEntryIds: [],
             },
           },
         },
@@ -171,6 +172,7 @@ describe("useUiPreferencesStore", () => {
           lastJobStatus: "queued",
           lastJobError: "",
           lastJobCompletedAt: null,
+          sentEntryIds: [],
         },
       },
     });

@@ -87,21 +87,21 @@ describe("buildBridgePayload followup", () => {
     });
 
     expect(payload).toContain('<session_followup phase="continue">');
-    expect(payload).toContain("<continue_response_rules>");
+    expect(payload).toContain("<continue_contract_ref>cold_boot.response_instructions</continue_contract_ref>");
+    expect(payload).toContain("<continue_delta_rules>");
     expect(payload).toContain("<incremental_context>");
-    expect(payload).toContain("cold-boot prompt");
-    expect(payload).toContain("diff/update packet");
-    expect(payload).toContain("append-ready log entry");
-    expect(payload).toContain("always return a concise append-ready log entry");
-    expect(payload).toContain("unified git-style diff patch");
+    expect(payload).toContain("delta-only context");
+    expect(payload).toContain("append-ready prose for this turn only");
+    expect(payload).toContain("unified diff against the canvas already loaded");
     expect(payload).toContain("Treat <changed_canvas> as a reference snapshot");
     expect(payload).toContain("Canvas delta");
     expect(payload).toContain("Apply the new changes only.");
     expect(payload).toContain('<incremental_instruction state="provided">');
-    expect(payload).toContain("Example continue response:");
-    expect(payload).toContain("<assistant_identity>");
-    expect(payload).toContain("model: Gemini 2.5 Pro");
+    expect(payload).not.toContain("<continue_response_rules>");
+    expect(payload).not.toContain("Example continue response:");
+    expect(payload).not.toContain("model: Gemini 2.5 Pro");
     expect(payload).not.toContain("<system_directive>");
+    expect(payload).not.toContain("Session window start:");
   });
 
   it("tells empty continue turns not to invent new content", () => {
@@ -127,9 +127,36 @@ describe("buildBridgePayload followup", () => {
     });
 
     expect(payload).toContain('<incremental_instruction state="empty">');
-    expect(payload).toContain("No new user instruction was provided");
-    expect(payload).toContain("Do not invent new recommendations");
-    expect(payload).toContain("Only reflect the delta");
+    expect(payload).toContain("No new instruction for this continue turn");
+    expect(payload).toContain("do not add recommendations or adjacent ideas");
+    expect(payload).toContain("<changed_canvas>");
+    expect(payload).toContain("Canvas delta");
+  });
+
+  it("marks followup context as empty when no incremental changes were found", () => {
+    const payload = buildBridgePayload({
+      stream: {
+        name: "Current Stream",
+        stream_kind: "REGULAR",
+        domain: { name: "Demo Domain" },
+      },
+      interactionMode: "BOTH",
+      includeCanvas: true,
+      canvas: null,
+      entries: [],
+      includeGlobalStream: false,
+      additionalGlobalStreamIds: [],
+      globalStreamsMeta: [],
+      globalCanvases: [],
+      globalEntries: [],
+      globalStreamName: null,
+      userInput: "   ",
+      payloadVariant: "followup",
+      sessionLoadedAt: "2026-03-29T10:00:00.000Z",
+    });
+
+    expect(payload).toContain('<incremental_context state="empty">');
+    expect(payload).toContain("No new stream, canvas, or global-context changes were detected.");
   });
 
   it("preserves structured canvas markdown in followup snapshots", () => {

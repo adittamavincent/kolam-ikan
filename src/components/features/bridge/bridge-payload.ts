@@ -337,6 +337,8 @@ export function buildBridgePayload({
   payloadVariant,
   sessionLoadedAt,
 }: BuildBridgePayloadArgs) {
+  void sessionLoadedAt;
+
   if (payloadVariant === "followup") {
     return buildBridgeFollowupPayload({
       stream,
@@ -348,7 +350,6 @@ export function buildBridgePayload({
       globalEntries,
       globalStreamName,
       userInput,
-      sessionLoadedAt,
     });
   }
 
@@ -487,7 +488,6 @@ function buildBridgeFollowupPayload({
   globalEntries,
   globalStreamName,
   userInput,
-  sessionLoadedAt,
 }: Pick<
   BuildBridgePayloadArgs,
   | "stream"
@@ -499,11 +499,9 @@ function buildBridgeFollowupPayload({
   | "globalEntries"
   | "globalStreamName"
   | "userInput"
-  | "sessionLoadedAt"
 >) {
   const domainName = (stream?.domain as { name?: string } | undefined)?.name || "";
   const isGlobal = stream?.stream_kind === STREAM_KIND.GLOBAL;
-  const sessionWindow = sessionLoadedAt?.trim() || "unknown";
   const canvasContent = (canvas?.content_json as MarkdownBlock[] | undefined) || [];
   const hasCanvasChanges =
     Array.isArray(canvasContent) && canvasContent.length > 0;
@@ -553,55 +551,32 @@ ${globalEntries?.map((entry) => entryToMarkdown(entry)).join("\n\n") || ""}
 ${trimmedInstruction}
 </incremental_instruction>`
     : `<incremental_instruction state="empty">
-No new user instruction was provided for this continue turn.
-Do not invent new recommendations, extra analysis, or adjacent ideas.
-Only reflect the delta contained in <incremental_context>.
+No new instruction for this continue turn. Reflect only the supplied delta.
 </incremental_instruction>`;
 
   return `<session_followup phase="continue">
-Continue the active Kolam Ikan bridge session that is already loaded in this provider conversation.
-The earlier cold-boot prompt already established the full session context, response XML contract, and baseline rules.
-This continuation message is only a diff/update packet, not a brand-new session introduction.
-Keep using your normal assistant behavior and provider/company system prompt style inside the structured XML you return.
-Use the prior session context together with the changed context below, and focus only on what has changed or what this new instruction asks.
+Continue the active Kolam Ikan bridge session already loaded in this provider conversation.
+Reuse the cold-boot response contract and prior session memory; this turn supplies delta-only context.
 
 Target: ${interactionMode}
 Stream: ${(stream?.name as string | undefined) || ""} ${isGlobal ? "(Global)" : ""}
 Domain: ${domainName}
-Session window start: ${sessionWindow}
 </session_followup>
 
-<continue_response_rules>
-Use the same XML wrapper and parser contract from the cold-boot turn.
-For <log>: always return a concise append-ready log entry for this turn. Do not rewrite or summarize prior log entries, and do not add generic greetings, confirmations, or filler. Keep it to the new delta only.
-For <canvas>: return only a unified git-style diff patch against the already-loaded canvas in this provider conversation. Never restate the full canvas. Remove old lines with \`- \`, add new lines with \`+ \`, and include unchanged context lines with a single leading space only when needed for orientation.
-Treat <changed_canvas> as a reference snapshot of the new desired state, not as an output template. Use it to compute the diff against the previously loaded canvas, then output only the patch lines.
-Treat <incremental_context> as delta-only context. It may overlap with earlier session memory, so do not echo it back wholesale.
-If <incremental_instruction> is empty, do not invent recommendations or tangential additions. Mirror only the supplied delta.
+<continue_contract_ref>cold_boot.response_instructions</continue_contract_ref>
 
-Example continue response:
-<response>
-<assistant_identity>
-assistant: Gemini
-provider: Google
-model: Gemini 2.5 Pro
-</assistant_identity>
-<log>
-Updated the track identification and canvas notes for this turn.
-</log>
-<canvas>
-- # Track Profile: "San Juan"
-+ # Track Profile: "En Casita"
-  ## Context & Significance
-- **Themes:** Nostalgia, appreciation for Puerto Rico, and the feeling of home.
-+ **Themes:** Home, longing, and the simple beauty of Puerto Rico.
-</canvas>
-<base>${(canvas?.updated_at as string | undefined) || "BASE_TIMESTAMP_FROM_COLD_BOOT"}</base>
-</response>
-</continue_response_rules>
+<continue_delta_rules>
+Return only this turn's delta.
+Keep the same XML wrapper and mode requirements from cold boot.
+<log>: append-ready prose for this turn only; do not repeat or summarize prior turns.
+<canvas>: unified diff against the canvas already loaded in session memory; do not restate the full canvas.
+Treat <changed_canvas> as a reference snapshot for computing the diff, not as output to echo.
+Treat <incremental_context> as delta-only context; do not mirror it back wholesale.
+If <incremental_instruction> is empty, do not add recommendations or adjacent ideas.
+</continue_delta_rules>
 
-<incremental_context>
-${incrementalSections || "No new stream, canvas, or global-context changes were detected since the active session started."}
+<incremental_context${incrementalSections ? "" : ' state="empty"'}>
+${incrementalSections || "No new stream, canvas, or global-context changes were detected."}
 </incremental_context>
 
 ${incrementalInstructionSection}`;

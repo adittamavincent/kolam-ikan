@@ -6,7 +6,7 @@ export default function DevelopmentLocatorOverlay() {
   useEffect(() => {
     if (
       process.env.NODE_ENV === "development" &&
-      process.env.NEXT_PUBLIC_LOCATORJS !== "0"
+      process.env.NEXT_PUBLIC_LOCATORJS === "1"
     ) {
       import("@locator/runtime").then((locator) => {
         locator.default();

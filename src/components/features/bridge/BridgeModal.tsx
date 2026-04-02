@@ -30,6 +30,7 @@ import type { BridgeJobStatus } from "@/lib/types";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import {
   BRIDGE_PROVIDER_PRESETS,
+  buildManualSessionActivationPatch,
   getBridgeSessionLaunchUrl,
   getBridgeProviderPreset,
   getQuickPayloadVariant,
@@ -365,9 +366,16 @@ export function BridgeModal({
       latestBridgeJob.data?.status === "succeeded");
 
   const queueStatus = bridgeSession?.automationStatus ?? "idle";
+  const persistedDetailedUiPhase = bridgeSession?.detailedUiPhase ?? "send";
+  const isPersistedManualDetailedFlow =
+    persistedDetailedUiPhase === "manual-copy" ||
+    persistedDetailedUiPhase === "manual-paste";
+  const isManualDetailedFlow =
+    isPersistedManualDetailedFlow ||
+    (!runnerStatus.online && !runnerStatus.isChecking);
 
   const phase =
-    !runnerStatus.online && !runnerStatus.isChecking && !hasPendingResponse
+    isManualDetailedFlow && !hasPendingResponse
       ? "send"
       : hasPendingResponse
         ? "apply"
@@ -375,6 +383,34 @@ export function BridgeModal({
           bridgeSession?.automationStatus === "running"
           ? "waiting"
           : "send";
+
+  useEffect(() => {
+    const nextDetailedPhase = isManualDetailedFlow
+      ? pastedXML.trim()
+        ? "manual-paste"
+        : persistedDetailedUiPhase === "manual-paste"
+          ? "manual-paste"
+          : "manual-copy"
+      : phase;
+
+    if (bridgeSession?.detailedUiPhase === nextDetailedPhase) return;
+    if (!bridgeSession && nextDetailedPhase === "send") return;
+
+    upsertBridgeSession(streamId, {
+      detailedUiPhase: nextDetailedPhase,
+    });
+  }, [
+    bridgeSession,
+    bridgeSession?.detailedUiPhase,
+    pastedXML,
+    phase,
+    persistedDetailedUiPhase,
+    runnerStatus.isChecking,
+    runnerStatus.online,
+    isManualDetailedFlow,
+    streamId,
+    upsertBridgeSession,
+  ]);
 
   // Sync job status back to session preferences
   useEffect(() => {
@@ -403,7 +439,7 @@ export function BridgeModal({
 
 
   const label =
-    !runnerStatus.online && !runnerStatus.isChecking
+    isManualDetailedFlow
       ? "Manual"
       : phase === "waiting"
         ? "Waiting"
@@ -416,7 +452,7 @@ export function BridgeModal({
             : "Quick";
 
   const detail =
-    !runnerStatus.online && !runnerStatus.isChecking
+    isManualDetailedFlow
       ? "Runner offline"
       : phase === "apply"
         ? "Apply latest response"
@@ -448,8 +484,7 @@ export function BridgeModal({
   const handleActionClick = () => {
     if (phase === "waiting" || parserStatus.isApplying) return;
 
-    if (!runnerStatus.online && !runnerStatus.isChecking) {
-      // Stay in manual mode, user handles XML manually
+    if (isManualDetailedFlow) {
       return;
     }
 
@@ -620,12 +655,14 @@ export function BridgeModal({
           {/* Main Execution Area */}
           <main className="flex-1 min-w-0 overflow-y-auto bg-surface-default flex flex-col">
             <div className="flex flex-col gap-6 p-4 flex-1 min-h-0">
-              {!runnerStatus.online && (
+              {isManualDetailedFlow && (
                 <section className="border border-status-error-border bg-status-error-bg p-4 text-sm text-status-error-text">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="font-semibold text-xs uppercase tracking-wider">
-                        Runner Offline — Manual Handoff
+                        {runnerStatus.online
+                          ? "Manual Handoff In Progress"
+                          : "Runner Offline — Manual Handoff"}
                       </div>
                       <p className="mt-1 text-[11px] leading-relaxed opacity-90">
                         Copy the payload, run it in {currentProvider.label}, then paste the response below.
@@ -674,13 +711,15 @@ export function BridgeModal({
                           2. Build Payload
                         </div>
                         <p className="text-[11px] text-text-muted max-w-sm">
-                          {runnerStatus.online
+                          {isManualDetailedFlow
+                            ? "Copy the generated prompt and send it to the provider manually."
+                            : runnerStatus.online
                             ? "Process this through the local runner or use the manual handoff tags below."
                             : "Copy the generated prompt and send it to the provider manually."}
                         </p>
                       </div>
-                      {!runnerStatus.online && (
-                        <div className="flex flex-wrap gap-2">
+                      {isManualDetailedFlow && (
+                        <div className="flex flex-wrap gap-2 pb-3">
                           <button
                             onClick={handleCopyXML}
                             className="border border-border-default bg-surface-default px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors"
@@ -702,7 +741,7 @@ export function BridgeModal({
                           </button>
                         </div>
                       )}
-                      {runnerStatus.online && (
+                      {!isManualDetailedFlow && runnerStatus.online && (
                         <div className="flex flex-wrap gap-2">
                           <button
                             onClick={handleCopyXML}
@@ -743,7 +782,7 @@ export function BridgeModal({
                 </>
               )}
 
-              {(phase === "apply" || !runnerStatus.online || !!pastedXML) && (
+              {(phase === "apply" || isManualDetailedFlow || !!pastedXML) && (
                 /* Step 3: Response Handling */
                 <section className="min-w-0 flex flex-col gap-0 flex-1 min-h-0">
                   <div className="flex flex-wrap items-start justify-between gap-4 pb-3">
@@ -752,12 +791,12 @@ export function BridgeModal({
                         3. Apply Response
                       </div>
                       <p className="text-[11px] text-text-muted max-w-sm">
-                        {(!runnerStatus.online || !!pastedXML)
+                        {(isManualDetailedFlow || !!pastedXML)
                           ? "Review changes and apply them back to your workspace."
                           : "Once a response is received, it will be parsed and displayed here for review."}
                       </p>
                     </div>
-                    {(!runnerStatus.online && !pastedXML) && (
+                    {(isManualDetailedFlow && !pastedXML) && (
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={handlePasteResult}
@@ -779,8 +818,14 @@ export function BridgeModal({
                     onPastedXMLChange={setPastedXML}
                     onStatusChange={setParserStatus}
                     onApplySuccess={() => {
+                      const manualSessionActivation = buildManualSessionActivationPatch(
+                        effectiveProviderId,
+                        bridgeSession,
+                      );
+
                       if (isApplyingLatestAutomatedResponse && latestBridgeJob.data?.id) {
                         upsertBridgeSession(streamId, {
+                          ...manualSessionActivation,
                           lastAppliedJobId: latestBridgeJob.data.id,
                           automationStatus: "succeeded",
                           lastJobId: latestBridgeJob.data.id,
@@ -788,6 +833,8 @@ export function BridgeModal({
                           lastJobError: latestBridgeJob.data.error_message ?? "",
                           lastJobCompletedAt: latestBridgeJob.data.completed_at ?? null,
                         });
+                      } else {
+                        upsertBridgeSession(streamId, manualSessionActivation);
                       }
                       setParserStatus((prev) => ({ ...prev, isApplying: false }));
                       setUserInput("");

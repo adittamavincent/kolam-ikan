@@ -88,3 +88,15 @@ export function getBridgeSessionLaunchUrl(
   const provider = getBridgeProviderPreset(providerId);
   return session?.externalSessionUrl?.trim() || provider.launchUrl;
 }
+
+export function buildManualSessionActivationPatch(
+  providerId: BridgeProviderId,
+  session?: BridgeStreamSession | null,
+) {
+  return {
+    isExternalSessionActive: true,
+    externalSessionLoadedAt:
+      session?.externalSessionLoadedAt?.trim() || new Date().toISOString(),
+    externalSessionUrl: getBridgeSessionLaunchUrl(providerId, session),
+  };
+}

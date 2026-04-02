@@ -43,7 +43,7 @@ interface ResponseParserProps {
 }
 
 export interface ResponseParserHandle {
-  parse: () => void;
+  parse: () => Promise<void>;
   apply: () => Promise<boolean>;
   quickApply: () => Promise<boolean>;
   reset: () => void;

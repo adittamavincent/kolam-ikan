@@ -234,11 +234,16 @@ describe("BridgeModal", () => {
       expect(
         useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"],
       ).toMatchObject({
+        isExternalSessionActive: true,
         lastAppliedJobId: "job-1",
         automationStatus: "succeeded",
         lastJobId: "job-1",
       });
     });
+
+    expect(
+      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.externalSessionLoadedAt,
+    ).toBeTruthy();
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -261,6 +266,18 @@ describe("BridgeModal", () => {
     expect(screen.getByRole("button", { name: "Paste" })).toBeInTheDocument();
   });
 
+  it("restores manual detailed paste state from the saved session even when runner is online", async () => {
+    mockLatestBridgeJobData.current = null;
+    useUiPreferencesStore.getState().upsertBridgeSession("stream-1", {
+      detailedUiPhase: "manual-paste",
+    });
+
+    render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
+
+    expect(screen.getByText("Manual Handoff In Progress")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Paste Response" }).length).toBeGreaterThan(0);
+  });
+
   it("passes followup payload settings to XMLGenerator for active external sessions", async () => {
     useUiPreferencesStore.getState().upsertBridgeSession("stream-1", {
       isExternalSessionActive: true,
@@ -276,5 +293,15 @@ describe("BridgeModal", () => {
         sessionLoadedAt: "2026-04-01T15:51:23.274Z",
       });
     });
+  });
+
+  it("adds spacing below the offline payload button group", async () => {
+    mockLatestBridgeJobData.current = null;
+    mockRunnerStatus.online = false;
+    mockRunnerStatus.status.online = false;
+
+    render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
+
+    expect(screen.getByRole("button", { name: "Copy Prompt" }).parentElement).toHaveClass("pb-3");
   });
 });

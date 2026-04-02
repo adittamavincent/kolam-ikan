@@ -76,11 +76,17 @@ export function StreamView({ streamId }: { streamId: string }) {
   const automationStatus = effectiveBridgeSession?.automationStatus ?? "idle";
   const isAutomationActive =
     automationStatus === "queued" || automationStatus === "running";
+  const isManualBridgeAwaitingPaste =
+    effectiveBridgeSession?.quickUiPhase === "manual-paste" ||
+    effectiveBridgeSession?.quickUiPhase === "manual-continue" ||
+    effectiveBridgeSession?.detailedUiPhase === "manual-paste" ||
+    effectiveBridgeSession?.detailedUiPhase === "manual-continue";
   const shouldShowReset =
     hasSessionMemory ||
     !!effectiveBridgeSession?.lastJobId ||
     automationStatus !== "idle" ||
-    hasActiveSession;
+    hasActiveSession ||
+    isManualBridgeAwaitingPaste;
 
   useEffect(() => {
     const onOpenDocumentImport = (ev?: Event) => {

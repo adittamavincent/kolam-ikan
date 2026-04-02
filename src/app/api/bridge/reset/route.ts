@@ -30,12 +30,20 @@ export async function POST(request: Request) {
 
   const { streamId } = parsed.data;
 
-  const { data: streamAccess, error: streamAccessError } = await supabase.rpc(
-    "user_can_access_stream",
-    { p_stream_id: streamId },
-  );
+  const { data: streamAccess, error: streamAccessError } = await supabase
+    .from("streams")
+    .select("id")
+    .eq("id", streamId)
+    .maybeSingle();
 
-  if (streamAccessError || !streamAccess) {
+  if (streamAccessError) {
+    return NextResponse.json(
+      { error: streamAccessError.message ?? "Failed to verify stream access" },
+      { status: 400 },
+    );
+  }
+
+  if (!streamAccess) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

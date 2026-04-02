@@ -9,6 +9,7 @@ import {
   buildUiPreferencesPayload,
   getDeviceClassForWidth,
   type UiPreferencesPayload,
+  type BridgeStreamSession,
   useUiPreferencesStore,
 } from "@/lib/hooks/useUiPreferencesStore";
 
@@ -23,6 +24,41 @@ function parseTimestamp(value: string | null | undefined) {
   if (!value) return null;
   const parsed = Date.parse(value);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+export function shouldApplyFetchedPreferences(
+  fetchedAt: number,
+  localUpdatedAt: number | null,
+  lastSyncedAt: number | null,
+) {
+  const hasUnsyncedLocalChanges =
+    localUpdatedAt !== null &&
+    (lastSyncedAt === null || localUpdatedAt > lastSyncedAt);
+
+  return !hasUnsyncedLocalChanges || fetchedAt > (lastSyncedAt ?? 0);
+}
+
+export function didBridgePhaseChange(
+  current: Record<string, BridgeStreamSession>,
+  previous: Record<string, BridgeStreamSession>,
+) {
+  const streamIds = new Set([
+    ...Object.keys(current),
+    ...Object.keys(previous),
+  ]);
+
+  for (const streamId of streamIds) {
+    const currentSession = current[streamId];
+    const previousSession = previous[streamId];
+    if (
+      currentSession?.quickUiPhase !== previousSession?.quickUiPhase ||
+      currentSession?.detailedUiPhase !== previousSession?.detailedUiPhase
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function isMissingUiPreferencesStorage(error: unknown) {
@@ -84,7 +120,7 @@ export function useUiPreferencesSync() {
 
     let cancelled = false;
 
-    void (async () => {
+    const loadCloudPreferences = async () => {
       if (cloudSyncDisabledRef.current) {
         useUiPreferencesStore.getState().setCloudHydrated(user.id);
         initializedRef.current = true;
@@ -117,11 +153,15 @@ export function useUiPreferencesSync() {
 
       const fetchedAt = parseTimestamp(data?.updated_at) ?? Date.now();
       const state = useUiPreferencesStore.getState();
-      const hasUnsyncedLocalChanges =
-        state.localUpdatedAt !== null &&
-        (state.lastSyncedAt === null || state.localUpdatedAt > state.lastSyncedAt);
 
-      if (data?.preferences && (!hasUnsyncedLocalChanges || fetchedAt > (state.lastSyncedAt ?? 0))) {
+      if (
+        data?.preferences &&
+        shouldApplyFetchedPreferences(
+          fetchedAt,
+          state.localUpdatedAt,
+          state.lastSyncedAt,
+        )
+      ) {
         state.applyCloudPreferences(
           data.preferences as unknown as UiPreferencesPayload,
           user.id,
@@ -132,10 +172,28 @@ export function useUiPreferencesSync() {
       }
 
       initializedRef.current = true;
-    })();
+    };
+
+    void loadCloudPreferences();
+
+    const handleVisibilityRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      initializedRef.current = false;
+      void loadCloudPreferences();
+    };
+
+    const handleFocusRefresh = () => {
+      initializedRef.current = false;
+      void loadCloudPreferences();
+    };
+
+    window.addEventListener("visibilitychange", handleVisibilityRefresh);
+    window.addEventListener("focus", handleFocusRefresh);
 
     return () => {
       cancelled = true;
+      window.removeEventListener("visibilitychange", handleVisibilityRefresh);
+      window.removeEventListener("focus", handleFocusRefresh);
     };
   }, [loading, status, supabase, user?.id]);
 
@@ -143,46 +201,48 @@ export function useUiPreferencesSync() {
     if (loading || status !== "signed_in" || !user?.id) return;
     if (cloudSyncDisabledRef.current) return;
 
-    const savePreferences = debounce(
-      async (payload: UiPreferencesPayload, userId: string) => {
-        useUiPreferencesStore.getState().setSyncStatus("syncing");
+    const persistPreferences = async (payload: UiPreferencesPayload, userId: string) => {
+      useUiPreferencesStore.getState().setSyncStatus("syncing");
 
-        const { data, error } = await supabase
-          .from("user_ui_preferences")
-          .upsert(
-            {
-              user_id: userId,
-              preferences: payload as unknown as Json,
-            },
-            { onConflict: "user_id" },
-          )
-          .select("updated_at")
-          .single();
+      const { data, error } = await supabase
+        .from("user_ui_preferences")
+        .upsert(
+          {
+            user_id: userId,
+            preferences: payload as unknown as Json,
+          },
+          { onConflict: "user_id" },
+        )
+        .select("updated_at")
+        .single();
 
-        if (error) {
-          if (isMissingUiPreferencesStorage(error)) {
-            cloudSyncDisabledRef.current = true;
-            useUiPreferencesStore.getState().setCloudHydrated(userId);
-            useUiPreferencesStore.getState().setSyncStatus("idle");
-            return;
-          }
-
-          console.error("[UI Preferences] Failed to save cloud preferences", error);
-          useUiPreferencesStore.getState().setSyncStatus("error");
+      if (error) {
+        if (isMissingUiPreferencesStorage(error)) {
+          cloudSyncDisabledRef.current = true;
+          useUiPreferencesStore.getState().setCloudHydrated(userId);
+          useUiPreferencesStore.getState().setSyncStatus("idle");
           return;
         }
 
-        useUiPreferencesStore
-          .getState()
-          .markSynced(parseTimestamp(data.updated_at) ?? Date.now(), userId);
+        console.error("[UI Preferences] Failed to save cloud preferences", error);
+        useUiPreferencesStore.getState().setSyncStatus("error");
+        return;
+      }
 
-        window.setTimeout(() => {
-          const state = useUiPreferencesStore.getState();
-          if (state.syncStatus === "synced") {
-            state.setSyncStatus("idle");
-          }
-        }, 2000);
-      },
+      useUiPreferencesStore
+        .getState()
+        .markSynced(parseTimestamp(data.updated_at) ?? Date.now(), userId);
+
+      window.setTimeout(() => {
+        const state = useUiPreferencesStore.getState();
+        if (state.syncStatus === "synced") {
+          state.setSyncStatus("idle");
+        }
+      }, 2000);
+    };
+
+    const savePreferences = debounce(
+      persistPreferences,
       900,
     );
 
@@ -192,6 +252,17 @@ export function useUiPreferencesSync() {
       if (state.localUpdatedAt === null) return;
 
       const payload = buildUiPreferencesPayload(state);
+      if (
+        didBridgePhaseChange(
+          state.bridgeSessionsByStream,
+          previousState.bridgeSessionsByStream,
+        )
+      ) {
+        savePreferences.cancel();
+        void persistPreferences(payload, user.id);
+        return;
+      }
+
       void savePreferences(payload, user.id);
     });
 

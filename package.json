@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:fast": "NEXT_PUBLIC_LOCATORJS=0 next dev",
+    "dev:fast": "next dev",
+    "dev:locator": "NEXT_PUBLIC_LOCATORJS=1 next dev",
     "docker:logs": "docker logs -f kolam_docling_worker",
     "fetch:pdf-worker": "node scripts/fetch-pdf-worker.js",
     "build": "next build",

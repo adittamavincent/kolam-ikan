@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { QuickBridgeControl } from "./QuickBridgeControl";
@@ -118,6 +118,13 @@ describe("QuickBridgeControl", () => {
         status: "queued",
       },
     });
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+        readText: vi.fn().mockResolvedValue(""),
+      },
+      configurable: true,
+    });
 
     useUiPreferencesStore.setState({
       bridgeDefaults: {
@@ -208,7 +215,7 @@ describe("QuickBridgeControl", () => {
     });
   });
 
-  it("opens detailed manual mode instead of queueing when the runner is offline", async () => {
+  it("uses copy then paste in manual mode, then returns to continue after success", async () => {
     const user = userEvent.setup();
     const onOpenDetailed = vi.fn();
     mockRunnerStatus.online = false;
@@ -218,6 +225,18 @@ describe("QuickBridgeControl", () => {
       runnerId: undefined,
       providers: undefined,
     };
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const readText = vi
+      .fn()
+      .mockResolvedValue("<response><log>manual</log></response>");
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText,
+        readText,
+      },
+      configurable: true,
+    });
+    mockQuickApply.mockResolvedValue(true);
 
     render(
       <QuickBridgeControl
@@ -226,10 +245,117 @@ describe("QuickBridgeControl", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /manual/i }));
+    await user.click(screen.getByRole("button", { name: /copy/i }));
 
-    expect(onOpenDetailed).toHaveBeenCalledTimes(1);
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(onOpenDetailed).not.toHaveBeenCalled();
     expect(mockCreateBridgeJob.mutateAsync).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /paste/i })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: /paste/i }));
+
+    await waitFor(() => {
+      expect(readText).toHaveBeenCalledTimes(1);
+      expect(mockQuickApply).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
+    });
+
+    expect(
+      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"],
+    ).toMatchObject({
+      isExternalSessionActive: true,
+      quickUiPhase: "manual-continue",
+    });
+    expect(
+      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.externalSessionLoadedAt,
+    ).toBeTruthy();
+  });
+
+  it("falls back to paste capture when clipboard read is blocked", async () => {
+    const user = userEvent.setup();
+    mockRunnerStatus.online = false;
+    mockRunnerStatus.mode = "offline";
+    mockRunnerStatus.status = {
+      online: false,
+      runnerId: undefined,
+      providers: undefined,
+    };
+    mockQuickApply.mockResolvedValue(true);
+
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: vi.fn().mockResolvedValue(undefined),
+        readText: vi.fn().mockRejectedValue(new DOMException("Denied", "NotAllowedError")),
+      },
+      configurable: true,
+    });
+
+    render(<QuickBridgeControl streamId="stream-1" />);
+
+    await user.click(screen.getByRole("button", { name: /copy/i }));
+    await user.click(screen.getByRole("button", { name: /paste/i }));
+
+    const capture = screen.getByLabelText("Manual quick paste capture");
+    fireEvent.change(capture, {
+      target: {
+        value: "<response><log>manual fallback</log></response>",
+      },
+    });
+
+    expect(capture).toHaveValue("<response><log>manual fallback</log></response>");
+
+    await user.click(screen.getByRole("button", { name: /paste/i }));
+
+    await waitFor(() => {
+      expect(mockQuickApply).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
+    });
+  });
+
+  it("persists the manual quick phase as paste across rerenders", async () => {
+    const user = userEvent.setup();
+    mockRunnerStatus.online = false;
+    mockRunnerStatus.mode = "offline";
+    mockRunnerStatus.status = {
+      online: false,
+      runnerId: undefined,
+      providers: undefined,
+    };
+
+    const { rerender } = render(<QuickBridgeControl streamId="stream-1" />);
+
+    await user.click(screen.getByRole("button", { name: /copy/i }));
+
+    await waitFor(() => {
+      expect(
+        useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.quickUiPhase,
+      ).toBe("manual-paste");
+    });
+
+    rerender(<QuickBridgeControl streamId="stream-1" />);
+
+    expect(screen.getByRole("button", { name: /paste/i })).toBeEnabled();
+  });
+
+  it("restores the manual continue phase even when the runner comes back online", () => {
+    mockRunnerStatus.online = true;
+    mockRunnerStatus.mode = "online";
+    mockRunnerStatus.status = {
+      online: true,
+      runnerId: "local-bridge-runner",
+      providers: ["gemini"],
+    };
+
+    useUiPreferencesStore.getState().upsertBridgeSession("stream-1", {
+      quickUiPhase: "manual-continue",
+    });
+
+    render(<QuickBridgeControl streamId="stream-1" />);
+
+    expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
   });
 
   it("returns to Quick from apply phase after the bridge session is reset", async () => {

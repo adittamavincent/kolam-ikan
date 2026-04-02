@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { StreamView } from "./StreamView";
+import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 
 vi.mock("@/components/features/log/LogPane", () => ({
   LogPane: () => <div>LogPane</div>,
@@ -51,6 +52,56 @@ vi.mock("@/components/features/bridge/BridgeModal", () => ({
 }));
 
 describe("StreamView", () => {
+  beforeEach(() => {
+    useUiPreferencesStore.setState({
+      bridgeDefaults: {
+        providerId: "gemini",
+        quickPreset: "recommended",
+      },
+      bridgeSessionsByStream: {},
+    });
+  });
+
+  it("shows reset when manual quick bridge is awaiting paste", () => {
+    useUiPreferencesStore.setState({
+      bridgeDefaults: {
+        providerId: "gemini",
+        quickPreset: "recommended",
+      },
+      bridgeSessionsByStream: {
+        "stream-1": {
+          providerId: "gemini",
+          lastMode: "BOTH",
+          lastContextRecipe: {
+            entrySelection: "all",
+            includeCanvas: true,
+            includeGlobalStream: true,
+          },
+          lastInstruction: "",
+          sessionMemory: "",
+          lastUsedAt: null,
+          isExternalSessionActive: false,
+          externalSessionLoadedAt: null,
+          externalSessionUrl: null,
+          automationSessionKey: null,
+          automationStatus: "idle",
+          lastJobId: null,
+          lastAppliedJobId: null,
+          lastJobStatus: null,
+          lastJobError: "",
+          lastJobCompletedAt: null,
+          sentEntryIds: [],
+          quickUiPhase: "manual-continue",
+          detailedUiPhase: "send",
+        },
+      },
+    });
+
+    render(<StreamView streamId="stream-1" />);
+
+    expect(screen.getByRole("button", { name: /reset/i })).toBeInTheDocument();
+  });
+
   it("renders quick inline control and detailed bridge button", () => {
     render(<StreamView streamId="stream-1" />);
 
@@ -58,12 +109,12 @@ describe("StreamView", () => {
     expect(screen.getByRole("button", { name: "Detailed" })).toBeInTheDocument();
   });
 
-  it("shows a single combined bridge status pill", () => {
+  it("shows the bridge toolbar controls", () => {
     render(<StreamView streamId="stream-1" />);
 
-    expect(screen.getByText("Fresh")).toBeInTheDocument();
-    expect(screen.queryByText("Idle")).not.toBeInTheDocument();
-    expect(screen.queryByText("Live")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Preferred web LLM" })).toBeInTheDocument();
+    expect(screen.getByText("QuickBridgeControl")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Detailed" })).toBeInTheDocument();
   });
 
   it("opens the detailed bridge flow", () => {

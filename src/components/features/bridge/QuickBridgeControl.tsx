@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ChangeEvent,
+  type ClipboardEvent,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Wand2 } from "lucide-react";
+import { ClipboardPaste, Copy, Loader2, Wand2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { STREAM_KIND, type BridgeJobStatus } from "@/lib/types";
 import {
+  buildManualSessionActivationPatch,
   buildQuickBridgePreset,
   composeBridgeInstruction,
   getBridgeProviderPreset,
@@ -42,7 +51,6 @@ const INITIAL_PARSER_STATUS = {
 
 export function QuickBridgeControl({
   streamId,
-  onOpenDetailed,
 }: QuickBridgeControlProps) {
   const supabase = createClient();
   const bridgeDefaults = useUiPreferencesStore((state) => state.bridgeDefaults);
@@ -61,8 +69,11 @@ export function QuickBridgeControl({
   const [launchState, setLaunchState] = useState<QuickLaunchState>("idle");
   const [isQueueing, setIsQueueing] = useState(false);
   const [parserStatus, setParserStatus] = useState(INITIAL_PARSER_STATUS);
+  const [manualPastedXML, setManualPastedXML] = useState("");
+  const [manualPasteDraft, setManualPasteDraft] = useState("");
   const createBridgeJob = useCreateBridgeJob(streamId);
   const parserRef = useRef<ResponseParserHandle>(null);
+  const manualPasteInputRef = useRef<HTMLTextAreaElement>(null);
   const runnerStatus = useBridgeRunnerStatus({ pollIntervalMs: 15_000 });
   const hasHydrated = useSyncExternalStore(
     () => () => {},
@@ -179,20 +190,31 @@ export function QuickBridgeControl({
     latestJob?.payload === generatedXML;
   const responseText = latestJob?.raw_response?.trim() ?? "";
   const canRunQuick = payloadReady && !!generatedXML.trim();
+  const persistedQuickUiPhase = bridgeSession?.quickUiPhase ?? "send";
+  const isPersistedManualMode =
+    persistedQuickUiPhase === "manual-copy" ||
+    persistedQuickUiPhase === "manual-paste" ||
+    persistedQuickUiPhase === "manual-continue";
+  const isManualMode =
+    isPersistedManualMode || (!runnerStatus.online && !runnerStatus.isChecking);
+  const isManualPastePhase = persistedQuickUiPhase === "manual-paste";
+  const isManualContinuePhase = persistedQuickUiPhase === "manual-continue";
   const hasPendingResponse =
     !!bridgeSession &&
     latestJob?.status === "succeeded" &&
     !!responseText &&
     latestJob?.id !== bridgeSession?.lastAppliedJobId;
   const pendingResponseJobId = hasPendingResponse ? latestJob?.id ?? null : null;
-  const responseToApply = hasPendingResponse ? responseText : "";
+  const responseToApply = hasPendingResponse ? responseText : manualPastedXML;
   const isContinuing =
     !!bridgeSession &&
     ((hasHydrated ? bridgeSession?.isExternalSessionActive ?? false : false) ||
       latestJob?.status === "succeeded");
 
   const phase: QuickPhase =
-    !runnerStatus.online && !runnerStatus.isChecking && !hasPendingResponse
+    isManualMode && !manualPastedXML.trim()
+      ? "send"
+      : !runnerStatus.online && !runnerStatus.isChecking && !hasPendingResponse
       ? "send"
       : hasPendingResponse
       ? "apply"
@@ -205,6 +227,43 @@ export function QuickBridgeControl({
           effectiveLaunchState === "opened"
         ? "waiting"
         : "send";
+
+  useEffect(() => {
+    const nextQuickUiPhase = isManualMode
+      ? isManualContinuePhase
+        ? "manual-continue"
+        : isManualPastePhase
+          ? "manual-paste"
+        : "manual-copy"
+      : phase === "waiting"
+        ? "waiting"
+        : phase === "apply"
+          ? "apply"
+          : "send";
+
+    if (bridgeSession?.quickUiPhase === nextQuickUiPhase) return;
+    if (!bridgeSession && nextQuickUiPhase === "send") return;
+
+    if (isManualMode) {
+      upsertBridgeSession(streamId, {
+        quickUiPhase: nextQuickUiPhase,
+      });
+      return;
+    }
+
+    upsertBridgeSession(streamId, {
+      quickUiPhase: nextQuickUiPhase,
+    });
+  }, [
+    bridgeSession,
+    bridgeSession?.quickUiPhase,
+    isManualContinuePhase,
+    isManualMode,
+    isManualPastePhase,
+    phase,
+    streamId,
+    upsertBridgeSession,
+  ]);
 
   useEffect(() => {
     if (
@@ -312,12 +371,116 @@ export function QuickBridgeControl({
     }
   };
 
+  const handleManualCopy = async () => {
+    if (!generatedXML.trim()) return;
+    await navigator.clipboard.writeText(generatedXML);
+    upsertBridgeSession(streamId, {
+      quickUiPhase: "manual-paste",
+    });
+  };
+
+  const handleManualContinue = async () => {
+    if (manualPasteDraft.trim()) {
+      setManualPastedXML(manualPasteDraft);
+      return;
+    }
+
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        setManualPasteDraft(text);
+        setManualPastedXML(text);
+        requestAnimationFrame(() => {
+          manualPasteInputRef.current?.blur();
+        });
+        return;
+      }
+    } catch (error) {
+      console.warn("Clipboard read blocked, waiting for manual paste", error);
+    }
+
+    upsertBridgeSession(streamId, {
+      quickUiPhase: "manual-paste",
+    });
+    requestAnimationFrame(() => {
+      manualPasteInputRef.current?.focus();
+      manualPasteInputRef.current?.select();
+    });
+  };
+
+  const handleManualPasteCapture = (text: string) => {
+    if (!text.trim()) return;
+    setManualPasteDraft(text);
+    setManualPastedXML(text);
+  };
+
+  const handleManualPasteEvent = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const target = event.currentTarget;
+    requestAnimationFrame(() => {
+      const text = target.value;
+      if (!text.trim()) return;
+      handleManualPasteCapture(text);
+    });
+  };
+
+  const handleManualPasteInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const text = event.target.value;
+    setManualPasteDraft(text);
+  };
+
+  useEffect(() => {
+    if (!isPersistedManualMode && !(!runnerStatus.online && !runnerStatus.isChecking)) {
+      const frame = requestAnimationFrame(() => {
+        setManualPastedXML("");
+        setManualPasteDraft("");
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [isPersistedManualMode, runnerStatus.isChecking, runnerStatus.online]);
+
+  useEffect(() => {
+    if (!isManualMode || !isManualPastePhase) {
+      return;
+    }
+    requestAnimationFrame(() => {
+      manualPasteInputRef.current?.focus();
+      manualPasteInputRef.current?.select();
+    });
+  }, [isManualMode, isManualPastePhase]);
+
+  useEffect(() => {
+    if (!manualPastedXML.trim() || !isManualMode) return;
+    void (async () => {
+      const didApply = await parserRef.current?.quickApply();
+      if (!didApply) return;
+
+      setManualPastedXML("");
+      setManualPasteDraft("");
+      upsertBridgeSession(streamId, {
+        ...buildManualSessionActivationPatch(providerId, bridgeSession),
+        quickUiPhase: runnerStatus.online ? "send" : "manual-continue",
+      });
+    })();
+  }, [
+    bridgeSession,
+    manualPastedXML,
+    isManualMode,
+    providerId,
+    runnerStatus.online,
+    streamId,
+    upsertBridgeSession,
+  ]);
+
   const handleClick = () => {
     if (phase === "waiting" || parserStatus.isApplying) {
       return;
     }
-    if (!runnerStatus.online) {
-      onOpenDetailed?.();
+    if (isManualMode) {
+      if (isManualPastePhase) {
+        void handleManualContinue();
+        return;
+      }
+      void handleManualCopy();
       return;
     }
     if (phase === "apply") {
@@ -328,8 +491,12 @@ export function QuickBridgeControl({
   };
 
   const label =
-    !runnerStatus.online && !runnerStatus.isChecking
-      ? "Manual"
+    isManualMode
+      ? isManualContinuePhase
+        ? "Continue"
+        : isManualPastePhase
+          ? "Paste"
+        : "Copy"
       : phase === "waiting"
       ? "Waiting"
       : phase === "apply"
@@ -341,8 +508,12 @@ export function QuickBridgeControl({
           : "Quick";
 
   const detail =
-    !runnerStatus.online && !runnerStatus.isChecking
-      ? "Runner offline"
+    isManualMode
+      ? isManualContinuePhase
+        ? "Copy a follow-up payload for manual handoff"
+        : isManualPastePhase
+          ? "Paste the response and apply it"
+        : "Copy payload for manual handoff"
       : phase === "apply"
       ? "Apply response to current stream"
       : phase === "waiting"
@@ -366,12 +537,23 @@ export function QuickBridgeControl({
         parserStatus.isApplying ? (
       <Loader2 className="h-4 w-4 animate-spin" />
     ) : (
-      <Wand2 className="h-4 w-4" />
+      isManualMode ? (
+        isManualContinuePhase ? (
+          <Copy className="h-4 w-4" />
+        ) : isManualPastePhase ? (
+          <ClipboardPaste className="h-4 w-4" />
+        ) : (
+          <Copy className="h-4 w-4" />
+        )
+      ) : (
+        <Wand2 className="h-4 w-4" />
+      )
     );
 
   const disabled =
     !hasHydrated ||
     phase === "waiting" ||
+    (isManualMode && !isManualPastePhase && !isManualContinuePhase && !generatedXML.trim()) ||
     (phase === "send" && !canRunQuick && runnerStatus.online) ||
     (phase === "apply" && !hasPendingResponse) ||
     createBridgeJob.isPending ||
@@ -380,17 +562,39 @@ export function QuickBridgeControl({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={disabled}
-        title={`${label} · ${detail}`}
-        className="inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold transition-all hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:text-text-muted data-[phase=active]:bg-action-primary-bg data-[phase=active]:text-white data-[phase=active]:hover:bg-action-primary-hover"
-        data-phase={phase === "send" || phase === "apply" ? "active" : "idle"}
-      >
-        <span className="shrink-0">{icon}</span>
-        <span className="truncate">{label}</span>
-      </button>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={disabled}
+          title={`${label} · ${detail}`}
+          className="inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold transition-all hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:text-text-muted data-[phase=active]:bg-action-primary-bg data-[phase=active]:text-white data-[phase=active]:hover:bg-action-primary-hover"
+          data-phase={phase === "send" || phase === "apply" ? "active" : "idle"}
+        >
+          <span className="shrink-0">{icon}</span>
+          <span className="truncate">{label}</span>
+        </button>
+
+        {isManualMode && isManualPastePhase && !parserStatus.isApplying && (
+          <div className="absolute bottom-full right-0 z-50 mb-2 w-72 border border-border-default bg-surface-default p-3 shadow-lg">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              Paste Response
+            </div>
+            <p className="mt-1 text-[11px] text-text-muted">
+              Click here and paste with Cmd/Ctrl+V if browser clipboard access is blocked.
+            </p>
+            <textarea
+              ref={manualPasteInputRef}
+              aria-label="Manual quick paste capture"
+              className="mt-2 min-h-20 w-full resize-y border border-border-default bg-surface-subtle px-3 py-2 text-xs text-text-default outline-none focus:border-action-primary-bg"
+              onPaste={handleManualPasteEvent}
+              onChange={handleManualPasteInputChange}
+              placeholder="Paste provider response here..."
+              value={manualPasteDraft}
+            />
+          </div>
+        )}
+      </div>
 
       <div className="hidden">
         <XMLGenerator
@@ -421,7 +625,7 @@ export function QuickBridgeControl({
           interactionMode={quickPreset.interactionMode}
           aiPersonaLabel={providerPreset.label}
           pastedXML={responseToApply}
-          onPastedXMLChange={() => undefined}
+          onPastedXMLChange={setManualPastedXML}
           onStatusChange={setParserStatus}
         />
       </div>

@@ -12,6 +12,20 @@ export type LayoutMode = "log-only" | "balanced" | "canvas-only";
 export type BridgeProviderId = BridgeJobProvider;
 export type BridgeInteractionMode = "ASK" | "GO" | "BOTH";
 export type BridgeQuickPresetId = "recommended";
+export type BridgeQuickUiPhase =
+  | "send"
+  | "waiting"
+  | "apply"
+  | "manual-copy"
+  | "manual-paste"
+  | "manual-continue";
+export type BridgeDetailedUiPhase =
+  | "send"
+  | "waiting"
+  | "apply"
+  | "manual-copy"
+  | "manual-paste"
+  | "manual-continue";
 
 export interface BridgeContextRecipe {
   entrySelection: "all" | "last-5";
@@ -37,6 +51,8 @@ export interface BridgeStreamSession {
   lastJobError: string;
   lastJobCompletedAt: string | null;
   sentEntryIds: string[];
+  quickUiPhase: BridgeQuickUiPhase;
+  detailedUiPhase: BridgeDetailedUiPhase;
 }
 
 export interface BridgePreferencesPayload {
@@ -169,6 +185,8 @@ function createDefaultBridgeSession(): BridgeStreamSession {
     lastJobError: "",
     lastJobCompletedAt: null,
     sentEntryIds: [],
+    quickUiPhase: "send",
+    detailedUiPhase: "send",
   };
 }
 
@@ -209,6 +227,8 @@ function normalizeBridgeSession(
     lastJobCompletedAt:
       session?.lastJobCompletedAt ?? base.lastJobCompletedAt,
     sentEntryIds: session?.sentEntryIds ?? base.sentEntryIds,
+    quickUiPhase: session?.quickUiPhase ?? base.quickUiPhase,
+    detailedUiPhase: session?.detailedUiPhase ?? base.detailedUiPhase,
   };
 }
 

@@ -20,10 +20,6 @@ function normalizeOrigin(value: string | undefined): string | null {
 
 export function getConfiguredSiteUrl(): string {
   return (
-    normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL) ??
-    normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL) ??
-    normalizeOrigin(process.env.SITE_URL) ??
-    normalizeOrigin(process.env.APP_URL) ??
     normalizeOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
     normalizeOrigin(process.env.VERCEL_URL) ??
     DEFAULT_DEV_SITE_URL

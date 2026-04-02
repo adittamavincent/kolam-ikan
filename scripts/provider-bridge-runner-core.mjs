@@ -204,15 +204,6 @@ function isRecord(value) {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
-function getEnvDefaultModel(provider) {
-  const providerKey = provider.toUpperCase();
-  return (
-    process.env[`BRIDGE_RUNNER_MODEL_${providerKey}`] ||
-    process.env.BRIDGE_RUNNER_MODEL ||
-    ""
-  ).trim();
-}
-
 export function getRequestedModel(job, provider) {
   const details = isRecord(job?.runner_details) ? job.runner_details : {};
   const nestedModels = isRecord(details.models) ? details.models : null;
@@ -221,7 +212,6 @@ export function getRequestedModel(job, provider) {
     details.model,
     details.modelId,
     details.modelName,
-    getEnvDefaultModel(provider),
   ].find((value) => typeof value === "string" && value.trim());
 
   return typeof requestedModel === "string" ? requestedModel.trim() : "";

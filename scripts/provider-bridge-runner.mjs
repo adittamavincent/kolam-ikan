@@ -18,57 +18,55 @@ import {
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false });
 
-const APP_URL = (process.env.BRIDGE_RUNNER_APP_URL || "http://localhost:3000").replace(
-  /\/$/,
-  "",
-);
+/**
+ * @param {string | undefined} value
+ */
+function normalizeOrigin(value) {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const withProtocol =
+    trimmed.startsWith("http://") || trimmed.startsWith("https://")
+      ? trimmed
+      : `https://${trimmed}`;
+
+  try {
+    return new URL(withProtocol).origin;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {Record<string, string | undefined>} [env=process.env]
+ */
+export function resolveRunnerAppUrl(env = process.env) {
+  return (
+    normalizeOrigin(env.BRIDGE_RUNNER_APP_URL) ??
+    "http://localhost:3000"
+  );
+}
+
+const APP_URL = resolveRunnerAppUrl();
 const RUNNER_SECRET = process.env.BRIDGE_RUNNER_SECRET || "";
-const RUNNER_ID = process.env.BRIDGE_RUNNER_ID || "local-bridge-runner";
-const USER_DATA_DIR =
-  process.env.BRIDGE_RUNNER_PROFILE_DIR || ".auth/bridge-runner-profile";
+const RUNNER_ID = "local-bridge-runner";
+const USER_DATA_DIR = ".auth/bridge-runner-profile";
 export const DEFAULT_RUNNER_POLL_MS = 1_000;
-const configuredPollMs = Number(
-  process.env.BRIDGE_RUNNER_POLL_INTERVAL_MS || `${DEFAULT_RUNNER_POLL_MS}`,
-);
-const POLL_MS =
-  Number.isFinite(configuredPollMs) && configuredPollMs > 0
-    ? configuredPollMs
-    : DEFAULT_RUNNER_POLL_MS;
-const HEADLESS = process.env.BRIDGE_RUNNER_HEADLESS === "true";
-const RUNNER_BROWSER_CHANNEL = process.env.BRIDGE_RUNNER_BROWSER_CHANNEL || "chrome";
-const RUNNER_BROWSER_PATH = process.env.BRIDGE_RUNNER_BROWSER_PATH || "";
-const RUNNER_BROWSER_WIDTH = Number(process.env.BRIDGE_RUNNER_BROWSER_WIDTH || "1280");
-const RUNNER_BROWSER_HEIGHT = Number(process.env.BRIDGE_RUNNER_BROWSER_HEIGHT || "820");
+const POLL_MS = DEFAULT_RUNNER_POLL_MS;
+const HEADLESS = false;
+const RUNNER_BROWSER_CHANNEL = "chrome";
+const RUNNER_BROWSER_PATH = "";
 const DEFAULT_HEALTH_PORT = 3001;
-const configuredHealthPort = Number(
-  process.env.BRIDGE_RUNNER_HEALTH_PORT || `${DEFAULT_HEALTH_PORT}`,
-);
-const HEALTH_PORT =
-  Number.isFinite(configuredHealthPort) && configuredHealthPort > 0
-    ? configuredHealthPort
-    : DEFAULT_HEALTH_PORT;
+const HEALTH_PORT = DEFAULT_HEALTH_PORT;
 const CHROME_SINGLETON_FILES = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
 
 if (!RUNNER_SECRET) {
   throw new Error("BRIDGE_RUNNER_SECRET is required");
 }
 
-function parseEnabledProviders() {
-  const configured = (process.env.BRIDGE_RUNNER_PROVIDERS || "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-  const normalized = (configured.length > 0
-    ? configured
-    : DEFAULT_BRIDGE_RUNNER_PROVIDERS
-  ).filter((provider, index, values) => {
-    return provider in PROVIDER_RUNNER_CONFIGS && values.indexOf(provider) === index;
-  });
-
-  return normalized.length > 0 ? normalized : DEFAULT_BRIDGE_RUNNER_PROVIDERS;
-}
-
-const ENABLED_PROVIDERS = parseEnabledProviders();
+const ENABLED_PROVIDERS = DEFAULT_BRIDGE_RUNNER_PROVIDERS;
 
 async function runnerFetch(requestPath, init = {}) {
   return fetch(`${APP_URL}${requestPath}`, {
@@ -242,8 +240,8 @@ function buildLaunchOptions({ useConfiguredBrowser = true } = {}) {
   const launchOptions = {
     headless: HEADLESS,
     viewport: {
-      width: Number.isFinite(RUNNER_BROWSER_WIDTH) ? RUNNER_BROWSER_WIDTH : 1280,
-      height: Number.isFinite(RUNNER_BROWSER_HEIGHT) ? RUNNER_BROWSER_HEIGHT : 820,
+      width: 1280,
+      height: 820,
     },
     ignoreDefaultArgs: ["--enable-automation"],
     args: ["--disable-blink-features=AutomationControlled"],

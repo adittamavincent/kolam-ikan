@@ -17,37 +17,20 @@ function normalizeBaseUrl(value: string) {
   return value.trim().replace(/\/$/, "");
 }
 
-export function getConfiguredHealthPort(
-  value: string | undefined,
-  fallback = DEFAULT_BRIDGE_RUNNER_HEALTH_PORT,
-) {
-  const parsed = Number(value || `${fallback}`);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
 export function buildHealthUrlFromPort(port: number) {
   return `http://127.0.0.1:${port}/health`;
 }
 
 export function resolveServerHealthUrl() {
-  const explicit = process.env.BRIDGE_RUNNER_HEALTH_URL?.trim();
-  if (explicit) return explicit;
-  return buildHealthUrlFromPort(
-    getConfiguredHealthPort(process.env.BRIDGE_RUNNER_HEALTH_PORT),
-  );
+  return buildHealthUrlFromPort(DEFAULT_BRIDGE_RUNNER_HEALTH_PORT);
 }
 
 export function resolveBrowserHealthCandidates() {
-  const explicit = process.env.NEXT_PUBLIC_BRIDGE_RUNNER_HEALTH_URL?.trim();
-  const port = getConfiguredHealthPort(
-    process.env.NEXT_PUBLIC_BRIDGE_RUNNER_HEALTH_PORT,
-  );
-  const candidates = [
-    explicit,
-    buildHealthUrlFromPort(port),
-  ].filter((value): value is string => Boolean(value?.trim()));
-
-  return [...new Set(candidates.map(normalizeBaseUrl))];
+  return [
+    normalizeBaseUrl(
+      buildHealthUrlFromPort(DEFAULT_BRIDGE_RUNNER_HEALTH_PORT),
+    ),
+  ];
 }
 
 export function isBridgeRunnerHealthPayload(
@@ -63,4 +46,3 @@ export function isBridgeRunnerHealthPayload(
     payload.providers.every((provider) => typeof provider === "string")
   );
 }
-

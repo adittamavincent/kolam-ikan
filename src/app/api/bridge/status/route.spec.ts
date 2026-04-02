@@ -5,8 +5,6 @@ describe("GET /api/bridge/status", () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
-    delete process.env.BRIDGE_RUNNER_HEALTH_URL;
-    delete process.env.BRIDGE_RUNNER_HEALTH_PORT;
     vi.resetModules();
   });
 

@@ -42,10 +42,7 @@ async function ensureDocumentBucket() {
 }
 
 function getAppUrl(request: Request) {
-  return (
-    process.env.DOCUMENT_IMPORT_APP_URL?.replace(/\/$/, "") ??
-    new URL(request.url).origin
-  );
+  return new URL(request.url).origin;
 }
 
 function formatWorkerDispatchError(error: unknown, workerEndpoint: string) {

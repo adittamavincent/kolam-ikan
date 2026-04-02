@@ -16,22 +16,12 @@ describe("provider bridge runner", () => {
     vi.resetModules();
     vi.clearAllMocks();
     process.env.BRIDGE_RUNNER_SECRET = "test-secret";
-    delete process.env.BRIDGE_RUNNER_HEALTH_PORT;
-    delete process.env.BRIDGE_RUNNER_HEADLESS;
-    delete process.env.BRIDGE_RUNNER_BROWSER_CHANNEL;
-    delete process.env.BRIDGE_RUNNER_BROWSER_PATH;
-    delete process.env.BRIDGE_RUNNER_BROWSER_WIDTH;
-    delete process.env.BRIDGE_RUNNER_BROWSER_HEIGHT;
+    delete process.env.BRIDGE_RUNNER_APP_URL;
   });
 
   afterEach(() => {
     delete process.env.BRIDGE_RUNNER_SECRET;
-    delete process.env.BRIDGE_RUNNER_HEALTH_PORT;
-    delete process.env.BRIDGE_RUNNER_HEADLESS;
-    delete process.env.BRIDGE_RUNNER_BROWSER_CHANNEL;
-    delete process.env.BRIDGE_RUNNER_BROWSER_PATH;
-    delete process.env.BRIDGE_RUNNER_BROWSER_WIDTH;
-    delete process.env.BRIDGE_RUNNER_BROWSER_HEIGHT;
+    delete process.env.BRIDGE_RUNNER_APP_URL;
   });
 
   it("removes stale Chrome singleton files from the profile directory", async () => {
@@ -52,6 +42,22 @@ describe("provider bridge runner", () => {
     await expect(fs.stat(path.join(profileDir, "SingletonLock"))).rejects.toBeTruthy();
     await expect(fs.stat(path.join(profileDir, "SingletonSocket"))).rejects.toBeTruthy();
     await expect(fs.stat(path.join(profileDir, "SingletonCookie"))).rejects.toBeTruthy();
+  });
+
+  it("falls back to localhost when the runner app URL is not set", async () => {
+    const { resolveRunnerAppUrl } = await import("./provider-bridge-runner.mjs");
+
+    expect(resolveRunnerAppUrl({})).toBe("http://localhost:3000");
+  });
+
+  it("prefers an explicit bridge runner app URL override", async () => {
+    const { resolveRunnerAppUrl } = await import("./provider-bridge-runner.mjs");
+
+    expect(
+      resolveRunnerAppUrl({
+        BRIDGE_RUNNER_APP_URL: "https://runner-target.example.com/path",
+      }),
+    ).toBe("https://runner-target.example.com");
   });
 
   it("backs up a broken headed profile and retries once with a clean directory", async () => {
@@ -90,8 +96,7 @@ describe("provider bridge runner", () => {
     await expect(fs.stat(path.join(tempDir, backupDirName ?? "", "Preferences"))).resolves.toBeTruthy();
   });
 
-  it("prefers a branded Chrome channel for headed login", async () => {
-    process.env.BRIDGE_RUNNER_BROWSER_CHANNEL = "chrome";
+  it("uses the built-in Chrome channel for headed login", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     const fakeContext = { close: vi.fn() };
@@ -112,9 +117,7 @@ describe("provider bridge runner", () => {
     );
   });
 
-  it("uses a smaller default viewport and honors browser size overrides", async () => {
-    process.env.BRIDGE_RUNNER_BROWSER_WIDTH = "1100";
-    process.env.BRIDGE_RUNNER_BROWSER_HEIGHT = "720";
+  it("uses the fixed default viewport", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     const fakeContext = { close: vi.fn() };
@@ -126,13 +129,12 @@ describe("provider bridge runner", () => {
     expect(launchPersistentContext).toHaveBeenCalledWith(
       profileDir,
       expect.objectContaining({
-        viewport: { width: 1100, height: 720 },
+        viewport: { width: 1280, height: 820 },
       }),
     );
   });
 
-  it("falls back to the default browser engine when configured Chrome is unavailable", async () => {
-    process.env.BRIDGE_RUNNER_BROWSER_CHANNEL = "chrome";
+  it("falls back to the default browser engine when Chrome is unavailable", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
     const missingChromeError = new Error("Chromium distribution 'chrome' is not found");

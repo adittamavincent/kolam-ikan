@@ -300,10 +300,9 @@ export function MainHeader() {
   };
 
   return (
-    <header className="shrink-0 border-b border-border-default bg-surface-default p-2">
-      <div className="flex flex-col gap-2">
-        <div className="flex min-w-0 flex-col gap-2 xl:flex-row xl:items-start xl:justify-between">
-          <div className="flex min-w-0 items-center gap-2">
+    <header className="flex h-12 shrink-0 items-center border-b border-border-default bg-surface-default px-3">
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
             {domainId && !sidebarVisible && (
               <button
                 onClick={showSidebar}
@@ -353,12 +352,12 @@ export function MainHeader() {
             </div>
           </div>
 
-          {streamId && (
-            <div className="flex flex-col items-start gap-1.5 border-t border-border-default pt-2 xl:items-end xl:border-t-0 xl:pt-0">
+        {streamId && (
+          <div className="flex shrink-0 items-center gap-2">
               {logState && (
                 <>
-                  <div className="flex w-full flex-wrap items-center gap-2 xl:justify-end">
-                    <div className="flex flex-wrap items-center gap-1.5 xl:justify-end">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <div className={toolbarLeadGroupClass}>
                         <span
                           className={`${headerButtonClass} pointer-events-none ${
@@ -551,9 +550,7 @@ export function MainHeader() {
                         >
                           <Network className="h-4 w-4" />
                         </button>
-
                       </div>
-
                       <div className={toolbarGroupClass}>
                         <button
                           onClick={() => emit("kolam_header_whatsapp_import")}
@@ -566,7 +563,7 @@ export function MainHeader() {
                         <button
                           onClick={() => emit("kolam_header_documents_import")}
                           className={headerButtonClass}
-                          title="Import PDF"
+                          title="Import File"
                         >
                           <FileUp className="h-4 w-4" />
                         </button>
@@ -644,7 +641,7 @@ export function MainHeader() {
                       </Menu>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-1.5 xl:justify-end">
+                    <div className="flex items-center gap-1.5">
                       <span className={summaryPillClass}>
                         <GitCommitHorizontal className="h-3 w-3" />
                         {totalCommitCount} commits
@@ -655,7 +652,7 @@ export function MainHeader() {
               )}
 
               {canvasState?.hasCanvas && !logState && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
                   <div className={toolbarGroupClass}>
                     <span
                       className="inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted"
@@ -669,9 +666,8 @@ export function MainHeader() {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </header>
   );

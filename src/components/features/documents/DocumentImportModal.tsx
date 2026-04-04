@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { DocumentWithLatestJob } from "@/lib/types";
+import { stripImportFileExtension } from "@/lib/documents/importCompatibility";
 import { calculateFileHash } from "@/lib/utils/hash";
 import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
@@ -205,7 +206,7 @@ export function DocumentImportModal({
               return null;
             }
 
-            const derivedTitle = file.name.replace(/\.pdf$/i, "");
+            const derivedTitle = stripImportFileExtension(file.name);
             const res = await createImport.mutateAsync({
               file,
               title: derivedTitle,
@@ -267,7 +268,7 @@ export function DocumentImportModal({
     if (!selectedFile || !selectedFile.name) {
       return "";
     }
-    const derived = selectedFile.name.replace(/\.pdf$/i, "");
+    const derived = stripImportFileExtension(selectedFile.name);
     return derived;
   }, [selectedFile, title]);
 
@@ -418,7 +419,7 @@ export function DocumentImportModal({
           return null;
         }
 
-        const derivedTitle = file.name.replace(/\.pdf$/i, "");
+        const derivedTitle = stripImportFileExtension(file.name);
 
         const result = await createImport.mutateAsync({
           file,
@@ -472,7 +473,7 @@ export function DocumentImportModal({
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedFile) {
-      setSubmitError("Select a PDF file first.");
+      setSubmitError("Select a file first.");
       return;
     }
 
@@ -632,9 +633,9 @@ export function DocumentImportModal({
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_280px]">
               <label className="flex flex-col gap-2 border border-dashed border-border-subtle bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle">
                 <div className="flex items-center justify-between gap-8">
-                  <span className="font-medium">PDF file</span>
+                  <span className="font-medium">File</span>
                   <span className="text-xs text-text-muted">
-                    One PDF per import.
+                    One compatible file per import.
                   </span>
                 </div>
                 <input
@@ -720,7 +721,7 @@ export function DocumentImportModal({
                   onChange={(event) => setTitle(event.target.value)}
                   placeholder={
                     selectedFile?.name
-                      ? selectedFile.name.replace(/\.pdf$/i, "")
+                      ? stripImportFileExtension(selectedFile.name)
                       : "Derived from filename"
                   }
                   className="w-full border border-border-default bg-surface-subtle px-3 py-2.5 text-sm text-text-default transition-colors focus:border-border-default focus: focus:"
@@ -810,7 +811,6 @@ export function DocumentImportModal({
                 {submitWarning}
               </div>
             )}
-
           </form>
 
           <div className="flex min-h-0 min-w-0 w-full flex-col items-stretch gap-2 border border-border-default bg-surface-subtle p-3">

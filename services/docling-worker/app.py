@@ -369,7 +369,9 @@ def generate_and_upload_thumbnail(
                 logger.warning("No images generated from PDF for document %s", document_id)
                 return None, "failed", "No images generated from PDF"
             thumb_image = images[0]
-        elif ctype.startswith("image/") or lowered_name.endswith((".png", ".jpg", ".jpeg", ".tiff", ".webp")):
+        elif ctype.startswith("image/") or lowered_name.endswith(
+            (".png", ".jpg", ".jpeg", ".tiff", ".tif", ".webp", ".gif", ".bmp")
+        ):
             with Image.open(source_path) as image:
                 thumb_image = image.copy()
             thumb_image.thumbnail((300, 400))

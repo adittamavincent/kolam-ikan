@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  resolveDocumentImportCompatibility,
+  stripImportFileExtension,
+} from "@/lib/documents/importCompatibility";
 import { FileUploadFormSchema } from "@/lib/validation/attachment";
 import { extractPdfMetadata } from "@/lib/pdf/metadata";
 
@@ -15,20 +19,37 @@ function sanitizeFilename(filename: string) {
 async function ensureDocumentBucket() {
   const admin = createAdminClient();
   const bucketId = "document-files";
+  const bucketConfig = {
+    public: false,
+    fileSizeLimit: MAX_FILE_BYTES,
+    allowedMimeTypes: null as string[] | null,
+  };
 
   const { data: existingBucket, error: getBucketError } =
     await admin.storage.getBucket(bucketId);
   if (!getBucketError && existingBucket) {
+    const needsUpdate =
+      existingBucket.public !== bucketConfig.public ||
+      existingBucket.file_size_limit !== bucketConfig.fileSizeLimit ||
+      Array.isArray(existingBucket.allowed_mime_types);
+
+    if (needsUpdate) {
+      const { error: updateBucketError } = await admin.storage.updateBucket(
+        bucketId,
+        bucketConfig,
+      );
+
+      if (updateBucketError) {
+        throw updateBucketError;
+      }
+    }
+
     return;
   }
 
   const { error: createBucketError } = await admin.storage.createBucket(
     bucketId,
-    {
-      public: false,
-      fileSizeLimit: MAX_FILE_BYTES,
-      // allow all needed types for docling and images
-    },
+    bucketConfig,
   );
 
   if (
@@ -65,12 +86,8 @@ export async function POST(request: Request) {
     );
   }
 
-// allow all file types now
-    if (!file.name) {
-      return NextResponse.json(
-        { error: "Invalid file name" },
-      { status: 400 },
-    );
+  if (!file.name) {
+    return NextResponse.json({ error: "Invalid file name" }, { status: 400 });
   }
 
   if (file.size <= 0) {
@@ -120,22 +137,30 @@ export async function POST(request: Request) {
     );
   }
 
-const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    
-    let pdfMetadata = null;
-    try {
-      if (isPdf) {
-        pdfMetadata = await extractPdfMetadata(new Uint8Array(buffer));
-      }
-    } catch {
-      console.warn("Failed to parse PDF metadata, proceeding anyway");
-    }
+  const compatibility = resolveDocumentImportCompatibility({
+    fileName: file.name,
+    contentType: file.type,
+  });
+  const contentType = compatibility.contentType;
+  const isPdf =
+    contentType === "application/pdf" ||
+    file.name.toLowerCase().endsWith(".pdf");
 
-    const safeFileName = sanitizeFilename(file.name || "attachment");
-    const documentId = crypto.randomUUID();
-    const storagePath = `${parsed.data.streamId}/${documentId}/${safeFileName}`;
-    const fallbackTitle = safeFileName.replace(/\.[^/.]+$/, "");
-    const title = parsed.data.title?.trim() || pdfMetadata?.title || fallbackTitle;
+  let pdfMetadata = null;
+  try {
+    if (isPdf) {
+      pdfMetadata = await extractPdfMetadata(new Uint8Array(buffer));
+    }
+  } catch {
+    console.warn("Failed to parse PDF metadata, proceeding anyway");
+  }
+
+  const safeFileName = sanitizeFilename(file.name || "attachment");
+  const documentId = crypto.randomUUID();
+  const storagePath = `${parsed.data.streamId}/${documentId}/${safeFileName}`;
+  const fallbackTitle = stripImportFileExtension(file.name || safeFileName);
+  const title =
+    parsed.data.title?.trim() || pdfMetadata?.title || fallbackTitle;
 
   try {
     await ensureDocumentBucket();
@@ -150,7 +175,7 @@ const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWit
   const { error: uploadError } = await admin.storage
     .from("document-files")
     .upload(storagePath, buffer, {
-      contentType: file.type || "application/octet-stream",
+      contentType,
       upsert: false,
     });
 
@@ -158,17 +183,20 @@ const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWit
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  const sourceMetadata = isPdf && pdfMetadata ? {
-    uploadOrigin: "entry-creator",
-    extractedTitle: pdfMetadata.title,
-    extractedAuthor: pdfMetadata.author,
-    extractedCreationDate: pdfMetadata.creationDate,
-    pageCount: pdfMetadata.pageCount,
-    fileHash: parsed.data.fileHash,
-  } : {
-    uploadOrigin: "entry-creator",
-    fileHash: parsed.data.fileHash,
-  };
+  const sourceMetadata =
+    isPdf && pdfMetadata
+      ? {
+          uploadOrigin: "entry-creator",
+          extractedTitle: pdfMetadata.title,
+          extractedAuthor: pdfMetadata.author,
+          extractedCreationDate: pdfMetadata.creationDate,
+          pageCount: pdfMetadata.pageCount,
+          fileHash: parsed.data.fileHash,
+        }
+      : {
+          uploadOrigin: "entry-creator",
+          fileHash: parsed.data.fileHash,
+        };
 
   const { data: inserted, error: insertError } = await admin
     .from("documents")
@@ -178,7 +206,7 @@ const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWit
       created_by: authData.user.id,
       title,
       original_filename: file.name,
-      content_type: file.type || "application/octet-stream",
+      content_type: contentType,
       file_size_bytes: file.size,
       storage_bucket: "document-files",
       storage_path: storagePath,
@@ -197,7 +225,7 @@ const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWit
   if (insertError || !inserted) {
     await admin.storage.from("document-files").remove([storagePath]);
     return NextResponse.json(
-      { error: insertError?.message ?? "Failed to create PDF document row" },
+      { error: insertError?.message ?? "Failed to create file document row" },
       { status: 500 },
     );
   }

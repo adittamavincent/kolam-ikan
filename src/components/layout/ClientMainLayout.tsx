@@ -78,8 +78,6 @@ function clampSidebarWidth(
 
 export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [hasResolvedInitialSidebarRoute, setHasResolvedInitialSidebarRoute] =
-    useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { status, loading, error } = useAuth();
@@ -284,21 +282,23 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   }, [sidebarVisible, sidebarWidth, setSidebarWidth]);
 
   // Detect "home" route — the root path with no domain param
-  const isHomeRoute = pathname === "/";
-  const shouldShowSidebarByRoute = !isHomeRoute;
-  const effectiveSidebarVisible =
-    shouldShowSidebarByRoute &&
-    (sidebarVisible || !hasResolvedInitialSidebarRoute);
+  const hasResolvedPathname = typeof pathname === "string";
+  const isHomeRoute = !hasResolvedPathname || pathname === "/";
+  const shouldShowSidebarByRoute = hasResolvedPathname && !isHomeRoute;
+  const effectiveSidebarVisible = shouldShowSidebarByRoute && sidebarVisible;
 
   // ---------- Route-based auto-show / auto-hide ----------
   const prevPathRef = useRef<string | null>(null);
   useLayoutEffect(() => {
+    if (!hasResolvedPathname) {
+      return;
+    }
+
     const prev = prevPathRef.current;
     prevPathRef.current = pathname;
 
     if (prev === null) {
       setSidebarVisible(!isHomeRoute);
-      setHasResolvedInitialSidebarRoute(true);
       return;
     }
 
@@ -311,7 +311,14 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     } else if (prev === "/") {
       showSidebar();
     }
-  }, [pathname, isHomeRoute, showSidebar, hideSidebar, setSidebarVisible]);
+  }, [
+    pathname,
+    hasResolvedPathname,
+    isHomeRoute,
+    showSidebar,
+    hideSidebar,
+    setSidebarVisible,
+  ]);
 
   useKeyboard([
     {
@@ -525,7 +532,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="fixed left-4 top-4 z-50 bg-surface-default p-2 md:hidden text-text-default"
+        className="fixed left-4 top-4 z-50 bg-surface-default p-2 text-text-default md:hidden"
       >
         {mobileMenuOpen ? (
           <X className="h-6 w-6" />
@@ -558,31 +565,33 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       </div>
 
       {/* ====== SIDEBAR (Navigator) — animated expand/collapse ====== */}
-      <div
-        ref={sidebarRef}
-        className={`hidden md:flex overflow-hidden relative z-30 group h-full ${isResizing ? "transition-none" : "transition-[width] duration-300 ease-in-out"}`}
-        style={{ width: effectiveSidebarVisible ? sidebarWidth : 0 }}
-      >
+      {shouldShowSidebarByRoute && (
         <div
-          className={`flex-1 overflow-hidden h-full transition-all duration-300 ease-in-out ${
-            effectiveSidebarVisible
-              ? "opacity-100 translate-x-0"
-              : "opacity-0 -translate-x-2 pointer-events-none"
-          }`}
+          ref={sidebarRef}
+          className={`relative z-30 hidden h-full min-w-0 shrink-0 overflow-hidden md:flex ${isResizing ? "transition-none" : "transition-[width] duration-300 ease-in-out"}`}
+          style={{ width: effectiveSidebarVisible ? sidebarWidth : 0 }}
         >
-          <Navigator userId={userId} />
-        </div>
+          <div
+            className={`h-full min-w-0 flex-1 overflow-hidden transition-all duration-300 ease-in-out ${
+              effectiveSidebarVisible
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 -translate-x-2 pointer-events-none"
+            }`}
+          >
+            <Navigator userId={userId} />
+          </div>
 
-        {/* Resize Handle */}
-        <div
-          className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors z-50 ${
-            effectiveSidebarVisible
-              ? "hover:bg-primary-9500 active:bg-action-primary-bg"
-              : "pointer-events-none"
-          } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
-          onMouseDown={handleMouseDown}
-        />
-      </div>
+          {/* Resize Handle */}
+          <div
+            className={`absolute top-0 right-0 z-50 h-full w-1 cursor-col-resize transition-colors ${
+              effectiveSidebarVisible
+                ? "hover:bg-primary-9500 active:bg-action-primary-bg"
+                : "pointer-events-none"
+            } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
+            onMouseDown={handleMouseDown}
+          />
+        </div>
+      )}
 
       {/* Mobile sidebar — toggled by mobile menu */}
       {mobileMenuOpen && (

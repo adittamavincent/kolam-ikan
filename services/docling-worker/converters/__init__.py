@@ -14,6 +14,60 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("converters")
 
+OFFICE_TYPES = {
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/epub+zip",
+    "application/msword",
+    "application/vnd.ms-excel",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.oasis.opendocument.presentation",
+}
+OFFICE_EXTS = (".docx", ".pptx", ".xlsx", ".epub", ".odt", ".ods", ".odp", ".doc", ".ppt", ".xls")
+
+IMAGE_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/tiff",
+    "image/webp",
+    "image/gif",
+    "image/bmp",
+}
+IMAGE_EXTS = (".png", ".jpeg", ".jpg", ".tiff", ".tif", ".webp", ".gif", ".bmp")
+
+AUDIO_TYPES = {
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/mpga",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/mp4",
+    "audio/aac",
+    "audio/ogg",
+    "audio/webm",
+    "audio/flac",
+    "audio/x-flac",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+}
+AUDIO_EXTS = (".mp3", ".wav", ".m4a", ".aac", ".ogg", ".webm", ".flac", ".mp4", ".m4v", ".mov")
+
+TEXT_TYPES = {
+    "text/plain",
+    "text/markdown",
+    "text/html",
+    "text/csv",
+    "application/json",
+    "application/x-yaml",
+    "text/yaml",
+}
+TEXT_EXTS = (".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".html", ".htm")
+
 def convert_to_markdown(
     file_path: Path,
     content_type: str,
@@ -33,38 +87,19 @@ def convert_to_markdown(
         return convert_pdf(file_path, content_type, file_name, options, on_progress=on_progress)
 
     # Office
-    office_types = [
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/epub+zip",
-        "application/msword",
-        "application/vnd.ms-excel",
-        "application/vnd.ms-powerpoint"
-    ]
-    office_exts = (".docx", ".pptx", ".xlsx", ".epub", ".odt", ".doc", ".ppt", ".xls")
-    if ctype in office_types or file_name.lower().endswith(office_exts):
+    if ctype in OFFICE_TYPES or file_name.lower().endswith(OFFICE_EXTS):
         return convert_office(file_path, content_type, file_name, options)
 
     # Images
-    image_types = ["image/png", "image/jpeg", "image/tiff", "image/webp", "image/jpg"]
-    image_exts = (".png", ".jpeg", ".jpg", ".tiff", ".webp")
-    if ctype in image_types or file_name.lower().endswith(image_exts):
+    if ctype in IMAGE_TYPES or file_name.lower().endswith(IMAGE_EXTS):
         return convert_image(file_path, content_type, file_name, options)
 
     # Audio
-    audio_types = ["audio/mpeg", "audio/wav", "audio/mp4", "audio/ogg", "audio/m4a", "video/mp4"]
-    audio_exts = (".mp3", ".wav", ".mp4", ".ogg", ".m4a")
-    if ctype in audio_types or file_name.lower().endswith(audio_exts):
+    if ctype in AUDIO_TYPES or file_name.lower().endswith(AUDIO_EXTS):
         return convert_audio(file_path, content_type, file_name, options)
 
     # Text / JSON / CSV / YAML / MD (fallback to text)
-    text_types = [
-        "text/plain", "text/markdown", "text/html", "text/csv", 
-        "application/json", "application/x-yaml", "text/yaml"
-    ]
-    text_exts = (".txt", ".md", ".csv", ".json", ".yaml", ".yml", ".html", ".htm")
-    if ctype in text_types or file_name.lower().endswith(text_exts):
+    if ctype in TEXT_TYPES or file_name.lower().endswith(TEXT_EXTS):
         return convert_text(file_path, content_type, file_name, options)
 
     # Fallback

@@ -5,10 +5,15 @@ import {
   ensureDocumentSchema,
   isMissingDocumentSchemaError,
 } from "@/lib/documents/bootstrap";
+import {
+  resolveDocumentImportCompatibility,
+  stripImportFileExtension,
+} from "@/lib/documents/importCompatibility";
 import { Document, DocumentImportJob } from "@/lib/types";
 import { CreateDocumentImportSchema } from "@/lib/validation/document";
 
 export const runtime = "nodejs";
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
 
 function sanitizeFilename(filename: string) {
   return filename.replace(/[^a-zA-Z0-9._-]+/g, "-");
@@ -17,20 +22,37 @@ function sanitizeFilename(filename: string) {
 async function ensureDocumentBucket() {
   const admin = createAdminClient();
   const bucketId = "document-files";
+  const bucketConfig = {
+    public: false,
+    fileSizeLimit: MAX_FILE_BYTES,
+    allowedMimeTypes: null as string[] | null,
+  };
 
   const { data: existingBucket, error: getBucketError } =
     await admin.storage.getBucket(bucketId);
   if (!getBucketError && existingBucket) {
+    const needsUpdate =
+      existingBucket.public !== bucketConfig.public ||
+      existingBucket.file_size_limit !== bucketConfig.fileSizeLimit ||
+      Array.isArray(existingBucket.allowed_mime_types);
+
+    if (needsUpdate) {
+      const { error: updateBucketError } = await admin.storage.updateBucket(
+        bucketId,
+        bucketConfig,
+      );
+
+      if (updateBucketError) {
+        throw updateBucketError;
+      }
+    }
+
     return;
   }
 
   const { error: createBucketError } = await admin.storage.createBucket(
     bucketId,
-    {
-      public: false,
-      fileSizeLimit: 50 * 1024 * 1024,
-      allowedMimeTypes: ["application/pdf"],
-    },
+    bucketConfig,
   );
 
   if (
@@ -198,6 +220,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "File is empty" }, { status: 400 });
   }
 
+  if (file.size > MAX_FILE_BYTES) {
+    return NextResponse.json(
+      { error: "File exceeds 50MB limit" },
+      { status: 400 },
+    );
+  }
+
+  const compatibility = resolveDocumentImportCompatibility({
+    fileName: file.name,
+    contentType: file.type,
+  });
+
+  if (!compatibility.supported) {
+    return NextResponse.json(
+      {
+        error:
+          "This file type is not supported for Docling import yet. Supported files include PDFs, Office docs, images, audio/video media, and text-based files.",
+      },
+      { status: 400 },
+    );
+  }
+
   const input = CreateDocumentImportSchema.safeParse({
     streamId,
     title: typeof title === "string" ? title : undefined,
@@ -232,7 +276,7 @@ export async function POST(request: Request) {
   const jobId = crypto.randomUUID();
   const storagePath = `${authData.user.id}/${documentId}/${filename}`;
   const titleValue =
-    input.data.title?.trim() || filename.replace(/\.pdf$/i, "");
+    input.data.title?.trim() || stripImportFileExtension(file.name || filename);
   const sourceMetadata = {
     uploadOrigin: "kolam-ikan-app",
     workerStatus: "awaiting-pickup",
@@ -266,7 +310,10 @@ export async function POST(request: Request) {
         .limit(1)
         .maybeSingle();
 
-      if (latestJob?.status === "queued" || latestJob?.status === "processing") {
+      if (
+        latestJob?.status === "queued" ||
+        latestJob?.status === "processing"
+      ) {
         return NextResponse.json({
           message: "Document import already running",
           document: existingDoc,
@@ -330,8 +377,9 @@ export async function POST(request: Request) {
             progress_message: "Worker accepted import and started processing",
             eta_seconds: Math.max(
               15,
-              Math.ceil((existingDoc.file_size_bytes ?? file.size) / (512 * 1024)) *
-                10,
+              Math.ceil(
+                (existingDoc.file_size_bytes ?? file.size) / (512 * 1024),
+              ) * 10,
             ),
             started_at: new Date().toISOString(),
           })
@@ -342,7 +390,10 @@ export async function POST(request: Request) {
           .update({
             import_status: "processing",
             source_metadata: {
-              ...((existingDoc.source_metadata ?? {}) as Record<string, unknown>),
+              ...((existingDoc.source_metadata ?? {}) as Record<
+                string,
+                unknown
+              >),
               workerStatus: "processing",
             },
           })
@@ -373,7 +424,10 @@ export async function POST(request: Request) {
             thumbnail_error: message,
             thumbnail_updated_at: new Date().toISOString(),
             source_metadata: {
-              ...((existingDoc.source_metadata ?? {}) as Record<string, unknown>),
+              ...((existingDoc.source_metadata ?? {}) as Record<
+                string,
+                unknown
+              >),
               workerStatus: "dispatch_failed",
             },
           })
@@ -419,14 +473,14 @@ export async function POST(request: Request) {
   const { error: uploadError } = await admin.storage
     .from("document-files")
     .upload(storagePath, buffer, {
-      contentType: file.type || "application/pdf",
+      contentType: compatibility.contentType,
       upsert: false,
     });
 
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
-  
+
   let activeDocument: Document | null = null;
   let activeJob: DocumentImportJob | null = null;
 
@@ -438,7 +492,7 @@ export async function POST(request: Request) {
       created_by: authData.user.id,
       title: titleValue,
       original_filename: file.name,
-      content_type: file.type || "application/pdf",
+      content_type: compatibility.contentType,
       file_size_bytes: file.size,
       storage_bucket: "document-files",
       storage_path: storagePath,
@@ -469,7 +523,7 @@ export async function POST(request: Request) {
         created_by: authData.user.id,
         title: titleValue,
         original_filename: file.name,
-        content_type: file.type || "application/pdf",
+        content_type: compatibility.contentType,
         file_size_bytes: file.size,
         storage_bucket: "document-files",
         storage_path: storagePath,
@@ -569,7 +623,7 @@ export async function POST(request: Request) {
       streamId: input.data.streamId,
       title: titleValue,
       fileName: file.name,
-      contentType: file.type || "application/pdf",
+      contentType: compatibility.contentType,
       fileSizeBytes: file.size,
       storagePath,
       parserConfig,

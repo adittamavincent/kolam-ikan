@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const enableLocator =
   process.env.NODE_ENV === "development" &&
-  process.env.NEXT_PUBLIC_LOCATORJS === "1";
+  process.env.NEXT_PUBLIC_LOCATORJS !== "0";
 const turbopack = enableLocator
   ? {
       rules: {

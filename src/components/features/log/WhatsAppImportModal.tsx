@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { useBlobUrl } from "@/lib/hooks/useBlobUrl";
 import {
@@ -75,6 +75,10 @@ const generateFileId = (): string =>
   `file_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
 import JSZip from "jszip";
+import {
+  resolveDocumentImportCompatibility,
+  stripImportFileExtension,
+} from "@/lib/documents/importCompatibility";
 import { calculateFileHash } from "@/lib/utils/hash";
 import {
   DEFAULT_IMPORTED_PERSONA_TYPE,
@@ -93,7 +97,7 @@ export interface WhatsAppInjectPayload {
         messages: string[];
       }
     | {
-        type: "pdf";
+        type: "attachment";
         personaId: string;
         personaName: string;
         attachments: Array<{
@@ -145,6 +149,7 @@ interface PdfUploadState {
 interface ParsedZipData {
   chatText: string;
   pdfByKey: Record<string, File[]>;
+  attachmentByKey: Record<string, File[]>;
 }
 
 type Step = "paste" | "range" | "map" | "files";
@@ -288,8 +293,11 @@ function classifyText(raw?: string): ClassifiedText {
     /^(\/[^\n\r]+\.[a-z0-9]{2,5}|[A-Za-z]:[\\\/][^\n\r]+\.[a-z0-9]{2,5})$/i,
   );
   if (filePathM) {
-    const ext = filePathM[1].split(".").pop()?.toLowerCase() ?? "file";
-    return { type: "media", cleanText: t, mediaKind: ext };
+    const fullPath = filePathM[1].trim();
+    const normalizedPath = fullPath.replace(/\\/g, "/");
+    const filename = normalizedPath.split("/").pop();
+    const ext = filename?.split(".").pop()?.toLowerCase() ?? "file";
+    return { type: "media", cleanText: t, mediaKind: ext, filename, fullPath };
   }
 
   // Media omitted patterns
@@ -409,7 +417,6 @@ function buildTurns(msgs: RawMessage[]): ParsedTurn[] {
 function getMappableSenders(turns: ParsedTurn[]): string[] {
   const seen = new Set<string>();
   return turns
-    .filter((t) => t.type !== "media")
     .map((t) => t.sender)
     .filter((s) => {
       if (seen.has(s)) return false;
@@ -445,6 +452,16 @@ function indexPdfFile(index: Record<string, File[]>, key: string, file: File) {
   index[key].push(file);
 }
 
+function indexAttachmentFile(
+  index: Record<string, File[]>,
+  key: string,
+  file: File,
+) {
+  if (!key) return;
+  if (!index[key]) index[key] = [];
+  index[key].push(file);
+}
+
 function findBestPdfForTurn(
   turn: ParsedTurn,
   index: Record<string, File[]>,
@@ -461,6 +478,33 @@ function findBestPdfForTurn(
   return null;
 }
 
+function findBestAttachmentForTurn(
+  turn: ParsedTurn,
+  index: Record<string, File[]>,
+): File | null {
+  const keys = [turn.filename, turn.fullPath]
+    .filter(Boolean)
+    .map((value) => normalizeAttachmentKey(value!));
+
+  for (const key of keys) {
+    const list = index[key];
+    if (list?.length) return list[0];
+  }
+
+  return null;
+}
+
+function getFileTypeFromName(path: string) {
+  const normalized = path.toLowerCase();
+  const compatibility = resolveDocumentImportCompatibility({
+    fileName: normalized,
+  });
+  if (compatibility.kind === "unknown" || compatibility.kind === "web") {
+    return "application/octet-stream";
+  }
+  return compatibility.contentType;
+}
+
 async function parseWhatsAppZip(zipFile: File): Promise<ParsedZipData> {
   const zip = await JSZip.loadAsync(zipFile);
   const txtEntries: Array<{
@@ -469,6 +513,7 @@ async function parseWhatsAppZip(zipFile: File): Promise<ParsedZipData> {
     messageCount: number;
   }> = [];
   const pdfByKey: Record<string, File[]> = {};
+  const attachmentByKey: Record<string, File[]> = {};
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir) continue;
@@ -493,6 +538,41 @@ async function parseWhatsAppZip(zipFile: File): Promise<ParsedZipData> {
       });
       indexPdfFile(pdfByKey, normalizeAttachmentKey(normalizedPath), file);
       indexPdfFile(pdfByKey, normalizeAttachmentKey(fileName), file);
+      indexAttachmentFile(
+        attachmentByKey,
+        normalizeAttachmentKey(normalizedPath),
+        file,
+      );
+      indexAttachmentFile(
+        attachmentByKey,
+        normalizeAttachmentKey(fileName),
+        file,
+      );
+      continue;
+    }
+
+    const compatibility = resolveDocumentImportCompatibility({
+      fileName: normalizedPath,
+    });
+    if (compatibility.supported) {
+      const data = await entry.async("uint8array");
+      const fileName = normalizedPath.split("/").pop() ?? "attachment.bin";
+      const binary = new Uint8Array(data.byteLength);
+      binary.set(data);
+      const file = new File([binary], fileName, {
+        type: getFileTypeFromName(normalizedPath),
+        lastModified: Date.now(),
+      });
+      indexAttachmentFile(
+        attachmentByKey,
+        normalizeAttachmentKey(normalizedPath),
+        file,
+      );
+      indexAttachmentFile(
+        attachmentByKey,
+        normalizeAttachmentKey(fileName),
+        file,
+      );
     }
   }
 
@@ -509,7 +589,328 @@ async function parseWhatsAppZip(zipFile: File): Promise<ParsedZipData> {
     return a.path.localeCompare(b.path);
   });
 
-  return { chatText: txtEntries[0].content, pdfByKey };
+  return { chatText: txtEntries[0].content, pdfByKey, attachmentByKey };
+}
+
+type TurnPreviewCategory =
+  | "text"
+  | "pdf"
+  | "image"
+  | "video"
+  | "audio"
+  | "document"
+  | "file";
+
+function inferTurnPreviewCategory(
+  turn: ParsedTurn,
+  matchedFile?: File | null,
+): TurnPreviewCategory {
+  if (turn.type === "text") return "text";
+  if (turn.type === "pdf") return "pdf";
+
+  const fileName = matchedFile?.name ?? turn.filename ?? "";
+  const contentType = matchedFile?.type ?? "";
+  const compatibility = fileName
+    ? resolveDocumentImportCompatibility({ fileName, contentType })
+    : null;
+
+  if (compatibility?.kind === "image") return "image";
+  if (compatibility?.kind === "office" || compatibility?.kind === "text") {
+    return "document";
+  }
+  if (contentType.startsWith("video/")) return "video";
+  if (contentType.startsWith("audio/")) return "audio";
+
+  const mediaKind = (turn.mediaKind ?? "").toLowerCase();
+  if (
+    mediaKind.includes("image") ||
+    mediaKind.includes("photo") ||
+    mediaKind.includes("gif") ||
+    mediaKind.includes("sticker") ||
+    ["png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff"].includes(
+      mediaKind,
+    )
+  ) {
+    return "image";
+  }
+  if (
+    mediaKind.includes("video") ||
+    ["mp4", "mov", "m4v", "webm"].includes(mediaKind)
+  ) {
+    return "video";
+  }
+  if (
+    mediaKind.includes("audio") ||
+    mediaKind.includes("voice") ||
+    ["mp3", "wav", "m4a", "aac", "ogg", "flac"].includes(mediaKind)
+  ) {
+    return "audio";
+  }
+  if (
+    mediaKind.includes("document") ||
+    ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt", "csv"].includes(
+      mediaKind,
+    )
+  ) {
+    return "document";
+  }
+
+  return "file";
+}
+
+function getTurnAttachmentName(turn: ParsedTurn, matchedFile?: File | null) {
+  if (matchedFile?.name) return matchedFile.name;
+  if (turn.filename) return turn.filename;
+  if (turn.fullPath)
+    return turn.fullPath.replace(/\\/g, "/").split("/").pop() ?? turn.fullPath;
+  return null;
+}
+
+function getTurnPreviewSummary(turn: ParsedTurn, matchedFile?: File | null) {
+  const attachmentName = getTurnAttachmentName(turn, matchedFile);
+  const sizeLabel = matchedFile ? formatBytes(matchedFile.size) : null;
+
+  if (turn.type === "text") {
+    const fullPreview = (turn.messages && turn.messages.join("\n\n")) || "";
+    return {
+      title: "Text message",
+      subtitle: turn.messages?.[0]?.slice(0, 120) ?? "",
+      fullPreview,
+    };
+  }
+
+  if (turn.type === "pdf") {
+    const title = attachmentName ?? "document.pdf";
+    const subtitle = sizeLabel ? `PDF document • ${sizeLabel}` : "PDF document";
+    return {
+      title,
+      subtitle,
+      fullPreview: [title, subtitle].filter(Boolean).join("\n"),
+    };
+  }
+
+  const category = inferTurnPreviewCategory(turn, matchedFile);
+  const labels: Record<Exclude<TurnPreviewCategory, "text">, string> = {
+    pdf: "PDF document",
+    image: "Image attachment",
+    video: "Video attachment",
+    audio: "Audio attachment",
+    document: "Document attachment",
+    file: "File attachment",
+  };
+
+  return {
+    title: attachmentName ?? labels[category],
+    subtitle: sizeLabel
+      ? `${labels[category]} • ${sizeLabel}`
+      : labels[category],
+    fullPreview: [
+      attachmentName ?? labels[category],
+      labels[category],
+      sizeLabel,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+}
+
+interface TooltipPreviewPayload {
+  category: TurnPreviewCategory;
+  title: string;
+  subtitle: string;
+  fullPreview: string;
+  file?: File | null;
+}
+
+function buildTooltipPreviewPayload(
+  turn: ParsedTurn,
+  matchedFile?: File | null,
+): TooltipPreviewPayload {
+  const category = inferTurnPreviewCategory(turn, matchedFile);
+  const summary = getTurnPreviewSummary(turn, matchedFile);
+
+  return {
+    category,
+    title: summary.title,
+    subtitle: summary.subtitle,
+    fullPreview: summary.fullPreview,
+    file: matchedFile ?? null,
+  };
+}
+
+function HoverPreviewTooltip({ preview }: { preview: TooltipPreviewPayload }) {
+  const previewUrl = useBlobUrl(preview.file ?? null);
+  const showThumbnail =
+    !!preview.file &&
+    (preview.category === "pdf" || preview.category === "image");
+
+  return (
+    <div className="flex max-w-full items-start gap-3">
+      {preview.category !== "text" &&
+        (showThumbnail ? (
+          <FileAttachmentThumbnail
+            url={previewUrl}
+            storagePath={null}
+            thumbnailPath={null}
+            thumbnailStatus={null}
+            documentId={null}
+            title={preview.title}
+            importStatus={null}
+            className="h-20 w-14 shrink-0"
+            imageClassName="object-cover"
+          />
+        ) : (
+          <div className="flex h-20 w-14 shrink-0 items-center justify-center border border-border-default bg-surface-subtle text-text-muted">
+            {preview.category === "image" ? (
+              <ImageIcon className="h-5 w-5" />
+            ) : (
+              <FileText className="h-5 w-5" />
+            )}
+          </div>
+        ))}
+
+      <div className="min-w-0 flex-1">
+        {preview.category !== "text" && (
+          <>
+            <div className="truncate text-xs font-medium text-text-default">
+              {preview.title}
+            </div>
+            <div className="truncate text-[11px] text-text-muted">
+              {preview.subtitle}
+            </div>
+            <div className="mt-2 whitespace-pre-wrap wrap-break-word text-[12px] text-text-default">
+              {preview.fullPreview}
+            </div>
+          </>
+        )}
+
+        {preview.category === "text" && (
+          <div className="whitespace-pre-wrap wrap-break-word text-[12px] text-text-default">
+            {preview.fullPreview}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getTurnTitleSnapshot(turn: ParsedTurn, matchedFile?: File | null) {
+  if (turn.type === "pdf") {
+    return (
+      turn.preferredTitle ??
+      stripImportFileExtension(
+        matchedFile?.name ?? turn.filename ?? "document.pdf",
+      ) ??
+      "Document"
+    );
+  }
+
+  return stripImportFileExtension(
+    matchedFile?.name ?? turn.filename ?? "Attachment",
+  );
+}
+
+function pushAttachmentTurn(
+  payloadTurns: WhatsAppInjectPayload["turns"],
+  params: {
+    personaId: string;
+    personaName: string;
+    attachment: WhatsAppInjectPayload["turns"][number] extends {
+      attachments: infer T;
+    }
+      ? T extends Array<infer U>
+        ? U
+        : never
+      : never;
+  },
+) {
+  const last = payloadTurns[payloadTurns.length - 1];
+  if (last?.type === "attachment" && last.personaId === params.personaId) {
+    last.attachments.push(params.attachment);
+    return;
+  }
+
+  payloadTurns.push({
+    type: "attachment",
+    personaId: params.personaId,
+    personaName: params.personaName,
+    attachments: [params.attachment],
+  });
+}
+
+function RangePreviewTurnRow({
+  turn,
+  index,
+  isSelected,
+  tooltipPreview,
+  onPreviewMouseEnter,
+  onPreviewMouseLeave,
+  onSetStart,
+  onSetEnd,
+}: {
+  turn: ParsedTurn;
+  index: number;
+  isSelected: boolean;
+  tooltipPreview: TooltipPreviewPayload;
+  onPreviewMouseEnter: (
+    e: React.MouseEvent,
+    idx: number,
+    preview: TooltipPreviewPayload,
+  ) => void;
+  onPreviewMouseLeave: () => void;
+  onSetStart: () => void;
+  onSetEnd: () => void;
+}) {
+  const summary = getTurnPreviewSummary(turn);
+  const previewLabel =
+    turn.type === "text"
+      ? summary.subtitle
+      : [summary.title, summary.subtitle].filter(Boolean).join(" • ");
+
+  return (
+    <div
+      className={`relative flex items-center justify-between gap-3 px-2 py-1 ${
+        isSelected
+          ? "border border-border-subtle bg-primary-950"
+          : "hover:bg-surface-subtle"
+      }`}
+    >
+      <div
+        className="min-w-0 flex-1 text-[11px]"
+        onMouseEnter={(e) => onPreviewMouseEnter(e, index, tooltipPreview)}
+        onMouseLeave={onPreviewMouseLeave}
+      >
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] text-text-muted">
+            #{index + 1}
+          </span>
+          <span className="font-medium text-text-default truncate">
+            {turn.sender}
+          </span>
+        </div>
+        <div className="truncate text-[10px] text-text-muted">
+          {previewLabel}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onSetStart}
+          title="Set as start"
+          className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+        >
+          Start
+        </button>
+        <button
+          onClick={onSetEnd}
+          title="Set as end"
+          className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
+        >
+          End
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function buildAutoMap(
@@ -582,10 +983,14 @@ export function WhatsAppImportModal({
   const [uploads, setUploads] = useState<Record<string, PdfUploadState>>({});
   const [zipSourceName, setZipSourceName] = useState<string | null>(null);
   const [zipPdfIndex, setZipPdfIndex] = useState<Record<string, File[]>>({});
+  const [zipAttachmentIndex, setZipAttachmentIndex] = useState<
+    Record<string, File[]>
+  >({});
   const [zipLoadError, setZipLoadError] = useState<string | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapNotice, setMapNotice] = useState<string | null>(null);
   const [zipLoading, setZipLoading] = useState(false);
+  const [zipDragActive, setZipDragActive] = useState(false);
   const [zipAutoUploadRan, setZipAutoUploadRan] = useState(false);
   const zipInputRef = useRef<HTMLInputElement>(null);
   const [confirmExitOpen, setConfirmExitOpen] = useState(false);
@@ -612,7 +1017,8 @@ export function WhatsAppImportModal({
 
   // Preview tooltip state (custom tooltip with configurable timing)
   const [tooltipVisible, setTooltipVisible] = useState(false);
-  const [tooltipContent, setTooltipContent] = useState<string | null>(null);
+  const [tooltipContent, setTooltipContent] =
+    useState<TooltipPreviewPayload | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{
     left: number;
     top: number;
@@ -633,7 +1039,7 @@ export function WhatsAppImportModal({
   const handlePreviewMouseEnter = (
     e: React.MouseEvent,
     idx: number,
-    content: string,
+    content: TooltipPreviewPayload,
   ) => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
@@ -675,6 +1081,9 @@ export function WhatsAppImportModal({
   const textTurns = selectedTurns.filter((t) => t.type === "text");
   const pdfTurns = selectedTurns.filter((t) => t.type === "pdf");
   const mediaTurns = selectedTurns.filter((t) => t.type === "media");
+  const matchedMediaTurns = mediaTurns.filter((turn) =>
+    Boolean(findBestAttachmentForTurn(turn, zipAttachmentIndex)),
+  );
   const hasPdfTurns = pdfTurns.length > 0;
   const anyUploading = Object.values(uploads).some(
     (u) => u.status === "uploading",
@@ -689,7 +1098,10 @@ export function WhatsAppImportModal({
     (t) => uploads[t.id]?.status === "skipped",
   );
   const plannedImportableCount =
-    textTurns.length + doneUploadCount + queuedUploadCount;
+    textTurns.length +
+    doneUploadCount +
+    queuedUploadCount +
+    matchedMediaTurns.length;
   const allPdfsPrepared = pdfTurns.every((turn) => {
     const upload = uploads[turn.id];
     if (!upload) return false;
@@ -705,16 +1117,40 @@ export function WhatsAppImportModal({
   const liveMsgs = rawText.trim() ? parseRawMessages(rawText) : [];
   const liveTurns = buildTurns(liveMsgs);
   const liveSenders = getMappableSenders(liveTurns);
-  const livePdfCount = liveTurns.filter((t) => t.type === "pdf").length;
-  const liveMediaCount = liveTurns.filter((t) => t.type === "media").length;
-  const liveImportable = liveTurns.filter((t) => t.type !== "media").length;
+  const liveAttachmentCounts = liveTurns.reduce<
+    Record<Exclude<TurnPreviewCategory, "text">, number>
+  >(
+    (counts, turn) => {
+      if (turn.type === "text") return counts;
+      const category = inferTurnPreviewCategory(turn);
+      counts[category] += 1;
+      return counts;
+    },
+    {
+      pdf: 0,
+      image: 0,
+      video: 0,
+      audio: 0,
+      document: 0,
+      file: 0,
+    },
+  );
+  const liveMediaCount =
+    liveAttachmentCounts.image +
+    liveAttachmentCounts.video +
+    liveAttachmentCounts.audio +
+    liveAttachmentCounts.document +
+    liveAttachmentCounts.file;
+  const liveImportable =
+    liveTurns.filter((t) => t.type !== "media").length +
+    (zipSourceName ? liveMediaCount : 0);
   const liveCleanedSenders = countCleanedSenders(liveMsgs);
   const autoMatchCount = pdfTurns.filter((t) =>
     findBestPdfForTurn(t, zipPdfIndex),
   ).length;
-  const rangeImportableCount = selectedTurns.filter(
-    (t) => t.type !== "media",
-  ).length;
+  const rangeImportableCountWithMedia =
+    selectedTurns.filter((t) => t.type !== "media").length +
+    matchedMediaTurns.length;
   const localPersonas = useMemo(
     () => getStreamLocalPersonas(personas, streamId),
     [personas, streamId],
@@ -892,6 +1328,7 @@ export function WhatsAppImportModal({
     setUploads({});
     setZipSourceName(null);
     setZipPdfIndex({});
+    setZipAttachmentIndex({});
     setZipLoadError(null);
     setMapError(null);
     setMapNotice(null);
@@ -921,6 +1358,7 @@ export function WhatsAppImportModal({
       setUploads({});
       setZipSourceName(file.name);
       setZipPdfIndex(zipData.pdfByKey);
+      setZipAttachmentIndex(zipData.attachmentByKey);
       setMapError(null);
       setMapNotice(null);
       setZipAutoUploadRan(false);
@@ -934,6 +1372,14 @@ export function WhatsAppImportModal({
     } finally {
       setZipLoading(false);
     }
+  };
+
+  const handleZipDrop = async (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setZipDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    await handleZipSelect(file);
   };
 
   const handleRangeNext = async () => {
@@ -1353,13 +1799,12 @@ export function WhatsAppImportModal({
       setPendingPersonaCreations([]);
     }
 
-    // Transfer all text turns and any already-completed PDFs to EntryCreator
-    // Transfer all pending PDF files to the Docling document import handler
+    // Transfer all text turns and attachment placeholders to EntryCreator.
+    // Transfer pending files to the document import handler.
     const payloadTurns: WhatsAppInjectPayload["turns"] = [];
     const transferFiles: Array<{ file: File; hash?: string }> = [];
 
     for (const turn of selectedTurns) {
-      if (turn.type === "media") continue;
       const personaId = effectiveMapping[turn.sender];
       if (!personaId) continue;
       const persona = personas?.find((p) => p.id === personaId);
@@ -1426,17 +1871,11 @@ export function WhatsAppImportModal({
               "Document",
           };
 
-          const last = payloadTurns[payloadTurns.length - 1];
-          if (last?.type === "pdf" && last.personaId === personaId) {
-            last.attachments.push(attachment);
-          } else {
-            payloadTurns.push({
-              type: "pdf",
-              personaId,
-              personaName,
-              attachments: [attachment],
-            });
-          }
+          pushAttachmentTurn(payloadTurns, {
+            personaId,
+            personaName,
+            attachment,
+          });
         }
         // If pending with a file → include placeholder in inject + transfer to document import handler
         else if (upload?.file && upload.status === "pending") {
@@ -1476,19 +1915,32 @@ export function WhatsAppImportModal({
             previewUrl: blobUrl,
           };
 
-          const last = payloadTurns[payloadTurns.length - 1];
-          if (last?.type === "pdf" && last.personaId === personaId) {
-            last.attachments.push(attachment);
-          } else {
-            payloadTurns.push({
-              type: "pdf",
-              personaId,
-              personaName,
-              attachments: [attachment],
-            });
-          }
+          pushAttachmentTurn(payloadTurns, {
+            personaId,
+            personaName,
+            attachment,
+          });
         }
         // If skipped, error, or exists-without-doc, ignore (exists-with-doc handled above)
+      } else if (turn.type === "media") {
+        const file = findBestAttachmentForTurn(turn, zipAttachmentIndex);
+        if (!file) continue;
+
+        const hash = await calculateFileHash(file).catch(() => undefined);
+        if (!transferFiles.find((entry) => entry.file === file)) {
+          transferFiles.push({ file, hash });
+        }
+
+        const blobUrl = URL.createObjectURL(file);
+        pushAttachmentTurn(payloadTurns, {
+          personaId,
+          personaName,
+          attachment: {
+            titleSnapshot: getTurnTitleSnapshot(turn, file),
+            fileHash: hash,
+            previewUrl: blobUrl,
+          },
+        });
       }
     }
 
@@ -1509,7 +1961,7 @@ export function WhatsAppImportModal({
       );
     }
 
-    // Transfer all pending PDF files to the document import handler for Docling processing
+    // Transfer all pending files to the document import handler for processing
     if (transferFiles.length > 0) {
       // Start imports immediately so thumbnails and queued documents begin resolving
 
@@ -1528,18 +1980,15 @@ export function WhatsAppImportModal({
       setPendingFileIds(queuedFileIds);
 
       if (process.env.NODE_ENV !== "production")
-        console.debug(
-          "[WhatsApp] Storing files in temp store and dispatching kolam_header_documents_import:",
-          {
-            fileCount: transferFiles.length,
-            fileIds: queuedFileIds,
-            files: transferFiles.map((f) => ({
-              name: f.file.name,
-              size: f.file.size,
-              hash: f.hash,
-            })),
-          },
-        );
+        console.debug("[WhatsApp] Queuing attachment files for import:", {
+          fileCount: transferFiles.length,
+          fileIds: queuedFileIds,
+          files: transferFiles.map((f) => ({
+            name: f.file.name,
+            size: f.file.size,
+            hash: f.hash,
+          })),
+        });
 
       window.dispatchEvent(
         new CustomEvent("kolam_header_documents_import", {
@@ -1567,9 +2016,9 @@ export function WhatsAppImportModal({
     }
 
     const payloadTurns: WhatsAppInjectPayload["turns"] = [];
+    const transferFiles: Array<{ file: File; hash?: string }> = [];
 
     for (const turn of selectedTurns) {
-      if (turn.type === "media") continue;
       const personaId = effectiveMapping[turn.sender];
       if (!personaId) continue;
       const persona = personas?.find((p) => p.id === personaId);
@@ -1582,7 +2031,7 @@ export function WhatsAppImportModal({
           personaName,
           messages: turn.messages!,
         });
-      } else {
+      } else if (turn.type === "pdf") {
         const upload = uploadsSnapshot[turn.id];
         if (!upload) continue;
         if (
@@ -1602,17 +2051,11 @@ export function WhatsAppImportModal({
               "Document",
           };
 
-          const last = payloadTurns[payloadTurns.length - 1];
-          if (last?.type === "pdf") {
-            last.attachments.push(attachment);
-          } else {
-            payloadTurns.push({
-              type: "pdf",
-              personaId,
-              personaName,
-              attachments: [attachment],
-            });
-          }
+          pushAttachmentTurn(payloadTurns, {
+            personaId,
+            personaName,
+            attachment,
+          });
         } else if (upload.status === "exists" && upload.existingDocument) {
           const ed = upload.existingDocument;
           const attachment = {
@@ -1627,18 +2070,30 @@ export function WhatsAppImportModal({
               "Document",
           };
 
-          const last = payloadTurns[payloadTurns.length - 1];
-          if (last?.type === "pdf") {
-            last.attachments.push(attachment);
-          } else {
-            payloadTurns.push({
-              type: "pdf",
-              personaId,
-              personaName,
-              attachments: [attachment],
-            });
-          }
+          pushAttachmentTurn(payloadTurns, {
+            personaId,
+            personaName,
+            attachment,
+          });
         }
+      } else if (turn.type === "media") {
+        const file = findBestAttachmentForTurn(turn, zipAttachmentIndex);
+        if (!file) continue;
+
+        const hash = await calculateFileHash(file).catch(() => undefined);
+        if (!transferFiles.find((entry) => entry.file === file)) {
+          transferFiles.push({ file, hash });
+        }
+
+        pushAttachmentTurn(payloadTurns, {
+          personaId,
+          personaName,
+          attachment: {
+            titleSnapshot: getTurnTitleSnapshot(turn, file),
+            fileHash: hash,
+            previewUrl: URL.createObjectURL(file),
+          },
+        });
       }
     }
 
@@ -1652,6 +2107,25 @@ export function WhatsAppImportModal({
         } satisfies WhatsAppInjectPayload,
       }),
     );
+    if (transferFiles.length > 0) {
+      const tempStore = getTempFileStore();
+      const queuedFileIds: string[] = [];
+
+      for (const fileData of transferFiles) {
+        const id = generateFileId();
+        const blobUrl = URL.createObjectURL(fileData.file);
+        tempStore.set(id, { ...fileData, blobUrl });
+        queuedFileIds.push(id);
+      }
+
+      setPendingFileIds(queuedFileIds);
+      window.dispatchEvent(
+        new CustomEvent("kolam_header_documents_import", {
+          detail: { fileIds: queuedFileIds },
+        }),
+      );
+    }
+
     handleClose();
   };
 
@@ -1669,6 +2143,7 @@ export function WhatsAppImportModal({
     setUploads({});
     setZipSourceName(null);
     setZipPdfIndex({});
+    setZipAttachmentIndex({});
     setZipLoadError(null);
     setMapError(null);
     setMapNotice(null);
@@ -1737,7 +2212,7 @@ export function WhatsAppImportModal({
                 </>
               ),
               onClick: handleRangeNext,
-              disabled: rangeImportableCount === 0,
+              disabled: rangeImportableCountWithMedia === 0,
               tone: "primary",
             },
           ]
@@ -1768,14 +2243,14 @@ export function WhatsAppImportModal({
                     )}
                     {creatingAllPersonas
                       ? "Creating personas..."
-                      : `Import ${textTurns.length} turn${textTurns.length !== 1 ? "s" : ""}`}
+                      : `Import ${plannedImportableCount} section${plannedImportableCount !== 1 ? "s" : ""}`}
                   </>
                 ),
                 onClick: () => void handleMapNext(),
                 disabled:
                   creatingAllPersonas ||
                   !allMapped ||
-                  (!hasPdfTurns && textTurns.length === 0),
+                  (!hasPdfTurns && plannedImportableCount === 0),
                 tone: "primary",
               },
             ]
@@ -1845,9 +2320,14 @@ export function WhatsAppImportModal({
         {step === "paste" && (
           <div className="flex flex-col gap-3 px-6 py-5">
             <p className="text-xs text-text-muted">
-              Paste chat text or upload ZIP. PDF references like{" "}
+              Paste chat text or upload a WhatsApp ZIP export. Attachment
+              references like{" "}
               <code className=" bg-surface-subtle px-1 py-0.5 text-[10px]">
-                &lt;attached: file.pdf&gt;
+                &lt;attached: photo.jpg&gt;
+              </code>{" "}
+              or{" "}
+              <code className=" bg-surface-subtle px-1 py-0.5 text-[10px]">
+                &lt;attached: document.pdf&gt;
               </code>{" "}
               are detected automatically.
             </p>
@@ -1864,29 +2344,64 @@ export function WhatsAppImportModal({
               }}
             />
 
-            <div className="flex flex-wrap items-center gap-2 border border-border-default bg-surface-subtle px-3 py-2">
-              <button
-                onClick={() => zipInputRef.current?.click()}
-                disabled={zipLoading}
-                className="inline-flex items-center gap-1.5 border border-border-default px-2 py-1 text-xs text-text-default hover:bg-surface-subtle disabled:opacity-50"
-              >
+            <div
+              role="button"
+              tabIndex={zipLoading ? -1 : 0}
+              aria-disabled={zipLoading}
+              onClick={() => {
+                if (!zipLoading) zipInputRef.current?.click();
+              }}
+              onKeyDown={(e) => {
+                if (zipLoading) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  zipInputRef.current?.click();
+                }
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                if (!zipLoading) setZipDragActive(true);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!zipLoading) {
+                  e.dataTransfer.dropEffect = "copy";
+                  setZipDragActive(true);
+                }
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                if (e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                  return;
+                }
+                setZipDragActive(false);
+              }}
+              onDrop={(e) => void handleZipDrop(e)}
+              className={`flex flex-wrap items-center gap-3 border px-3 py-2 transition-colors ${
+                zipDragActive
+                  ? "border-action-primary-bg bg-action-primary-bg/10"
+                  : "border-border-default bg-surface-subtle"
+              } ${zipLoading ? "cursor-progress" : "cursor-pointer"}`}
+            >
+              <div className="flex items-center gap-1.5 text-xs text-text-default">
                 {zipLoading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Upload className="h-3.5 w-3.5" />
                 )}
-                {zipLoading ? "Parsing ZIP…" : "Upload WhatsApp ZIP"}
-              </button>
-              {zipSourceName && (
-                <span className="text-[11px] text-text-muted">
-                  Loaded:{" "}
-                  <span className="font-medium text-text-default">
-                    {zipSourceName}
-                  </span>
+                <span className="font-medium">
+                  {zipLoading
+                    ? "Parsing ZIP..."
+                    : zipSourceName || "Upload WhatsApp ZIP"}
                 </span>
-              )}
+              </div>
               {zipLoadError && (
                 <span className="text-[11px] text-red-500">{zipLoadError}</span>
+              )}
+              {!zipLoadError && !zipSourceName && (
+                <span className="text-[11px] text-text-muted">
+                  Drop one ZIP file or click to choose
+                </span>
               )}
             </div>
 
@@ -1920,17 +2435,46 @@ export function WhatsAppImportModal({
                       </span>{" "}
                       sender{liveSenders.length !== 1 ? "s" : ""}
                     </span>
-                    {livePdfCount > 0 && (
+                    {liveAttachmentCounts.pdf > 0 && (
                       <span className="flex items-center gap-1 font-medium text-blue-500">
                         <FileText className="h-3 w-3" />
-                        {livePdfCount} PDF{livePdfCount !== 1 ? "s" : ""}{" "}
-                        detected
+                        {liveAttachmentCounts.pdf} PDF
+                        {liveAttachmentCounts.pdf !== 1 ? "s" : ""}
                       </span>
                     )}
-                    {liveMediaCount > 0 && (
+                    {liveAttachmentCounts.image > 0 && (
                       <span className="flex items-center gap-1 text-text-muted">
                         <ImageIcon className="h-3 w-3" />
-                        {liveMediaCount} media (skipped)
+                        {liveAttachmentCounts.image} image
+                        {liveAttachmentCounts.image !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {liveAttachmentCounts.video > 0 && (
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <FileText className="h-3 w-3" />
+                        {liveAttachmentCounts.video} video
+                        {liveAttachmentCounts.video !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {liveAttachmentCounts.audio > 0 && (
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <FileText className="h-3 w-3" />
+                        {liveAttachmentCounts.audio} audio
+                        {liveAttachmentCounts.audio !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {liveAttachmentCounts.document > 0 && (
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <FileText className="h-3 w-3" />
+                        {liveAttachmentCounts.document} document
+                        {liveAttachmentCounts.document !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {liveAttachmentCounts.file > 0 && (
+                      <span className="flex items-center gap-1 text-text-muted">
+                        <FileText className="h-3 w-3" />
+                        {liveAttachmentCounts.file} file
+                        {liveAttachmentCounts.file !== 1 ? "s" : ""}
                       </span>
                     )}
                     {liveCleanedSenders > 0 && (
@@ -1943,7 +2487,6 @@ export function WhatsAppImportModal({
                 )}
               </div>
             )}
-
           </div>
         )}
 
@@ -1970,7 +2513,7 @@ export function WhatsAppImportModal({
                 {" · "}
                 Importable:{" "}
                 <span className="font-semibold text-text-default">
-                  {rangeImportableCount}
+                  {rangeImportableCountWithMedia}
                 </span>
               </div>
             </div>
@@ -2078,73 +2621,29 @@ export function WhatsAppImportModal({
               ) : (
                 parsedTurns.map((t, idx) => {
                   const isSelected = idx >= rangeStart && idx <= rangeEnd;
-                  // Determine preview + optional size for PDFs when file is available
-                  let preview = "";
-                  let fullPreview = "";
-                  if (t.type === "text") {
-                    fullPreview = (t.messages && t.messages.join("\n\n")) || "";
-                    preview = t.messages?.[0]?.slice(0, 120) ?? "";
-                  } else if (t.type === "pdf") {
-                    const filename = t.filename ?? "document.pdf";
-                    const matchedFile =
-                      uploads[t.id]?.file ?? findBestPdfForTurn(t, zipPdfIndex);
-                    const sizeStr = matchedFile
-                      ? ` (${formatBytes(matchedFile.size)})`
-                      : "";
-                    preview = `PDF: ${filename}${sizeStr}`;
-                    fullPreview = preview;
-                  } else {
-                    preview = `Media: ${t.mediaKind ?? "file"}`;
-                    fullPreview = preview;
-                  }
+                  const matchedFile =
+                    uploads[t.id]?.file ??
+                    findBestAttachmentForTurn(t, zipAttachmentIndex);
+                  const tooltipPreview = buildTooltipPreviewPayload(
+                    t,
+                    matchedFile,
+                  );
                   return (
-                    <div
+                    <RangePreviewTurnRow
                       key={t.id}
-                      className={`relative flex items-center justify-between gap-3 px-2 py-1  ${isSelected ? "bg-primary-950 border border-border-subtle" : "hover:bg-surface-subtle"}`}
-                    >
-                      <div
-                        className="min-w-0 flex-1 text-[11px]"
-                        onMouseEnter={(e) =>
-                          handlePreviewMouseEnter(e, idx, fullPreview)
-                        }
-                        onMouseLeave={handlePreviewMouseLeave}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[11px] text-text-muted">
-                            #{idx + 1}
-                          </span>
-                          <span className="font-medium text-text-default truncate">
-                            {t.sender}
-                          </span>
-                        </div>
-                        <div className="truncate text-[10px] text-text-muted">
-                          {preview}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setRangeStart(idx)}
-                          title="Set as start"
-                          className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
-                        >
-                          Start
-                        </button>
-                        <button
-                          onClick={() => setRangeEnd(idx)}
-                          title="Set as end"
-                          className=" border border-border-default px-2 py-1 text-[11px] text-text-default hover:bg-surface-subtle"
-                        >
-                          End
-                        </button>
-                      </div>
-                      {/* Tooltip is rendered in a portal to avoid affecting layout */}
-                    </div>
+                      turn={t}
+                      index={idx}
+                      isSelected={isSelected}
+                      tooltipPreview={tooltipPreview}
+                      onPreviewMouseEnter={handlePreviewMouseEnter}
+                      onPreviewMouseLeave={handlePreviewMouseLeave}
+                      onSetStart={() => setRangeStart(idx)}
+                      onSetEnd={() => setRangeEnd(idx)}
+                    />
                   );
                 })
               )}
             </div>
-
           </div>
         )}
 
@@ -2162,7 +2661,7 @@ export function WhatsAppImportModal({
                   {pdfTurns.length > 0 &&
                     ` · ${pdfTurns.length} PDF attachment${pdfTurns.length !== 1 ? "s" : ""}`}
                   {mediaTurns.length > 0 &&
-                    ` · ${mediaTurns.length} media skipped`}
+                    ` · ${mediaTurns.length} media attachment${mediaTurns.length !== 1 ? "s" : ""}`}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5 text-[10px] text-text-muted">
                   <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
@@ -2385,7 +2884,6 @@ export function WhatsAppImportModal({
                 </span>
               </div>
             )}
-
           </div>
         )}
 
@@ -2462,7 +2960,6 @@ export function WhatsAppImportModal({
                 </span>
               )}
             </div>
-
           </div>
         )}
       </ModalShell>
@@ -2481,9 +2978,7 @@ export function WhatsAppImportModal({
               }}
               className="fixed z-50 border border-border-default bg-surface-default p-2 text-xs text-text-default"
             >
-              <div className="whitespace-pre-wrap wrap-break-word text-[12px]">
-                {tooltipContent}
-              </div>
+              <HoverPreviewTooltip preview={tooltipContent} />
             </div>,
             document.body,
           )

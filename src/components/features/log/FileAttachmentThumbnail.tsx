@@ -18,10 +18,37 @@ interface FileAttachmentThumbnailProps {
   imageClassName?: string;
 }
 
-function isLikelyImageUrl(url: string) {
+interface PdfViewportLike {
+  width: number;
+  height: number;
+}
+
+interface PdfPageLike {
+  getViewport: (options: { scale: number }) => PdfViewportLike;
+  render: (options: {
+    canvasContext: CanvasRenderingContext2D;
+    viewport: PdfViewportLike;
+  }) => { promise: Promise<void> };
+}
+
+interface PdfDocumentLike {
+  getPage: (pageNumber: number) => Promise<PdfPageLike>;
+  destroy?: () => Promise<void> | void;
+}
+
+interface PdfJsLike {
+  getDocument: (options: { data: ArrayBuffer; disableWorker: boolean }) => {
+    promise: Promise<PdfDocumentLike>;
+  };
+}
+
+function isLikelyImageUrl(url: string, title?: string) {
+  if (url.startsWith("blob:")) {
+    return Boolean(title?.match(/\.(png|jpe?g|webp|gif|bmp|avif|tiff?|svg)$/i));
+  }
   return (
     url.startsWith("data:image/") ||
-    /\.(png|jpe?g|webp|gif|bmp|avif|tiff)(\?.*)?$/i.test(url)
+    /\.(png|jpe?g|webp|gif|bmp|avif|tiff?|svg)(\?.*)?$/i.test(url)
   );
 }
 
@@ -46,7 +73,10 @@ export function FileAttachmentThumbnail({
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
 
-  const { thumbnailPath: ensuredThumbnailPath, thumbnailStatus: ensuredStatus } = useEnsureThumbnail({
+  const {
+    thumbnailPath: ensuredThumbnailPath,
+    thumbnailStatus: ensuredStatus,
+  } = useEnsureThumbnail({
     documentId: documentId ?? undefined,
     importStatus,
     thumbnailPath,
@@ -80,7 +110,12 @@ export function FileAttachmentThumbnail({
   useEffect(() => {
     let cancelled = false;
 
-    if (!url || resolvedThumbnailUrl || !isPdf(url, title) || !url.startsWith("blob:")) {
+    if (
+      !url ||
+      resolvedThumbnailUrl ||
+      !isPdf(url, title) ||
+      !url.startsWith("blob:")
+    ) {
       setFilePreviewUrl(null);
       return () => {
         cancelled = true;
@@ -90,14 +125,14 @@ export function FileAttachmentThumbnail({
     const generatePreview = async () => {
       try {
         const pdfjsModule = await import("pdfjs-dist/legacy/build/pdf");
-        // `pdfjs-dist` exposes complex types we don't need to fully model here.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const pdfjs = (pdfjsModule.default || pdfjsModule) as unknown as any;
+        const pdfjs = (pdfjsModule.default || pdfjsModule) as PdfJsLike;
 
         const response = await fetch(url);
         const data = await response.arrayBuffer();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const loadingTask = (pdfjs as any).getDocument({ data, disableWorker: true } as any);
+        const loadingTask = pdfjs.getDocument({
+          data,
+          disableWorker: true,
+        });
         const doc = await loadingTask.promise;
         const page = await doc.getPage(1);
 
@@ -117,7 +152,8 @@ export function FileAttachmentThumbnail({
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+        await page.render({ canvasContext: ctx, viewport: scaledViewport })
+          .promise;
         const dataUrl = canvas.toDataURL("image/png");
 
         if (!cancelled) {
@@ -144,16 +180,16 @@ export function FileAttachmentThumbnail({
   const previewKind = useMemo<"image" | "none">(() => {
     if (resolvedThumbnailUrl) return "image";
     if (filePreviewUrl) return "image";
-    if (url && isLikelyImageUrl(url)) return "image";
+    if (url && isLikelyImageUrl(url, title)) return "image";
     return "none";
-  }, [resolvedThumbnailUrl, filePreviewUrl, url]);
+  }, [resolvedThumbnailUrl, filePreviewUrl, title, url]);
 
   const effectivePreviewUrl = previewKind === "none" ? null : previewUrl;
-  const hasPreview = previewKind === "image" && !!effectivePreviewUrl && !imageFailed;
+  const hasPreview =
+    previewKind === "image" && !!effectivePreviewUrl && !imageFailed;
 
   const showQueued =
-    importStatus === "queued" ||
-    effectiveThumbnailStatus === "pending";
+    importStatus === "queued" || effectiveThumbnailStatus === "pending";
 
   const showProcessing =
     importStatus === "processing" ||
@@ -166,7 +202,8 @@ export function FileAttachmentThumbnail({
     effectiveThumbnailStatus === "failed";
 
   const showPlaceholder = previewKind === "none" || imageFailed;
-  const showOverlay = showError || showProcessing || showQueued || showPlaceholder;
+  const showOverlay =
+    showError || showProcessing || showQueued || showPlaceholder;
   const overlayBg = hasPreview ? "bg-surface-dark" : "bg-surface-subtle";
 
   return (
@@ -179,7 +216,7 @@ export function FileAttachmentThumbnail({
           alt={`Thumbnail preview for ${title}`}
           fill
           sizes="160px"
-          className={`object-cover ${imageClassName ?? ""}`}
+          className={`object-contain ${imageClassName ?? ""}`}
           unoptimized
           onError={() => setImageFailed(true)}
         />
@@ -194,7 +231,9 @@ export function FileAttachmentThumbnail({
               <div className="bg-rose-600 p-1 text-white">
                 <X className="h-4 w-4" />
               </div>
-              <div className="text-[10px] font-semibold text-rose-600">Failed</div>
+              <div className="text-[10px] font-semibold text-rose-600">
+                Failed
+              </div>
             </div>
           ) : showProcessing || showQueued ? (
             <div className="flex flex-col items-center gap-1">

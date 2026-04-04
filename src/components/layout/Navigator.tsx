@@ -6,8 +6,6 @@ import { useParams, useRouter, usePathname } from "next/navigation";
 import {
   ChevronRight,
   ChevronDown,
-  Folder,
-  FileText,
   Trash2,
   Pencil,
   Copy,
@@ -119,7 +117,7 @@ const getPositionGroupCenterRem = (groupIndex: number) =>
   (groupIndex - 0.5) * ALIGNMENT_COLUMN_REM;
 const getCabinetPaddingRem = (depth: number) => depth * ALIGNMENT_COLUMN_REM;
 const getStreamPaddingRem = (depth: number) =>
-  (depth + 1) * ALIGNMENT_COLUMN_REM;
+  depth * ALIGNMENT_COLUMN_REM;
 const getBorderCenterRem = (depth: number) =>
   getPositionGroupCenterRem(depth + 1);
 const LEGACY_GLOBAL_STREAM_SORT_ORDER = -100;
@@ -345,14 +343,11 @@ const CreationInput = ({
           <div
             className="grid shrink-0"
             style={{
-              gridTemplateColumns: `${ALIGNMENT_COLUMN_REM}rem ${ALIGNMENT_COLUMN_REM}rem`,
+              gridTemplateColumns: `${ALIGNMENT_COLUMN_REM}rem`,
             }}
           >
             <div className="flex items-center justify-center">
               <div className="h-4 w-4" />
-            </div>
-            <div className="flex items-center justify-center">
-              <Folder className="h-4 w-4 text-text-muted" />
             </div>
           </div>
         ) : (
@@ -360,7 +355,7 @@ const CreationInput = ({
             className="flex shrink-0 items-center justify-center"
             style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
           >
-            <FileText className="h-4 w-4 text-text-muted" />
+            <div className="h-4 w-4" />
           </div>
         )}
         <input
@@ -577,13 +572,7 @@ const StreamNode = ({
           className="flex shrink-0 items-center justify-center"
           style={{ width: `${ALIGNMENT_COLUMN_REM}rem` }}
         >
-          <FileText
-            className={`h-4 w-4 ${
-              isStreamActive
-                ? "text-action-primary-bg"
-                : "text-text-muted group-hover:text-text-subtle"
-            }`}
-          />
+          <div className="h-4 w-4" aria-hidden="true" />
         </div>
 
         {isStreamEditing ? (
@@ -739,7 +728,7 @@ const CabinetNode = ({
         <div
           className="grid shrink-0"
           style={{
-            gridTemplateColumns: `${ALIGNMENT_COLUMN_REM}rem ${ALIGNMENT_COLUMN_REM}rem`,
+            gridTemplateColumns: `${ALIGNMENT_COLUMN_REM}rem`,
           }}
         >
           <div className="flex items-center justify-center">
@@ -757,11 +746,6 @@ const CabinetNode = ({
                 <ChevronRight className="h-4 w-4" />
               )}
             </button>
-          </div>
-          <div className="flex items-center justify-center">
-            <Folder
-              className={`h-4 w-4 ${isActive ? "text-action-primary-bg" : "text-text-muted"}`}
-            />
           </div>
         </div>
 

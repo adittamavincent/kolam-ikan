@@ -16,7 +16,8 @@ const SUPPORTED_IMAGE_TYPES = new Set([
 
 function isSupportedThumbnailType(contentType: string, fileName: string) {
   const lowered = fileName.toLowerCase();
-  if (contentType === "application/pdf" || lowered.endsWith(".pdf")) return true;
+  if (contentType === "application/pdf" || lowered.endsWith(".pdf"))
+    return true;
   if (contentType.startsWith("image/")) return true;
   if (SUPPORTED_IMAGE_TYPES.has(contentType)) return true;
   return [
@@ -28,6 +29,7 @@ function isSupportedThumbnailType(contentType: string, fileName: string) {
     ".bmp",
     ".avif",
     ".tiff",
+    ".tif",
   ].some((ext) => lowered.endsWith(ext));
 }
 
@@ -42,7 +44,10 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   if (!body?.documentId || typeof body.documentId !== "string") {
-    return NextResponse.json({ error: "documentId is required" }, { status: 400 });
+    return NextResponse.json(
+      { error: "documentId is required" },
+      { status: 400 },
+    );
   }
   const force = Boolean(body.force);
 
@@ -59,10 +64,15 @@ export async function POST(request: Request) {
   }
 
   if (document.thumbnail_path) {
-    return NextResponse.json({ status: "ready", thumbnailPath: document.thumbnail_path });
+    return NextResponse.json({
+      status: "ready",
+      thumbnailPath: document.thumbnail_path,
+    });
   }
 
-  if (!isSupportedThumbnailType(document.content_type, document.original_filename)) {
+  if (
+    !isSupportedThumbnailType(document.content_type, document.original_filename)
+  ) {
     await admin
       .from("documents")
       .update({
@@ -82,7 +92,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "failed" });
   }
 
-  const serviceUrl = process.env.DOCUMENT_IMPORT_SERVICE_URL?.replace(/\/$/, "");
+  const serviceUrl = process.env.DOCUMENT_IMPORT_SERVICE_URL?.replace(
+    /\/$/,
+    "",
+  );
   if (!serviceUrl) {
     await admin
       .from("documents")
@@ -93,7 +106,10 @@ export async function POST(request: Request) {
       })
       .eq("id", document.id);
 
-    return NextResponse.json({ status: "failed", error: "Missing worker URL" }, { status: 500 });
+    return NextResponse.json(
+      { status: "failed", error: "Missing worker URL" },
+      { status: 500 },
+    );
   }
 
   const signed = await admin.storage
@@ -124,7 +140,10 @@ export async function POST(request: Request) {
       })
       .eq("id", document.id);
 
-    return NextResponse.json({ status: "failed", error: message }, { status: 500 });
+    return NextResponse.json(
+      { status: "failed", error: message },
+      { status: 500 },
+    );
   }
 
   await admin
@@ -145,7 +164,7 @@ export async function POST(request: Request) {
       contentType: document.content_type,
       fileUrl: signed.data.signedUrl,
     }),
-  }).catch((err) => ({ ok: false, error: err } as const));
+  }).catch((err) => ({ ok: false, error: err }) as const);
 
   if (!workerResp || !("ok" in workerResp) || !workerResp.ok) {
     const message =
@@ -161,7 +180,10 @@ export async function POST(request: Request) {
       })
       .eq("id", document.id);
 
-    return NextResponse.json({ status: "failed", error: message }, { status: 500 });
+    return NextResponse.json(
+      { status: "failed", error: message },
+      { status: 500 },
+    );
   }
 
   const payload = (await workerResp.json().catch(() => null)) as {

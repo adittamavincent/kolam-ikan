@@ -1,4 +1,9 @@
 import { Persona } from "@/lib/types";
+import {
+  normalizeHexColor,
+  blendHexColors,
+  DARK_MODE,
+} from "@/lib/theme/colors";
 
 export const AI_PERSONA_TYPE = "AI";
 export const DEFAULT_PERSONA_TYPE = "Perspective";
@@ -50,52 +55,12 @@ export function getPersonaScopeDescription(
     : "Available across your workspace";
 }
 
+/**
+ * Normalize persona color to #RRGGBB format
+ * @deprecated Use normalizeHexColor from @/lib/theme/colors instead
+ */
 export function normalizePersonaColor(color?: string | null): string | undefined {
-  if (!color) return undefined;
-
-  const normalized = color.trim().replace("#", "");
-  const expanded =
-    normalized.length === 3
-      ? normalized
-          .split("")
-          .map((chunk) => `${chunk}${chunk}`)
-          .join("")
-      : normalized;
-
-  if (!/^[\da-fA-F]{6}$/.test(expanded)) {
-    return undefined;
-  }
-
-  return `#${expanded.toLowerCase()}`;
-}
-
-function blendHex(
-  foreground?: string | null,
-  background = "#21252b",
-  alpha = 1,
-): string | undefined {
-  const fg = normalizePersonaColor(foreground);
-  const bg = normalizePersonaColor(background);
-
-  if (!fg || !bg) return fg ?? bg;
-
-  const clampAlpha = Math.max(0, Math.min(1, alpha));
-  const fgChannels = fg
-    .slice(1)
-    .match(/../g)
-    ?.map((channel) => Number.parseInt(channel, 16));
-  const bgChannels = bg
-    .slice(1)
-    .match(/../g)
-    ?.map((channel) => Number.parseInt(channel, 16));
-
-  if (!fgChannels || !bgChannels) return fg;
-
-  const blended = fgChannels.map((value, index) =>
-    Math.round(value * clampAlpha + bgChannels[index] * (1 - clampAlpha)),
-  );
-
-  return `#${blended.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+  return normalizeHexColor(color);
 }
 
 export function getPersonaTintStyle(
@@ -111,12 +76,12 @@ export function getPersonaTintStyle(
   const borderAlpha = options?.borderAlpha ?? 0.18;
   const baseSurface =
     backgroundAlpha >= 0.12
-      ? "#2c313a"
+      ? DARK_MODE.surface.elevated
       : backgroundAlpha >= 0.08
-        ? "#282c34"
-        : "#21252b";
-  const backgroundColor = blendHex(persona.color, baseSurface, backgroundAlpha);
-  const borderColor = blendHex(persona.color, "#21252b", borderAlpha);
+        ? DARK_MODE.surface.subtle
+        : DARK_MODE.surface.default;
+  const backgroundColor = blendHexColors(persona.color, baseSurface, backgroundAlpha);
+  const borderColor = blendHexColors(persona.color, DARK_MODE.surface.default, borderAlpha);
 
   return {
     backgroundColor: backgroundColor ?? baseSurface,

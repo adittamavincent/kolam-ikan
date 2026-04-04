@@ -27,6 +27,10 @@ import {
   getPersonaTypeLabel,
   sanitizePersonaTypeInput,
 } from "@/lib/personas";
+import {
+  PERSONA_PRESET_COLORS,
+  PERSONA_PRESET_ICONS,
+} from "@/lib/theme/colors";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -46,31 +50,9 @@ interface PersonaManagerProps {
   onClose: () => void;
 }
 
-const PRESET_ICONS = [
-  "user",
-  "brain",
-  "cloud-rain",
-  "heart",
-  "coffee",
-  "code",
-  "zap",
-  "feather",
-  "target",
-  "shield",
-  "star",
-  "smile",
-];
+const PRESET_ICONS = Array.from(PERSONA_PRESET_ICONS);
 
-const PRESET_COLORS = [
-  "#0ea5e9", // Sky
-  "#64748b", // Slate
-  "#8b5cf6", // Violet
-  "#ef4444", // Red
-  "#f59e0b", // Amber
-  "#10b981", // Emerald
-  "#ec4899", // Pink
-  "#6366f1", // Indigo
-];
+const PRESET_COLORS = Array.from(PERSONA_PRESET_COLORS);
 
 function PersonaIconTile({
   icon,

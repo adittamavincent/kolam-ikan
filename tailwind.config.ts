@@ -84,12 +84,6 @@ const config: Config = {
             accent: "var(--diff-del-accent)",
           },
         },
-        // Domain Colors
-        programming: "#61afef", // One Dark blue
-        internship: "#c678dd", // One Dark purple
-        gym: "#e06c75", // One Dark red
-        scholarship: "#98c379", // One Dark green
-        hima: "#e5c07b", // One Dark yellow
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

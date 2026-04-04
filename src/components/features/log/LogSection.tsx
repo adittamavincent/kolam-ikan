@@ -1,6 +1,7 @@
 import { SectionWithPersona } from "@/lib/types";
 import type { SectionFileAttachmentWithDocument } from "@/lib/types";
 import { MarkdownEditor } from "@/components/shared/MarkdownEditor";
+import { DEFAULT_SNAPSHOT_PERSONA_COLOR } from "@/lib/theme/colors";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { usePersonaMutations } from "@/lib/hooks/usePersonaMutations";
 import type { PartialBlock } from "@/lib/types/editor";
@@ -80,7 +81,7 @@ export function LogSection({
           type: "AI",
           name: section.persona_name_snapshot,
           icon: "FileText",
-          color: "#9CA3AF",
+          color: DEFAULT_SNAPSHOT_PERSONA_COLOR,
           is_system: false,
           // Provide fields expected by consumers of the Persona type
           deleted_at: null,

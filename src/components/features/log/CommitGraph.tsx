@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
+import { BRANCH_COLORS } from "@/lib/theme/colors";
 import {
   CommittedEntryStashItem,
   EntryCreatorStashItem,
@@ -124,17 +125,6 @@ function isGraphCanvasSchemaError(error: unknown): boolean {
 }
 const GRAPH_PAD_X = 24;
 const DOT_R = 6;
-
-const BRANCH_COLORS = [
-  "#568af2",
-  "#26b88f",
-  "#f59e0b",
-  "#db7093",
-  "#8b7cf7",
-  "#06b6d4",
-  "#84cc16",
-  "#ef5c5c",
-];
 
 function shortHash(id: string): string {
   return id.replace(/-/g, "").slice(0, 7);

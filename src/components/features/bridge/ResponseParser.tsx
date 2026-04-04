@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { DEFAULT_RESPONSE_COLOR } from "@/lib/theme/colors";
 import { MarkdownBlock } from "@/lib/types";
 import { z } from "zod";
 import { BlockSchema } from "@/lib/validation/entry";
@@ -1677,7 +1678,7 @@ export const ResponseParser = forwardRef<
               aiPersonaId = (existing as { id?: string }).id;
             } else {
               const defaultIcon = "Robot";
-              const defaultColor = "#7c3aed";
+              const defaultColor = DEFAULT_RESPONSE_COLOR;
               const { data: created, error: createErr } = await supabase
                 .from("personas")
                 .insert({

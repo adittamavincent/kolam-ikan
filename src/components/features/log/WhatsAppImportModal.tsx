@@ -23,6 +23,7 @@ import {
 
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { WHATSAPP_PERSONA_COLORS } from "@/lib/theme/colors";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
@@ -690,6 +691,8 @@ function getTurnPreviewSummary(turn: ParsedTurn, matchedFile?: File | null) {
   }
 
   const category = inferTurnPreviewCategory(turn, matchedFile);
+    // Cast to exclude "text" type since we handle it above
+    const categoryTyped = category as Exclude<TurnPreviewCategory, "text">;
   const labels: Record<Exclude<TurnPreviewCategory, "text">, string> = {
     pdf: "PDF document",
     image: "Image attachment",
@@ -700,13 +703,13 @@ function getTurnPreviewSummary(turn: ParsedTurn, matchedFile?: File | null) {
   };
 
   return {
-    title: attachmentName ?? labels[category],
+    title: attachmentName ?? labels[categoryTyped],
     subtitle: sizeLabel
-      ? `${labels[category]} • ${sizeLabel}`
-      : labels[category],
+      ? `${labels[categoryTyped]} • ${sizeLabel}`
+      : labels[categoryTyped],
     fullPreview: [
-      attachmentName ?? labels[category],
-      labels[category],
+      attachmentName ?? labels[categoryTyped],
+      labels[categoryTyped],
       sizeLabel,
     ]
       .filter(Boolean)
@@ -815,13 +818,15 @@ function pushAttachmentTurn(
   params: {
     personaId: string;
     personaName: string;
-    attachment: WhatsAppInjectPayload["turns"][number] extends {
-      attachments: infer T;
-    }
-      ? T extends Array<infer U>
-        ? U
-        : never
-      : never;
+    attachment: {
+      documentId?: string;
+      storagePath?: string;
+      thumbnailPath?: string;
+      previewUrl?: string;
+      titleSnapshot: string;
+      file?: File;
+      fileHash?: string;
+    };
   },
 ) {
   const last = payloadTurns[payloadTurns.length - 1];
@@ -941,19 +946,6 @@ function buildAutoMap(
   }
   return autoMap;
 }
-
-const PERSONA_COLORS = [
-  "#6366f1",
-  "#8b5cf6",
-  "#ec4899",
-  "#f43f5e",
-  "#f97316",
-  "#eab308",
-  "#22c55e",
-  "#0ea5e9",
-  "#14b8a6",
-  "#a855f7",
-];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -1122,7 +1114,7 @@ export function WhatsAppImportModal({
   >(
     (counts, turn) => {
       if (turn.type === "text") return counts;
-      const category = inferTurnPreviewCategory(turn);
+      const category = inferTurnPreviewCategory(turn) as Exclude<TurnPreviewCategory, "text">;
       counts[category] += 1;
       return counts;
     },
@@ -1430,7 +1422,7 @@ export function WhatsAppImportModal({
 
       const rows: PersonaCreateRow[] = sendersToCreate.map((sender, idx) => ({
         name: sender,
-        color: PERSONA_COLORS[idx % PERSONA_COLORS.length],
+        color: WHATSAPP_PERSONA_COLORS[idx % WHATSAPP_PERSONA_COLORS.length],
         icon: "user",
         type: DEFAULT_IMPORTED_PERSONA_TYPE,
         user_id: user.id,
@@ -2838,7 +2830,7 @@ export function WhatsAppImportModal({
                         const draft = {
                           id,
                           name: sender,
-                          color: PERSONA_COLORS[i % PERSONA_COLORS.length],
+                          color: WHATSAPP_PERSONA_COLORS[i % WHATSAPP_PERSONA_COLORS.length],
                           icon: "user",
                           is_shadow: true as const,
                           isDraft: true as const,

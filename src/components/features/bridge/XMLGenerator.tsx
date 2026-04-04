@@ -67,11 +67,11 @@ export function XMLGenerator({
 
   return (
     <div className="flex flex-1 flex-col min-h-0 w-full">
-      <div className="relative group border border-border-default bg-[#0d1117] flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="relative group border border-border-default bg-surface-elevated flex-1 flex flex-col min-h-0 overflow-hidden">
         <textarea
           readOnly
           value={currentXML}
-          className="flex-1 min-h-37.5 w-full resize-y bg-[#0d1117] p-4 font-mono text-[13px] leading-relaxed text-[#c9d1d9] outline-none"
+          className="flex-1 min-h-37.5 w-full resize-y bg-surface-elevated p-4 font-mono text-[13px] leading-relaxed text-text-default outline-none"
         />
         {showInlineCopyButton && (
           <div className="absolute top-2 right-2">
@@ -81,7 +81,7 @@ export function XMLGenerator({
               className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-all ${
                 copied
                   ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
-                  : "border-border-default bg-surface-elevated text-white hover:bg-surface-hover"
+                  : "border-border-default bg-surface-elevated text-text-inverse hover:bg-surface-hover"
               } ${!isReady ? "cursor-not-allowed opacity-60" : ""}`}
             >
               {copied ? (

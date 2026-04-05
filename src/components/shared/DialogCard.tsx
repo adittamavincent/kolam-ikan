@@ -36,11 +36,11 @@ export const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>(
             </div>
           ) : null}
           <div className="min-w-0 flex-1 space-y-1">
-            <Dialog.Title className="text-base font-semibold text-text-default">
+            <Dialog.Title className="font-semibold text-text-default">
               {title}
             </Dialog.Title>
             {description ? (
-              <Dialog.Description as="div" className="text-sm text-text-muted">
+              <Dialog.Description as="div" className="text-text-muted">
                 {description}
               </Dialog.Description>
             ) : null}

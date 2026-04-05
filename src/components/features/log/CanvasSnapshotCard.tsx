@@ -89,13 +89,13 @@ export function CanvasSnapshotCard({
         hideBody={isCollapsed}
         className="group"
         frameClassName={`overflow-hidden transition-colors ${
-          isCollapsed ? "bg-surface-default" : "bg-surface-subtle"
-        }`}
+ isCollapsed ? "bg-surface-default" : "bg-surface-subtle"
+ }`}
         headerClassName={`transition-colors ${
-          isCollapsed
-            ? "bg-surface-hover hover:bg-surface-subtle"
-            : "bg-surface-elevated hover:bg-surface-hover"
-        }`}
+ isCollapsed
+ ? "bg-surface-hover hover:bg-surface-subtle"
+ : "bg-surface-elevated hover:bg-surface-hover"
+ }`}
         bodyClassName="bg-surface-subtle"
         header={
           <div

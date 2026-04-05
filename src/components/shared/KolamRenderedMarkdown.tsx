@@ -197,28 +197,28 @@ function renderInline(
 
     const inlineKey = `${keyPrefix}-${match.index}-${pattern.lastIndex}`;
 
-    if (match[2]) {
-      nodes.push(
-        <span className="kolam-inline-link" key={`${inlineKey}-wikilink`}>
+ if (match[2]) {
+ nodes.push(
+ <span className="kolam-inline-link" key={`${inlineKey}-wikilink`}>
           {highlightPlainText(match[2], highlightTerm, `${inlineKey}-wikilink-text`)}
-        </span>,
-      );
-    } else if (match[3] && match[4]) {
-      const isInternalAnchor = match[4].startsWith("#");
-      nodes.push(
-        <a
-          className="kolam-inline-link"
-          href={match[4]}
-          key={`${inlineKey}-link`}
+ </span>,
+ );
+ } else if (match[3] && match[4]) {
+ const isInternalAnchor = match[4].startsWith("#");
+ nodes.push(
+ <a
+ className="kolam-inline-link"
+ href={match[4]}
+ key={`${inlineKey}-link`}
           rel={isInternalAnchor ? undefined : "noreferrer"}
           target={isInternalAnchor ? undefined : "_blank"}
         >
           {renderInline(match[3], highlightTerm, `${inlineKey}-link-children`)}
-        </a>,
-      );
-    } else if (match[5]) {
-      nodes.push(
-        <code className="kolam-inline-code" key={`${inlineKey}-code`}>
+ </a>,
+ );
+ } else if (match[5]) {
+ nodes.push(
+ <code className="kolam-inline-code" key={`${inlineKey}-code`}>
           {highlightPlainText(match[5], highlightTerm, `${inlineKey}-code-text`)}
         </code>,
       );
@@ -282,75 +282,75 @@ function renderInline(
 
 function renderHeading(level: number, text: string, key: string, highlightTerm?: string) {
   const content = renderInline(text, highlightTerm, `heading-${key}`);
-  const id = slugifyHeading(text);
+ const id = slugifyHeading(text);
 
-  switch (level) {
-    case 1:
-      return (
-        <h1 className="kolam-heading kolam-heading-1" id={id} key={key}>
-          {content}
-        </h1>
-      );
-    case 2:
-      return (
-        <h2 className="kolam-heading kolam-heading-2" id={id} key={key}>
-          {content}
-        </h2>
-      );
-    case 3:
-      return (
-        <h3 className="kolam-heading kolam-heading-3" id={id} key={key}>
-          {content}
-        </h3>
-      );
-    case 4:
-      return (
-        <h4 className="kolam-heading kolam-heading-4" id={id} key={key}>
-          {content}
-        </h4>
-      );
-    case 5:
-      return (
-        <h5 className="kolam-heading kolam-heading-5" id={id} key={key}>
-          {content}
-        </h5>
-      );
-    default:
-      return (
-        <h6 className="kolam-heading kolam-heading-6" id={id} key={key}>
-          {content}
-        </h6>
-      );
-  }
+ switch (level) {
+ case 1:
+ return (
+ <h1 className="kolam-heading kolam-heading-1" id={id} key={key}>
+ {content}
+ </h1>
+ );
+ case 2:
+ return (
+ <h2 className="kolam-heading kolam-heading-2" id={id} key={key}>
+ {content}
+ </h2>
+ );
+ case 3:
+ return (
+ <h3 className="kolam-heading kolam-heading-3" id={id} key={key}>
+ {content}
+ </h3>
+ );
+ case 4:
+ return (
+ <h4 className="kolam-heading kolam-heading-4" id={id} key={key}>
+ {content}
+ </h4>
+ );
+ case 5:
+ return (
+ <h5 className="kolam-heading kolam-heading-5" id={id} key={key}>
+ {content}
+ </h5>
+ );
+ default:
+ return (
+ <h6 className="kolam-heading kolam-heading-6" id={id} key={key}>
+ {content}
+ </h6>
+ );
+ }
 }
 
 type RendererProps = {
-  source: string;
-  highlightTerm?: string;
-  onToggleTask?: (lineNumber: number, nextChecked: boolean) => void;
-  persona?: Persona | null;
+ source: string;
+ highlightTerm?: string;
+ onToggleTask?: (lineNumber: number, nextChecked: boolean) => void;
+ persona?: Persona | null;
 };
 
 function renderMarkdownBody(
-  source: string,
-  highlightTerm?: string,
-  onToggleTask?: (lineNumber: number, nextChecked: boolean) => void,
-  persona?: Persona | null,
+ source: string,
+ highlightTerm?: string,
+ onToggleTask?: (lineNumber: number, nextChecked: boolean) => void,
+ persona?: Persona | null,
 ): React.ReactNode[] {
-  const lines = source.replace(/\r\n?/g, "\n").split("\n");
-  const nodes: React.ReactNode[] = [];
-  let i = 0;
-  let activeSection: "citations" | null = null;
+ const lines = source.replace(/\r\n?/g, "\n").split("\n");
+ const nodes: React.ReactNode[] = [];
+ let i = 0;
+ let activeSection: "citations" | null = null;
 
-  while (i < lines.length) {
-    const line = lines[i];
+ while (i < lines.length) {
+ const line = lines[i];
 
-    if (!line.trim()) {
-      i += 1;
-      continue;
-    }
+ if (!line.trim()) {
+ i += 1;
+ continue;
+ }
 
-    const fenceMatch = line.match(/^(```|~~~)\s*(\S+)?/);
+ const fenceMatch = line.match(/^(```|~~~)\s*(\S+)?/);
     if (fenceMatch) {
       const fence = fenceMatch[1];
       const language = fenceMatch[2] ?? "";
@@ -566,21 +566,21 @@ function renderMarkdownBody(
       lines[i].trim() &&
       !/^(#{1,6})\s+/.test(lines[i]) &&
       !/^(```|~~~)/.test(lines[i]) &&
-      !/^>\s*\[!/.test(lines[i]) &&
-      !/^>\s?/.test(lines[i]) &&
-      !/^(\s*)([-+*]|\d+\.)\s+/.test(lines[i]) &&
-      !/^(\s*)[-+*]\s+\[( |x|X)\]\s+/.test(lines[i]) &&
-      !/^\s*(?:---+|\*\*\*+|___+)\s*$/.test(lines[i])
-    ) {
-      paragraphLines.push(lines[i]);
-      i += 1;
-    }
+ !/^>\s*\[!/.test(lines[i]) &&
+ !/^>\s?/.test(lines[i]) &&
+ !/^(\s*)([-+*]|\d+\.)\s+/.test(lines[i]) &&
+ !/^(\s*)[-+*]\s+\[( |x|X)\]\s+/.test(lines[i]) &&
+ !/^\s*(?:---+|\*\*\*+|___+)\s*$/.test(lines[i])
+ ) {
+ paragraphLines.push(lines[i]);
+ i += 1;
+ }
 
-    nodes.push(
-      <PersonaSurface
-        as="p"
-        className="kolam-paragraph p-1"
-        key={`paragraph-${start}`}
+ nodes.push(
+ <PersonaSurface
+ as="p"
+ className="kolam-paragraph p-1"
+ key={`paragraph-${start}`}
         persona={persona}
         tone="body"
       >

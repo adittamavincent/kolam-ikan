@@ -636,8 +636,8 @@ Only include <citations> when you actually relied on external sources. If you ci
 - Inline references inside <log> or <canvas>: use markdown links like \`[1](#citation-1)\`, \`[2](#citation-2)\`
 - Put the source list in an optional <citations>...</citations> block
 - Inside <citations>, use a numbered markdown list, one source per line, for example:
-  \`1. [Source title](https://example.com/source-1)\`
-  \`2. [Another source](https://example.com/source-2)\`
+ \`1. [Source title](https://example.com/source-1)\`
+ \`2. [Another source](https://example.com/source-2)\`
 - Citation numbers must match the inline references exactly
 - Do not use \`:contentReference[oaicite:...]\`, footnotes, or bare URLs in prose`;
 

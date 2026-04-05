@@ -552,10 +552,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== RIBBON (DomainSwitcher) — always visible ====== */}
       <div
         className={`fixed inset-y-0 left-0 z-40 flex transform transition-transform md:relative md:translate-x-0 ${
-          mobileMenuOpen
-            ? "translate-x-0"
-            : "-translate-x-full md:translate-x-0"
-        }`}
+ mobileMenuOpen
+ ? "translate-x-0"
+ : "-translate-x-full md:translate-x-0"
+ }`}
       >
         <DomainSwitcher
           userId={userId}
@@ -573,10 +573,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         >
           <div
             className={`h-full min-w-0 flex-1 overflow-hidden transition-all duration-300 ease-in-out ${
-              effectiveSidebarVisible
-                ? "opacity-100 translate-x-0"
-                : "opacity-0 -translate-x-2 pointer-events-none"
-            }`}
+ effectiveSidebarVisible
+ ? "opacity-100 translate-x-0"
+ : "opacity-0 -translate-x-2 pointer-events-none"
+ }`}
           >
             <Navigator userId={userId} />
           </div>
@@ -584,10 +584,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           {/* Resize Handle */}
           <div
             className={`absolute top-0 right-0 z-50 h-full w-1 cursor-col-resize transition-colors ${
-              effectiveSidebarVisible
-                ? "hover:bg-accent-subtle active:bg-action-primary-bg"
-                : "pointer-events-none"
-            } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
+ effectiveSidebarVisible
+ ? "hover:bg-accent-subtle active:bg-action-primary-bg"
+ : "pointer-events-none"
+ } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
             onMouseDown={handleMouseDown}
           />
         </div>
@@ -603,7 +603,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== MAIN CONTENT ====== */}
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {error && (
-          <div className="border-b border-border-default bg-status-error-bg px-4 py-2 text-xs text-status-error-text">
+          <div className="border-b border-border-default bg-status-error-bg px-4 py-2 text-status-error-text">
             {error}
           </div>
         )}
@@ -615,10 +615,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             <button
               onClick={() => setMode("log-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
-                isLogMaximized
-                  ? "bg-action-primary-bg text-action-primary-text"
-                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
-              }`}
+ isLogMaximized
+ ? "bg-action-primary-bg text-action-primary-text"
+ : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+ }`}
               title="Maximize Log (⌘J)"
             >
               <PanelLeft className="h-4 w-4" />
@@ -627,10 +627,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             <button
               onClick={() => setMode("balanced")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
-                isBalanced
-                  ? "bg-action-primary-bg text-action-primary-text"
-                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
-              }`}
+ isBalanced
+ ? "bg-action-primary-bg text-action-primary-text"
+ : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+ }`}
               title="Reset Layout (⌘K)"
             >
               <Columns className="h-4 w-4" />
@@ -639,10 +639,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             <button
               onClick={() => setMode("canvas-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
-                isCanvasMaximized
-                  ? "bg-action-primary-bg text-action-primary-text"
-                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
-              }`}
+ isCanvasMaximized
+ ? "bg-action-primary-bg text-action-primary-text"
+ : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+ }`}
               title="Maximize Canvas (⌘L)"
             >
               <PanelRight className="h-4 w-4" />
@@ -679,7 +679,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveTo="opacity-0"
             >
               <DialogPanel className="w-full max-w-2xl border border-border-default bg-surface-default p-5 shadow-2xl">
-                <DialogTitle className="text-sm font-semibold text-text-default">
+                <DialogTitle className="font-semibold text-text-default">
                   Search
                 </DialogTitle>
                 <div className="mt-3">
@@ -687,28 +687,28 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="Search logs and canvases... (@persona, emoji for domain)"
-                    className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-default focus:border-border-default focus: focus: focus:"
+                    className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
                     autoFocus
                   />
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-text-muted">
+                <div className="mt-3 flex flex-wrap gap-2 text-text-muted">
                   {parsedSearch.personaFilter && (
-                    <span className=" border border-border-default px-2 py-0.5">
+                    <span className="border border-border-default px-2 py-0.5">
                       Persona: @{parsedSearch.personaFilter}
                     </span>
                   )}
                   {parsedSearch.domainEmoji && (
-                    <span className=" border border-border-default px-2 py-0.5">
+                    <span className="border border-border-default px-2 py-0.5">
                       Domain: {parsedSearch.domainEmoji}
                     </span>
                   )}
                 </div>
                 <div className="mt-4 max-h-[50vh] space-y-2 overflow-y-auto">
                   {searchLoading && (
-                    <div className="text-xs text-text-muted">Searching...</div>
+                    <div className="text-text-muted">Searching...</div>
                   )}
                   {!searchLoading && searchResults.length === 0 && (
-                    <div className="text-xs text-text-muted">
+                    <div className="text-text-muted">
                       No results yet
                     </div>
                   )}
@@ -738,9 +738,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                         setSearchOpen(false);
                         router.push(`/${result.domainId}/${result.streamId}`);
                       }}
-                      className="w-full border border-border-default bg-surface-subtle p-3 text-left text-xs text-text-default transition hover:bg-surface-hover"
+                      className="w-full border border-border-default bg-surface-subtle p-3 text-left text-text-default transition hover:bg-surface-hover"
                     >
-                      <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
+                      <div className="flex items-center justify-between gap-2 text-text-muted">
                         <span className="flex items-center gap-2">
                           <span>{result.domainIcon}</span>
                           <span className="truncate">{result.streamName}</span>
@@ -751,7 +751,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                             : result.personaName}
                         </span>
                       </div>
-                      <div className="mt-1 text-xs text-text-default">
+                      <div className="mt-1 text-text-default">
                         {renderHighlightedText(
                           result.contentPreview ?? "",
                           parsedSearch.cleaned,

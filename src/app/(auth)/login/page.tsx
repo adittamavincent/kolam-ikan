@@ -479,12 +479,12 @@ function LoginForm() {
         {/* Branding */}
         <div className="text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center bg-action-primary-bg">
-            <span className="text-3xl font-bold text-action-primary-text">K</span>
+            <span className="font-bold text-action-primary-text">K</span>
           </div>
-          <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-text-default">
+          <h2 className="mt-6 font-extrabold tracking-tight text-text-default">
             Kolam Ikan
           </h2>
-          <p className="mt-2 text-sm text-text-subtle">
+          <p className="mt-2 text-text-subtle">
             {mode === "signin"
               ? "Log in to your thinking environment"
               : "Create your thinking environment"}
@@ -492,28 +492,28 @@ function LoginForm() {
         </div>
 
         {/* Main Auth Card */}
-        <div className=" bg-surface-default p-8 border border-border-default">
+        <div className="bg-surface-default p-8 border border-border-default">
           {/* Mode Toggle */}
           <div className="mb-6 flex bg-surface-subtle p-1">
             <button
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
-              className={`flex-1  px-4 py-2 text-sm font-semibold transition-all ${
-                mode === "signin"
-                  ? "bg-surface-default text-text-default"
-                  : "text-text-subtle hover:text-text-default"
-              }`}
+              className={`flex-1 px-4 py-2 font-semibold transition-all ${
+ mode === "signin"
+ ? "bg-surface-default text-text-default"
+ : "text-text-subtle hover:text-text-default"
+ }`}
             >
               Sign In
             </button>
             <button
               type="button"
               onClick={() => mode === "signin" && toggleMode()}
-              className={`flex-1  px-4 py-2 text-sm font-semibold transition-all ${
-                mode === "signup"
-                  ? "bg-surface-default text-text-default"
-                  : "text-text-subtle hover:text-text-default"
-              }`}
+              className={`flex-1 px-4 py-2 font-semibold transition-all ${
+ mode === "signup"
+ ? "bg-surface-default text-text-default"
+ : "text-text-subtle hover:text-text-default"
+ }`}
             >
               Sign Up
             </button>
@@ -524,14 +524,14 @@ function LoginForm() {
             onSubmit={mode === "signin" ? handleLogin : handleSignup}
           >
             {error && (
-              <div className="flex items-start gap-3 bg-status-error-bg p-4 text-sm text-status-error-text border border-border-default animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3 bg-status-error-bg p-4 text-status-error-text border border-border-default animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-5 w-5 shrink-0 text-status-error-text" />
                 <p>{error}</p>
               </div>
             )}
 
             {successMessage && (
-              <div className="flex items-start gap-3 bg-status-success-bg p-4 text-sm text-status-success-text border border-border-default animate-in fade-in slide-in-from-top-1">
+              <div className="flex items-start gap-3 bg-status-success-bg p-4 text-status-success-text border border-border-default animate-in fade-in slide-in-from-top-1">
                 <CheckCircle className="h-5 w-5 shrink-0 text-status-success-text" />
                 <p>{successMessage}</p>
               </div>
@@ -541,7 +541,7 @@ function LoginForm() {
               {mode === "signup" && (
                 <div>
                   <label
-                    className="block text-sm font-medium text-text-default mb-1"
+                    className="block font-medium text-text-default mb-1"
                     htmlFor="fullName"
                   >
                     Full Name
@@ -562,16 +562,16 @@ function LoginForm() {
                       onBlur={(e) =>
                         handleFieldBlur("fullName", e.target.value)
                       }
-                      className={`block w-full  border ${
-                        fieldErrors.fullName && touchedFields.has("fullName")
-                          ? "border-border-default focus:border-status-error-text focus:"
-                          : "border-border-default focus:border-border-default focus:"
-                      } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
+                      className={`block w-full border ${
+ fieldErrors.fullName && touchedFields.has("fullName")
+ ? "border-border-default focus:border-status-error-text focus:"
+ : "border-border-default focus:border-border-default focus:"
+ } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                       placeholder="John Doe"
                     />
                   </div>
                   {fieldErrors.fullName && touchedFields.has("fullName") && (
-                    <p className="mt-1 text-xs text-status-error-text">
+                    <p className="mt-1 text-status-error-text">
                       {fieldErrors.fullName}
                     </p>
                   )}
@@ -580,7 +580,7 @@ function LoginForm() {
 
               <div>
                 <label
-                  className="block text-sm font-medium text-text-default mb-1"
+                  className="block font-medium text-text-default mb-1"
                   htmlFor="email"
                 >
                   Email Address
@@ -599,16 +599,16 @@ function LoginForm() {
                       validateFieldDebounced("email", e.target.value);
                     }}
                     onBlur={(e) => handleFieldBlur("email", e.target.value)}
-                    className={`block w-full  border ${
-                      fieldErrors.email && touchedFields.has("email")
-                        ? "border-border-default focus:border-status-error-text focus:"
-                        : "border-border-default focus:border-border-default focus:"
-                    } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
+                    className={`block w-full border ${
+ fieldErrors.email && touchedFields.has("email")
+ ? "border-border-default focus:border-status-error-text focus:"
+ : "border-border-default focus:border-border-default focus:"
+ } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                     placeholder="name@example.com"
                   />
                 </div>
                 {fieldErrors.email && touchedFields.has("email") && (
-                  <p className="mt-1 text-xs text-status-error-text">
+                  <p className="mt-1 text-status-error-text">
                     {fieldErrors.email}
                   </p>
                 )}
@@ -617,7 +617,7 @@ function LoginForm() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label
-                    className="block text-sm font-medium text-text-default"
+                    className="block font-medium text-text-default"
                     htmlFor="password"
                   >
                     Password
@@ -625,7 +625,7 @@ function LoginForm() {
                   {mode === "signin" && (
                     <Link
                       href="/forgot-password"
-                      className="text-xs font-semibold text-action-primary-bg hover:text-accent-strong"
+                      className="font-semibold text-action-primary-bg hover:text-accent-strong"
                     >
                       Forgot password?
                     </Link>
@@ -653,11 +653,11 @@ function LoginForm() {
                       }
                     }}
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
-                    className={`block w-full  border ${
-                      fieldErrors.password && touchedFields.has("password")
-                        ? "border-border-default focus:border-status-error-text focus:"
-                        : "border-border-default focus:border-border-default focus:"
-                    } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
+                    className={`block w-full border ${
+ fieldErrors.password && touchedFields.has("password")
+ ? "border-border-default focus:border-status-error-text focus:"
+ : "border-border-default focus:border-border-default focus:"
+ } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                     placeholder="••••••••"
                   />
                   <button
@@ -676,12 +676,12 @@ function LoginForm() {
                   </button>
                 </div>
                 {fieldErrors.password && touchedFields.has("password") && (
-                  <p className="mt-1 text-xs text-status-error-text">
+                  <p className="mt-1 text-status-error-text">
                     {fieldErrors.password}
                   </p>
                 )}
                 {mode === "signup" && !fieldErrors.password && (
-                  <p className="mt-1 text-xs text-text-muted">
+                  <p className="mt-1 text-text-muted">
                     At least 8 characters with uppercase, lowercase, and number
                   </p>
                 )}
@@ -690,7 +690,7 @@ function LoginForm() {
               {mode === "signup" && (
                 <div>
                   <label
-                    className="block text-sm font-medium text-text-default mb-1"
+                    className="block font-medium text-text-default mb-1"
                     htmlFor="confirmPassword"
                   >
                     Confirm Password
@@ -714,12 +714,12 @@ function LoginForm() {
                       onBlur={(e) =>
                         handleFieldBlur("confirmPassword", e.target.value)
                       }
-                      className={`block w-full  border ${
-                        fieldErrors.confirmPassword &&
-                        touchedFields.has("confirmPassword")
-                          ? "border-border-default focus:border-status-error-text focus:"
-                          : "border-border-default focus:border-border-default focus:"
-                      } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all sm:text-sm`}
+                      className={`block w-full border ${
+ fieldErrors.confirmPassword &&
+ touchedFields.has("confirmPassword")
+ ? "border-border-default focus:border-status-error-text focus:"
+ : "border-border-default focus:border-border-default focus:"
+ } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                       placeholder="••••••••"
                     />
                     <button
@@ -743,7 +743,7 @@ function LoginForm() {
                   </div>
                   {fieldErrors.confirmPassword &&
                     touchedFields.has("confirmPassword") && (
-                      <p className="mt-1 text-xs text-status-error-text">
+                      <p className="mt-1 text-status-error-text">
                         {fieldErrors.confirmPassword}
                       </p>
                     )}
@@ -763,7 +763,7 @@ function LoginForm() {
                 />
                 <label
                   htmlFor="remember-me"
-                  className="ml-2 block text-sm text-text-subtle"
+                  className="ml-2 block text-text-subtle"
                 >
                   Keep me logged in
                 </label>
@@ -774,7 +774,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative flex w-full justify-center bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-hover focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="group relative flex w-full justify-center bg-action-primary-bg px-4 py-2.5 font-bold text-action-primary-text hover:bg-action-primary-hover focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -788,7 +788,7 @@ function LoginForm() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-text-subtle">
+            <p className="text-text-subtle">
               {mode === "signin" ? (
                 <>
                   Don&apos;t have an account?{" "}
@@ -816,10 +816,10 @@ function LoginForm() {
 
         {/* Development Speed-Login Dashboard */}
         {isDev && (
-          <div className=" border-2 border-dashed border-border-default bg-surface-subtle p-6 animate-in fade-in duration-1000">
+          <div className="border-2 border-dashed border-border-default bg-surface-subtle p-6 animate-in fade-in duration-1000">
             <div className="mb-4 flex items-center gap-2 text-text-default">
               <FlaskConical className="h-5 w-5" />
-              <h3 className="text-sm font-bold uppercase tracking-wider">
+              <h3 className="font-bold uppercase tracking-wider">
                 Dev Toolbox: Speed Login / Signup
               </h3>
             </div>
@@ -835,10 +835,10 @@ function LoginForm() {
                       disabled={loading}
                       className="w-full text-left"
                     >
-                      <div className="text-xs font-bold text-text-default">
+                      <div className="font-bold text-text-default">
                         {acc.label}
                       </div>
-                      <div className="text-[10px] text-text-subtle uppercase font-medium">
+                      <div className="text-text-subtle uppercase font-medium">
                         {acc.role}
                       </div>
                     </button>
@@ -847,7 +847,7 @@ function LoginForm() {
                     <button
                       onClick={() => quickSignup(acc)}
                       disabled={loading}
-                      className="text-xs font-medium text-action-primary-bg hover:text-accent-strong"
+                      className="font-medium text-action-primary-bg hover:text-accent-strong"
                     >
                       Sign up
                     </button>

@@ -155,18 +155,18 @@ export function DomainSwitcher({
       <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-border-default">
         <button
           onClick={navigateToHome}
-          className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
-            pathname === "/" || pendingHome
-              ? "bg-action-primary-bg text-action-primary-text"
-              : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
-          }`}
+          className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
+ pathname === "/" || pendingHome
+ ? "bg-action-primary-bg text-action-primary-text"
+ : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
+ }`}
         >
           {pendingHome && isNavigating ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
           ) : (
             <Home className="h-4 w-4" />
           )}
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
             Home
           </div>
         </button>
@@ -179,7 +179,7 @@ export function DomainSwitcher({
           title="Global Search (⌘⇧K)"
         >
           <Search className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
             Global Search
           </div>
         </button>
@@ -190,7 +190,7 @@ export function DomainSwitcher({
           title="Manage Personas"
         >
           <Users className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
             Personas
           </div>
         </button>
@@ -201,7 +201,7 @@ export function DomainSwitcher({
           title="Attachments"
         >
           <Paperclip className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
             Attachments
           </div>
         </button>
@@ -232,11 +232,11 @@ export function DomainSwitcher({
             onMouseLeave={() => setHoveredDomainTooltip(null)}
             title={`${domain.name} (double-click to edit)`}
             aria-label={domain.name}
-            className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
-              activeDomainId === domain.id
-                ? "bg-action-primary-bg text-action-primary-text"
-                : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
-            }`}
+            className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
+ activeDomainId === domain.id
+ ? "bg-action-primary-bg text-action-primary-text"
+ : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
+ }`}
           >
             {pendingDomainId === domain.id && isNavigating ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
@@ -265,7 +265,7 @@ export function DomainSwitcher({
           className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-primary-950 hover:text-action-primary-bg"
         >
           <Plus className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
             Add Domain
           </div>
         </button>
@@ -273,7 +273,7 @@ export function DomainSwitcher({
 
       {hoveredDomainTooltip && (
         <div
-          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default"
+          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-surface-elevated px-2 py-1 font-medium text-text-default"
           style={{ top: hoveredDomainTooltip.top }}
         >
           {hoveredDomainTooltip.name}
@@ -297,7 +297,7 @@ export function DomainSwitcher({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-action-primary-bg text-xs font-semibold text-action-primary-text">
+              <div className="flex h-full w-full items-center justify-center bg-action-primary-bg font-semibold text-action-primary-text">
                 {initials}
               </div>
             )}
@@ -316,13 +316,13 @@ export function DomainSwitcher({
               className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 border border-border-default bg-surface-default p-1 focus:"
             >
               <div className="px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                <p className="font-semibold uppercase tracking-wider text-text-muted">
                   Signed in as
                 </p>
-                <p className="truncate text-xs font-medium text-text-default">
+                <p className="truncate font-medium text-text-default">
                   {displayName}
                 </p>
-                <p className="truncate text-[10px] text-text-muted">
+                <p className="truncate text-text-muted">
                   {user?.email ?? userId}
                 </p>
               </div>
@@ -331,7 +331,7 @@ export function DomainSwitcher({
                 {({ focus }: { focus: boolean }) => (
                   <button
                     onClick={() => setProfileOpen(true)}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2  px-3 py-2 text-xs text-text-default`}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 px-3 py-2 text-text-default`}
                   >
                     <Settings className="h-4 w-4 text-text-muted" />
                     Profile settings
@@ -344,7 +344,7 @@ export function DomainSwitcher({
                     type="button"
                     onClick={handleSignOut}
                     disabled={loading || signingOut || status !== "signed_in"}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2  px-3 py-2 text-xs text-text-default disabled:opacity-50`}
+                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 px-3 py-2 text-text-default disabled:opacity-50`}
                   >
                     <LogOut className="h-4 w-4 text-text-muted" />
                     {signingOut ? "Signing out..." : "Sign out"}
@@ -408,31 +408,31 @@ export function DomainSwitcher({
                 width={64}
                 height={64}
                 unoptimized
-                className=" object-cover border-2 border-border-default"
+                className="object-cover border-2 border-border-default"
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center bg-primary-950 text-xl font-bold text-action-primary-bg border-2 border-border-subtle">
+              <div className="flex h-16 w-16 items-center justify-center bg-primary-950 font-bold text-action-primary-bg border-2 border-border-subtle">
                 {initials}
               </div>
             )}
             <div>
               <p className="font-semibold text-text-default">{displayName}</p>
-              <p className="text-sm text-text-muted">{user?.email}</p>
+              <p className="text-text-muted">{user?.email}</p>
             </div>
           </div>
 
-          <div className=" bg-surface-subtle p-4 border border-border-default">
-            <p className="text-xs text-text-muted mb-2 font-medium uppercase tracking-wider">
+          <div className="bg-surface-subtle p-4 border border-border-default">
+            <p className="text-text-muted mb-2 font-medium uppercase tracking-wider">
               Account Details
             </p>
             <div className="space-y-2">
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between">
                 <span className="text-text-muted">User ID</span>
                 <span className="font-mono text-text-default">
                   {userId.slice(0, 8)}...
                 </span>
               </div>
-              <div className="flex justify-between text-xs">
+              <div className="flex justify-between">
                 <span className="text-text-muted">Auth Status</span>
                 <span className="capitalize text-status-success-text">
                   {status.replace("_", " ")}

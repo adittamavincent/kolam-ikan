@@ -549,15 +549,15 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
         {deletingPersona ? (
           <div className="space-y-4 px-6 py-5">
             <div>
-              <h4 className="text-sm font-medium text-text-default">
+              <h4 className="font-medium text-text-default">
                 {isPermanent ? "Permanently Delete Persona" : "Delete Persona"}
               </h4>
               {bulkDeleteQueue.length > 0 && (
-                <p className="mt-1 text-[11px] uppercase tracking-wider text-text-muted">
+                <p className="mt-1 uppercase tracking-wider text-text-muted">
                   Reviewing {bulkDeleteCurrentStep} of {bulkDeleteTotalCount}
                 </p>
               )}
-              <p className="mt-1 text-xs text-text-muted">
+              <p className="mt-1 text-text-muted">
                 You are deleting{" "}
                 <span className="font-medium text-text-default">
                   {deletingPersona.name}
@@ -572,8 +572,8 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               </p>
             </div>
 
-            <div className=" border border-border-default bg-surface-subtle p-3">
-              <p className="text-xs text-text-subtle">
+            <div className="border border-border-default bg-surface-subtle p-3">
+              <p className="text-text-subtle">
                 {deleteUsageCount === 0 ? (
                   <span>
                     This persona is{" "}
@@ -596,7 +596,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
 
             {deleteUsageCount > 0 && (
               <div>
-                <label className="block text-sm font-medium text-text-subtle mb-1">
+                <label className="block font-medium text-text-subtle mb-1">
                   Transfer sections to
                 </label>
                 <select
@@ -612,7 +612,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   ))}
                 </select>
                 {transferCandidates.length === 0 && (
-                  <p className="mt-2 text-xs text-status-error-text">
+                  <p className="mt-2 text-status-error-text">
                     Create another active persona first, then retry deletion.
                   </p>
                 )}
@@ -620,7 +620,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
             )}
 
             {error && (
-              <div className="flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg p-2 ">
+              <div className="flex items-center gap-2 text-status-error-text bg-status-error-bg p-2">
                 <AlertCircle className="h-4 w-4" />
                 {error}
               </div>
@@ -636,7 +636,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
             <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(18rem,20rem)]">
               <div className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-text-subtle">
+                  <label className="mb-1 block font-medium text-text-subtle">
                     Title
                   </label>
                   <textarea
@@ -651,7 +651,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   />
                   <div
                     id={nameFieldHintId}
-                    className="mt-1 flex items-center justify-between gap-2 text-[11px] text-text-muted"
+                    className="mt-1 flex items-center justify-between gap-2 text-text-muted"
                   >
                     <span>
                       Long titles wrap here and stay compact in the preview.
@@ -661,7 +661,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-text-subtle">
+                  <label className="mb-1 block font-medium text-text-subtle">
                     Type
                   </label>
                   <input
@@ -672,20 +672,20 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     placeholder="e.g., Mentor, Critic, Strategist"
                     maxLength={40}
                   />
-                  <p className="mt-1 text-[11px] text-text-muted">
+                  <p className="mt-1 text-text-muted">
                     A flexible label that helps you distinguish the role this
                     persona plays.
                   </p>
                 </div>
 
                 <div className="border border-border-default bg-surface-subtle p-3">
-                  <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                  <div className="mb-1 font-medium uppercase tracking-wider text-text-muted">
                     Scope
                   </div>
-                  <div className="text-sm text-text-default">
+                  <div className="text-text-default">
                     {getPersonaScopeLabel(previewScopeSource)}
                   </div>
-                  <div className="mt-1 text-[11px] text-text-muted">
+                  <div className="mt-1 text-text-muted">
                     {getPersonaScopeDescription(previewScopeSource)}
                   </div>
                 </div>
@@ -703,7 +703,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     "interactive",
                   )}
                 >
-                  <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-muted">
+                  <div className="mb-2 font-medium uppercase tracking-wider text-text-muted">
                     Preview
                   </div>
                   <div className="flex min-w-0 items-start gap-3">
@@ -715,7 +715,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     />
                     <div className="min-w-0 flex-1">
                       <div
-                        className="overflow-hidden text-sm font-medium leading-5 text-text-default"
+                        className="overflow-hidden font-medium leading-5 text-text-default"
                         style={{
                           display: "-webkit-box",
                           WebkitBoxOrient: "vertical",
@@ -726,7 +726,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                       >
                         {previewName}
                       </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
                         <span className="border border-border-default bg-surface-default px-1.5 py-0.5 text-text-muted">
                           {previewTypeLabel}
                         </span>
@@ -739,7 +739,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-text-subtle">
+                  <label className="mb-1 block font-medium text-text-subtle">
                     Color
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -756,7 +756,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-text-subtle">
+                  <label className="mb-1 block font-medium text-text-subtle">
                     Icon
                   </label>
                   <div className="grid grid-cols-6 gap-2">
@@ -766,10 +766,10 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         type="button"
                         onClick={() => setIcon(ic)}
                         className={`flex items-center justify-center border p-2 transition-colors ${
-                          icon === ic
-                            ? "text-text-default"
-                            : "border-border-default text-text-subtle hover:bg-surface-subtle"
-                        }`}
+ icon === ic
+ ? "text-text-default"
+ : "border-border-default text-text-subtle hover:bg-surface-subtle"
+ }`}
                         style={icon === ic ? getPersonaAccentStyle(color, "interactive") : undefined}
                       >
                         <DynamicIcon name={ic} className="h-[80%] w-[80%]" />
@@ -781,7 +781,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
             </div>
 
             {error && (
-              <div className="flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg p-2 ">
+              <div className="flex items-center gap-2 text-status-error-text bg-status-error-bg p-2">
                 <AlertCircle className="h-4 w-4" />
                 {error}
               </div>
@@ -793,7 +793,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
             <div className="mb-3 flex items-center justify-between">
               <button
                 onClick={beginCreate}
-                className="flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-xs font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                className="flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 New Persona
@@ -805,15 +805,15 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     setIsBulkMode((prev) => !prev);
                     setSelectedPersonaIds([]);
                   }}
-                  className={` px-2 py-1 text-[11px] font-medium transition-colors ${
-                    isBulkMode
-                      ? "bg-status-error-bg text-status-error-text"
-                      : "bg-surface-subtle text-text-muted hover:text-text-default"
-                  }`}
+                  className={` px-2 py-1 font-medium transition-colors ${
+ isBulkMode
+ ? "bg-status-error-bg text-status-error-text"
+ : "bg-surface-subtle text-text-muted hover:text-text-default"
+ }`}
                 >
                   {isBulkMode ? "Exit Bulk" : "Bulk Delete"}
                 </button>
-                <label className="flex items-center gap-2 text-[11px] text-text-muted">
+                <label className="flex items-center gap-2 text-text-muted">
                   <input
                     type="checkbox"
                     checked={showDeleted}
@@ -825,7 +825,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
             </div>
 
             {isBulkMode && (
-              <div className="mb-3 flex items-center justify-between gap-2 border border-border-default bg-surface-subtle px-2.5 py-2 text-[11px]">
+              <div className="mb-3 flex items-center justify-between gap-2 border border-border-default bg-surface-subtle px-2.5 py-2">
                 <div className="text-text-muted">
                   {selectedPersonaIds.length} selected
                 </div>
@@ -833,7 +833,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                   <button
                     type="button"
                     onClick={toggleSelectAllVisible}
-                    className=" px-2 py-1 text-text-default hover:bg-surface-subtle"
+                    className="px-2 py-1 text-text-default hover:bg-surface-subtle"
                   >
                     {allVisibleSelected ? "Clear all" : "Select all"}
                   </button>
@@ -856,7 +856,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
               </div>
             )}
             {error && (
-              <div className="mb-3 flex items-center gap-2 text-sm text-status-error-text bg-status-error-bg p-2 ">
+              <div className="mb-3 flex items-center gap-2 text-status-error-text bg-status-error-bg p-2">
                 <AlertCircle className="h-4 w-4" />
                 {error}
               </div>
@@ -904,25 +904,25 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                           syncWidthToHeight
                         />
                         <div className="flex min-w-0 flex-col justify-center">
-                          <h4 className="flex items-center gap-1.5 text-sm font-medium text-text-default">
+                          <h4 className="flex items-center gap-1.5 font-medium text-text-default">
                             {persona.name}
                             {persona.is_system && (
-                              <span className="border border-border-default bg-surface-subtle px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-text-muted">
+                              <span className="border border-border-default bg-surface-subtle px-1.5 py-0.5 uppercase tracking-wider text-text-muted">
                                 System
                               </span>
                             )}
                             {isLocalPersona(persona) && (
-                              <span className="border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 text-[10px] text-status-warning-text">
+                              <span className="border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 text-status-warning-text">
                                 Local
                               </span>
                             )}
                             {persona.deleted_at && (
-                              <span className="border border-status-error-text bg-status-error-bg px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-status-error-text">
+                              <span className="border border-status-error-text bg-status-error-bg px-1.5 py-0.5 uppercase tracking-wider text-status-error-text">
                                 Deleted
                               </span>
                             )}
                           </h4>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
                             <span className="border border-border-default bg-surface-subtle px-1.5 py-0.5 text-text-muted">
                               {getPersonaTypeLabel(persona.type)}
                             </span>
@@ -944,7 +944,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                     updates: { deleted_at: null },
                                   });
                                 }}
-                                className="px-2 py-1 text-xs text-text-muted hover:text-text-default hover:bg-surface-subtle transition-colors"
+                                className="px-2 py-1 text-text-muted hover:text-text-default hover:bg-surface-subtle transition-colors"
                                 title="Restore"
                               >
                                 Restore
@@ -955,7 +955,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                                   isPreparingDelete ||
                                   hardDeletePersona.isPending
                                 }
-                                className="px-2 py-1 text-xs text-status-error-text hover:bg-status-error-bg transition-colors"
+                                className="px-2 py-1 text-status-error-text hover:bg-status-error-bg transition-colors"
                                 title="Delete permanently"
                               >
                                 {isPreparingDelete ? (

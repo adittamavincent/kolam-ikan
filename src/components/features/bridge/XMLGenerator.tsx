@@ -71,18 +71,18 @@ export function XMLGenerator({
         <textarea
           readOnly
           value={currentXML}
-          className="flex-1 min-h-37.5 w-full resize-y bg-surface-elevated p-4 font-mono text-[13px] leading-relaxed text-text-default outline-none"
+          className="flex-1 min-h-37.5 w-full resize-y bg-surface-elevated p-4 font-mono leading-relaxed text-text-default outline-none"
         />
         {showInlineCopyButton && (
           <div className="absolute top-2 right-2">
             <button
               onClick={copyToClipboard}
               disabled={!isReady}
-              className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-semibold transition-all ${
-                copied
-                  ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
-                  : "border-border-default bg-surface-elevated text-text-inverse hover:bg-surface-hover"
-              } ${!isReady ? "cursor-not-allowed opacity-60" : ""}`}
+              className={`flex items-center gap-1.5 border px-3 py-1.5 font-semibold transition-all ${
+ copied
+ ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
+ : "border-border-default bg-surface-elevated text-text-inverse hover:bg-surface-hover"
+ } ${!isReady ? "cursor-not-allowed opacity-60" : ""}`}
             >
               {copied ? (
                 <Check className="h-3.5 w-3.5" />

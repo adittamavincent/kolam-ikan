@@ -335,7 +335,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
             </span>
             <button
               onClick={onClose}
-              className=" p-1 text-text-muted hover:bg-surface-subtle"
+              className="p-1 text-text-muted hover:bg-surface-subtle"
             >
               <X className="h-4 w-4" />
             </button>
@@ -343,7 +343,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
         </div>
 
         {/* Diff body */}
-        <div className="overflow-y-auto flex-1 font-mono ">
+        <div className="overflow-y-auto flex-1 font-mono">
           {!prevEntry && (
             <div className="px-4 py-3 text-text-muted italic border-b border-border-default">
               No parent commit found. Showing the full commit content as additions.
@@ -358,12 +358,12 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
               <div
                 key={i}
                 className={`flex gap-3 px-4 py-0.5 leading-5 ${
-                  line.type === "add"
-                    ? "bg-diff-add-bg text-diff-add-text"
-                    : line.type === "del"
-                      ? "bg-diff-del-bg text-diff-del-text line-through opacity-70"
-                      : "text-text-subtle"
-                }`}
+ line.type === "add"
+ ? "bg-diff-add-bg text-diff-add-text"
+ : line.type === "del"
+ ? "bg-diff-del-bg text-diff-del-text line-through opacity-70"
+ : "text-text-subtle"
+ }`}
               >
                 <span className="select-none w-3 shrink-0 text-text-muted opacity-60">
                   {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
@@ -428,7 +428,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className=" border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-subtle"
+            className="border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-subtle"
           >
             Cancel
           </button>
@@ -437,7 +437,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
               onSave(value.trim() || null);
               onClose();
             }}
-            className=" bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:bg-action-primary-hover"
+            className="bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:bg-action-primary-hover"
           >
             Save Tag
           </button>

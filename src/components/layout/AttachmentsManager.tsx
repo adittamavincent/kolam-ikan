@@ -91,29 +91,29 @@ export function AttachmentsManager({
                 setRemoveError(null);
                 setDocImportOpen(true);
               }}
-              className="inline-flex items-center gap-2 border border-border-default px-3 py-1 text-sm bg-surface-subtle hover:bg-surface-hover"
+              className="inline-flex items-center gap-2 border border-border-default px-3 py-1 bg-surface-subtle hover:bg-surface-hover"
             >
-              <span className="text-xs">Go to import</span>
+              <span className="">Go to import</span>
             </button>
-            <p className="text-xs text-text-muted">
+            <p className="text-text-muted">
               Upload on the Document Import modal.
             </p>
           </div>
 
           {removeError && (
-            <div className="border border-status-error-border bg-status-error-bg px-3 py-2 text-xs text-status-error-text">
+            <div className="border border-status-error-border bg-status-error-bg px-3 py-2 text-status-error-text">
               {removeError}
             </div>
           )}
 
           <div className="max-h-64 overflow-y-auto border border-border-default p-2 bg-surface-default">
             {isLoading && (
-              <div className="text-sm text-text-muted">
+              <div className="text-text-muted">
                 Loading attachments…
               </div>
             )}
             {!isLoading && attachments.length === 0 && (
-              <div className="text-sm text-text-muted">No attachments yet.</div>
+              <div className="text-text-muted">No attachments yet.</div>
             )}
 
             <ul className="space-y-2">
@@ -139,10 +139,10 @@ export function AttachmentsManager({
                         importStatus={att.import_status}
                       />
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-text-default">
+                        <div className="truncate font-medium text-text-default">
                           {name}
                         </div>
-                        <div className="text-[10px] text-text-muted">
+                        <div className="text-text-muted">
                           {att.file_size_bytes
                             ? `${Math.round(att.file_size_bytes / 1024)} KB`
                             : "—"}
@@ -150,7 +150,7 @@ export function AttachmentsManager({
                           {att.content_type || "—"}
                         </div>
                         <div
-                          className={`text-[10px] ${isInUse ? "text-status-warning-text" : "text-text-muted"}`}
+                          className={` ${isInUse ? "text-status-warning-text" : "text-text-muted"}`}
                         >
                           {isInUse
                             ? `Used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
@@ -170,11 +170,11 @@ export function AttachmentsManager({
                               ? "Attach this file"
                               : "Only completed files can be attached"
                           }
-                          className={`border border-border-default px-2 py-1 text-[11px] font-semibold transition-colors ${
-                            canAttach
-                              ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
-                              : "cursor-not-allowed bg-surface-subtle text-text-muted"
-                          }`}
+                          className={`border border-border-default px-2 py-1 font-semibold transition-colors ${
+ canAttach
+ ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
+ : "cursor-not-allowed bg-surface-subtle text-text-muted"
+ }`}
                         >
                           Attach
                         </button>
@@ -198,10 +198,10 @@ export function AttachmentsManager({
                             : "Delete attachment"
                         }
                         className={`${
-                          isInUse
-                            ? "cursor-not-allowed text-text-muted"
-                            : "text-status-error-text hover:text-status-error-border"
-                        } disabled:text-text-muted`}
+ isInUse
+ ? "cursor-not-allowed text-text-muted"
+ : "text-status-error-text hover:text-status-error-border"
+ } disabled:text-text-muted`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

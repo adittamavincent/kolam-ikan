@@ -108,12 +108,12 @@ export function ContextBag({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold tracking-wider text-text-muted text-nowrap">
+        <span className="font-bold tracking-wider text-text-muted text-nowrap">
           {selectedEntries.length} SELECTED
         </span>
       </div>
       <div className="space-y-3">
-        <label className="flex items-center gap-2.5 text-text-default text-sm cursor-pointer select-none">
+        <label className="flex items-center gap-2.5 text-text-default cursor-pointer select-none">
           <input
             type="checkbox"
             checked={includeCanvas}
@@ -124,11 +124,11 @@ export function ContextBag({
         </label>
         <div className="space-y-1">
           <label
-            className={`flex items-center gap-2 text-sm select-none ${
-              isGlobalToggleDisabled
-                ? "cursor-not-allowed opacity-60"
-                : "cursor-pointer"
-            }`}
+            className={`flex items-center gap-2 select-none ${
+ isGlobalToggleDisabled
+ ? "cursor-not-allowed opacity-60"
+ : "cursor-pointer"
+ }`}
           >
             <input
               type="checkbox"
@@ -140,10 +140,10 @@ export function ContextBag({
             <span className="flex items-center gap-1.5 text-text-default">
               <Globe
                 className={`h-3.5 w-3.5 ${
-                  includeGlobalStream && !isGlobalToggleDisabled
-                    ? "text-action-primary-bg"
-                    : "text-text-muted"
-                }`}
+ includeGlobalStream && !isGlobalToggleDisabled
+ ? "text-action-primary-bg"
+ : "text-text-muted"
+ }`}
               />
               Include Domain Global Stream
             </span>
@@ -152,9 +152,9 @@ export function ContextBag({
             )}
           </label>
           {!globalStreamLoading && globalStreamName && !globalStreamDisabled && (
-            <p className="ml-7 text-[11px] text-text-muted">{globalStreamName}</p>
+            <p className="ml-7 text-text-muted">{globalStreamName}</p>
           )}
-          <p className="ml-7 text-[11px] text-text-muted leading-relaxed">
+          <p className="ml-7 text-text-muted leading-relaxed">
             {globalStreamLoading
               ? "Checking global stream..."
               : currentStreamIsGlobal
@@ -164,29 +164,29 @@ export function ContextBag({
                   : "Carries domain-wide backstory."}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 text-xs mt-1">
+        <div className="flex flex-wrap gap-2 mt-1">
           <button
             onClick={selectAll}
             disabled={disableSelectAll || isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted text-[10px] uppercase font-bold"
+            className="border border-border-default bg-surface-default px-3 py-1.5 text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted uppercase font-bold"
           >
             All
           </button>
           <button
             onClick={selectLastFive}
             disabled={isLoadingEntries}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted text-[10px] uppercase font-bold"
+            className="border border-border-default bg-surface-default px-3 py-1.5 text-text-default transition-all hover:bg-surface-elevated disabled:text-text-muted uppercase font-bold"
           >
             Last 5
           </button>
           <button
             onClick={clearAll}
-            className=" border border-border-default bg-surface-default px-3 py-1.5 text-text-default hover:bg-surface-elevated transition-all text-[10px] uppercase font-bold"
+            className="border border-border-default bg-surface-default px-3 py-1.5 text-text-default hover:bg-surface-elevated transition-all uppercase font-bold"
           >
             Clear
           </button>
         </div>
-        <div className="space-y-3 border border-border-default bg-surface-default p-3 text-xs">
+        <div className="space-y-3 border border-border-default bg-surface-default p-3">
           {isLoadingEntries ? (
             <div className="text-text-muted animate-pulse">Loading entries...</div>
           ) : groupedEntries.length === 0 ? (
@@ -194,7 +194,7 @@ export function ContextBag({
           ) : (
             groupedEntries.map(([dateKey, group]) => (
               <div key={dateKey} className="space-y-2">
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-text-muted border-b border-border-subtle pb-1">
+                <div className="font-semibold uppercase tracking-wider text-text-muted border-b border-border-subtle pb-1">
                   {dateKey}
                 </div>
                 {group?.map((entry) => {
@@ -211,10 +211,10 @@ export function ContextBag({
                     <label
                       key={entry.id}
                       className={`flex items-start gap-3 p-1.5 transition-colors select-none ${
-                        isDisabled 
-                          ? "opacity-50 cursor-default" 
-                          : "hover:bg-surface-subtle cursor-pointer"
-                      }`}
+ isDisabled 
+ ? "opacity-50 cursor-default" 
+ : "hover:bg-surface-subtle cursor-pointer"
+ }`}
                     >
                       <input
                         type="checkbox"
@@ -224,10 +224,10 @@ export function ContextBag({
                         disabled={isDisabled}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[11px] font-medium text-text-default leading-snug truncate">
+                        <div className="font-medium text-text-default leading-snug truncate">
                           {preview.slice(0, 80)}
                         </div>
-                        <div className="text-[9px] text-text-muted mt-0.5 uppercase flex items-center justify-between">
+                        <div className="text-text-muted mt-0.5 uppercase flex items-center justify-between">
                           <span>
                             {entry.created_at
                               ? new Date(entry.created_at).toLocaleTimeString()

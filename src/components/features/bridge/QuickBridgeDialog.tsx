@@ -396,7 +396,7 @@ export function QuickBridgeDialog({
           icon={<Wand2 className="h-5 w-5" />}
           onClose={onClose}
           meta={
-            <div className="flex flex-wrap items-center justify-end gap-2 text-[11px] text-text-muted">
+            <div className="flex flex-wrap items-center justify-end gap-2 text-text-muted">
               <span className="border border-border-subtle bg-surface-subtle px-2 py-1">
                 {phase === "compose"
                   ? "Compose"
@@ -417,7 +417,7 @@ export function QuickBridgeDialog({
               <div className="grid min-w-0 gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
                 <div className="min-w-0 space-y-4">
                   {!runnerStatus.online && (
-                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
                       <div className="font-semibold">
                         Local runner is offline - Manual mode
                       </div>
@@ -428,25 +428,25 @@ export function QuickBridgeDialog({
                   )}
 
                   {launchState === "error" && (
-                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
                       Quick could not open or queue the provider handoff. You can still use the fallback copy/open controls below.
                     </div>
                   )}
 
                   {queueStatus === "needs-login" && (
-                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
                       {providerPreset.label} needs you to log in again in the runner browser profile before Quick can continue.
                     </div>
                   )}
 
                   {queueStatus === "failed" && bridgeSession?.lastJobError && (
-                    <div className="border border-status-error-border bg-status-error-bg p-4 text-xs text-status-error-text">
+                    <div className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
                       Last {providerPreset.label} bridge job failed: {bridgeSession.lastJobError}
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-text-default">
+                    <label className="font-semibold text-text-default">
                       Current request
                     </label>
                     <textarea
@@ -454,9 +454,9 @@ export function QuickBridgeDialog({
                       onChange={(event) => setInstruction(event.target.value)}
                       rows={4}
                       placeholder="What should the AI help you do next?"
-                      className="w-full resize-y border border-border-default bg-surface-hover px-4 py-3 text-sm text-text-default placeholder:text-text-muted"
+                      className="w-full resize-y border border-border-default bg-surface-hover px-4 py-3 text-text-default placeholder:text-text-muted"
                     />
-                    <p className="text-xs text-text-muted">
+                    <p className="text-text-muted">
                       {hasReusableInstruction
                         ? "Using your last stream instruction. Edit it here if this run should change."
                         : "Add a short request once, then Quick can reuse it on future runs."}
@@ -464,7 +464,7 @@ export function QuickBridgeDialog({
                   </div>
 
                   <label className="space-y-2">
-                    <span className="text-sm font-semibold text-text-default">
+                    <span className="font-semibold text-text-default">
                       Destination
                     </span>
                     <select
@@ -472,7 +472,7 @@ export function QuickBridgeDialog({
                       onChange={(event) =>
                         setProviderId(event.target.value as typeof providerId)
                       }
-                      className="w-full border border-border-default bg-surface-hover px-3 py-2 text-sm text-text-default"
+                      className="w-full border border-border-default bg-surface-hover px-3 py-2 text-text-default"
                     >
                       {BRIDGE_PROVIDER_PRESETS.map((provider) => (
                         <option key={provider.id} value={provider.id}>
@@ -485,10 +485,10 @@ export function QuickBridgeDialog({
 
                 <div className="min-w-0 space-y-3 border border-border-default bg-surface-subtle p-4">
                   <div>
-                    <div className="text-sm font-semibold text-text-default">
+                    <div className="font-semibold text-text-default">
                       Session + context
                     </div>
-                    <div className="mt-2 space-y-1 text-xs text-text-muted">
+                    <div className="mt-2 space-y-1 text-text-muted">
                       <div>
                         {isFollowupLaunch
                           ? "Active bridge session: follow-up payload"
@@ -507,16 +507,16 @@ export function QuickBridgeDialog({
                   </div>
 
                   <div>
-                    <div className="text-sm font-semibold text-text-default">
+                    <div className="font-semibold text-text-default">
                       Session memory
                     </div>
-                    <p className="mt-2 text-xs text-text-muted">
+                    <p className="mt-2 text-text-muted">
                       {bridgeSession?.sessionMemory ||
                         "No remembered bridge context yet."}
                     </p>
                   </div>
 
-                  <div className="border border-border-default bg-surface-default p-3 text-xs text-text-muted">
+                  <div className="border border-border-default bg-surface-default p-3 text-text-muted">
                     {runnerStatus.online
                       ? "Quick will enqueue a bridge job for the local runner. Manual copy/open fallback stays available if you need it."
                       : "Quick is in manual fallback right now. Use Detailed for the paste-and-submit step."}
@@ -529,7 +529,7 @@ export function QuickBridgeDialog({
                         onClose();
                         onOpenDetailed();
                       }}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-2 font-semibold text-text-default hover:bg-surface-hover"
                     >
                       <Settings2 className="h-3.5 w-3.5" />
                       Open Detailed
@@ -538,7 +538,7 @@ export function QuickBridgeDialog({
                       <button
                         type="button"
                         onClick={() => void navigator.clipboard.writeText(generatedXML)}
-                        className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                        className="inline-flex items-center gap-2 border border-border-default px-3 py-2 font-semibold text-text-default hover:bg-surface-hover"
                       >
                         <ClipboardPaste className="h-3.5 w-3.5" />
                         Copy prompt
@@ -584,14 +584,14 @@ export function QuickBridgeDialog({
                     <CheckCircle2 className="mt-1 h-6 w-6 text-action-primary-bg" />
                   )}
                   <div className="space-y-2">
-                    <div className="text-lg font-semibold text-text-default">
+                    <div className="font-semibold text-text-default">
                       {waitingHeadline}
                     </div>
-                    <p className="text-sm text-text-muted">
+                    <p className="text-text-muted">
                       {waitingDescription}
                     </p>
                     {latestJob?.id && (
-                      <div className="text-[11px] text-text-muted">
+                      <div className="text-text-muted">
                         Job: {latestJob.id}
                       </div>
                     )}
@@ -601,49 +601,49 @@ export function QuickBridgeDialog({
 
               <section className="grid min-w-0 gap-3 md:grid-cols-3">
                 <div className="border border-border-default bg-surface-subtle p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                  <div className="font-semibold uppercase tracking-wide text-text-muted">
                     Step 1
                   </div>
-                  <div className="mt-2 text-sm font-semibold text-text-default">
+                  <div className="mt-2 font-semibold text-text-default">
                     Compose
                   </div>
-                  <p className="mt-1 text-xs text-text-muted">
+                  <p className="mt-1 text-text-muted">
                     Prompt and context were packed for this stream.
                   </p>
                 </div>
                 <div className="border border-border-default bg-surface-subtle p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                  <div className="font-semibold uppercase tracking-wide text-text-muted">
                     Step 2
                   </div>
-                  <div className="mt-2 text-sm font-semibold text-text-default">
+                  <div className="mt-2 font-semibold text-text-default">
                     Waiting
                   </div>
-                  <p className="mt-1 text-xs text-text-muted">
+                  <p className="mt-1 text-text-muted">
                     The local runner is claiming or running the request.
                   </p>
                 </div>
                 <div className="border border-border-default bg-surface-subtle p-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                  <div className="font-semibold uppercase tracking-wide text-text-muted">
                     Step 3
                   </div>
-                  <div className="mt-2 text-sm font-semibold text-text-default">
+                  <div className="mt-2 font-semibold text-text-default">
                     Review
                   </div>
-                  <p className="mt-1 text-xs text-text-muted">
+                  <p className="mt-1 text-text-muted">
                     Once the reply lands, Quick switches to a clean response view.
                   </p>
                 </div>
               </section>
 
               <section className="border border-border-default bg-surface-subtle p-4">
-                <div className="text-sm font-semibold text-text-default">
+                <div className="font-semibold text-text-default">
                   Manual fallback
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(generatedXML)}
-                    className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                    className="inline-flex items-center gap-2 border border-border-default px-3 py-2 font-semibold text-text-default hover:bg-surface-hover"
                   >
                     <ClipboardPaste className="h-3.5 w-3.5" />
                     Copy payload again
@@ -657,7 +657,7 @@ export function QuickBridgeDialog({
                         "noopener,noreferrer",
                       )
                     }
-                    className="inline-flex items-center gap-2 border border-border-default px-3 py-2 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                    className="inline-flex items-center gap-2 border border-border-default px-3 py-2 font-semibold text-text-default hover:bg-surface-hover"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
                     Reopen {providerPreset.label}
@@ -673,10 +673,10 @@ export function QuickBridgeDialog({
                 <div className="flex items-start gap-4">
                   <CheckCircle2 className="mt-1 h-5 w-5 text-status-success-text" />
                   <div className="flex-1 space-y-1">
-                    <div className="text-sm font-semibold text-status-success-text">
+                    <div className="font-semibold text-status-success-text">
                       Response captured successfully
                     </div>
-                    <p className="text-xs text-text-default">
+                    <p className="text-text-default">
                       Quick has the raw provider response now. Review and apply changes below, or switch to Detailed for fine-grained control.
                     </p>
                   </div>
@@ -684,7 +684,7 @@ export function QuickBridgeDialog({
                     <button
                       type="button"
                       onClick={() => setIsResponsePreviewOpen(true)}
-                      className="border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-hover transition-colors"
+                      className="border border-border-default bg-surface-default px-2 py-1 font-bold uppercase tracking-widest text-text-default hover:bg-surface-hover transition-colors"
                     >
                       View Raw
                     </button>
@@ -694,7 +694,7 @@ export function QuickBridgeDialog({
                         onClose();
                         onOpenDetailed();
                       }}
-                      className="border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-text-default hover:bg-surface-hover transition-colors"
+                      className="border border-border-default bg-surface-default px-2 py-1 font-bold uppercase tracking-widest text-text-default hover:bg-surface-hover transition-colors"
                     >
                       Open Detailed
                     </button>

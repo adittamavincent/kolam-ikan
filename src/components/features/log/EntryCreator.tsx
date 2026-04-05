@@ -1364,10 +1364,10 @@ export function EntryCreator({
                 <button
                   onClick={() => setPersonaManagerOpen(true)}
                   className={`${
-                    active
-                      ? "bg-surface-subtle text-text-default"
-                      : "text-text-subtle"
-                  } group flex w-full items-center transition-colors`}
+ active
+ ? "bg-surface-subtle text-text-default"
+ : "text-text-subtle"
+ } group flex w-full items-center transition-colors`}
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Manage Personas
@@ -2798,10 +2798,10 @@ export function EntryCreator({
                 onClick={handleCommit}
                 disabled={isCommitDisabled}
                 className={`inline-flex h-full w-32 items-center justify-center leading-4 transition-colors ${
-                  !isCommitDisabled
-                    ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
-                    : "bg-surface-subtle text-text-muted cursor-not-allowed"
-                }`}
+ !isCommitDisabled
+ ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
+ : "bg-surface-subtle text-text-muted cursor-not-allowed"
+ }`}
               >
                 <Send className="h-4 w-4" />
                 Commit Entry
@@ -2829,10 +2829,10 @@ export function EntryCreator({
                         type="button"
                         onClick={() => setFullscreenSectionId(section.instanceId)}
                         className={`entry-creator-fullscreen__tab group min-w-36 border border-b-0 px-3 py-2 text-left transition-colors ${
-                          isActive
-                            ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
-                            : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                        }`}
+ isActive
+ ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
+ : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
+ }`}
                       >
                         <div className="uppercase tracking-[0.18em] text-text-muted">
                           Section {section.sectionIndex + 1}

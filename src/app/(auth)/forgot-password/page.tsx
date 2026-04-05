@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center bg-status-success-bg">
             <CheckCircle2 className="h-10 w-10 text-status-success-text" />
           </div>
-          <h2 className="text-2xl font-bold text-text-default">
+          <h2 className="font-bold text-text-default">
             Check your email
           </h2>
           <p className="text-text-muted">
@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-8">
             <Link
               href="/login"
-              className="text-sm font-bold text-action-primary-bg hover:text-accent-strong"
+              className="font-bold text-action-primary-bg hover:text-accent-strong"
             >
               Return to login
             </Link>
@@ -82,24 +82,24 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md space-y-6">
         <Link
           href="/login"
-          className="group inline-flex items-center text-sm font-semibold text-text-muted hover:text-text-default transition-colors"
+          className="group inline-flex items-center font-semibold text-text-muted hover:text-text-default transition-colors"
         >
           <ChevronLeft className="mr-1 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
           Back to login
         </Link>
 
-        <div className=" bg-surface-default p-8 border border-border-default">
-          <h2 className="text-2xl font-bold text-text-default">
+        <div className="bg-surface-default p-8 border border-border-default">
+          <h2 className="font-bold text-text-default">
             Forgot Password
           </h2>
-          <p className="mt-2 text-sm text-text-muted">
+          <p className="mt-2 text-text-muted">
             Enter your email and we&apos;ll send you a link to reset your
             password.
           </p>
 
           <form onSubmit={handleReset} className="mt-8 space-y-6">
             {error && (
-              <div className="flex items-start gap-3 bg-status-error-bg p-4 text-sm text-status-error-text border border-border-default">
+              <div className="flex items-start gap-3 bg-status-error-bg p-4 text-status-error-text border border-border-default">
                 <AlertCircle className="h-5 w-5 shrink-0" />
                 <p>{error}</p>
               </div>
@@ -107,7 +107,7 @@ export default function ForgotPasswordPage() {
 
             <div>
               <label
-                className="block text-sm font-medium text-text-default mb-1"
+                className="block font-medium text-text-default mb-1"
                 htmlFor="email"
               >
                 Email Address
@@ -120,7 +120,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full border border-border-default bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default focus:border-border-default focus:bg-surface-default focus: focus: focus: transition-all sm:text-sm"
+                  className="block w-full border border-border-default bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default focus:border-border-default focus:bg-surface-default focus: focus: focus: transition-all"
                   placeholder="name@example.com"
                 />
               </div>
@@ -129,7 +129,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full justify-center bg-action-primary-bg px-4 py-2.5 text-sm font-bold text-action-primary-text hover:bg-action-primary-hover focus: focus: transition-all disabled:opacity-70"
+              className="flex w-full justify-center bg-action-primary-bg px-4 py-2.5 font-bold text-action-primary-text hover:bg-action-primary-hover focus: focus: transition-all disabled:opacity-70"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

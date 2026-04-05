@@ -213,11 +213,11 @@ export function EditDomainModal({
         <div className="mt-2">
           <input
             type="text"
-            className={`block w-full  border px-4 py-3 text-text-default placeholder-text-muted transition-all focus: focus: ${
-              error
-                ? "border-status-error-text focus:border-status-error-text focus:"
-                : "border-border-default focus:border-border-default focus:"
-            }`}
+            className={`block w-full border px-4 py-3 text-text-default placeholder-text-muted transition-all focus: focus: ${
+ error
+ ? "border-status-error-text focus:border-status-error-text focus:"
+ : "border-border-default focus:border-border-default focus:"
+ }`}
             placeholder="e.g., My Knowledge Base"
             value={name}
             onChange={(event) => {
@@ -228,7 +228,7 @@ export function EditDomainModal({
           />
 
           <div className="mt-4">
-            <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-text-muted">
+            <label className="mb-2 block font-medium uppercase tracking-wider text-text-muted">
               Icon
             </label>
             <div className="grid grid-cols-6 gap-2">
@@ -237,11 +237,11 @@ export function EditDomainModal({
                   key={option}
                   type="button"
                   onClick={() => setIcon(option)}
-                  className={`flex items-center justify-center  border p-2 transition-colors ${
-                    icon === option
-                      ? "border-border-default bg-primary-950 text-action-primary-bg"
-                      : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
-                  }`}
+                  className={`flex items-center justify-center border p-2 transition-colors ${
+ icon === option
+ ? "border-border-default bg-primary-950 text-action-primary-bg"
+ : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
+ }`}
                   aria-label={`Select ${option} icon`}
                 >
                   <DynamicIcon name={option} className="h-4 w-4" />
@@ -251,7 +251,7 @@ export function EditDomainModal({
           </div>
 
           {error && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-status-error-text">
+            <div className="mt-3 flex items-center gap-2 text-status-error-text">
               <AlertCircle className="h-4 w-4" />
               {error}
             </div>

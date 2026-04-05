@@ -506,10 +506,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   return (
     <div
       className={`canvas-pane bg-surface-default relative overflow-hidden z-20 ${
-        isVisible ? "border-l border-border-default" : ""
-      } ${
-        isVisible ? "" : "pointer-events-none"
-      }`}
+ isVisible ? "border-l border-border-default" : ""
+ } ${
+ isVisible ? "" : "pointer-events-none"
+ }`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
@@ -517,25 +517,25 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           <div className="mx-3 mt-2 mb-1 border border-border-default bg-surface-elevated px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-action-primary-bg">
+                <div className="inline-flex items-center gap-1.5 font-semibold text-action-primary-bg">
                   <Eye className="h-3.5 w-3.5" />
                   Snapshot Preview
                 </div>
-                <div className="truncate text-xs text-text-default">
+                <div className="truncate text-text-default">
                   {previewSession?.versionName || "Untitled Snapshot"}
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsCompareOpen(true)}
-                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[11px] text-text-subtle hover:bg-surface-subtle"
+                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-text-subtle hover:bg-surface-subtle"
                 >
                   <GitCompare className="h-3 w-3" />
                   Compare
                 </button>
                 <button
                   onClick={restorePreviousDraft}
-                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[11px] text-text-subtle hover:bg-surface-subtle"
+                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-text-subtle hover:bg-surface-subtle"
                 >
                   <RotateCcw className="h-3 w-3" />
                   Restore Draft
@@ -544,7 +544,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                   onClick={() => {
                     void applyPreviewToCanvas();
                   }}
-                  className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[11px] font-semibold text-action-primary-text hover:bg-action-primary-hover"
+                  className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 font-semibold text-action-primary-text hover:bg-action-primary-hover"
                 >
                   <Save className="h-3 w-3" />
                   Apply to Canvas
@@ -569,7 +569,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
               highlightTerm={highlightTerm ?? undefined}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-text-muted text-sm">
+            <div className="flex h-full items-center justify-center text-text-muted">
               {isLoading ? "Loading canvas..." : "No canvas found"}
             </div>
           )}
@@ -587,15 +587,15 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
             <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
               <div className="flex items-center gap-2">
                 <GitCompare className="h-4 w-4 text-text-muted" />
-                <span className="text-sm font-semibold text-text-default">
+                <span className="font-semibold text-text-default">
                   Preview Compare
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-diff-add-text">
+                <span className="font-mono text-diff-add-text">
                   +{previewAdditions}
                 </span>
-                <span className="text-[11px] font-mono text-diff-del-text">
+                <span className="font-mono text-diff-del-text">
                   -{previewDeletions}
                 </span>
                 <button
@@ -606,7 +606,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                 </button>
               </div>
             </div>
-            <div className="overflow-y-auto flex-1 font-mono text-[11px]">
+            <div className="overflow-y-auto flex-1 font-mono">
               <CanvasDiffLines lines={previewDiffs} />
             </div>
           </div>

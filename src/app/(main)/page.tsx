@@ -131,10 +131,10 @@ function StatCard({
   return (
     <div className="group border border-border-default bg-surface-default p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs uppercase tracking-wider text-text-subtle font-medium">{label}</p>
+        <p className="uppercase tracking-wider text-text-subtle font-medium">{label}</p>
         <Icon className={`h-4 w-4 ${accentClass}`} />
       </div>
-      <p className="text-2xl font-bold text-text-default">{value}</p>
+      <p className="font-bold text-text-default">{value}</p>
     </div>
   );
 }
@@ -192,15 +192,15 @@ function DomainCard({
       className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-action-primary-text text-xl group-hover:bg-primary-900 transition-colors">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-action-primary-text group-hover:bg-primary-900 transition-colors">
           <DynamicIcon name={domain.icon ?? domain.name} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-text-default group-hover:text-action-primary-bg transition-colors">
+          <h3 className="truncate font-semibold text-text-default group-hover:text-action-primary-bg transition-colors">
             {domain.name}
           </h3>
           {domain.description && (
-            <p className="truncate text-xs text-text-subtle">
+            <p className="truncate text-text-subtle">
               {domain.description}
             </p>
           )}
@@ -208,13 +208,13 @@ function DomainCard({
         <div className="ml-2 flex items-start">
           <button
             onClick={handleDuplicate}
-            className="text-sm text-action-primary-bg hover:underline"
+            className="text-action-primary-bg hover:underline"
           >
             <Copy className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <div className="flex gap-4 text-xs text-text-muted mt-auto pt-2 border-t border-border-default w-full">
+      <div className="flex gap-4 text-text-muted mt-auto pt-2 border-t border-border-default w-full">
         <span className="flex items-center gap-1">
           <span className="font-medium">{domain.cabinetCount}</span> cab
         </span>
@@ -247,18 +247,18 @@ function RecentActivityItem({
       onClick={onClick}
       className="group flex w-full items-start gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
     >
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle text-sm transition-colors group-hover:bg-accent-subtle group-hover:text-accent-strong">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle transition-colors group-hover:bg-accent-subtle group-hover:text-accent-strong">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate text-sm font-medium text-text-default">
+          <p className="truncate font-medium text-text-default">
             {title}
           </p>
         </div>
-        <p className="truncate text-xs text-text-subtle">{subtitle}</p>
+        <p className="truncate text-text-subtle">{subtitle}</p>
       </div>
-      <span className="shrink-0 text-[10px] text-text-muted mt-0.5">{time}</span>
+      <span className="shrink-0 text-text-muted mt-0.5">{time}</span>
     </button>
   );
 }
@@ -273,12 +273,12 @@ function ErrorBanner({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 border border-border-default bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
+    <div className="flex items-center gap-3 border border-border-default bg-status-error-bg px-4 py-3 text-status-error-text">
       <AlertCircle className="h-5 w-5 shrink-0" />
       <span className="flex-1">{message}</span>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1 bg-surface-default px-3 py-1.5 text-xs font-medium text-status-error-text transition hover:bg-surface-subtle"
+        className="inline-flex items-center gap-1 bg-surface-default px-3 py-1.5 font-medium text-status-error-text transition hover:bg-surface-subtle"
       >
         <RefreshCw className="h-3.5 w-3.5" />
         Retry
@@ -461,11 +461,11 @@ export default function HomePage() {
         {/* ---- Welcome Section ---- */}
         <div className="mb-6 flex justify-between items-end">
           <div>
-            <h1 className="text-xl font-bold text-text-default md:text-2xl">
+            <h1 className="font-bold text-text-default">
               {greeting},{" "}
               <span className="text-action-primary-bg">{displayName}</span>
             </h1>
-            <p className="mt-1 text-xs text-text-subtle">
+            <p className="mt-1 text-text-subtle">
               Pick up where you left off.
             </p>
           </div>
@@ -534,7 +534,7 @@ export default function HomePage() {
         <div className="grid gap-8 lg:grid-cols-5">
           {/* ---- Domains Overview (left 3 cols) ---- */}
           <section className="lg:col-span-3">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text-default">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-text-default">
               <Globe className="h-4 w-4 text-text-muted" />
               Your Domains
             </h2>
@@ -545,12 +545,12 @@ export default function HomePage() {
                 <DomainCardSkeleton />
               </div>
             ) : totalDomains === 0 ? (
-              <div className=" border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
+              <div className="border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
                 <Globe className="mx-auto h-8 w-8 text-text-muted" />
-                <h3 className="mt-3 text-sm font-semibold text-text-default">
+                <h3 className="mt-3 font-semibold text-text-default">
                   No domains yet
                 </h3>
-                <p className="mt-1 text-xs text-text-subtle">
+                <p className="mt-1 text-text-subtle">
                   Create your first domain to start organizing your knowledge.
                 </p>
               </div>
@@ -571,7 +571,7 @@ export default function HomePage() {
 
           {/* ---- Recent Activity (right 2 cols) ---- */}
           <section className="lg:col-span-2">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-text-default">
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-text-default">
               <Clock className="h-4 w-4 text-text-muted" />
               Recent Activity
             </h2>
@@ -596,12 +596,12 @@ export default function HomePage() {
                 <ActivityItemSkeleton />
               </div>
             ) : recentStreams?.length === 0 && recentEntries?.length === 0 ? (
-              <div className=" border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
+              <div className="border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
                 <Clock className="mx-auto h-8 w-8 text-text-muted" />
-                <h3 className="mt-3 text-sm font-semibold text-text-default">
+                <h3 className="mt-3 font-semibold text-text-default">
                   No activity yet
                 </h3>
-                <p className="mt-1 text-xs text-text-subtle">
+                <p className="mt-1 text-text-subtle">
                   Your recent streams and entries will appear here.
                 </p>
               </div>
@@ -635,7 +635,7 @@ export default function HomePage() {
                   (recentEntries?.length ?? 0) > 0 && (
                     <div className="flex items-center gap-2 py-1">
                       <div className="h-px flex-1 bg-border-subtle" />
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-text-subtle">
+                      <span className="font-medium uppercase tracking-wider text-text-subtle">
                         Entries
                       </span>
                       <div className="h-px flex-1 bg-border-subtle" />
@@ -669,7 +669,7 @@ export default function HomePage() {
 
         {/* ---- Footer tip ---- */}
         <div className="mt-10 border border-border-default bg-surface-default px-5 py-4 text-center">
-          <p className="text-xs text-text-default">
+          <p className="text-text-default">
             <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
             Use the sidebar to quickly switch between domains, or click any card
             above to jump in.

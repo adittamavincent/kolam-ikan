@@ -316,7 +316,7 @@ export function MainHeader() {
             <div className="min-w-0 flex-1">
               <div className="min-w-0">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="truncate font-semibold text-text-default md:text-base">
+                  <span className="truncate font-semibold text-text-default">
                     {workspaceTitle}
                   </span>
                   {streamId && (
@@ -329,7 +329,7 @@ export function MainHeader() {
                           onKeyDown={(event) => void handleDescriptionKeyDown(event)}
                           placeholder="Add a description"
                           autoFocus
-                          className="w-full max-w-2xl border-0 bg-transparent px-0 py-0 text-xs leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
+                          className="w-full max-w-2xl border-0 bg-transparent px-0 py-0 leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
                         />
                       ) : (
                         <button
@@ -339,8 +339,8 @@ export function MainHeader() {
                             setIsEditingDescription(true);
                           }}
                           className={`block max-w-2xl text-left leading-5 transition-colors hover:text-text-default ${
-                            hasDescription ? "text-text-subtle" : "text-text-muted"
-                          }`}
+ hasDescription ? "text-text-subtle" : "text-text-muted"
+ }`}
                         >
                           {stream?.description?.trim() || "Add a description"}
                         </button>
@@ -361,14 +361,14 @@ export function MainHeader() {
                       <div className={toolbarLeadGroupClass}>
                         <span
                           className={`${headerButtonClass} pointer-events-none ${
-                            cloudStatus === "saving"
-                              ? "border-status-warning-border text-status-warning-text"
-                              : cloudStatus === "error"
-                                ? "border-status-error-border text-status-error-text"
-                                : cloudStatus === "saved"
-                                  ? "border-status-success-border text-status-success-text"
-                                  : ""
-                          }`}
+ cloudStatus === "saving"
+ ? "border-status-warning-border text-status-warning-text"
+ : cloudStatus === "error"
+ ? "border-status-error-border text-status-error-text"
+ : cloudStatus === "saved"
+ ? "border-status-success-border text-status-success-text"
+ : ""
+ }`}
                           aria-label={cloudStatusLabel}
                           title={cloudStatusLabel}
                         >
@@ -391,12 +391,12 @@ export function MainHeader() {
                           }
                           disabled={!hasEntries}
                           className={`${headerButtonClass} relative ${
-                            collapseAllActive
-                              ? "border-accent-default bg-accent-subtle text-accent-strong"
-                              : collapsedEntryCount > 0
-                                ? "text-text-default"
-                                : ""
-                          }`}
+ collapseAllActive
+ ? "border-accent-default bg-accent-subtle text-accent-strong"
+ : collapsedEntryCount > 0
+ ? "text-text-default"
+ : ""
+ }`}
                           title={
                             collapseAllActive
                               ? "Expand all commits"
@@ -409,7 +409,7 @@ export function MainHeader() {
                             <ChevronDown className="h-3.5 w-3.5" />
                           )}
                           {collapsedEntryCount > 0 && (
-                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
+                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
                               {collapsedEntryCount}
                             </span>
                           )}
@@ -421,10 +421,10 @@ export function MainHeader() {
                             clearSearchKeepOpen();
                           }}
                           className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-border-default bg-surface-default transition-[width,border-color,background-color] duration-300 ease-out ${
-                            isSearchOpen
-                              ? "w-[20rem] border-accent-default bg-accent-subtle"
-                              : "w-7"
-                          }`}
+ isSearchOpen
+ ? "w-[20rem] border-accent-default bg-accent-subtle"
+ : "w-7"
+ }`}
                           style={{ willChange: "width" }}
                         >
                           <button
@@ -440,10 +440,10 @@ export function MainHeader() {
                               });
                             }}
                             className={`absolute inset-0 inline-flex items-center justify-center text-text-muted transition-all duration-200 ${
-                              isSearchOpen
-                                ? "pointer-events-none opacity-0 scale-90"
-                                : "opacity-100 scale-100 hover:text-text-default"
-                            }`}
+ isSearchOpen
+ ? "pointer-events-none opacity-0 scale-90"
+ : "opacity-100 scale-100 hover:text-text-default"
+ }`}
                             title="Show search"
                           >
                             <Search className="h-4 w-4" />
@@ -451,10 +451,10 @@ export function MainHeader() {
 
                           <div
                             className={`flex h-full items-center gap-1 px-1 transition-all duration-200 ${
-                              isSearchOpen
-                                ? "opacity-100 translate-x-0"
-                                : "pointer-events-none opacity-0 -translate-x-2"
-                            }`}
+ isSearchOpen
+ ? "opacity-100 translate-x-0"
+ : "pointer-events-none opacity-0 -translate-x-2"
+ }`}
                           >
                             <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-action-primary-bg" />
                             <input
@@ -486,9 +486,9 @@ export function MainHeader() {
                                 }
                               }}
                               placeholder="Find in log..."
-                              className="min-w-0 flex-1 bg-transparent py-1.5 text-xs text-text-default outline-none placeholder:text-text-muted"
+                              className="min-w-0 flex-1 bg-transparent py-1.5 text-text-default outline-none placeholder:text-text-muted"
                             />
-                            <span className="inline-flex h-5 min-w-12 items-center justify-center border border-border-default bg-surface-default px-1.5 text-[10px] font-mono text-text-muted">
+                            <span className="inline-flex h-5 min-w-12 items-center justify-center border border-border-default bg-surface-default px-1.5 font-mono text-text-muted">
                               {occurrenceCount > 0
                                 ? `${activeOccurrenceIndex}/${occurrenceCount}`
                                 : "0/0"}
@@ -523,7 +523,7 @@ export function MainHeader() {
                         >
                           <Archive className="h-4 w-4" />
                           {(logState.stashCount ?? 0) > 0 && (
-                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 text-[9px] font-bold leading-none text-text-muted">
+                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
                               {logState.stashCount}
                             </span>
                           )}
@@ -599,7 +599,7 @@ export function MainHeader() {
                             portal
                             className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
                           >
-                            <div className="px-2 py-1 text-[9px] font-semibold uppercase tracking-wider text-text-muted">
+                            <div className="px-2 py-1 font-semibold uppercase tracking-wider text-text-muted">
                               Checkout Branch
                             </div>
                             {logState.branchNames?.map((branchName) => (
@@ -611,7 +611,7 @@ export function MainHeader() {
                                         branchName,
                                       })
                                     }
-                                    className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 text-xs transition-all duration-200`}
+                                    className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
                                   >
                                     <span className="flex items-center gap-1.5">
                                       <GitBranch className="h-3 w-3" />
@@ -631,7 +631,7 @@ export function MainHeader() {
                                   defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
                                 });
                               }}
-                              className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                              className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
                             >
                               <Plus className="h-3 w-3" />
                               New branch
@@ -660,7 +660,7 @@ export function MainHeader() {
                     >
                       <Blocks className="h-4 w-4" />
                     </span>
-                    <span className="inline-flex h-7 items-center border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-muted">
+                    <span className="inline-flex h-7 items-center border border-border-default bg-surface-default px-2 font-mono text-text-muted">
                       Snapshot live
                     </span>
                   </div>

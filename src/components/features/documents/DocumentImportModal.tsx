@@ -583,10 +583,10 @@ export function DocumentImportModal({
         bodyClassName="flex min-h-0 flex-1 flex-col"
         footerMeta={
           <div>
-            <div className="text-sm font-semibold text-text-default">
+            <div className="font-semibold text-text-default">
               Ready to queue
             </div>
-            <div className="mt-1 text-xs leading-5 text-text-muted">
+            <div className="mt-1 leading-5 text-text-muted">
               Shows up instantly in the queue.
             </div>
           </div>
@@ -617,7 +617,7 @@ export function DocumentImportModal({
           icon={<UploadCloud className="h-4 w-4" />}
           onClose={handleClose}
           meta={
-            <div className="inline-flex items-center gap-2 text-xs text-text-muted">
+            <div className="inline-flex items-center gap-2 text-text-muted">
               <Clock3 className="h-3.5 w-3.5" />
               Queue first, process in background
             </div>
@@ -631,10 +631,10 @@ export function DocumentImportModal({
             className="flex min-h-0 min-w-0 flex-col gap-3 border border-border-default bg-surface-subtle p-3"
           >
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_280px]">
-              <label className="flex flex-col gap-2 border border-dashed border-border-subtle bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle">
+              <label className="flex flex-col gap-2 border border-dashed border-border-subtle bg-surface-default p-4 text-text-default transition-colors hover:bg-surface-subtle">
                 <div className="flex items-center justify-between gap-8">
                   <span className="font-medium">File</span>
-                  <span className="text-xs text-text-muted">
+                  <span className="text-text-muted">
                     One compatible file per import.
                   </span>
                 </div>
@@ -673,12 +673,12 @@ export function DocumentImportModal({
                     // Reset input so same file can be selected again
                     event.target.value = "";
                   }}
-                  className="block w-full border border-border-default bg-surface-default px-3 py-3 text-sm text-text-default file:mr-4 file: file:border-none file:bg-action-primary-bg file:px-3 file:py-2 file:text-sm file:font-semibold file:text-action-primary-text"
+                  className="block w-full border border-border-default bg-surface-default px-3 py-3 text-text-default file:mr-4 file: file:border-none file:bg-action-primary-bg file:px-3 file:py-2 file:font-semibold file:text-action-primary-text"
                 />
               </label>
 
-              <div className=" border border-border-default bg-surface-default p-4 text-sm text-text-muted">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+              <div className="border border-border-default bg-surface-default p-4 text-text-muted">
+                <div className="font-semibold uppercase tracking-[0.18em] text-text-muted">
                   Selected
                 </div>
                 <div className="mt-3 flex items-start gap-3">
@@ -693,10 +693,10 @@ export function DocumentImportModal({
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium text-text-default">
+                    <div className="truncate font-medium text-text-default">
                       {selectedFile?.name ?? "No file selected"}
                     </div>
-                    <div className="mt-1 text-xs text-text-muted">
+                    <div className="mt-1 text-text-muted">
                       {formatBytes(selectedFile?.size ?? null)}
                     </div>
                   </div>
@@ -705,10 +705,10 @@ export function DocumentImportModal({
             </div>
 
             <div className="flex flex-col gap-3 lg:flex-row">
-              <label className="flex-1 flex flex-col gap-2 justify-between border border-border-default bg-surface-default p-4 text-sm text-text-default">
+              <label className="flex-1 flex flex-col gap-2 justify-between border border-border-default bg-surface-default p-4 text-text-default">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">Document title</span>
-                  <span className="text-xs text-text-muted">
+                  <span className="text-text-muted">
                     Leave blank to use{" "}
                     <span className="font-medium text-text-subtle">
                       {derivedTitle || "the filename"}
@@ -724,14 +724,14 @@ export function DocumentImportModal({
                       ? stripImportFileExtension(selectedFile.name)
                       : "Derived from filename"
                   }
-                  className="w-full border border-border-default bg-surface-subtle px-3 py-2.5 text-sm text-text-default transition-colors focus:border-border-default focus: focus:"
+                  className="w-full border border-border-default bg-surface-subtle px-3 py-2.5 text-text-default transition-colors focus:border-border-default focus: focus:"
                 />
               </label>
 
-              <label className="flex-1 flex flex-col gap-2 justify-between border border-border-default bg-surface-default p-4 text-sm text-text-default">
+              <label className="flex-1 flex flex-col gap-2 justify-between border border-border-default bg-surface-default p-4 text-text-default">
                 <div className="flex items-start justify-between">
                   <span className="font-medium shrink-0">Parsing mode</span>
-                  <span className="text-xs leading-5 text-text-muted text-balance flex-1 text-right min-w-0">
+                  <span className="leading-5 text-text-muted text-balance flex-1 text-right min-w-0">
                     Use{" "}
                     <span className="font-medium text-text-subtle">
                       lattice
@@ -748,7 +748,7 @@ export function DocumentImportModal({
                     onChange={(event) =>
                       setFlavor(event.target.value as "lattice" | "stream")
                     }
-                    className="w-full appearance-none border border-border-default bg-surface-subtle px-3 py-2.5 pr-8 text-sm text-text-default transition-colors focus:border-border-default focus: focus:"
+                    className="w-full appearance-none border border-border-default bg-surface-subtle px-3 py-2.5 pr-8 text-text-default transition-colors focus:border-border-default focus: focus:"
                   >
                     <option value="lattice">lattice</option>
                     <option value="stream">stream</option>
@@ -759,7 +759,7 @@ export function DocumentImportModal({
             </div>
 
             <div className="grid gap-2.5 md:grid-cols-2">
-              <label className="flex items-start gap-3 border border-border-default bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle">
+              <label className="flex items-start gap-3 border border-border-default bg-surface-default p-4 text-text-default transition-colors hover:bg-surface-subtle">
                 <input
                   type="checkbox"
                   checked={enableTableStructure}
@@ -772,13 +772,13 @@ export function DocumentImportModal({
                   <div className="font-medium text-text-default">
                     Enable Docling table structure
                   </div>
-                  <div className="mt-1 text-xs leading-5 text-text-muted">
+                  <div className="mt-1 leading-5 text-text-muted">
                     Keep table rows and columns linked.
                   </div>
                 </div>
               </label>
 
-              <label className="flex items-start gap-3 border border-border-default bg-surface-default p-4 text-sm text-text-default transition-colors hover:bg-surface-subtle">
+              <label className="flex items-start gap-3 border border-border-default bg-surface-default p-4 text-text-default transition-colors hover:bg-surface-subtle">
                 <input
                   type="checkbox"
                   checked={debugDoclingTables}
@@ -791,7 +791,7 @@ export function DocumentImportModal({
                   <div className="font-medium text-text-default">
                     Export Docling debug metadata
                   </div>
-                  <div className="mt-1 text-xs leading-5 text-text-muted">
+                  <div className="mt-1 leading-5 text-text-muted">
                     Include diagnostics for troubleshooting.
                   </div>
                 </div>
@@ -799,14 +799,14 @@ export function DocumentImportModal({
             </div>
 
             {submitError && (
-              <div className="flex items-start gap-3 border border-status-error-border bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
+              <div className="flex items-start gap-3 border border-status-error-border bg-status-error-bg px-4 py-3 text-status-error-text">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 {submitError}
               </div>
             )}
 
             {submitWarning && (
-              <div className="flex items-start gap-3 border border-status-warning-border bg-status-warning-bg px-4 py-3 text-sm text-status-warning-text">
+              <div className="flex items-start gap-3 border border-status-warning-border bg-status-warning-bg px-4 py-3 text-status-warning-text">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 {submitWarning}
               </div>
@@ -815,7 +815,7 @@ export function DocumentImportModal({
 
           <div className="flex min-h-0 min-w-0 w-full flex-col items-stretch gap-2 border border-border-default bg-surface-subtle p-3">
             {cancelableDocuments.length > 0 && (
-              <div className="flex w-full items-center justify-between gap-3 border border-border-default bg-surface-default px-3 py-2 text-xs text-text-muted">
+              <div className="flex w-full items-center justify-between gap-3 border border-border-default bg-surface-default px-3 py-2 text-text-muted">
                 <div>
                   <div className="font-semibold text-text-default">
                     {cancelableDocuments.length} active import
@@ -836,14 +836,14 @@ export function DocumentImportModal({
 
             <div className="min-h-0 w-full flex-1 space-y-2.5 overflow-y-auto">
               {isLoading && (
-                <div className="flex items-center gap-2 border border-border-default bg-surface-default px-4 py-4 text-sm text-text-muted">
+                <div className="flex items-center gap-2 border border-border-default bg-surface-default px-4 py-4 text-text-muted">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading documents...
                 </div>
               )}
 
               {!isLoading && documents.length === 0 && (
-                <div className="border border-dashed border-border-strong bg-surface-default px-4 py-6 text-sm text-text-muted">
+                <div className="border border-dashed border-border-strong bg-surface-default px-4 py-6 text-text-muted">
                   <div className="flex items-center gap-2 text-text-default">
                     <CheckCircle2 className="h-4 w-4 text-action-primary-bg" />
                     Nothing queued yet
@@ -908,10 +908,10 @@ export function DocumentImportModal({
                         }}
                         disabled={actionDisabled}
                         className={`absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-surface-default focus: disabled:text-text-muted ${
-                          isInUse && !isPending
-                            ? "cursor-not-allowed text-text-muted"
-                            : "text-text-muted hover:bg-surface-hover hover:text-status-error-text"
-                        }`}
+ isInUse && !isPending
+ ? "cursor-not-allowed text-text-muted"
+ : "text-text-muted hover:bg-surface-hover hover:text-status-error-text"
+ }`}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -948,10 +948,10 @@ export function DocumentImportModal({
                         <div className="flex min-w-0 items-center gap-2.5">
                           {/* Document Info */}
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium text-text-default">
+                            <div className="truncate font-medium text-text-default">
                               {document.title}
                             </div>
-                            <div className="flex items-center gap-1 text-xs text-text-muted">
+                            <div className="flex items-center gap-1 text-text-muted">
                               <span className="truncate">
                                 {document.original_filename}
                               </span>
@@ -961,7 +961,7 @@ export function DocumentImportModal({
                               </span>
                             </div>
                             <div
-                              className={`mt-1 text-[11px] ${isInUse ? "text-status-warning-text" : "text-text-muted"}`}
+                              className={`mt-1 ${isInUse ? "text-status-warning-text" : "text-text-muted"}`}
                             >
                               {isInUse
                                 ? `Used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
@@ -970,7 +970,7 @@ export function DocumentImportModal({
                           </div>
                           {/* Status */}
                           <span
-                            className={`shrink-0 inline-flex items-center gap-1  px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${getStatusTone(status)}`}
+                            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1 font-semibold uppercase tracking-[0.18em] ${getStatusTone(status)}`}
                           >
                             {status === "queued" && (
                               <Loader2 className="h-3 w-3 animate-spin" />
@@ -988,7 +988,7 @@ export function DocumentImportModal({
                                 style={{ width: `${progressPercent}%` }}
                               />
                             </div>
-                            <span className="shrink-0 min-w-9 text-right text-xs font-semibold text-text-default">
+                            <span className="shrink-0 min-w-9 text-right font-semibold text-text-default">
                               {progressPercent}%
                             </span>
                           </div>
@@ -1005,7 +1005,7 @@ export function DocumentImportModal({
                               onSelectDocument(document);
                               handleClose();
                             }}
-                            className="shrink-0 border border-border-default bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover"
+                            className="shrink-0 border border-border-default bg-action-primary-bg px-3 py-1.5 font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover"
                           >
                             Attach
                           </button>
@@ -1015,13 +1015,13 @@ export function DocumentImportModal({
                       <div className="flex-1 items-center gap-3">
                         {/* Error Message */}
                         {latestJob?.error_message && (
-                          <div className=" border border-status-error-border bg-status-error-bg px-2.5 py-1.5 text-xs text-status-error-text">
+                          <div className="border border-status-error-border bg-status-error-bg px-2.5 py-1.5 text-status-error-text">
                             {latestJob.error_message}
                           </div>
                         )}
                         {/* Progress Bar */}
                         {showProgress && (
-                          <div className="flex items-center justify-between gap-2 text-[11px] text-text-muted">
+                          <div className="flex items-center justify-between gap-2 text-text-muted">
                             {/* Progress Message */}
                             {progressMessage && (
                               <span

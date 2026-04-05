@@ -1139,10 +1139,10 @@ export function CommitGraph({
                     });
                   }}
                   className={`grid min-w-31 grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
-                    currentBranch === branch.name
-                      ? "log-pane__accent-badge"
-                      : "border-border-default bg-surface-default hover:bg-surface-hover"
-                  }`}
+ currentBranch === branch.name
+ ? "log-pane__accent-badge"
+ : "border-border-default bg-surface-default hover:bg-surface-hover"
+ }`}
                   style={{ boxShadow: `inset 3px 0 0 ${branch.color}` }}
                   onClick={() => {
                     if (branch.name !== currentBranch) {

@@ -24,7 +24,7 @@ export function PersonaSurface({
   persona,
   tone = "body",
   as: Component = "div",
-  className = "",
+  className="",
   style,
   children,
 }: PersonaSurfaceProps) {

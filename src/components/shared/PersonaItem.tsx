@@ -117,7 +117,7 @@ export function PersonaItem({
   onClick,
   compact = false,
   showMeta,
-  className = "",
+  className="",
   style,
   title,
   showTypeBadge = true,

@@ -1905,14 +1905,14 @@ export const ResponseParser = forwardRef<
       <div className="bridge-response-parser flex flex-col gap-4 flex-1 min-h-0">
         {(!hasParsed && !isApplying) && (
           <div className="border border-border-default bg-surface-subtle p-8 text-center">
-            <p className="text-sm text-text-muted">
+            <p className="text-text-muted">
               Waiting for response or import to review the execution plan.
             </p>
           </div>
         )}
 
         {(parseError || applyError) && (
-          <div className="bg-status-error-bg p-3 text-sm text-status-error-text border border-border-default">
+          <div className="bg-status-error-bg p-3 text-status-error-text border border-border-default">
             Error: {parseError || applyError}
           </div>
         )}
@@ -1920,7 +1920,7 @@ export const ResponseParser = forwardRef<
         {hasParsed && (
           <div className="flex flex-col gap-4 flex-1 min-h-0">
             {assistantIdentity && assistantIdentity.source !== "fallback" && (
-              <div className="border border-border-default bg-surface-subtle px-3 py-2 text-[11px] text-text-muted">
+              <div className="border border-border-default bg-surface-subtle px-3 py-2 text-text-muted">
                 Parsed assistant:{" "}
                 <span className="font-semibold text-text-default">
                   {assistantIdentity.displayLabel}
@@ -1934,7 +1934,7 @@ export const ResponseParser = forwardRef<
             {/* Log Pane */}
             {thoughtLog && (
               <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-37.5">
-                <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 font-bold uppercase tracking-widest text-text-muted">
                   Log Pane (New Entry)
                 </div>
                 <div className="flex-1 overflow-y-auto">
@@ -1953,7 +1953,7 @@ export const ResponseParser = forwardRef<
             {/* Canvas Pane */}
             {mergedBlocks && (
               <div className="flex flex-col border border-border-default bg-surface-default overflow-hidden flex-1 min-h-37.5">
-                <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                <div className="flex items-center gap-2 bg-surface-subtle border-b border-border-default px-3 py-2 font-bold uppercase tracking-widest text-text-muted">
                   Canvas Pane (Proposed Merged Content)
                 </div>
                 <div className="flex-1 overflow-y-auto">

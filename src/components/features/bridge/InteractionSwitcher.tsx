@@ -195,11 +195,11 @@ export function InteractionSwitcher({
             <button
               key={mode}
               onClick={() => onChange(mode)}
-              className={`relative flex-1 text-[10px] font-bold tracking-widest transition-all duration-200 ease-out ${
-                value === mode
-                  ? "bg-surface-elevated text-action-primary-bg font-black z-10"
-                  : "text-text-muted hover:text-text-default hover:bg-surface-hover"
-              }`}
+              className={`relative flex-1 font-bold tracking-widest transition-all duration-200 ease-out ${
+ value === mode
+ ? "bg-surface-elevated text-action-primary-bg font-black z-10"
+ : "text-text-muted hover:text-text-default hover:bg-surface-hover"
+ }`}
             >
               {mode}
             </button>
@@ -209,19 +209,19 @@ export function InteractionSwitcher({
         {/* Token Indicator */}
         <div
           className={`flex items-center px-2 border border-border-subtle transition-all cursor-default min-w-17.5 justify-center ${
-            overLimit ? "bg-status-error-bg" : "bg-surface-default"
-          }`}
+ overLimit ? "bg-status-error-bg" : "bg-surface-default"
+ }`}
           title={`${tokens.toLocaleString()} / ${tokenLimit.toLocaleString()} tokens`}
         >
           <div className="flex flex-col items-center">
             <span
-              className={`text-[11px] font-bold tabular-nums leading-none ${
-                overLimit ? "text-status-error-text" : "text-action-primary-bg"
-              }`}
+              className={` font-bold tabular-nums leading-none ${
+ overLimit ? "text-status-error-text" : "text-action-primary-bg"
+ }`}
             >
               {tokens > 999 ? `${(tokens / 1000).toFixed(1)}k` : tokens}
             </span>
-            <span className="text-[9px] text-text-muted font-bold uppercase tracking-tighter mt-0.5">
+            <span className="text-text-muted font-bold uppercase tracking-tighter mt-0.5">
               Tokens
             </span>
           </div>
@@ -231,20 +231,20 @@ export function InteractionSwitcher({
       {/* Recommendations */}
       {overLimit && (
         <div className="flex flex-col gap-1.5">
-          <div className="border border-border-default bg-status-error-bg px-2 py-1.5 text-[10px] font-medium text-status-error-text leading-tight">
+          <div className="border border-border-default bg-status-error-bg px-2 py-1.5 font-medium text-status-error-text leading-tight">
             Payload over limit. Reduce selection to proceed.
           </div>
           <div className="flex flex-col gap-1">
             <button
               onClick={onReduceSelection}
-              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
+              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
             >
               <RotateCcw className="h-3 w-3 text-status-error-text" />
               <span>Use recent only</span>
             </button>
             <button
               onClick={onAutoSummarize}
-              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 text-[10px] font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
+              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
             >
               <Zap className="h-3 w-3 text-status-warning-text" />
               <span>Exclude canvas</span>

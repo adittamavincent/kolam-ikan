@@ -426,12 +426,12 @@ model: GPT-4.1
 
   it("normalizes malformed inline list markers in canvas diff output", () => {
     const diff = `
-  + # Song Profile: "En Casita"
-  + **Artist:** Bad Bunny (feat. Gabriela Berlingeri)
-  + **Album:** *Las Que No Iban a Salir* (2020)
-  + **Key Themes:** + \\* Quarantine and social distancing
-  +   * Nostalgia for Puerto Rico (San Juan)
-  +   * Appreciation for simple moments/sunsets
+ + # Song Profile: "En Casita"
+ + **Artist:** Bad Bunny (feat. Gabriela Berlingeri)
+ + **Album:** *Las Que No Iban a Salir* (2020)
+ + **Key Themes:** + \\* Quarantine and social distancing
+ + * Nostalgia for Puerto Rico (San Juan)
+ + * Appreciation for simple moments/sunsets
 `;
 
     const patched = applyCanvasMarkdownDiff("", diff);
@@ -456,23 +456,23 @@ model: GPT-4.1
 - **Composition:** The song transitions from hard-hitting verses into this atmospheric, reflective closing section.`;
 
     const diff = `
-  - # Song Identification: "Acho PR"
+ - # Song Identification: "Acho PR"
 
 <!-- end list -->
 
-  + # Song Identification: "DtMF" (Debí Tirar Más Fotos)
-  + ## Track Details
-      * **Artist:** Bad Bunny
+ + # Song Identification: "DtMF" (Debí Tirar Más Fotos)
+ + ## Track Details
+ * **Artist:** Bad Bunny
 
 <!-- end list -->
 
-  -   * **Album:** *Nadie Sabe Lo Que Va a Pasar Mañana* (2023)
-  -   * **Genre:** Trap / Reggaeton (with a melodic outro)
+ - * **Album:** *Nadie Sabe Lo Que Va a Pasar Mañana* (2023)
+ - * **Genre:** Trap / Reggaeton (with a melodic outro)
 
 <!-- end list -->
 
-  +   * **Album:** *Nadie Sabe Lo Que Va a Pasar Mañana* (2023)
-  +   * **Genre:** Melodic Trap / Latin Pop / Bolero-inspired
+ + * **Album:** *Nadie Sabe Lo Que Va a Pasar Mañana* (2023)
+ + * **Genre:** Melodic Trap / Latin Pop / Bolero-inspired
 
 \`\`\`
 ## Key Lyrics Provided
@@ -481,18 +481,18 @@ model: GPT-4.1
 
 ## Context & Themes
 
-  * **Location:** San Juan, Puerto Rico.
+ * **Location:** San Juan, Puerto Rico.
 \`\`\`
 
 <!-- end list -->
 
-  -   * **Theme:** Nostalgia, gratitude, and a connection to one's homeland.
-  -   * **Composition:** The song transitions from hard-hitting verses into this atmospheric, reflective closing section.
+ - * **Theme:** Nostalgia, gratitude, and a connection to one's homeland.
+ - * **Composition:** The song transitions from hard-hitting verses into this atmospheric, reflective closing section.
 
 <!-- end list -->
 
-  +   * **Theme:** Regret, nostalgia for a past love, and appreciation for his island home.
-  +   * **Composition:** Known for its sentimental tone and "bolero" influence; the lyrics provided appear at both the beginning and the end of the track.
+ + * **Theme:** Regret, nostalgia for a past love, and appreciation for his island home.
+ + * **Composition:** Known for its sentimental tone and "bolero" influence; the lyrics provided appear at both the beginning and the end of the track.
 `;
 
     const patched = applyCanvasMarkdownDiff(currentMarkdown, diff);

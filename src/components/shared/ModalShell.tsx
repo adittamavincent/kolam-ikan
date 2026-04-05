@@ -234,7 +234,7 @@ function ModalFooterActionButton({ action }: { action: ModalFooterAction }) {
       form={action.form}
       disabled={action.disabled}
       className={joinClassNames(
-        "inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 px-4 py-2 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
         getFooterActionToneClassName(action.tone ?? "secondary"),
       )}
       title={action.title}
@@ -297,7 +297,7 @@ export function ModalHeader({
           <DialogTitle
             as="h2"
             className={joinClassNames(
-              "text-xl font-semibold text-text-default",
+              " font-semibold text-text-default",
               titleClassName,
             )}
           >
@@ -307,7 +307,7 @@ export function ModalHeader({
         {description ? (
           <p
             className={joinClassNames(
-              "mt-1 text-sm leading-6 text-text-muted",
+              "mt-1 leading-6 text-text-muted",
               descriptionClassName,
             )}
           >

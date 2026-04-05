@@ -281,38 +281,38 @@ export function bridgeMarkdownToBlocks(
             : bulletText !== null
               ? "bulletListItem"
               : "numberedListItem",
-        props:
-          taskItem !== null || bnMeta
-            ? ({
-                ...(taskItem !== null ? { checked: taskItem.checked } : {}),
-                ...(bnMeta ? { md: bnMeta } : {}),
-              } as unknown as Record<string, Json>)
-            : undefined,
-        content,
-      };
+ props:
+ taskItem !== null || bnMeta
+ ? ({
+ ...(taskItem !== null ? { checked: taskItem.checked } : {}),
+ ...(bnMeta ? { md: bnMeta } : {}),
+ } as unknown as Record<string, Json>)
+ : undefined,
+ content,
+ };
 
-      if (depth === 0) {
-        root.push(node);
-      } else {
-        const parent = lastAtDepth[depth - 1];
-        if (parent) {
-          parent.children = parent.children || [];
-          parent.children.push(node);
-        } else {
-          root.push(node);
-        }
-      }
+ if (depth === 0) {
+ root.push(node);
+ } else {
+ const parent = lastAtDepth[depth - 1];
+ if (parent) {
+ parent.children = parent.children || [];
+ parent.children.push(node);
+ } else {
+ root.push(node);
+ }
+ }
 
-      lastAtDepth[depth] = node;
-      lastAtDepth.length = depth + 1;
-      continue;
-    }
+ lastAtDepth[depth] = node;
+ lastAtDepth.length = depth + 1;
+ continue;
+ }
 
-    const heading = parseHeadingLine(line);
-    if (heading) {
-      root.push({
-        id: genId(),
-        type: "heading",
+ const heading = parseHeadingLine(line);
+ if (heading) {
+ root.push({
+ id: genId(),
+ type: "heading",
         props: { level: heading.level },
         content: toTextContent(heading.text),
       });

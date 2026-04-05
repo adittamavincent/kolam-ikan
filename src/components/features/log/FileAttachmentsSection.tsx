@@ -66,14 +66,14 @@ export function FileAttachmentsSection({
 
       <div
         className={`rounded-none border transition-colors ${
-          canUpload
-            ? isDragOver
-              ? ""
-              : hasItems
-                ? "border-transparent"
-                : "border-dashed border-border-default bg-surface-subtle"
-            : "border-transparent"
-        }`}
+ canUpload
+ ? isDragOver
+ ? ""
+ : hasItems
+ ? "border-transparent"
+ : "border-dashed border-border-default bg-surface-subtle"
+ : "border-transparent"
+ }`}
         style={
           canUpload && isDragOver
             ? {

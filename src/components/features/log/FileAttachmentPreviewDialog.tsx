@@ -89,10 +89,10 @@ export function FileAttachmentPreviewDialog({
                     onActivePreviewTabChange("file");
                   }}
                   className={`px-2 py-1 transition-colors ${
-                    activePreviewTab === "file"
-                      ? "bg-action-primary-bg text-action-primary-text"
-                      : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
-                  }`}
+ activePreviewTab === "file"
+ ? "bg-action-primary-bg text-action-primary-text"
+ : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
+ }`}
                 >
                   File
                 </button>
@@ -111,10 +111,10 @@ export function FileAttachmentPreviewDialog({
                     }
                   }}
                   className={`px-2 py-1 transition-colors ${
-                    activePreviewTab === "parsed"
-                      ? "bg-action-primary-bg text-action-primary-text"
-                      : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
-                  }`}
+ activePreviewTab === "parsed"
+ ? "bg-action-primary-bg text-action-primary-text"
+ : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
+ }`}
                 >
                   Parsed
                 </button>

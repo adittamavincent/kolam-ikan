@@ -537,13 +537,13 @@ const StreamNode = ({
     >
       <div
         className={`flex h-6 min-w-0 flex-1 items-center gap-2 pr-2 cursor-pointer
-            ${
-              isStreamActive
-                ? "navigator-row--active text-action-primary-bg font-semibold"
-                : "text-text-subtle hover:text-text-default"
-            } ${!isStreamActive && isNewlyCreated ? " " : ""}
-            ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
-            ${isDragOver ? "  " : ""}`}
+ ${
+ isStreamActive
+ ? "navigator-row--active text-action-primary-bg font-semibold"
+ : "text-text-subtle hover:text-text-default"
+ } ${!isStreamActive && isNewlyCreated ? " " : ""}
+ ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
+ ${isDragOver ? " " : ""}`}
         style={{
           paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)`,
         }}
@@ -687,12 +687,12 @@ const CabinetNode = ({
     >
       <div
         className={`flex h-6 items-center gap-2 pr-2 group cursor-pointer
-            ${
-              isActive
-                ? "navigator-row--active text-action-primary-bg font-medium"
-                : "text-text-subtle"
-            } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
-            ${isDragOver ? "  " : ""}`}
+ ${
+ isActive
+ ? "navigator-row--active text-action-primary-bg font-medium"
+ : "text-text-subtle"
+ } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
+ ${isDragOver ? " " : ""}`}
         style={{
           paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)`,
         }}
@@ -2505,7 +2505,7 @@ export function Navigator({}: NavigatorProps) {
   if (!domainId) {
     return (
       <div className="flex h-full w-full flex-col border-r border-border-default bg-surface-subtle p-4">
-        <p className="text-sm text-text-subtle">Select a domain to begin</p>
+        <p className="text-text-subtle">Select a domain to begin</p>
       </div>
     );
   }
@@ -2535,7 +2535,7 @@ export function Navigator({}: NavigatorProps) {
                     ? "New Stream"
                     : "New Stream (Root is restricted)"
                 }
-                className=" p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+                className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
               >
                 <FilePlus className="h-4 w-4" />
               </button>
@@ -2546,7 +2546,7 @@ export function Navigator({}: NavigatorProps) {
               disabled={isCreateCabinetDisabled}
               aria-label="New cabinet"
               title="New Cabinet"
-              className=" p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+              className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
             >
               <FolderPlus className="h-4 w-4" />
             </button>
@@ -2555,7 +2555,7 @@ export function Navigator({}: NavigatorProps) {
               onClick={hideSidebar}
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
-              className=" p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
+              className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
             >
               <PanelLeftClose className="h-4 w-4" />
             </button>
@@ -2730,17 +2730,17 @@ export function Navigator({}: NavigatorProps) {
             >
               <button
                 onClick={() => handleContextAction("rename")}
-                className="flex w-full items-center justify-between px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center justify-between px-2 py-1.5 text-text-default hover:bg-surface-subtle"
               >
                 <span className="flex items-center gap-2">
                   <Pencil className="h-4 w-4 text-text-muted" />
                   Rename
                 </span>
-                <span className="text-[10px] text-text-muted">F2</span>
+                <span className="text-text-muted">F2</span>
               </button>
               <button
                 onClick={() => handleContextAction("duplicate")}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
               >
                 <Copy className="h-4 w-4 text-text-muted" />
                 Duplicate
@@ -2748,14 +2748,14 @@ export function Navigator({}: NavigatorProps) {
               <button
                 onClick={() => handleContextAction("move")}
                 disabled={contextMenuIsGlobal}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
               >
                 <Move className="h-4 w-4 text-text-muted" />
                 Move
               </button>
               <button
                 onClick={() => handleContextAction("properties")}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
               >
                 <Info className="h-4 w-4 text-text-muted" />
                 Properties
@@ -2764,13 +2764,13 @@ export function Navigator({}: NavigatorProps) {
               <button
                 onClick={() => handleContextAction("delete")}
                 disabled={contextMenuIsGlobal}
-                className="flex w-full items-center justify-between px-2 py-1.5 text-xs text-status-error-text hover:bg-status-error-bg disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full items-center justify-between px-2 py-1.5 text-status-error-text hover:bg-status-error-bg disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="flex items-center gap-2">
                   <Trash2 className="h-4 w-4" />
                   Delete
                 </span>
-                <span className="text-[10px] text-status-error-text">Del</span>
+                <span className="text-status-error-text">Del</span>
               </button>
             </div>
           </div>,
@@ -2822,17 +2822,17 @@ export function Navigator({}: NavigatorProps) {
             >
               <DialogPanel className="w-full max-w-sm border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
-                  <DialogTitle className="text-sm font-semibold text-text-default">
+                  <DialogTitle className="font-semibold text-text-default">
                     Move {moveTarget?.type === "cabinet" ? "Cabinet" : "Stream"}
                   </DialogTitle>
                   <button
                     onClick={closeMoveDialog}
-                    className=" p-1 text-text-muted hover:bg-surface-subtle"
+                    className="p-1 text-text-muted hover:bg-surface-subtle"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="mt-3 space-y-2 text-xs text-text-subtle">
+                <div className="mt-3 space-y-2 text-text-subtle">
                   <div className="flex items-center justify-between">
                     <span>Item</span>
                     <span className="text-text-default">
@@ -2846,7 +2846,7 @@ export function Navigator({}: NavigatorProps) {
                       onChange={(event) =>
                         setMoveDestination(event.target.value || null)
                       }
-                      className=" border border-border-default bg-surface-default px-2 py-1.5 text-xs text-text-default focus:border-border-default focus: focus: focus:"
+                      className="border border-border-default bg-surface-default px-2 py-1.5 text-text-default focus:border-border-default focus: focus: focus:"
                     >
                       <option
                         value=""
@@ -2876,7 +2876,7 @@ export function Navigator({}: NavigatorProps) {
                 <div className="mt-4 flex justify-end gap-2">
                   <button
                     onClick={closeMoveDialog}
-                    className=" border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
+                    className="border border-border-default px-3 py-1.5 font-semibold text-text-default transition hover:bg-surface-subtle"
                   >
                     Cancel
                   </button>
@@ -2894,7 +2894,7 @@ export function Navigator({}: NavigatorProps) {
                         : (moveDestination ?? null) ===
                           (moveItem as Cabinet | undefined)?.parent_id
                     }
-                    className=" bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    className="bg-action-primary-bg px-3 py-1.5 font-semibold text-action-primary-text transition hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Move
                   </button>
@@ -2934,17 +2934,17 @@ export function Navigator({}: NavigatorProps) {
             >
               <DialogPanel className="w-full max-w-sm border border-border-default bg-surface-default p-5">
                 <div className="flex items-start justify-between">
-                  <DialogTitle className="text-sm font-semibold text-text-default">
+                  <DialogTitle className="font-semibold text-text-default">
                     Properties
                   </DialogTitle>
                   <button
                     onClick={() => setPropertiesTarget(null)}
-                    className=" p-1 text-text-muted hover:bg-surface-subtle"
+                    className="p-1 text-text-muted hover:bg-surface-subtle"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="mt-3 space-y-2 text-xs text-text-subtle">
+                <div className="mt-3 space-y-2 text-text-subtle">
                   <div className="flex items-center justify-between">
                     <span>Name</span>
                     <span className="text-text-default">
@@ -2997,7 +2997,7 @@ export function Navigator({}: NavigatorProps) {
                 <div className="mt-4 flex justify-end">
                   <button
                     onClick={() => setPropertiesTarget(null)}
-                    className=" border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default transition hover:bg-surface-subtle"
+                    className="border border-border-default px-3 py-1.5 font-semibold text-text-default transition hover:bg-surface-subtle"
                   >
                     Close
                   </button>

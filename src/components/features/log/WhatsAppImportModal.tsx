@@ -876,10 +876,10 @@ function RangePreviewTurnRow({
   return (
     <div
       className={`relative flex items-center justify-between gap-3 px-2 py-1 ${
-        isSelected
-          ? "border border-border-subtle bg-primary-950"
-          : "hover:bg-surface-subtle"
-      }`}
+ isSelected
+ ? "border border-border-subtle bg-primary-950"
+ : "hover:bg-surface-subtle"
+ }`}
     >
       <div
         className="min-w-0 flex-1"
@@ -903,14 +903,14 @@ function RangePreviewTurnRow({
         <button
           onClick={onSetStart}
           title="Set as start"
-          className=" border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
+          className="border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
         >
           Start
         </button>
         <button
           onClick={onSetEnd}
           title="Set as end"
-          className=" border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
+          className="border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
         >
           End
         </button>
@@ -1434,164 +1434,164 @@ export function WhatsAppImportModal({
 
       if (creatingAbortRef.current || !isOpen) {
         // If the modal was closed while the request was in-flight, don't apply results
-        setCreatingAllPersonas(false);
-        return null;
-      }
+ setCreatingAllPersonas(false);
+ return null;
+ }
 
-      if (error || !data) {
-        setMapError(getSupabaseErrorMessage(error));
-        return null;
-      }
+ if (error || !data) {
+ setMapError(getSupabaseErrorMessage(error));
+ return null;
+ }
 
-      await queryClient.invalidateQueries({
-        predicate: (query) =>
-          Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
-      });
+ await queryClient.invalidateQueries({
+ predicate: (query) =>
+ Array.isArray(query.queryKey) && query.queryKey[0] === "personas",
+ });
 
-      const createdMap: Record<string, string> = {};
-      // Map created personas back to the original sender strings using normalized keys
-      for (const created of data) {
-        const createdKey = normalizePersonaNameKey(created.name);
-        for (const sender of sendersToCreate) {
-          if (normalizePersonaNameKey(sender) === createdKey) {
-            createdMap[sender] = created.id;
-          }
-        }
-      }
+ const createdMap: Record<string, string> = {};
+ // Map created personas back to the original sender strings using normalized keys
+ for (const created of data) {
+ const createdKey = normalizePersonaNameKey(created.name);
+ for (const sender of sendersToCreate) {
+ if (normalizePersonaNameKey(sender) === createdKey) {
+ createdMap[sender] = created.id;
+ }
+ }
+ }
 
-      if (Object.keys(createdMap).length === 0) {
-        console.debug(
-          "[WhatsApp] No created map entries matched senders; created rows:",
-          data,
-        );
-      } else {
-        setMapping((prev) => ({ ...prev, ...createdMap }));
-      }
+ if (Object.keys(createdMap).length === 0) {
+ console.debug(
+ "[WhatsApp] No created map entries matched senders; created rows:",
+ data,
+ );
+ } else {
+ setMapping((prev) => ({ ...prev, ...createdMap }));
+ }
 
-      // Remove created senders from pending
-      setPendingPersonaCreations((prev) => prev.filter((s) => !createdMap[s]));
+ // Remove created senders from pending
+ setPendingPersonaCreations((prev) => prev.filter((s) => !createdMap[s]));
 
-      // Remove any local drafts that correspond to created personas
-      if (Object.keys(createdMap).length > 0) {
-        setDraftPersonas((prev) => {
-          const next = { ...prev };
-          const createdNameKeys = new Set(
-            Object.keys(createdMap).map((s) => normalizePersonaNameKey(s)),
-          );
-          for (const key of Object.keys(prev)) {
-            if (createdNameKeys.has(normalizePersonaNameKey(prev[key].name))) {
-              delete next[key];
-            }
-          }
-          return next;
-        });
-      }
+ // Remove any local drafts that correspond to created personas
+ if (Object.keys(createdMap).length > 0) {
+ setDraftPersonas((prev) => {
+ const next = { ...prev };
+ const createdNameKeys = new Set(
+ Object.keys(createdMap).map((s) => normalizePersonaNameKey(s)),
+ );
+ for (const key of Object.keys(prev)) {
+ if (createdNameKeys.has(normalizePersonaNameKey(prev[key].name))) {
+ delete next[key];
+ }
+ }
+ return next;
+ });
+ }
 
-      return createdMap;
-    } catch (err) {
-      setMapError(err instanceof Error ? err.message : "An error occurred");
-      return null;
-    } finally {
-      setCreatingAllPersonas(false);
-    }
-  };
+ return createdMap;
+ } catch (err) {
+ setMapError(err instanceof Error ? err.message : "An error occurred");
+ return null;
+ } finally {
+ setCreatingAllPersonas(false);
+ }
+ };
 
-  const handleMapNext = async () => {
-    setMapError(null);
-    setMapNotice(null);
+ const handleMapNext = async () => {
+ setMapError(null);
+ setMapNotice(null);
 
-    const nextMapping: Record<string, string> = getValidMapping(mapping);
-    if (Object.keys(nextMapping).length !== Object.keys(mapping).length) {
-      setMapping(nextMapping);
-    }
+ const nextMapping: Record<string, string> = getValidMapping(mapping);
+ if (Object.keys(nextMapping).length !== Object.keys(mapping).length) {
+ setMapping(nextMapping);
+ }
 
-    // Compute which senders should be created on confirm.
-    // Preserve any existing pending creators (e.g., from Batch Create) and
-    // include any senders currently mapped to local draft persona ids.
-    const draftIds = new Set(Object.keys(draftPersonas));
-    const toCreate = mappableSenders.filter((sender) => {
-      const mappedId = mapping[sender];
-      if (!mappedId) return true;
-      if (draftIds.has(mappedId)) return true;
-      return false;
-    });
+ // Compute which senders should be created on confirm.
+ // Preserve any existing pending creators (e.g., from Batch Create) and
+ // include any senders currently mapped to local draft persona ids.
+ const draftIds = new Set(Object.keys(draftPersonas));
+ const toCreate = mappableSenders.filter((sender) => {
+ const mappedId = mapping[sender];
+ if (!mappedId) return true;
+ if (draftIds.has(mappedId)) return true;
+ return false;
+ });
 
-    // Merge with any previously-set pending creations to avoid clearing Batch-create
-    setPendingPersonaCreations((prev) => {
-      const merged = new Set(prev.concat(toCreate));
-      return Array.from(merged);
-    });
+ // Merge with any previously-set pending creations to avoid clearing Batch-create
+ setPendingPersonaCreations((prev) => {
+ const merged = new Set(prev.concat(toCreate));
+ return Array.from(merged);
+ });
 
-    if (!hasPdfTurns) {
-      await handleConfirm(uploads, nextMapping);
-      return;
-    }
+ if (!hasPdfTurns) {
+ await handleConfirm(uploads, nextMapping);
+ return;
+ }
 
-    // Duplicate-detection: compare file hashes and storage/name keys against existing documents
-    try {
-      const docs = documents ?? [];
-      type DocLite = {
-        source_metadata?: { fileHash?: string } | undefined;
-        storage_path?: string | undefined;
-        title?: string | undefined;
-        id?: string;
-        thumbnail_path?: string | undefined;
-        created_at?: string | undefined;
-        user_id?: string | null | undefined;
-      };
+ // Duplicate-detection: compare file hashes and storage/name keys against existing documents
+ try {
+ const docs = documents ?? [];
+ type DocLite = {
+ source_metadata?: { fileHash?: string } | undefined;
+ storage_path?: string | undefined;
+ title?: string | undefined;
+ id?: string;
+ thumbnail_path?: string | undefined;
+ created_at?: string | undefined;
+ user_id?: string | null | undefined;
+ };
 
-      const docsByHash = new Map<string, DocLite>();
-      const docsByKey = new Map<string, DocLite>();
+ const docsByHash = new Map<string, DocLite>();
+ const docsByKey = new Map<string, DocLite>();
 
-      for (const d of docs) {
-        const dd = d as unknown as DocLite;
-        const fh = dd?.source_metadata?.fileHash;
-        if (fh) docsByHash.set(String(fh).toLowerCase(), dd);
-        const storage = dd?.storage_path ?? "";
-        if (storage) docsByKey.set(normalizeAttachmentKey(storage), dd);
-        const titleKey = normalizeAttachmentKey(dd?.title ?? "");
-        if (titleKey) docsByKey.set(titleKey, dd);
-      }
+ for (const d of docs) {
+ const dd = d as unknown as DocLite;
+ const fh = dd?.source_metadata?.fileHash;
+ if (fh) docsByHash.set(String(fh).toLowerCase(), dd);
+ const storage = dd?.storage_path ?? "";
+ if (storage) docsByKey.set(normalizeAttachmentKey(storage), dd);
+ const titleKey = normalizeAttachmentKey(dd?.title ?? "");
+ if (titleKey) docsByKey.set(titleKey, dd);
+ }
 
-      const checks = await Promise.all(
-        pdfTurns.map(async (t) => {
-          const existingUpload = uploads[t.id];
-          let fileHash = existingUpload?.fileHash;
-          let matchedDoc: unknown | null = null;
+ const checks = await Promise.all(
+ pdfTurns.map(async (t) => {
+ const existingUpload = uploads[t.id];
+ let fileHash = existingUpload?.fileHash;
+ let matchedDoc: unknown | null = null;
 
-          // If already have a hash from an earlier upload, prefer it
-          if (fileHash) {
-            matchedDoc = docsByHash.get(String(fileHash).toLowerCase()) ?? null;
-          }
+ // If already have a hash from an earlier upload, prefer it
+ if (fileHash) {
+ matchedDoc = docsByHash.get(String(fileHash).toLowerCase()) ?? null;
+ }
 
-          // If not matched, try to find a file from ZIP and hash it
-          if (!matchedDoc) {
-            const candidate = findBestPdfForTurn(t, zipPdfIndex);
-            if (candidate && !fileHash) {
-              try {
-                fileHash = await calculateFileHash(candidate);
-              } catch {
-                fileHash = undefined;
-              }
-              if (fileHash)
-                matchedDoc =
-                  docsByHash.get(String(fileHash).toLowerCase()) ?? null;
-            }
-          }
+ // If not matched, try to find a file from ZIP and hash it
+ if (!matchedDoc) {
+ const candidate = findBestPdfForTurn(t, zipPdfIndex);
+ if (candidate && !fileHash) {
+ try {
+ fileHash = await calculateFileHash(candidate);
+ } catch {
+ fileHash = undefined;
+ }
+ if (fileHash)
+ matchedDoc =
+ docsByHash.get(String(fileHash).toLowerCase()) ?? null;
+ }
+ }
 
-          // Fallback: match by normalized filename/path
-          if (!matchedDoc) {
-            const key = normalizeAttachmentKey(t.filename ?? t.fullPath);
-            if (key) matchedDoc = docsByKey.get(key) ?? null;
-          }
+ // Fallback: match by normalized filename/path
+ if (!matchedDoc) {
+ const key = normalizeAttachmentKey(t.filename ?? t.fullPath);
+ if (key) matchedDoc = docsByKey.get(key) ?? null;
+ }
 
-          return { turnId: t.id, matchedDoc, fileHash };
-        }),
-      );
+ return { turnId: t.id, matchedDoc, fileHash };
+ }),
+ );
 
-      const matchedAll = checks.every((c) => c.matchedDoc);
+ const matchedAll = checks.every((c) => c.matchedDoc);
 
-      // If all PDFs already exist for this stream/user, show dialog and don't proceed to files
+ // If all PDFs already exist for this stream/user, show dialog and don't proceed to files
       if (matchedAll && checks.length > 0) {
         // Annotate uploads state so UI can show details if needed
         setUploads((prev) => {
@@ -1788,108 +1788,108 @@ export function WhatsAppImportModal({
     if (pendingPersonaCreations.length > 0) {
       const createdMap = await handleCreatePersonas(pendingPersonaCreations);
       if (!createdMap) return; // Creation failed, don't proceed
-      effectiveMapping = { ...effectiveMapping, ...createdMap };
-      setPendingPersonaCreations([]);
-    }
+ effectiveMapping = { ...effectiveMapping, ...createdMap };
+ setPendingPersonaCreations([]);
+ }
 
-    // Transfer all text turns and attachment placeholders to EntryCreator.
-    // Transfer pending files to the document import handler.
-    const payloadTurns: WhatsAppInjectPayload["turns"] = [];
-    const transferFiles: Array<{ file: File; hash?: string }> = [];
+ // Transfer all text turns and attachment placeholders to EntryCreator.
+ // Transfer pending files to the document import handler.
+ const payloadTurns: WhatsAppInjectPayload["turns"] = [];
+ const transferFiles: Array<{ file: File; hash?: string }> = [];
 
-    for (const turn of selectedTurns) {
-      const personaId = effectiveMapping[turn.sender];
-      if (!personaId) continue;
-      const persona = personas?.find((p) => p.id === personaId);
-      const personaName = persona?.name ?? turn.sender;
+ for (const turn of selectedTurns) {
+ const personaId = effectiveMapping[turn.sender];
+ if (!personaId) continue;
+ const persona = personas?.find((p) => p.id === personaId);
+ const personaName = persona?.name ?? turn.sender;
 
-      if (turn.type === "text") {
-        // All text turns go directly to EntryCreator
-        payloadTurns.push({
-          type: "text",
-          personaId,
-          personaName,
-          messages: turn.messages!,
-        });
-      } else if (turn.type === "pdf") {
-        const upload = uploads[turn.id];
+ if (turn.type === "text") {
+ // All text turns go directly to EntryCreator
+ payloadTurns.push({
+ type: "text",
+ personaId,
+ personaName,
+ messages: turn.messages!,
+ });
+ } else if (turn.type === "pdf") {
+ const upload = uploads[turn.id];
 
-        if (process.env.NODE_ENV !== "production")
-          console.debug("[WhatsApp] Processing PDF turn:", {
-            turnId: turn.id,
-            filename: turn.filename,
-            fullPath: turn.fullPath,
-            uploadStatus: upload?.status,
-            uploadFile: upload?.file
-              ? { name: upload.file.name, size: upload.file.size }
-              : null,
-          });
+ if (process.env.NODE_ENV !== "production")
+ console.debug("[WhatsApp] Processing PDF turn:", {
+ turnId: turn.id,
+ filename: turn.filename,
+ fullPath: turn.fullPath,
+ uploadStatus: upload?.status,
+ uploadFile: upload?.file
+ ? { name: upload.file.name, size: upload.file.size }
+ : null,
+ });
 
-        // If already uploaded (done) or already exists → include in inject payload
-        if (
-          (upload?.status === "done" &&
-            upload.documentId &&
-            upload.storagePath) ||
-          (upload?.status === "exists" &&
-            upload.existingDocument &&
-            (upload.existingDocument.id || upload.existingDocument.storagePath))
-        ) {
-          const docId =
-            upload?.status === "done"
-              ? upload!.documentId
-              : upload!.existingDocument?.id;
-          const storagePath =
-            upload?.status === "done"
-              ? upload!.storagePath
-              : upload!.existingDocument?.storagePath;
-          const thumbnailPath =
-            (upload?.status === "done"
-              ? upload!.thumbnailPath
-              : upload!.existingDocument?.thumbnailPath) ?? undefined;
-          const titleFromDoc =
-            upload?.status === "done"
-              ? upload!.titleSnapshot
-              : upload!.existingDocument?.title;
+ // If already uploaded (done) or already exists → include in inject payload
+ if (
+ (upload?.status === "done" &&
+ upload.documentId &&
+ upload.storagePath) ||
+ (upload?.status === "exists" &&
+ upload.existingDocument &&
+ (upload.existingDocument.id || upload.existingDocument.storagePath))
+ ) {
+ const docId =
+ upload?.status === "done"
+ ? upload!.documentId
+ : upload!.existingDocument?.id;
+ const storagePath =
+ upload?.status === "done"
+ ? upload!.storagePath
+ : upload!.existingDocument?.storagePath;
+ const thumbnailPath =
+ (upload?.status === "done"
+ ? upload!.thumbnailPath
+ : upload!.existingDocument?.thumbnailPath) ?? undefined;
+ const titleFromDoc =
+ upload?.status === "done"
+ ? upload!.titleSnapshot
+ : upload!.existingDocument?.title;
 
-          const attachment = {
-            documentId: docId,
-            storagePath,
-            thumbnailPath,
-            ...(upload?.previewUrl ? { previewUrl: upload.previewUrl } : {}),
-            titleSnapshot:
-              upload.titleSnapshot ??
-              titleFromDoc ??
-              turn.preferredTitle ??
-              turn.filename ??
-              "Document",
-          };
+ const attachment = {
+ documentId: docId,
+ storagePath,
+ thumbnailPath,
+ ...(upload?.previewUrl ? { previewUrl: upload.previewUrl } : {}),
+ titleSnapshot:
+ upload.titleSnapshot ??
+ titleFromDoc ??
+ turn.preferredTitle ??
+ turn.filename ??
+ "Document",
+ };
 
-          pushAttachmentTurn(payloadTurns, {
-            personaId,
-            personaName,
-            attachment,
-          });
-        }
-        // If pending with a file → include placeholder in inject + transfer to document import handler
-        else if (upload?.file && upload.status === "pending") {
-          const file = upload.file;
+ pushAttachmentTurn(payloadTurns, {
+ personaId,
+ personaName,
+ attachment,
+ });
+ }
+ // If pending with a file → include placeholder in inject + transfer to document import handler
+ else if (upload?.file && upload.status === "pending") {
+ const file = upload.file;
 
-          if (process.env.NODE_ENV !== "production")
-            console.debug("[WhatsApp] Queuing PDF file for transfer:", {
-              fileName: file.name,
-              fileSize: file.size,
-              fileType: file.type,
-            });
-          const hash = upload.fileHash ?? (await calculateFileHash(file));
+ if (process.env.NODE_ENV !== "production")
+ console.debug("[WhatsApp] Queuing PDF file for transfer:", {
+ fileName: file.name,
+ fileSize: file.size,
+ fileType: file.type,
+ });
+ const hash = upload.fileHash ?? (await calculateFileHash(file));
 
-          if (!transferFiles.find((f) => f.file === file)) {
-            transferFiles.push({ file, hash });
-          }
+ if (!transferFiles.find((f) => f.file === file)) {
+ transferFiles.push({ file, hash });
+ }
 
-          // Create a blob URL for immediate preview display
-          const blobUrl = URL.createObjectURL(file);
+ // Create a blob URL for immediate preview display
+ const blobUrl = URL.createObjectURL(file);
 
-          // Track this preview URL within the upload state, even though it's still pending
+ // Track this preview URL within the upload state, even though it's still pending
           // Update synchronously without recreating the entire object
           upload.previewUrl = blobUrl;
 
@@ -2302,7 +2302,7 @@ export function WhatsAppImportModal({
           onClose={handleRequestClose}
           meta={
             step !== "paste" ? (
-              <span className=" bg-surface-subtle px-2 py-0.5 font-mono text-text-muted">
+              <span className="bg-surface-subtle px-2 py-0.5 font-mono text-text-muted">
                 {currentStepNumber} / {totalSteps}
               </span>
             ) : null
@@ -2315,11 +2315,11 @@ export function WhatsAppImportModal({
             <p className="text-text-muted">
               Paste chat text or upload a WhatsApp ZIP export. Attachment
               references like{" "}
-              <code className=" bg-surface-subtle px-1 py-0.5">
+              <code className="bg-surface-subtle px-1 py-0.5">
                 &lt;attached: photo.jpg&gt;
               </code>{" "}
               or{" "}
-              <code className=" bg-surface-subtle px-1 py-0.5">
+              <code className="bg-surface-subtle px-1 py-0.5">
                 &lt;attached: document.pdf&gt;
               </code>{" "}
               are detected automatically.
@@ -2371,10 +2371,10 @@ export function WhatsAppImportModal({
               }}
               onDrop={(e) => void handleZipDrop(e)}
               className={`flex flex-wrap items-center gap-3 border px-3 py-2 transition-colors ${
-                zipDragActive
-                  ? "border-accent-default bg-accent-subtle"
-                  : "border-border-default bg-surface-subtle"
-              } ${zipLoading ? "cursor-progress" : "cursor-pointer"}`}
+ zipDragActive
+ ? "border-accent-default bg-accent-subtle"
+ : "border-border-default bg-surface-subtle"
+ } ${zipLoading ? "cursor-progress" : "cursor-pointer"}`}
             >
               <div className="flex items-center gap-1.5 text-text-default">
                 {zipLoading ? (
@@ -2492,7 +2492,7 @@ export function WhatsAppImportModal({
               </p>
             </div>
 
-            <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-text-muted">
+            <div className="border border-border-default bg-surface-subtle px-3 py-2 text-text-muted">
               <div>
                 Total turns:{" "}
                 <span className="text-text-default">
@@ -2517,7 +2517,7 @@ export function WhatsAppImportModal({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setRangeStart((s) => Math.max(0, s - 1))}
-                    className=" border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
+                    className="border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
                     aria-label="decrement start"
                   >
                     -
@@ -2543,13 +2543,13 @@ export function WhatsAppImportModal({
                       setRangeStart(next);
                       if (next > rangeEnd) setRangeEnd(next);
                     }}
-                    className=" border border-border-default bg-surface-default px-2 py-1 text-text-default focus:border-border-default focus:"
+                    className="border border-border-default bg-surface-default px-2 py-1 text-text-default focus:border-border-default focus:"
                   />
                   <button
                     onClick={() =>
                       setRangeStart((s) => Math.min(s + 1, rangeEnd))
                     }
-                    className=" border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
+                    className="border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
                     aria-label="increment start"
                   >
                     +
@@ -2564,7 +2564,7 @@ export function WhatsAppImportModal({
                     onClick={() =>
                       setRangeEnd((e) => Math.max(e - 1, rangeStart))
                     }
-                    className=" border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
+                    className="border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
                     aria-label="decrement end"
                   >
                     -
@@ -2590,7 +2590,7 @@ export function WhatsAppImportModal({
                       setRangeEnd(next);
                       if (next < rangeStart) setRangeStart(next);
                     }}
-                    className=" border border-border-default bg-surface-default px-2 py-1 text-text-default focus:border-border-default focus:"
+                    className="border border-border-default bg-surface-default px-2 py-1 text-text-default focus:border-border-default focus:"
                   />
                   <button
                     onClick={() =>
@@ -2598,7 +2598,7 @@ export function WhatsAppImportModal({
                         Math.min(e + 1, parsedTurns.length - 1),
                       )
                     }
-                    className=" border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
+                    className="border border-border-default px-2 py-1 text-text-default hover:bg-surface-subtle"
                     aria-label="increment end"
                   >
                     +
@@ -2657,10 +2657,10 @@ export function WhatsAppImportModal({
                     ` · ${mediaTurns.length} media attachment${mediaTurns.length !== 1 ? "s" : ""}`}
                 </p>
                 <div className="mt-1 flex items-center gap-1.5 text-text-muted">
-                  <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
+                  <span className="border border-border-default bg-surface-subtle px-1.5 py-0.5">
                     Using existing local personas: {existingLocalReuseCount}
                   </span>
-                  <span className=" border border-border-default bg-surface-subtle px-1.5 py-0.5">
+                  <span className="border border-border-default bg-surface-subtle px-1.5 py-0.5">
                     Will create on import (local):{" "}
                     {step === "map" ? pendingPersonaCreations.length : 0}
                   </span>
@@ -2707,7 +2707,7 @@ export function WhatsAppImportModal({
                     {assignedPersona ? (
                       <div className="flex items-center gap-1.5">
                         <div
-                          className="flex h-5 w-5 shrink-0 items-center justify-center "
+                          className="flex h-5 w-5 shrink-0 items-center justify-center"
                           style={getPersonaAccentStyle(assignedPersona, "header")}
                         >
                           <DynamicIcon
@@ -2720,10 +2720,10 @@ export function WhatsAppImportModal({
                         </span>
                         <span
                           className={` px-1.5 py-0.5 ${
-                            isLocalPersona(assignedPersona)
-                              ? "border border-status-warning-border bg-status-warning-bg text-status-warning-text"
-                              : "border border-border-default bg-surface-subtle text-text-muted"
-                          }`}
+ isLocalPersona(assignedPersona)
+ ? "border border-status-warning-border bg-status-warning-bg text-status-warning-text"
+ : "border border-border-default bg-surface-subtle text-text-muted"
+ }`}
                         >
                           {getPersonaScopeLabel(assignedPersona)}
                         </span>
@@ -2735,7 +2735,7 @@ export function WhatsAppImportModal({
                               return next;
                             })
                           }
-                          className=" p-0.5 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                          className="p-0.5 text-text-muted hover:bg-surface-subtle hover:text-text-default"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -2752,7 +2752,7 @@ export function WhatsAppImportModal({
                             }));
                           }
                         }}
-                        className=" border border-border-default bg-surface-default px-2 py-1 text-text-default focus:border-border-default focus: disabled:opacity-60"
+                        className="border border-border-default bg-surface-default px-2 py-1 text-text-default focus:border-border-default focus: disabled:opacity-60"
                       >
                         <option value="" disabled>
                           Select persona…
@@ -2934,7 +2934,7 @@ export function WhatsAppImportModal({
             </div>
 
             {/* Summary */}
-            <div className=" border border-border-default bg-surface-subtle px-3 py-2 text-text-muted">
+            <div className="border border-border-default bg-surface-subtle px-3 py-2 text-text-muted">
               <span className="text-text-default">
                 {plannedImportableCount}
               </span>{" "}
@@ -3071,13 +3071,13 @@ function PdfUploadRow({
 
   return (
     <div
-      className={`flex flex-col gap-2  border px-3 py-2.5 transition-opacity ${
-        isSkipped
-          ? "border-border-subtle opacity-50"
-          : isDone
-            ? "border-status-success-border bg-status-success-bg"
-            : "border-border-default bg-surface-subtle"
-      }`}
+      className={`flex flex-col gap-2 border px-3 py-2.5 transition-opacity ${
+ isSkipped
+ ? "border-border-subtle opacity-50"
+ : isDone
+ ? "border-status-success-border bg-status-success-bg"
+ : "border-border-default bg-surface-subtle"
+ }`}
     >
       <div className="flex items-start gap-2">
         {upload.file ? (

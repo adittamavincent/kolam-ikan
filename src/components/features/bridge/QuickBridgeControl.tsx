@@ -579,7 +579,7 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
           onClick={handleClick}
           disabled={disabled}
           title={`${label} · ${detail}`}
-          className="inline-flex h-8 items-center gap-1.5 px-2 font-semibold transition-all hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:text-text-muted data-[phase=active]:bg-action-bg data-[phase=active]:text-action-text data-[phase=active]:hover:bg-action-hover"
+          className="inline-flex h-8 items-center gap-1.5 px-2 font-semibold transition-all hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:text-slate-500 data-[phase=active]:bg-blue-500 data-[phase=active]:text-white data-[phase=active]:hover:bg-blue-700"
           data-phase={phase === "send" || phase === "apply" ? "active" : "idle"}
         >
           <span className="shrink-0">{icon}</span>
@@ -587,18 +587,18 @@ export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
         </button>
 
         {isManualMode && isManualPastePhase && !parserStatus.isApplying && (
-          <div className="absolute bottom-full right-0 z-50 mb-2 w-72 border border-border-default bg-surface-default p-3 shadow-lg">
-            <div className="font-bold uppercase tracking-widest text-text-muted">
+          <div className="absolute bottom-full right-0 z-50 mb-2 w-72 border border-slate-300 bg-white p-3 shadow-lg">
+            <div className="font-bold uppercase tracking-widest text-slate-500">
               Paste Response
             </div>
-            <p className="mt-1 text-text-muted">
+            <p className="mt-1 text-slate-500">
               Click here and paste with Cmd/Ctrl+V if browser clipboard access
               is blocked.
             </p>
             <textarea
               ref={manualPasteInputRef}
               aria-label="Manual quick paste capture"
-              className="mt-2 min-h-20 w-full resize-y border border-border-default bg-surface-subtle px-3 py-2 text-text-default outline-none focus:border-action-bg"
+              className="mt-2 min-h-20 w-full resize-y border border-slate-300 bg-slate-50 px-3 py-2 text-slate-800 outline-none focus:border-blue-500"
               onPaste={handleManualPasteEvent}
               onChange={handleManualPasteInputChange}
               placeholder="Paste provider response here..."

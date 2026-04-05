@@ -78,15 +78,15 @@ function joinClassNames(...classes: Array<string | false | null | undefined>) {
 
 function getFooterActionToneClassName(tone: ModalFooterActionTone) {
   if (tone === "primary") {
-    return "bg-action-bg text-action-text hover:bg-action-hover disabled:bg-action-disabled";
+    return "bg-blue-500 text-white hover:bg-blue-700 disabled:bg-blue-200";
   }
   if (tone === "danger") {
-    return "border border-status-error-border text-status-error-text hover:bg-status-error-bg";
+    return "border border-rose-300 text-rose-700 hover:bg-rose-100";
   }
   if (tone === "ghost") {
-    return "text-text-subtle hover:bg-surface-subtle hover:text-text-default";
+    return "text-slate-600 hover:bg-slate-50 hover:text-slate-800";
   }
-  return "border border-border-default text-text-default hover:bg-surface-hover";
+  return "border border-slate-300 text-slate-800 hover:bg-slate-200";
 }
 
 export function ModalShell({
@@ -139,7 +139,7 @@ export function ModalShell({
         >
           <div
             className={joinClassNames(
-              "fixed inset-0 bg-overlay-backdrop",
+              "fixed inset-0 bg-black/45",
               backdropClassName,
             )}
           />
@@ -169,7 +169,7 @@ export function ModalShell({
               <DialogPanel
                 ref={panelRef}
                 className={joinClassNames(
-                  "w-full max-w-2xl border border-border-default bg-surface-default transition-all",
+                  "w-full max-w-2xl border border-slate-300 bg-white transition-all",
                   panelClassName,
                 )}
               >
@@ -179,7 +179,7 @@ export function ModalShell({
                 {hasStructuredFooter ? (
                   <div
                     className={joinClassNames(
-                      "flex items-center justify-between gap-3 border-t border-border-subtle px-6 py-4",
+                      "flex items-center justify-between gap-3 border-t border-slate-200 px-6 py-4",
                       footerClassName,
                     )}
                   >
@@ -210,7 +210,7 @@ export function ModalShell({
                 ) : footer ? (
                   <div
                     className={joinClassNames(
-                      "flex items-center justify-end gap-2 border-t border-border-subtle px-6 py-4",
+                      "flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4",
                       footerClassName,
                     )}
                   >
@@ -260,7 +260,7 @@ export function ModalCloseButton({
       onClick={onClick}
       disabled={disabled}
       className={joinClassNames(
-        "inline-flex h-8 w-8 items-center justify-center text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-8 w-8 items-center justify-center text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
     >
@@ -285,17 +285,17 @@ export function ModalHeader({
   return (
     <div
       className={joinClassNames(
-        "flex items-center justify-between gap-4 border-b border-border-default px-6 py-5",
+        "flex items-center justify-between gap-4 border-b border-slate-300 px-6 py-5",
         className,
       )}
     >
       <div className={joinClassNames("min-w-0 flex-1", headingClassName)}>
         <div className="flex items-center gap-2">
-          {icon ? <div className="shrink-0 text-action-bg">{icon}</div> : null}
+          {icon ? <div className="shrink-0 text-blue-500">{icon}</div> : null}
           <DialogTitle
             as="h2"
             className={joinClassNames(
-              " font-semibold text-text-default",
+              " font-semibold text-slate-800",
               titleClassName,
             )}
           >
@@ -305,7 +305,7 @@ export function ModalHeader({
         {description ? (
           <p
             className={joinClassNames(
-              "mt-1 leading-6 text-text-muted",
+              "mt-1 leading-6 text-slate-500",
               descriptionClassName,
             )}
           >

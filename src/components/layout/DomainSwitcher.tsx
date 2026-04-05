@@ -149,16 +149,16 @@ export function DomainSwitcher({
   return (
     <div
       ref={switcherRef}
-      className="relative flex h-full w-12 flex-col items-center bg-surface-default border-r border-border-default z-50"
+      className="relative flex h-full w-12 flex-col items-center bg-white border-r border-slate-300 z-50"
     >
       {/* Home / Root */}
-      <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-border-default">
+      <div className="flex h-12 w-full shrink-0 items-center justify-center border-b border-slate-300">
         <button
           onClick={navigateToHome}
           className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
             pathname === "/" || pendingHome
-              ? "bg-action-bg text-action-text"
-              : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
+              ? "bg-blue-500 text-white"
+              : "bg-slate-50 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
           }`}
         >
           {pendingHome && isNavigating ? (
@@ -166,42 +166,42 @@ export function DomainSwitcher({
           ) : (
             <Home className="h-4 w-4" />
           )}
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-slate-100 px-2 py-1 font-medium text-slate-800 group-hover:block whitespace-nowrap">
             Home
           </div>
         </button>
       </div>
 
-      <div className="flex w-full flex-col items-center gap-2 border-b border-border-default py-2 px-2">
+      <div className="flex w-full flex-col items-center gap-2 border-b border-slate-300 py-2 px-2">
         <button
           onClick={() => onOpenGlobalSearch?.()}
-          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default"
+          className="group relative flex h-8 w-8 items-center justify-center bg-slate-50 text-slate-500 transition-all duration-200 hover:bg-slate-200 hover:text-slate-800"
           title="Global Search (⌘⇧K)"
         >
           <Search className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-slate-100 px-2 py-1 font-medium text-slate-800 group-hover:block whitespace-nowrap">
             Global Search
           </div>
         </button>
 
         <button
           onClick={() => onOpenPersona?.()}
-          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default"
+          className="group relative flex h-8 w-8 items-center justify-center bg-slate-50 text-slate-500 transition-all duration-200 hover:bg-slate-200 hover:text-slate-800"
           title="Manage Personas"
         >
           <Users className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-slate-100 px-2 py-1 font-medium text-slate-800 group-hover:block whitespace-nowrap">
             Personas
           </div>
         </button>
 
         <button
           onClick={() => setAttachmentsOpen(true)}
-          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-surface-hover hover:text-text-default"
+          className="group relative flex h-8 w-8 items-center justify-center bg-slate-50 text-slate-500 transition-all duration-200 hover:bg-slate-200 hover:text-slate-800"
           title="Attachments"
         >
           <Paperclip className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-slate-100 px-2 py-1 font-medium text-slate-800 group-hover:block whitespace-nowrap">
             Attachments
           </div>
         </button>
@@ -211,7 +211,7 @@ export function DomainSwitcher({
       <div className="flex-1 w-full flex flex-col items-center space-y-2 overflow-y-auto px-2 scrollbar-hide py-2">
         {!domains && (
           <div className="flex h-8 w-8 items-center justify-center">
-            <RefreshCw className="h-3 w-3 animate-spin text-text-muted" />
+            <RefreshCw className="h-3 w-3 animate-spin text-slate-500" />
           </div>
         )}
 
@@ -234,8 +234,8 @@ export function DomainSwitcher({
             aria-label={domain.name}
             className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
               activeDomainId === domain.id
-                ? "bg-action-bg text-action-text"
-                : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
+                ? "bg-blue-500 text-white"
+                : "bg-slate-50 text-slate-500 hover:bg-slate-200 hover:text-slate-800"
             }`}
           >
             {pendingDomainId === domain.id && isNavigating ? (
@@ -252,7 +252,7 @@ export function DomainSwitcher({
             {/* Active / Pending Indicator */}
             {(activeDomainId === domain.id ||
               (pendingDomainId === domain.id && isNavigating)) && (
-              <div className="absolute -left-2 h-5 w-1 bg-action-bg" />
+              <div className="absolute -left-2 h-5 w-1 bg-blue-500" />
             )}
           </button>
         ))}
@@ -262,10 +262,10 @@ export function DomainSwitcher({
           onClick={() => setIsCreateModalOpen(true)}
           aria-label="Add Domain"
           title="Add Domain"
-          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-primary-950 hover:text-action-bg"
+          className="group relative flex h-8 w-8 items-center justify-center bg-slate-50 text-slate-500 transition-all duration-200 hover:bg-blue-950 hover:text-blue-500"
         >
           <Plus className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-slate-100 px-2 py-1 font-medium text-slate-800 group-hover:block whitespace-nowrap">
             Add Domain
           </div>
         </button>
@@ -273,7 +273,7 @@ export function DomainSwitcher({
 
       {hoveredDomainTooltip && (
         <div
-          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-surface-elevated px-2 py-1 font-medium text-text-default"
+          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-slate-100 px-2 py-1 font-medium text-slate-800"
           style={{ top: hoveredDomainTooltip.top }}
         >
           {hoveredDomainTooltip.name}
@@ -281,11 +281,11 @@ export function DomainSwitcher({
       )}
 
       {/* User Menu / Profile at bottom */}
-      <div className="mt-auto flex h-12 w-full shrink-0 items-center justify-center border-t border-border-default bg-surface-default">
+      <div className="mt-auto flex h-12 w-full shrink-0 items-center justify-center border-t border-slate-300 bg-white">
         <Menu as="div" className="relative">
           <MenuButton
             id={`${profileMenuIdBase}-button`}
-            className="flex h-8 w-8 items-center justify-center border border-border-default bg-surface-default text-text-default transition hover:bg-surface-subtle focus: focus: focus: overflow-hidden"
+            className="flex h-8 w-8 items-center justify-center border border-slate-300 bg-white text-slate-800 transition hover:bg-slate-50 focus: focus: focus: overflow-hidden"
           >
             {avatarUrl ? (
               <Image
@@ -297,7 +297,7 @@ export function DomainSwitcher({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-action-bg font-semibold text-action-text">
+              <div className="flex h-full w-full items-center justify-center bg-blue-500 font-semibold text-white">
                 {initials}
               </div>
             )}
@@ -313,27 +313,27 @@ export function DomainSwitcher({
           >
             <MenuItems
               id={`${profileMenuIdBase}-items`}
-              className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 border border-border-default bg-surface-default p-1 focus:"
+              className="absolute bottom-full left-full z-50 mb-2 ml-2 w-56 border border-slate-300 bg-white p-1 focus:"
             >
               <div className="px-3 py-2">
-                <p className="font-semibold uppercase tracking-wider text-text-muted">
+                <p className="font-semibold uppercase tracking-wider text-slate-500">
                   Signed in as
                 </p>
-                <p className="truncate font-medium text-text-default">
+                <p className="truncate font-medium text-slate-800">
                   {displayName}
                 </p>
-                <p className="truncate text-text-muted">
+                <p className="truncate text-slate-500">
                   {user?.email ?? userId}
                 </p>
               </div>
-              <div className="my-1 h-px bg-border-subtle" />
+              <div className="my-1 h-px bg-slate-200" />
               <MenuItem>
                 {({ focus }: { focus: boolean }) => (
                   <button
                     onClick={() => setProfileOpen(true)}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 px-3 py-2 text-text-default`}
+                    className={`${focus ? "bg-slate-50" : ""} flex w-full items-center gap-2 px-3 py-2 text-slate-800`}
                   >
-                    <Settings className="h-4 w-4 text-text-muted" />
+                    <Settings className="h-4 w-4 text-slate-500" />
                     Profile settings
                   </button>
                 )}
@@ -344,9 +344,9 @@ export function DomainSwitcher({
                     type="button"
                     onClick={handleSignOut}
                     disabled={loading || signingOut || status !== "signed_in"}
-                    className={`${focus ? "bg-surface-subtle" : ""} flex w-full items-center gap-2 px-3 py-2 text-text-default disabled:opacity-50`}
+                    className={`${focus ? "bg-slate-50" : ""} flex w-full items-center gap-2 px-3 py-2 text-slate-800 disabled:opacity-50`}
                   >
-                    <LogOut className="h-4 w-4 text-text-muted" />
+                    <LogOut className="h-4 w-4 text-slate-500" />
                     {signingOut ? "Signing out..." : "Sign out"}
                   </button>
                 )}
@@ -408,33 +408,33 @@ export function DomainSwitcher({
                 width={64}
                 height={64}
                 unoptimized
-                className="object-cover border-2 border-border-default"
+                className="object-cover border-2 border-slate-300"
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center bg-primary-950 font-bold text-action-bg border-2 border-border-subtle">
+              <div className="flex h-16 w-16 items-center justify-center bg-blue-950 font-bold text-blue-500 border-2 border-slate-200">
                 {initials}
               </div>
             )}
             <div>
-              <p className="font-semibold text-text-default">{displayName}</p>
-              <p className="text-text-muted">{user?.email}</p>
+              <p className="font-semibold text-slate-800">{displayName}</p>
+              <p className="text-slate-500">{user?.email}</p>
             </div>
           </div>
 
-          <div className="bg-surface-subtle p-4 border border-border-default">
-            <p className="text-text-muted mb-2 font-medium uppercase tracking-wider">
+          <div className="bg-slate-50 p-4 border border-slate-300">
+            <p className="text-slate-500 mb-2 font-medium uppercase tracking-wider">
               Account Details
             </p>
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-text-muted">User ID</span>
-                <span className="font-mono text-text-default">
+                <span className="text-slate-500">User ID</span>
+                <span className="font-mono text-slate-800">
                   {userId.slice(0, 8)}...
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-text-muted">Auth Status</span>
-                <span className="capitalize text-status-success-text">
+                <span className="text-slate-500">Auth Status</span>
+                <span className="capitalize text-emerald-700">
                   {status.replace("_", " ")}
                 </span>
               </div>

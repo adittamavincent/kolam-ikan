@@ -482,17 +482,17 @@ function LoginForm() {
   const isDev = process.env.NODE_ENV === "development";
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-subtle p-4 font-sans text-text-default">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-50 p-4 font-sans text-slate-800">
       <div className="w-full max-w-md space-y-8">
         {/* Branding */}
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center bg-action-bg">
-            <span className="font-bold text-action-text">K</span>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center bg-blue-500">
+            <span className="font-bold text-white">K</span>
           </div>
-          <h2 className="mt-6 font-extrabold tracking-tight text-text-default">
+          <h2 className="mt-6 font-extrabold tracking-tight text-slate-800">
             Kolam Ikan
           </h2>
-          <p className="mt-2 text-text-subtle">
+          <p className="mt-2 text-slate-600">
             {mode === "signin"
               ? "Log in to your thinking environment"
               : "Create your thinking environment"}
@@ -500,16 +500,16 @@ function LoginForm() {
         </div>
 
         {/* Main Auth Card */}
-        <div className="bg-surface-default p-8 border border-border-default">
+        <div className="bg-white p-8 border border-slate-300">
           {/* Mode Toggle */}
-          <div className="mb-6 flex bg-surface-subtle p-1">
+          <div className="mb-6 flex bg-slate-50 p-1">
             <button
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
               className={`flex-1 px-4 py-2 font-semibold transition-all ${
                 mode === "signin"
-                  ? "bg-surface-default text-text-default"
-                  : "text-text-subtle hover:text-text-default"
+                  ? "bg-white text-slate-800"
+                  : "text-slate-600 hover:text-slate-800"
               }`}
             >
               Sign In
@@ -519,8 +519,8 @@ function LoginForm() {
               onClick={() => mode === "signin" && toggleMode()}
               className={`flex-1 px-4 py-2 font-semibold transition-all ${
                 mode === "signup"
-                  ? "bg-surface-default text-text-default"
-                  : "text-text-subtle hover:text-text-default"
+                  ? "bg-white text-slate-800"
+                  : "text-slate-600 hover:text-slate-800"
               }`}
             >
               Sign Up
@@ -532,15 +532,15 @@ function LoginForm() {
             onSubmit={mode === "signin" ? handleLogin : handleSignup}
           >
             {error && (
-              <div className="flex items-start gap-3 bg-status-error-bg p-4 text-status-error-text border border-border-default animate-in fade-in slide-in-from-top-1">
-                <AlertCircle className="h-5 w-5 shrink-0 text-status-error-text" />
+              <div className="flex items-start gap-3 bg-rose-100 p-4 text-rose-700 border border-slate-300 animate-in fade-in slide-in-from-top-1">
+                <AlertCircle className="h-5 w-5 shrink-0 text-rose-700" />
                 <p>{error}</p>
               </div>
             )}
 
             {successMessage && (
-              <div className="flex items-start gap-3 bg-status-success-bg p-4 text-status-success-text border border-border-default animate-in fade-in slide-in-from-top-1">
-                <CheckCircle className="h-5 w-5 shrink-0 text-status-success-text" />
+              <div className="flex items-start gap-3 bg-emerald-100 p-4 text-emerald-700 border border-slate-300 animate-in fade-in slide-in-from-top-1">
+                <CheckCircle className="h-5 w-5 shrink-0 text-emerald-700" />
                 <p>{successMessage}</p>
               </div>
             )}
@@ -549,13 +549,13 @@ function LoginForm() {
               {mode === "signup" && (
                 <div>
                   <label
-                    className="block font-medium text-text-default mb-1"
+                    className="block font-medium text-slate-800 mb-1"
                     htmlFor="fullName"
                   >
                     Full Name
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       id="fullName"
                       name="fullName"
@@ -572,14 +572,14 @@ function LoginForm() {
                       }
                       className={`block w-full border ${
                         fieldErrors.fullName && touchedFields.has("fullName")
-                          ? "border-border-default focus:border-status-error-text focus:"
-                          : "border-border-default focus:border-border-default focus:"
-                      } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                          ? "border-slate-300 focus:border-rose-700 focus:"
+                          : "border-slate-300 focus:border-slate-300 focus:"
+                      } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-800 placeholder-slate-500 focus:bg-white focus: focus: transition-all `}
                       placeholder="John Doe"
                     />
                   </div>
                   {fieldErrors.fullName && touchedFields.has("fullName") && (
-                    <p className="mt-1 text-status-error-text">
+                    <p className="mt-1 text-rose-700">
                       {fieldErrors.fullName}
                     </p>
                   )}
@@ -588,13 +588,13 @@ function LoginForm() {
 
               <div>
                 <label
-                  className="block font-medium text-text-default mb-1"
+                  className="block font-medium text-slate-800 mb-1"
                   htmlFor="email"
                 >
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="email"
                     name="email"
@@ -609,14 +609,14 @@ function LoginForm() {
                     onBlur={(e) => handleFieldBlur("email", e.target.value)}
                     className={`block w-full border ${
                       fieldErrors.email && touchedFields.has("email")
-                        ? "border-border-default focus:border-status-error-text focus:"
-                        : "border-border-default focus:border-border-default focus:"
-                    } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                        ? "border-slate-300 focus:border-rose-700 focus:"
+                        : "border-slate-300 focus:border-slate-300 focus:"
+                    } bg-slate-50 py-2.5 pl-10 pr-3 text-slate-800 placeholder-slate-500 focus:bg-white focus: focus: transition-all `}
                     placeholder="name@example.com"
                   />
                 </div>
                 {fieldErrors.email && touchedFields.has("email") && (
-                  <p className="mt-1 text-status-error-text">
+                  <p className="mt-1 text-rose-700">
                     {fieldErrors.email}
                   </p>
                 )}
@@ -625,7 +625,7 @@ function LoginForm() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label
-                    className="block font-medium text-text-default"
+                    className="block font-medium text-slate-800"
                     htmlFor="password"
                   >
                     Password
@@ -633,14 +633,14 @@ function LoginForm() {
                   {mode === "signin" && (
                     <Link
                       href="/forgot-password"
-                      className="font-semibold text-action-bg hover:text-action-hover"
+                      className="font-semibold text-blue-500 hover:text-blue-700"
                     >
                       Forgot password?
                     </Link>
                   )}
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <input
                     id="password"
                     name="password"
@@ -663,15 +663,15 @@ function LoginForm() {
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
                     className={`block w-full border ${
                       fieldErrors.password && touchedFields.has("password")
-                        ? "border-border-default focus:border-status-error-text focus:"
-                        : "border-border-default focus:border-border-default focus:"
-                    } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                        ? "border-slate-300 focus:border-rose-700 focus:"
+                        : "border-slate-300 focus:border-slate-300 focus:"
+                    } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-800 placeholder-slate-500 focus:bg-white focus: focus: transition-all `}
                     placeholder="••••••••"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus: focus:text-text-subtle"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 transition-colors focus: focus:text-slate-600"
                     aria-label={
                       showPassword ? "Hide password" : "Show password"
                     }
@@ -684,12 +684,12 @@ function LoginForm() {
                   </button>
                 </div>
                 {fieldErrors.password && touchedFields.has("password") && (
-                  <p className="mt-1 text-status-error-text">
+                  <p className="mt-1 text-rose-700">
                     {fieldErrors.password}
                   </p>
                 )}
                 {mode === "signup" && !fieldErrors.password && (
-                  <p className="mt-1 text-text-muted">
+                  <p className="mt-1 text-slate-500">
                     At least 8 characters with uppercase, lowercase, and number
                   </p>
                 )}
@@ -698,13 +698,13 @@ function LoginForm() {
               {mode === "signup" && (
                 <div>
                   <label
-                    className="block font-medium text-text-default mb-1"
+                    className="block font-medium text-slate-800 mb-1"
                     htmlFor="confirmPassword"
                   >
                     Confirm Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       id="confirmPassword"
                       name="confirmPassword"
@@ -725,9 +725,9 @@ function LoginForm() {
                       className={`block w-full border ${
                         fieldErrors.confirmPassword &&
                         touchedFields.has("confirmPassword")
-                          ? "border-border-default focus:border-status-error-text focus:"
-                          : "border-border-default focus:border-border-default focus:"
-                      } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                          ? "border-slate-300 focus:border-rose-700 focus:"
+                          : "border-slate-300 focus:border-slate-300 focus:"
+                      } bg-slate-50 py-2.5 pl-10 pr-10 text-slate-800 placeholder-slate-500 focus:bg-white focus: focus: transition-all `}
                       placeholder="••••••••"
                     />
                     <button
@@ -735,7 +735,7 @@ function LoginForm() {
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-subtle transition-colors focus: focus:text-text-subtle"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 transition-colors focus: focus:text-slate-600"
                       aria-label={
                         showConfirmPassword
                           ? "Hide confirm password"
@@ -751,7 +751,7 @@ function LoginForm() {
                   </div>
                   {fieldErrors.confirmPassword &&
                     touchedFields.has("confirmPassword") && (
-                      <p className="mt-1 text-status-error-text">
+                      <p className="mt-1 text-rose-700">
                         {fieldErrors.confirmPassword}
                       </p>
                     )}
@@ -767,11 +767,11 @@ function LoginForm() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMeState(e.target.checked)}
-                  className="h-4 w-4 border-border-default text-action-bg focus:"
+                  className="h-4 w-4 border-slate-300 text-blue-500 focus:"
                 />
                 <label
                   htmlFor="remember-me"
-                  className="ml-2 block text-text-subtle"
+                  className="ml-2 block text-slate-600"
                 >
                   Keep me logged in
                 </label>
@@ -782,7 +782,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative flex w-full justify-center bg-action-bg px-4 py-2.5 font-bold text-action-text hover:bg-action-hover focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="group relative flex w-full justify-center bg-blue-500 px-4 py-2.5 font-bold text-white hover:bg-blue-700 focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -796,13 +796,13 @@ function LoginForm() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-text-subtle">
+            <p className="text-slate-600">
               {mode === "signin" ? (
                 <>
                   Don&apos;t have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-bg hover:text-action-hover"
+                    className="font-bold text-blue-500 hover:text-blue-700"
                   >
                     Sign up
                   </button>
@@ -812,7 +812,7 @@ function LoginForm() {
                   Already have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-bg hover:text-action-hover"
+                    className="font-bold text-blue-500 hover:text-blue-700"
                   >
                     Sign in
                   </button>
@@ -824,8 +824,8 @@ function LoginForm() {
 
         {/* Development Speed-Login Dashboard */}
         {isDev && (
-          <div className="border-2 border-dashed border-border-default bg-surface-subtle p-6 animate-in fade-in duration-1000">
-            <div className="mb-4 flex items-center gap-2 text-text-default">
+          <div className="border-2 border-dashed border-slate-300 bg-slate-50 p-6 animate-in fade-in duration-1000">
+            <div className="mb-4 flex items-center gap-2 text-slate-800">
               <FlaskConical className="h-5 w-5" />
               <h3 className="font-bold uppercase tracking-wider">
                 Dev Toolbox: Speed Login / Signup
@@ -835,7 +835,7 @@ function LoginForm() {
               {devTestAccounts.map((acc) => (
                 <div
                   key={acc.email}
-                  className="flex items-center justify-between border border-border-default bg-surface-default p-3 text-left transition-all group"
+                  className="flex items-center justify-between border border-slate-300 bg-white p-3 text-left transition-all group"
                 >
                   <div className="flex-1">
                     <button
@@ -843,10 +843,10 @@ function LoginForm() {
                       disabled={loading}
                       className="w-full text-left"
                     >
-                      <div className="font-bold text-text-default">
+                      <div className="font-bold text-slate-800">
                         {acc.label}
                       </div>
-                      <div className="text-text-subtle uppercase font-medium">
+                      <div className="text-slate-600 uppercase font-medium">
                         {acc.role}
                       </div>
                     </button>
@@ -855,11 +855,11 @@ function LoginForm() {
                     <button
                       onClick={() => quickSignup(acc)}
                       disabled={loading}
-                      className="font-medium text-action-bg hover:text-action-hover"
+                      className="font-medium text-blue-500 hover:text-blue-700"
                     >
                       Sign up
                     </button>
-                    <ChevronRight className="h-4 w-4 text-text-muted group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight className="h-4 w-4 text-slate-500 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </div>
               ))}
@@ -875,8 +875,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
-          <Loader2 className="h-8 w-8 animate-spin text-action-bg" />
+        <div className="flex min-h-screen items-center justify-center bg-slate-50">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
         </div>
       }
     >

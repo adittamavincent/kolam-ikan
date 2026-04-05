@@ -62,30 +62,30 @@ interface DomainWithCounts extends Domain {
 
 function StatCardSkeleton() {
   return (
-    <div className="border border-border-default bg-surface-default p-4 flex flex-col justify-between">
+    <div className="border border-slate-300 bg-white p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
-        <div className="h-3 w-16 bg-surface-elevated" />
-        <div className="h-4 w-4 bg-surface-elevated" />
+        <div className="h-3 w-16 bg-slate-100" />
+        <div className="h-4 w-4 bg-slate-100" />
       </div>
-      <div className="h-6 w-12 bg-surface-elevated mt-2" />
+      <div className="h-6 w-12 bg-slate-100 mt-2" />
     </div>
   );
 }
 
 function DomainCardSkeleton() {
   return (
-    <div className="border border-border-default bg-surface-default p-4">
+    <div className="border border-slate-300 bg-white p-4">
       <div className="mb-3 flex items-center gap-3">
-        <div className="h-10 w-10 bg-surface-elevated" />
+        <div className="h-10 w-10 bg-slate-100" />
         <div className="flex-1">
-          <div className="mb-1.5 h-3 w-24 bg-surface-elevated" />
-          <div className="h-2 w-32 bg-surface-elevated" />
+          <div className="mb-1.5 h-3 w-24 bg-slate-100" />
+          <div className="h-2 w-32 bg-slate-100" />
         </div>
       </div>
-      <div className="flex gap-4 mt-auto pt-2 border-t border-border-default w-full">
-        <div className="h-2.5 w-12 bg-surface-elevated" />
-        <div className="h-2.5 w-12 bg-surface-elevated" />
-        <div className="h-2.5 w-12 bg-surface-elevated" />
+      <div className="flex gap-4 mt-auto pt-2 border-t border-slate-300 w-full">
+        <div className="h-2.5 w-12 bg-slate-100" />
+        <div className="h-2.5 w-12 bg-slate-100" />
+        <div className="h-2.5 w-12 bg-slate-100" />
       </div>
     </div>
   );
@@ -93,13 +93,13 @@ function DomainCardSkeleton() {
 
 function ActivityItemSkeleton() {
   return (
-    <div className="flex items-start gap-3 border border-border-default bg-surface-default p-3">
-      <div className="h-6 w-6 shrink-0 bg-surface-elevated" />
+    <div className="flex items-start gap-3 border border-slate-300 bg-white p-3">
+      <div className="h-6 w-6 shrink-0 bg-slate-100" />
       <div className="flex-1">
-        <div className="mb-1 h-3 w-3/4 bg-surface-elevated" />
-        <div className="h-2 w-1/2 bg-surface-elevated" />
+        <div className="mb-1 h-3 w-3/4 bg-slate-100" />
+        <div className="h-2 w-1/2 bg-slate-100" />
       </div>
-      <div className="shrink-0 h-2 w-8 bg-surface-elevated mt-0.5" />
+      <div className="shrink-0 h-2 w-8 bg-slate-100 mt-0.5" />
     </div>
   );
 }
@@ -118,22 +118,22 @@ function StatCard({
   color: string;
 }) {
   const colorMap: Record<string, string> = {
-    blue: "text-status-info-text",
-    purple: "text-action-hover",
-    emerald: "text-status-success-text",
-    amber: "text-status-warning-text",
+    blue: "text-sky-700",
+    purple: "text-blue-700",
+    emerald: "text-emerald-700",
+    amber: "text-amber-700",
   };
   const accentClass = colorMap[color] ?? colorMap.blue;
 
   return (
-    <div className="group border border-border-default bg-surface-default p-4 flex flex-col justify-between">
+    <div className="group border border-slate-300 bg-white p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
-        <p className="uppercase tracking-wider text-text-subtle font-medium">
+        <p className="uppercase tracking-wider text-slate-600 font-medium">
           {label}
         </p>
         <Icon className={`h-4 w-4 ${accentClass}`} />
       </div>
-      <p className="font-bold text-text-default">{value}</p>
+      <p className="font-bold text-slate-800">{value}</p>
     </div>
   );
 }
@@ -188,30 +188,30 @@ function DomainCard({
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") onClick();
       }}
-      className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
+      className="group flex w-full flex-col border border-slate-300 bg-white p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-action-text group-hover:bg-primary-900 transition-colors">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-blue-950 text-white group-hover:bg-blue-900 transition-colors">
           <DynamicIcon name={domain.icon ?? domain.name} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold text-text-default group-hover:text-action-bg transition-colors">
+          <h3 className="truncate font-semibold text-slate-800 group-hover:text-blue-500 transition-colors">
             {domain.name}
           </h3>
           {domain.description && (
-            <p className="truncate text-text-subtle">{domain.description}</p>
+            <p className="truncate text-slate-600">{domain.description}</p>
           )}
         </div>
         <div className="ml-2 flex items-start">
           <button
             onClick={handleDuplicate}
-            className="text-action-bg hover:underline"
+            className="text-blue-500 hover:underline"
           >
             <Copy className="h-4 w-4" />
           </button>
         </div>
       </div>
-      <div className="flex gap-4 text-text-muted mt-auto pt-2 border-t border-border-default w-full">
+      <div className="flex gap-4 text-slate-500 mt-auto pt-2 border-t border-slate-300 w-full">
         <span className="flex items-center gap-1">
           <span className="font-medium">{domain.cabinetCount}</span> cab
         </span>
@@ -242,18 +242,18 @@ function RecentActivityItem({
   return (
     <button
       onClick={onClick}
-      className="group flex w-full items-start gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
+      className="group flex w-full items-start gap-3 border border-slate-300 bg-white p-3 text-left transition-all hover:bg-slate-50 active:scale-[0.99] active:translate-y-px relative"
     >
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle transition-colors group-hover:bg-primary-100 group-hover:text-action-hover">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-slate-50 transition-colors group-hover:bg-blue-100 group-hover:text-blue-700">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate font-medium text-text-default">{title}</p>
+          <p className="truncate font-medium text-slate-800">{title}</p>
         </div>
-        <p className="truncate text-text-subtle">{subtitle}</p>
+        <p className="truncate text-slate-600">{subtitle}</p>
       </div>
-      <span className="shrink-0 text-text-muted mt-0.5">{time}</span>
+      <span className="shrink-0 text-slate-500 mt-0.5">{time}</span>
     </button>
   );
 }
@@ -266,12 +266,12 @@ function ErrorBanner({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 border border-border-default bg-status-error-bg px-4 py-3 text-status-error-text">
+    <div className="flex items-center gap-3 border border-slate-300 bg-rose-100 px-4 py-3 text-rose-700">
       <AlertCircle className="h-5 w-5 shrink-0" />
       <span className="flex-1">{message}</span>
       <button
         onClick={onRetry}
-        className="inline-flex items-center gap-1 bg-surface-default px-3 py-1.5 font-medium text-status-error-text transition hover:bg-surface-subtle"
+        className="inline-flex items-center gap-1 bg-white px-3 py-1.5 font-medium text-rose-700 transition hover:bg-slate-50"
       >
         <RefreshCw className="h-3.5 w-3.5" />
         Retry
@@ -449,15 +449,15 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 overflow-y-auto bg-surface-subtle">
+    <div className="flex flex-1 overflow-y-auto bg-slate-50">
       <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8 md:py-8">
         {/* ---- Welcome Section ---- */}
         <div className="mb-6 flex justify-between items-end">
           <div>
-            <h1 className="font-bold text-text-default">
-              {greeting}, <span className="text-action-bg">{displayName}</span>
+            <h1 className="font-bold text-slate-800">
+              {greeting}, <span className="text-blue-500">{displayName}</span>
             </h1>
-            <p className="mt-1 text-text-subtle">Pick up where you left off.</p>
+            <p className="mt-1 text-slate-600">Pick up where you left off.</p>
           </div>
         </div>
 
@@ -522,8 +522,8 @@ export default function HomePage() {
         <div className="grid gap-8 lg:grid-cols-5">
           {/* ---- Domains Overview (left 3 cols) ---- */}
           <section className="lg:col-span-3">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-text-default">
-              <Globe className="h-4 w-4 text-text-muted" />
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-800">
+              <Globe className="h-4 w-4 text-slate-500" />
               Your Domains
             </h2>
             {isLoading ? (
@@ -533,12 +533,12 @@ export default function HomePage() {
                 <DomainCardSkeleton />
               </div>
             ) : totalDomains === 0 ? (
-              <div className="border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
-                <Globe className="mx-auto h-8 w-8 text-text-muted" />
-                <h3 className="mt-3 font-semibold text-text-default">
+              <div className="border-2 border-dashed border-slate-300 bg-white p-8 text-center">
+                <Globe className="mx-auto h-8 w-8 text-slate-500" />
+                <h3 className="mt-3 font-semibold text-slate-800">
                   No domains yet
                 </h3>
-                <p className="mt-1 text-text-subtle">
+                <p className="mt-1 text-slate-600">
                   Create your first domain to start organizing your knowledge.
                 </p>
               </div>
@@ -559,8 +559,8 @@ export default function HomePage() {
 
           {/* ---- Recent Activity (right 2 cols) ---- */}
           <section className="lg:col-span-2">
-            <h2 className="mb-4 flex items-center gap-2 font-semibold text-text-default">
-              <Clock className="h-4 w-4 text-text-muted" />
+            <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-800">
+              <Clock className="h-4 w-4 text-slate-500" />
               Recent Activity
             </h2>
 
@@ -584,12 +584,12 @@ export default function HomePage() {
                 <ActivityItemSkeleton />
               </div>
             ) : recentStreams?.length === 0 && recentEntries?.length === 0 ? (
-              <div className="border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
-                <Clock className="mx-auto h-8 w-8 text-text-muted" />
-                <h3 className="mt-3 font-semibold text-text-default">
+              <div className="border-2 border-dashed border-slate-300 bg-white p-8 text-center">
+                <Clock className="mx-auto h-8 w-8 text-slate-500" />
+                <h3 className="mt-3 font-semibold text-slate-800">
                   No activity yet
                 </h3>
-                <p className="mt-1 text-text-subtle">
+                <p className="mt-1 text-slate-600">
                   Your recent streams and entries will appear here.
                 </p>
               </div>
@@ -622,11 +622,11 @@ export default function HomePage() {
                 {(recentStreams?.length ?? 0) > 0 &&
                   (recentEntries?.length ?? 0) > 0 && (
                     <div className="flex items-center gap-2 py-1">
-                      <div className="h-px flex-1 bg-border-subtle" />
-                      <span className="font-medium uppercase tracking-wider text-text-subtle">
+                      <div className="h-px flex-1 bg-slate-200" />
+                      <span className="font-medium uppercase tracking-wider text-slate-600">
                         Entries
                       </span>
-                      <div className="h-px flex-1 bg-border-subtle" />
+                      <div className="h-px flex-1 bg-slate-200" />
                     </div>
                   )}
 
@@ -656,9 +656,9 @@ export default function HomePage() {
         </div>
 
         {/* ---- Footer tip ---- */}
-        <div className="mt-10 border border-border-default bg-surface-default px-5 py-4 text-center">
-          <p className="text-text-default">
-            <span className="font-semibold text-action-bg">Tip:</span> Use the
+        <div className="mt-10 border border-slate-300 bg-white px-5 py-4 text-center">
+          <p className="text-slate-800">
+            <span className="font-semibold text-blue-500">Tip:</span> Use the
             sidebar to quickly switch between domains, or click any card above
             to jump in.
           </p>

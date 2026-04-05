@@ -20,20 +20,20 @@ export const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>(
     return (
       <Dialog.Panel
         ref={ref}
-        className={`w-full max-w-lg border border-border-default bg-surface-default p-6 text-left ${panelClassName}`.trim()}
+        className={`w-full max-w-lg border border-slate-300 bg-white p-6 text-left ${panelClassName}`.trim()}
       >
         <div className="flex items-start gap-3">
           {icon ? (
-            <div className="border border-border-default bg-surface-hover p-2">
+            <div className="border border-slate-300 bg-slate-200 p-2">
               {icon}
             </div>
           ) : null}
           <div className="min-w-0 flex-1 space-y-1">
-            <Dialog.Title className="font-semibold text-text-default">
+            <Dialog.Title className="font-semibold text-slate-800">
               {title}
             </Dialog.Title>
             {description ? (
-              <Dialog.Description as="div" className="text-text-muted">
+              <Dialog.Description as="div" className="text-slate-500">
                 {description}
               </Dialog.Description>
             ) : null}

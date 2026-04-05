@@ -550,35 +550,35 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
   return (
     <div
-      className={`canvas-pane bg-surface-default relative overflow-hidden z-20 ${
-        isVisible ? "border-l border-border-default" : ""
+      className={`canvas-pane bg-white relative overflow-hidden z-20 ${
+        isVisible ? "border-l border-slate-300" : ""
       } ${isVisible ? "" : "pointer-events-none"}`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>
         {isPreviewing && (
-          <div className="mx-3 mt-2 mb-1 border border-border-default bg-surface-elevated px-3 py-2">
+          <div className="mx-3 mt-2 mb-1 border border-slate-300 bg-slate-100 px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 font-semibold text-action-bg">
+                <div className="inline-flex items-center gap-1.5 font-semibold text-blue-500">
                   <Eye className="h-3.5 w-3.5" />
                   Snapshot Preview
                 </div>
-                <div className="truncate text-text-default">
+                <div className="truncate text-slate-800">
                   {previewSession?.versionName || "Untitled Snapshot"}
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setIsCompareOpen(true)}
-                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-text-subtle hover:bg-surface-subtle"
+                  className="inline-flex items-center gap-1 border border-slate-300 px-2 py-1 text-slate-600 hover:bg-slate-50"
                 >
                   <GitCompare className="h-3 w-3" />
                   Compare
                 </button>
                 <button
                   onClick={restorePreviousDraft}
-                  className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-text-subtle hover:bg-surface-subtle"
+                  className="inline-flex items-center gap-1 border border-slate-300 px-2 py-1 text-slate-600 hover:bg-slate-50"
                 >
                   <RotateCcw className="h-3 w-3" />
                   Restore Draft
@@ -587,7 +587,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                   onClick={() => {
                     void applyPreviewToCanvas();
                   }}
-                  className="inline-flex items-center gap-1 bg-action-bg px-2 py-1 font-semibold text-action-text hover:bg-action-hover"
+                  className="inline-flex items-center gap-1 bg-blue-500 px-2 py-1 font-semibold text-white hover:bg-blue-700"
                 >
                   <Save className="h-3 w-3" />
                   Apply to Canvas
@@ -612,7 +612,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
               highlightTerm={highlightTerm ?? undefined}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-text-muted">
+            <div className="flex h-full items-center justify-center text-slate-500">
               {isLoading ? "Loading canvas..." : "No canvas found"}
             </div>
           )}
@@ -620,30 +620,30 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       </div>
       {isPreviewing && isCompareOpen && (
         <div
-          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
+          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/45"
           onClick={() => setIsCompareOpen(false)}
         >
           <div
-            className="relative w-full max-w-3xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default"
+            className="relative w-full max-w-3xl max-h-[80vh] flex flex-col border border-slate-300 bg-white"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-300 shrink-0">
               <div className="flex items-center gap-2">
-                <GitCompare className="h-4 w-4 text-text-muted" />
-                <span className="font-semibold text-text-default">
+                <GitCompare className="h-4 w-4 text-slate-500" />
+                <span className="font-semibold text-slate-800">
                   Preview Compare
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-mono text-status-success-text">
+                <span className="font-mono text-emerald-700">
                   +{previewAdditions}
                 </span>
-                <span className="font-mono text-status-error-text">
+                <span className="font-mono text-rose-700">
                   -{previewDeletions}
                 </span>
                 <button
                   onClick={() => setIsCompareOpen(false)}
-                  className="p-1 text-text-muted hover:bg-surface-subtle"
+                  className="p-1 text-slate-500 hover:bg-slate-50"
                 >
                   <X className="h-4 w-4" />
                 </button>

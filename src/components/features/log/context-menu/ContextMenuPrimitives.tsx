@@ -9,23 +9,23 @@ import type {
 import { createPortal } from "react-dom";
 
 export const CONTEXT_MENU_BASE_CONTAINER_CLASS =
-  "fixed z-50 border border-border-default bg-surface-elevated p-1.5";
+  "fixed z-50 border border-slate-300 bg-slate-100 p-1.5";
 export const CONTEXT_MENU_SCROLL_CONTAINER_CLASS =
   "max-h-[calc(100vh-16px)] overflow-y-auto";
 export const CONTEXT_MENU_HEADER_CLASS =
   "px-2 py-1 mb-0.5 flex items-center gap-1.5";
-export const CONTEXT_MENU_DIVIDER_CLASS = "my-1 h-px bg-border-subtle";
+export const CONTEXT_MENU_DIVIDER_CLASS = "my-1 h-px bg-slate-200";
 export const CONTEXT_MENU_SUBTITLE_DIVIDER_CLASS =
-  "h-px bg-border-subtle mb-0.5";
+  "h-px bg-slate-200 mb-0.5";
 export const CONTEXT_MENU_SECTION_LABEL_CLASS =
-  "mb-0.5 px-1.5 pt-0.5 pb-0.5 uppercase tracking-widest text-text-muted";
+  "mb-0.5 px-1.5 pt-0.5 pb-0.5 uppercase tracking-widest text-slate-500";
 export const CONTEXT_MENU_ACTION_CLASS =
-  "flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle";
-export const CONTEXT_MENU_ACTION_ICON_CLASS = "h-3.5 w-3.5 text-text-muted";
+  "flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50";
+export const CONTEXT_MENU_ACTION_ICON_CLASS = "h-3.5 w-3.5 text-slate-500";
 export const CONTEXT_MENU_DANGER_ACTION_CLASS =
-  "flex w-full items-center gap-2 px-2 py-1.5 text-status-error-text hover:bg-status-error-bg";
+  "flex w-full items-center gap-2 px-2 py-1.5 text-rose-700 hover:bg-rose-100";
 export const CONTEXT_MENU_DISABLED_ACTION_CLASS =
-  "disabled:cursor-not-allowed disabled:text-text-muted";
+  "disabled:cursor-not-allowed disabled:text-slate-500";
 
 function joinClasses(...classes: Array<string | undefined | false>) {
   return classes.filter(Boolean).join(" ");

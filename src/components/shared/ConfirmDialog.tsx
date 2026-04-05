@@ -61,12 +61,12 @@ export function ConfirmDialog({
   }, [open, onCancel, onConfirm, loading, hideCancel]);
 
   const contentIcon = icon ?? (
-    <AlertTriangle className="h-6 w-6 text-status-error-text" aria-hidden />
+    <AlertTriangle className="h-6 w-6 text-rose-700" aria-hidden />
   );
 
   const confirmClasses = destructive
-    ? "inline-flex items-center justify-center gap-2 bg-status-error-bg px-4 py-2 font-semibold text-status-error-text hover:bg-status-error-border disabled:cursor-not-allowed disabled:text-text-muted"
-    : "inline-flex items-center justify-center gap-2 bg-action-bg px-4 py-2 font-semibold text-action-text hover:bg-action-hover disabled:cursor-not-allowed disabled:bg-action-disabled";
+    ? "inline-flex items-center justify-center gap-2 bg-rose-100 px-4 py-2 font-semibold text-rose-700 hover:bg-rose-300 disabled:cursor-not-allowed disabled:text-slate-500"
+    : "inline-flex items-center justify-center gap-2 bg-blue-500 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-200";
 
   return (
     <Transition appear show={open} as={Fragment}>
@@ -85,7 +85,7 @@ export function ConfirmDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-overlay-backdrop" />
+          <div className="fixed inset-0 bg-black/45" />
         </Transition.Child>
 
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -108,7 +108,7 @@ export function ConfirmDialog({
                     <button
                       type="button"
                       onClick={onCancel}
-                      className="border border-border-default px-4 py-2 font-semibold text-text-muted hover:text-text-default"
+                      className="border border-slate-300 px-4 py-2 font-semibold text-slate-500 hover:text-slate-800"
                     >
                       {cancelLabel}
                     </button>

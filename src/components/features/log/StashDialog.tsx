@@ -44,9 +44,9 @@ function formatTimestamp(value: string) {
 
 function EmptyState() {
   return (
-    <div className="border border-dashed border-border-default bg-surface-subtle px-4 py-8 text-center">
-      <div className="text-text-default">No stashes yet</div>
-      <p className="mt-1 text-text-muted">
+    <div className="border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center">
+      <div className="text-slate-800">No stashes yet</div>
+      <p className="mt-1 text-slate-500">
         Stashed commits and composer drafts will show up here.
       </p>
     </div>
@@ -87,10 +87,10 @@ export function StashDialog({
         {committedStashes.length > 0 && (
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <div className="uppercase tracking-[0.18em] text-text-muted">
+              <div className="uppercase tracking-[0.18em] text-slate-500">
                 Stashed Commits
               </div>
-              <div className="text-text-muted">
+              <div className="text-slate-500">
                 Hidden from the log list, visible in the commit graph.
               </div>
             </div>
@@ -98,25 +98,25 @@ export function StashDialog({
             {committedStashes.map((stash) => (
               <div
                 key={stash.id}
-                className="border border-border-default bg-surface-subtle px-4 py-3"
+                className="border border-slate-300 bg-slate-50 px-4 py-3"
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-warning-text">
+                      <span className="inline-flex items-center gap-1 border border-amber-300 bg-amber-100 px-1.5 py-0.5 uppercase tracking-[0.14em] text-amber-700">
                         <Archive className="h-4 w-4" />
                         commit stash
                       </span>
-                      <code className="bg-surface-default px-1.5 py-0.5 text-text-default">
+                      <code className="bg-white px-1.5 py-0.5 text-slate-800">
                         {shortHash(stash.entryId)}
                       </code>
-                      <span className="inline-flex items-center gap-1 text-text-muted">
+                      <span className="inline-flex items-center gap-1 text-slate-500">
                         <GitBranch className="h-4 w-4" />
                         {stash.branchName}
                       </span>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-text-muted">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500">
                       <span className="inline-flex items-center gap-1">
                         <Layers3 className="h-4 w-4" />
                         {stash.sectionCount} section
@@ -140,7 +140,7 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onOpenCommittedStashInGraph(stash.id)}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-hover"
+                      className="inline-flex items-center gap-2 border border-slate-300 px-3 py-1.5 text-slate-800 hover:bg-slate-200"
                     >
                       <GitCommitHorizontal className="h-4 w-4" />
                       Open in graph
@@ -148,7 +148,7 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onUnstashCommittedEntry(stash.id)}
-                      className="inline-flex items-center gap-2 bg-status-warning-bg px-3 py-1.5 text-status-warning-text hover:bg-status-warning-border"
+                      className="inline-flex items-center gap-2 bg-amber-100 px-3 py-1.5 text-amber-700 hover:bg-amber-300"
                     >
                       <ArchiveRestore className="h-4 w-4" />
                       Unstash
@@ -163,10 +163,10 @@ export function StashDialog({
         {draftStashes.length > 0 && (
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <div className="uppercase tracking-[0.18em] text-text-muted">
+              <div className="uppercase tracking-[0.18em] text-slate-500">
                 Stashed Drafts
               </div>
-              <div className="text-text-muted">
+              <div className="text-slate-500">
                 Saved composer workspaces you can apply or pop back in.
               </div>
             </div>
@@ -174,25 +174,25 @@ export function StashDialog({
             {draftStashes.map((stash) => (
               <div
                 key={stash.id}
-                className="border border-border-default bg-surface-subtle px-4 py-3"
+                className="border border-slate-300 bg-slate-50 px-4 py-3"
               >
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 border border-status-info-border bg-status-info-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-info-text">
+                      <span className="inline-flex items-center gap-1 border border-sky-300 bg-sky-100 px-1.5 py-0.5 uppercase tracking-[0.14em] text-sky-700">
                         <PencilLine className="h-4 w-4" />
                         draft stash
                       </span>
-                      <code className="bg-surface-default px-1.5 py-0.5 text-text-default">
+                      <code className="bg-white px-1.5 py-0.5 text-slate-800">
                         {shortHash(stash.id)}
                       </code>
-                      <span className="inline-flex items-center gap-1 text-text-muted">
+                      <span className="inline-flex items-center gap-1 text-slate-500">
                         <GitBranch className="h-4 w-4" />
                         {stash.branchName}
                       </span>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-text-muted">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500">
                       <span className="inline-flex items-center gap-1">
                         <Layers3 className="h-4 w-4" />
                         {stash.sections.length} section
@@ -209,14 +209,14 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onApplyDraftStash(stash.id)}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-hover"
+                      className="inline-flex items-center gap-2 border border-slate-300 px-3 py-1.5 text-slate-800 hover:bg-slate-200"
                     >
                       Apply
                     </button>
                     <button
                       type="button"
                       onClick={() => onPopDraftStash(stash.id)}
-                      className="inline-flex items-center gap-2 bg-action-bg px-3 py-1.5 text-action-text hover:bg-action-hover"
+                      className="inline-flex items-center gap-2 bg-blue-500 px-3 py-1.5 text-white hover:bg-blue-700"
                     >
                       <ArchiveRestore className="h-4 w-4" />
                       Pop
@@ -224,7 +224,7 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onDropDraftStash(stash.id)}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-text-muted hover:text-text-default"
+                      className="inline-flex items-center gap-2 border border-slate-300 px-3 py-1.5 text-slate-500 hover:text-slate-800"
                     >
                       <Trash2 className="h-4 w-4" />
                       Drop

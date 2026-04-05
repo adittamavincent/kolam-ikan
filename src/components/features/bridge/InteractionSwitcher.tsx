@@ -188,15 +188,15 @@ export function InteractionSwitcher({
     <div className="flex flex-col gap-3">
       <div className="flex items-stretch gap-2 h-9">
         {/* Interaction Mode Toggle */}
-        <div className="flex flex-1 border border-border-subtle bg-surface-subtle p-0.5">
+        <div className="flex flex-1 border border-slate-200 bg-slate-50 p-0.5">
           {(["ASK", "GO", "BOTH"] as const).map((mode) => (
             <button
               key={mode}
               onClick={() => onChange(mode)}
               className={`relative flex-1 font-bold tracking-widest transition-all duration-200 ease-out ${
                 value === mode
-                  ? "bg-surface-elevated text-action-bg font-black z-10"
-                  : "text-text-muted hover:text-text-default hover:bg-surface-hover"
+                  ? "bg-slate-100 text-blue-500 font-black z-10"
+                  : "text-slate-500 hover:text-slate-800 hover:bg-slate-200"
               }`}
             >
               {mode}
@@ -206,20 +206,20 @@ export function InteractionSwitcher({
 
         {/* Token Indicator */}
         <div
-          className={`flex items-center px-2 border border-border-subtle transition-all cursor-default min-w-17.5 justify-center ${
-            overLimit ? "bg-status-error-bg" : "bg-surface-default"
+          className={`flex items-center px-2 border border-slate-200 transition-all cursor-default min-w-17.5 justify-center ${
+            overLimit ? "bg-rose-100" : "bg-white"
           }`}
           title={`${tokens.toLocaleString()} / ${tokenLimit.toLocaleString()} tokens`}
         >
           <div className="flex flex-col items-center">
             <span
               className={` font-bold tabular-nums leading-none ${
-                overLimit ? "text-status-error-text" : "text-action-bg"
+                overLimit ? "text-rose-700" : "text-blue-500"
               }`}
             >
               {tokens > 999 ? `${(tokens / 1000).toFixed(1)}k` : tokens}
             </span>
-            <span className="text-text-muted font-bold uppercase tracking-tighter mt-0.5">
+            <span className="text-slate-500 font-bold uppercase tracking-tighter mt-0.5">
               Tokens
             </span>
           </div>
@@ -229,22 +229,22 @@ export function InteractionSwitcher({
       {/* Recommendations */}
       {overLimit && (
         <div className="flex flex-col gap-1.5">
-          <div className="border border-border-default bg-status-error-bg px-2 py-1.5 font-medium text-status-error-text leading-tight">
+          <div className="border border-slate-300 bg-rose-100 px-2 py-1.5 font-medium text-rose-700 leading-tight">
             Payload over limit. Reduce selection to proceed.
           </div>
           <div className="flex flex-col gap-1">
             <button
               onClick={onReduceSelection}
-              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
+              className="flex items-center gap-2 border border-slate-300 bg-white px-2 py-1 font-bold text-slate-800 hover:bg-slate-100 transition-all uppercase"
             >
-              <RotateCcw className="h-3 w-3 text-status-error-text" />
+              <RotateCcw className="h-3 w-3 text-rose-700" />
               <span>Use recent only</span>
             </button>
             <button
               onClick={onAutoSummarize}
-              className="flex items-center gap-2 border border-border-default bg-surface-default px-2 py-1 font-bold text-text-default hover:bg-surface-elevated transition-all uppercase"
+              className="flex items-center gap-2 border border-slate-300 bg-white px-2 py-1 font-bold text-slate-800 hover:bg-slate-100 transition-all uppercase"
             >
-              <Zap className="h-3 w-3 text-status-warning-text" />
+              <Zap className="h-3 w-3 text-amber-700" />
               <span>Exclude canvas</span>
             </button>
           </div>

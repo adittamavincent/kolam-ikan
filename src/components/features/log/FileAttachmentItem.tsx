@@ -100,7 +100,7 @@ function FileAttachmentActions({
             onPreviewFile?.();
           }}
           disabled={!onPreviewFile}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+          className="p-1 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
           aria-label={`Preview ${title}`}
           title={
             onPreviewFile ? "Open file preview" : "File preview unavailable"
@@ -118,7 +118,7 @@ function FileAttachmentActions({
             if (canOpenParsed && onPreviewParsed) onPreviewParsed();
           }}
           disabled={!canOpenParsed || !onPreviewParsed}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+          className="p-1 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label={`Open parsed Docling for ${title}`}
           title={
             !onPreviewParsed
@@ -138,7 +138,7 @@ function FileAttachmentActions({
           target="_blank"
           rel="noreferrer"
           onClick={(event) => event.stopPropagation()}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+          className="p-1 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
           aria-label="Open file in new tab"
           title="Open in new tab"
         >
@@ -160,7 +160,7 @@ function FileAttachmentActions({
           onMouseDown={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
+          className="p-1 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
           aria-label={`Remove ${title}`}
         >
           <X className="h-4 w-4" />
@@ -205,7 +205,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
       <PersonaSurface
         persona={persona}
         tone="body"
-        className="group/log-pdf relative h-40 w-28 overflow-hidden border border-border-default bg-surface-elevated transition-colors hover:border-border-strong"
+        className="group/log-pdf relative h-40 w-28 overflow-hidden border border-slate-300 bg-slate-100 transition-colors hover:border-slate-400"
       >
         <FileAttachmentThumbnail
           url={previewUrl}
@@ -219,7 +219,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           className="h-full w-full border-0"
         />
 
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-surface-default via-surface-default to-surface-elevated opacity-0 transition-opacity duration-150 group-hover/log-pdf:opacity-100" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-white via-white to-slate-100 opacity-0 transition-opacity duration-150 group-hover/log-pdf:opacity-100" />
 
         {onRemove && (
           <button
@@ -231,7 +231,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
             onTouchStart={(event) => event.stopPropagation()}
-            className="absolute left-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center border border-border-default bg-surface-default text-text-muted opacity-0 transition-all duration-150 hover:text-text-default group-hover/log-pdf:opacity-100"
+            className="absolute left-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center border border-slate-300 bg-white text-slate-500 opacity-0 transition-all duration-150 hover:text-slate-800 group-hover/log-pdf:opacity-100"
             aria-label={`Remove ${title}`}
           >
             <X className="h-4 w-4" />
@@ -246,7 +246,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               onPreviewFile?.();
             }}
             disabled={!onPreviewFile}
-            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 uppercase tracking-[0.14em] text-slate-800 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-600"
             aria-label={`Preview ${title}`}
             title={
               onPreviewFile
@@ -265,7 +265,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               if (canOpenParsed && onPreviewParsed) onPreviewParsed();
             }}
             disabled={!canOpenParsed || !onPreviewParsed}
-            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-slate-300 bg-white px-2 uppercase tracking-[0.14em] text-slate-800 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:text-slate-600"
             aria-label={`Open parsed Docling for ${title}`}
             title={
               !onPreviewParsed
@@ -280,12 +280,12 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           </button>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 z-1 truncate bg-surface-elevated px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+        <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 z-1 truncate bg-slate-100 px-2 py-1 text-slate-800 transition-opacity duration-150 group-hover/log-pdf:opacity-0">
           {title}
         </div>
 
         {overlaySubtitle && (
-          <div className="pointer-events-none absolute inset-x-1.5 bottom-8 z-1 line-clamp-2 bg-surface-elevated px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+          <div className="pointer-events-none absolute inset-x-1.5 bottom-8 z-1 line-clamp-2 bg-slate-100 px-2 py-1 text-slate-800 transition-opacity duration-150 group-hover/log-pdf:opacity-0">
             {overlaySubtitle}
           </div>
         )}
@@ -296,7 +296,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
   // Creator variant
   return (
     <div
-      className="relative overflow-hidden border border-border-default bg-surface-default px-3 py-2 transition-colors cursor-default"
+      className="relative overflow-hidden border border-slate-300 bg-white px-3 py-2 transition-colors cursor-default"
       title={isProcessing ? "Processing Docling..." : "Attachment actions"}
     >
       {/* Progress bar background */}
@@ -326,17 +326,17 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <div className="text-text-default">{title}</div>
+              <div className="text-slate-800">{title}</div>
             </div>
             <div className="flex flex-col gap-0.5">
-              {subtitle && <div className="text-text-muted">{subtitle}</div>}
+              {subtitle && <div className="text-slate-500">{subtitle}</div>}
               {isProcessing && (
                 <div className="flex items-center gap-1.5">
                   <span className="log-pane__accent-label">
                     {progressPercent}%
                   </span>
                   {progressMessage && (
-                    <span className="truncate text-text-subtle">
+                    <span className="truncate text-slate-600">
                       {progressMessage}
                     </span>
                   )}

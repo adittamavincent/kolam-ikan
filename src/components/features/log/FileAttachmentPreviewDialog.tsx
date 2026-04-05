@@ -62,7 +62,7 @@ export function FileAttachmentPreviewDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-overlay-backdrop transition-opacity" />
+          <div className="fixed inset-0 bg-black/45 transition-opacity" />
         </TransitionChild>
 
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -75,10 +75,10 @@ export function FileAttachmentPreviewDialog({
             leaveFrom="opacity-100 scale-100 translate-y-0"
             leaveTo="opacity-0 scale-95 translate-y-4"
           >
-            <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-border-default bg-surface-default transition-all">
-              <div className="flex items-start justify-between gap-3 border-b border-border-default px-4 py-3">
+            <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-slate-300 bg-white transition-all">
+              <div className="flex items-start justify-between gap-3 border-b border-slate-300 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <DialogTitle className="truncate text-text-default">
+                  <DialogTitle className="truncate text-slate-800">
                     {attachmentPreview?.title ??
                       parsedPreview?.title ??
                       "File Preview"}
@@ -91,8 +91,8 @@ export function FileAttachmentPreviewDialog({
                       }}
                       className={`px-2 py-1 transition-colors ${
                         activePreviewTab === "file"
-                          ? "bg-action-bg text-action-text"
-                          : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
+                          ? "bg-blue-500 text-white"
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-200"
                       }`}
                     >
                       File
@@ -114,8 +114,8 @@ export function FileAttachmentPreviewDialog({
                       }}
                       className={`px-2 py-1 transition-colors ${
                         activePreviewTab === "parsed"
-                          ? "bg-action-bg text-action-text"
-                          : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
+                          ? "bg-blue-500 text-white"
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-200"
                       }`}
                     >
                       Parsed
@@ -126,7 +126,7 @@ export function FileAttachmentPreviewDialog({
                   type="button"
                   onClick={onClose}
                   disabled={parsedPreviewLoading}
-                  className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default disabled:opacity-50"
+                  className="p-1 text-slate-500 hover:bg-slate-50 hover:text-slate-800 disabled:opacity-50"
                   aria-label="Close parsed content preview"
                 >
                   <X className="h-4 w-4" />
@@ -138,11 +138,11 @@ export function FileAttachmentPreviewDialog({
                   (attachmentPreview?.previewUrl ? (
                     <iframe
                       src={attachmentPreview.previewUrl}
-                      className="h-[68vh] w-full border border-border-default bg-surface-subtle"
+                      className="h-[68vh] w-full border border-slate-300 bg-slate-50"
                       title={`File preview for ${attachmentPreview.title}`}
                     />
                   ) : (
-                    <div className="border border-border-default bg-surface-subtle px-3 py-2 text-text-muted">
+                    <div className="border border-slate-300 bg-slate-50 px-3 py-2 text-slate-500">
                       Preview is not available for this attachment yet.
                     </div>
                   ))}
@@ -150,7 +150,7 @@ export function FileAttachmentPreviewDialog({
                 {activePreviewTab === "parsed" && (
                   <>
                     {!isParsedReadyStatus(attachmentPreview?.importStatus) && (
-                      <div className="border border-status-warning-border bg-status-warning-bg px-3 py-2 text-status-warning-text">
+                      <div className="border border-amber-300 bg-amber-100 px-3 py-2 text-amber-700">
                         Parsed Docling output is not ready yet. Wait until
                         import status is completed.
                       </div>
@@ -158,7 +158,7 @@ export function FileAttachmentPreviewDialog({
 
                     {isParsedReadyStatus(attachmentPreview?.importStatus) &&
                       parsedPreviewLoading && (
-                        <div className="flex items-center gap-2 text-text-muted">
+                        <div className="flex items-center gap-2 text-slate-500">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Loading parsed content...
                         </div>
@@ -167,7 +167,7 @@ export function FileAttachmentPreviewDialog({
                     {isParsedReadyStatus(attachmentPreview?.importStatus) &&
                       !parsedPreviewLoading &&
                       parsedPreviewError && (
-                        <div className="border border-status-error-border bg-status-error-bg px-3 py-2 text-status-error-text">
+                        <div className="border border-rose-300 bg-rose-100 px-3 py-2 text-rose-700">
                           {parsedPreviewError}
                         </div>
                       )}
@@ -176,7 +176,7 @@ export function FileAttachmentPreviewDialog({
                       !parsedPreviewLoading &&
                       !parsedPreviewError &&
                       parsedPreview && (
-                        <pre className="whitespace-pre-wrap wrap-break-word border border-border-default bg-surface-subtle p-3 text-text-default">
+                        <pre className="whitespace-pre-wrap wrap-break-word border border-slate-300 bg-slate-50 p-3 text-slate-800">
                           {parsedPreview.markdown}
                         </pre>
                       )}

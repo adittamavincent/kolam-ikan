@@ -194,9 +194,9 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   if (!hasDraftDiff) return null;
 
   return (
-    <div className="overflow-hidden bg-surface-subtle transition-colors">
+    <div className="overflow-hidden bg-slate-50 transition-colors">
       {/* Header */}
-      <div className="flex items-center bg-surface-elevated">
+      <div className="flex items-center bg-slate-100">
         <div className="flex h-6 w-full items-center gap-2">
           <div className="h-4 w-4" />
           <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
               value={snapshotName}
               onChange={(e) => setSnapshotName(e.target.value)}
               placeholder="Snapshot name (optional)..."
-              className="flex-1 bg-surface-default text-text-default outline-none placeholder:text-text-muted focus:border-border-strong"
+              className="flex-1 bg-white text-slate-800 outline-none placeholder:text-slate-500 focus:border-slate-400"
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitMutation.mutate();
                 if (e.key === "Escape") setIsExpanded(false);

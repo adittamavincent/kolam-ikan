@@ -204,11 +204,11 @@ export function FileAttachmentThumbnail({
   const showPlaceholder = previewKind === "none" || imageFailed;
   const showOverlay =
     showError || showProcessing || showQueued || showPlaceholder;
-  const overlayBg = hasPreview ? "bg-overlay-backdrop" : "bg-surface-subtle";
+  const overlayBg = hasPreview ? "bg-black/45" : "bg-slate-50";
 
   return (
     <div
-      className={`relative overflow-hidden border border-border-default bg-surface-subtle ${className ?? "h-16 w-12"}`}
+      className={`relative overflow-hidden border border-slate-300 bg-slate-50 ${className ?? "h-16 w-12"}`}
     >
       {previewKind === "image" && effectivePreviewUrl && !imageFailed && (
         <Image
@@ -228,32 +228,32 @@ export function FileAttachmentThumbnail({
         >
           {showError ? (
             <div className="flex flex-col items-center gap-1">
-              <div className="bg-status-error-bg p-1 text-status-error-text">
+              <div className="bg-rose-100 p-1 text-rose-700">
                 <X className="h-4 w-4" />
               </div>
-              <div className="text-status-error-text">Failed</div>
+              <div className="text-rose-700">Failed</div>
             </div>
           ) : showProcessing || showQueued ? (
             <div className="flex flex-col items-center gap-1">
               {typeof progressPercent === "number" ? (
                 <>
                   <Loader2 className="log-pane__accent-label h-4 w-4 animate-spin" />
-                  <div className="text-text-default">{progressPercent}%</div>
+                  <div className="text-slate-800">{progressPercent}%</div>
                 </>
               ) : (
-                <div className="text-text-default">
+                <div className="text-slate-800">
                   {showQueued ? "Queued" : "Processing"}
                 </div>
               )}
             </div>
           ) : (
-            <FileText className="h-4 w-4 text-text-muted" />
+            <FileText className="h-4 w-4 text-slate-500" />
           )}
         </div>
       )}
 
       {(importStatus === "completed" || importStatus === "done") && (
-        <div className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center border border-status-success-border bg-status-success-bg text-status-success-text">
+        <div className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center border border-emerald-300 bg-emerald-100 text-emerald-700">
           <Check className="h-4 w-4" />
         </div>
       )}

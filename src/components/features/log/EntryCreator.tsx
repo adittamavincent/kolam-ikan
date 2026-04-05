@@ -1320,7 +1320,7 @@ export function EntryCreator({
       <Menu as="div" className={wrapperClassName}>
         <MenuButton className={buttonClassName} title={buttonTitle}>
           <Plus className="h-4 w-4" />
-          {!compact && <span className="text-text-default">Add Persona</span>}
+          {!compact && <span className="text-slate-800">Add Persona</span>}
         </MenuButton>
 
         <Transition
@@ -1335,13 +1335,13 @@ export function EntryCreator({
           <MenuItems
             anchor={{ to: "bottom start", gap: 4 }}
             portal
-            className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-2 focus:"
+            className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-slate-300 bg-slate-100 p-2 focus:"
           >
-            <div className="uppercase tracking-wider text-text-muted">
+            <div className="uppercase tracking-wider text-slate-500">
               Add Author Section
             </div>
             {globalPersonas.length > 0 && (
-              <div className="text-text-muted">Available Everywhere</div>
+              <div className="text-slate-500">Available Everywhere</div>
             )}
             {globalPersonas.map((persona) => (
               <MenuItem key={persona.id}>
@@ -1357,7 +1357,7 @@ export function EntryCreator({
               </MenuItem>
             ))}
             {localPersonas.length > 0 && (
-              <div className="mt-1 px-2 py-1 text-status-warning-text">
+              <div className="mt-1 px-2 py-1 text-amber-700">
                 Local To This Stream
               </div>
             )}
@@ -1375,7 +1375,7 @@ export function EntryCreator({
               </MenuItem>
             ))}
             <MenuItem>
-              <div className="my-1 border-t border-border-default" />
+              <div className="my-1 border-t border-slate-300" />
             </MenuItem>
             <MenuItem>
               {({ active }) => (
@@ -1383,8 +1383,8 @@ export function EntryCreator({
                   onClick={() => setPersonaManagerOpen(true)}
                   className={`${
                     active
-                      ? "bg-surface-subtle text-text-default"
-                      : "text-text-subtle"
+                      ? "bg-slate-50 text-slate-800"
+                      : "text-slate-600"
                   } group flex w-full items-center transition-colors`}
                 >
                   <Settings className="mr-2 h-4 w-4" />
@@ -2377,8 +2377,8 @@ export function EntryCreator({
 
   if (isLoading) {
     return (
-      <div className="relative border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
-        <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
+      <div className="relative border border-slate-300 bg-white p-4 min-h-25 flex items-center justify-center">
+        <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
       </div>
     );
   }
@@ -2393,8 +2393,8 @@ export function EntryCreator({
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
         <ThreadFrame
-          frameClassName="border-border-default bg-surface-default"
-          bodyClassName="bg-surface-default"
+          frameClassName="border-slate-300 bg-white"
+          bodyClassName="bg-white"
         >
           <div className="flex flex-col">
             {/* Persona picker */}
@@ -2411,13 +2411,13 @@ export function EntryCreator({
                       compact
                       showTypeBadge={false}
                       title={`Quick add ${persona.name}`}
-                      className="h-full px-2 shrink-0 border-0 text-text-default"
+                      className="h-full px-2 shrink-0 border-0 text-slate-800"
                       style={getPersonaTintStyle(persona, "interactive")}
                       onClick={() => addPersona(persona.id)}
                     />
                   ))}
                   {hiddenQuickPersonaCount > 0 && (
-                    <div className="flex h-full shrink-0 items-center bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted">
+                    <div className="flex h-full shrink-0 items-center bg-slate-50 px-1.5 py-0.5 leading-4 text-slate-500">
                       +{hiddenQuickPersonaCount}
                     </div>
                   )}
@@ -2436,14 +2436,14 @@ export function EntryCreator({
                         persona={persona}
                         compact
                         showTypeBadge={false}
-                        className="h-full border-0 text-text-default"
+                        className="h-full border-0 text-slate-800"
                         style={getPersonaTintStyle(persona, "interactive")}
                       />
                     </div>
                   ))}
                   <div
                     ref={quickPersonaOverflowMeasureRef}
-                    className="shrink-0 bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted"
+                    className="shrink-0 bg-slate-50 px-1.5 py-0.5 leading-4 text-slate-500"
                   >
                     +{quickPersonas.length}
                   </div>
@@ -2460,7 +2460,7 @@ export function EntryCreator({
               {sections.length > 0 && (
                 <button
                   onClick={requestClearSections}
-                  className="entry-creator__topbar-button entry-creator__topbar-button--icon entry-creator__icon-button--danger ml-auto flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                  className="entry-creator__topbar-button entry-creator__topbar-button--icon entry-creator__icon-button--danger ml-auto flex h-6 w-6 items-center justify-center p-0 text-slate-500 transition-colors"
                   title="Delete all sections"
                 >
                   <X className="h-4 w-4" />
@@ -2548,11 +2548,11 @@ export function EntryCreator({
                               }
                               className="flex flex-col"
                               headerClassName="entry-creator__section-header"
-                              bodyClassName="bg-surface-default"
+                              bodyClassName="bg-white"
                               leftHeader={
                                 <div className="flex items-center">
                                   <button
-                                    className={`entry-creator__icon-button flex h-6 w-6 items-center justify-center cursor-grab p-0 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
+                                    className={`entry-creator__icon-button flex h-6 w-6 items-center justify-center cursor-grab p-0 text-slate-500 transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
                                     aria-label="Drag to reorder"
                                     {...dragHandleProps}
                                   >
@@ -2591,7 +2591,7 @@ export function EntryCreator({
                                       onClick={() =>
                                         openFullscreenEditor(instanceId)
                                       }
-                                      className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                                      className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-slate-500 transition-colors"
                                       title="Open fullscreen editor"
                                     >
                                       <Expand className="h-4 w-4" />
@@ -2603,7 +2603,7 @@ export function EntryCreator({
                                       onClick={() =>
                                         toggleSectionKind(instanceId)
                                       }
-                                      className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                                      className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-slate-500 transition-colors"
                                       title={
                                         isAttachment
                                           ? "Switch to Text Editor"
@@ -2622,7 +2622,7 @@ export function EntryCreator({
                                     onClick={() =>
                                       requestRemoveSection(instanceId)
                                     }
-                                    className="entry-creator__icon-button entry-creator__icon-button--danger flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                                    className="entry-creator__icon-button entry-creator__icon-button--danger flex h-6 w-6 items-center justify-center p-0 text-slate-500 transition-colors"
                                     title="Remove this section"
                                   >
                                     <X className="h-4 w-4" />
@@ -2795,7 +2795,7 @@ export function EntryCreator({
                                     }}
                                     notes={
                                       <div>
-                                        <div className="uppercase tracking-[0.14em] text-text-muted">
+                                        <div className="uppercase tracking-[0.14em] text-slate-500">
                                           Attachment Notes
                                         </div>
                                         <div className="section-editor-surface">
@@ -2835,17 +2835,17 @@ export function EntryCreator({
             {/* Footer — commit action */}
             {sections.length > 0 && !fullscreenSectionId && (
               <div className="entry-creator__footer flex h-6 items-center justify-between">
-                <div className="flex min-w-0 items-center leading-4 text-text-muted">
+                <div className="flex min-w-0 items-center leading-4 text-slate-500">
                   <kbd className="flex h-6 items-center font-mono">⌘+Enter</kbd>
                   <ChevronRight
-                    className="h-4 w-4 shrink-0 text-text-muted"
+                    className="h-4 w-4 shrink-0 text-slate-500"
                     aria-hidden="true"
                   />
                   <span className="entry-creator__branch-pill inline-flex h-6 min-w-0 items-center">
                     <GitBranch className="h-4 w-4 shrink-0" />
                     <span className="truncate">{selectedBranch || "main"}</span>
                   </span>
-                  <span className="hidden items-center text-text-muted sm:inline-flex">
+                  <span className="hidden items-center text-slate-500 sm:inline-flex">
                     <GitCommitHorizontal className="h-4 w-4 shrink-0" />
                     {currentBranchHeadId
                       ? `${shortHash(currentBranchHeadId)}`
@@ -2882,8 +2882,8 @@ export function EntryCreator({
                   disabled={isCommitDisabled}
                   className={`inline-flex h-full w-32 items-center justify-center leading-4 transition-colors ${
                     !isCommitDisabled
-                      ? "bg-action-bg text-action-text hover:bg-action-hover"
-                      : "bg-surface-subtle text-text-muted cursor-not-allowed"
+                      ? "bg-blue-500 text-white hover:bg-blue-700"
+                      : "bg-slate-50 text-slate-500 cursor-not-allowed"
                   }`}
                 >
                   <Send className="h-4 w-4" />
@@ -2899,9 +2899,9 @@ export function EntryCreator({
           onClose={closeFullscreenEditor}
           className="relative z-120"
         >
-          <div className="fixed inset-0 bg-surface-default" />
+          <div className="fixed inset-0 bg-white" />
           <div className="fixed inset-0">
-            <DialogPanel className="entry-creator-fullscreen flex h-full w-full flex-col overflow-hidden bg-surface-default text-text-default">
+            <DialogPanel className="entry-creator-fullscreen flex h-full w-full flex-col overflow-hidden bg-white text-slate-800">
               <div className="entry-creator-fullscreen__chrome flex items-center px-3 pt-2">
                 <div className="entry-creator-fullscreen__tabs scrollbar-hide flex min-w-0 flex-1 items-end overflow-x-auto">
                   {fullscreenPersonaSections.map((section) => {
@@ -2917,11 +2917,11 @@ export function EntryCreator({
                         }
                         className={`entry-creator-fullscreen__tab group min-w-36 border border-b-0 px-3 py-2 text-left transition-colors ${
                           isActive
-                            ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
-                            : "border-border-default bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                            ? "entry-creator-fullscreen__tab--active border-slate-300 bg-white text-slate-800"
+                            : "border-slate-300 bg-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                         }`}
                       >
-                        <div className="uppercase tracking-[0.18em] text-text-muted">
+                        <div className="uppercase tracking-[0.18em] text-slate-500">
                           Section {section.sectionIndex + 1}
                         </div>
                         <div className="truncate">
@@ -2933,14 +2933,14 @@ export function EntryCreator({
                   {renderAddPersonaMenu({
                     wrapperClassName: "relative shrink-0 self-center",
                     buttonClassName:
-                      "entry-creator-fullscreen__tab entry-creator-fullscreen__tab--compact flex h-[2.125rem] w-[2.125rem] min-w-[2.125rem] items-center justify-center border border-b-0 border-border-default bg-surface-hover p-0 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default",
+                      "entry-creator-fullscreen__tab entry-creator-fullscreen__tab--compact flex h-[2.125rem] w-[2.125rem] min-w-[2.125rem] items-center justify-center border border-b-0 border-slate-300 bg-slate-200 p-0 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800",
                     buttonTitle: "Add section",
                     compact: true,
                   })}
                 </div>
                 <button
                   type="button"
-                  className="entry-creator__topbar-button entry-creator__topbar-button--icon shrink-0 border p-2 text-text-muted transition-colors"
+                  className="entry-creator__topbar-button entry-creator__topbar-button--icon shrink-0 border p-2 text-slate-500 transition-colors"
                   title="Toggle fullscreen: Cmd+Shift+Enter"
                 >
                   <Info className="h-4 w-4" />
@@ -2948,7 +2948,7 @@ export function EntryCreator({
                 <button
                   type="button"
                   onClick={closeFullscreenEditor}
-                  className="entry-creator__topbar-button entry-creator__topbar-button--icon shrink-0 border p-2 text-text-muted transition-colors"
+                  className="entry-creator__topbar-button entry-creator__topbar-button--icon shrink-0 border p-2 text-slate-500 transition-colors"
                   title="Exit fullscreen editor"
                 >
                   <Minimize2 className="h-4 w-4" />
@@ -2957,7 +2957,7 @@ export function EntryCreator({
 
               <div className="entry-creator-fullscreen__body min-h-0 flex-1">
                 {activeFullscreenSection ? (
-                  <div className="entry-creator-fullscreen__editor-shell h-full w-full bg-surface-default p-1">
+                  <div className="entry-creator-fullscreen__editor-shell h-full w-full bg-white p-1">
                     {renderPersonaEditor(
                       activeFullscreenSection.instanceId,
                       activeFullscreenSection.personaId,

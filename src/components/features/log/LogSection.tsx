@@ -209,8 +209,8 @@ export function LogSection({
       isAttachment={isAttachmentSection}
       nestedConnector={nestedConnector}
       className={`flex flex-col ${isSearchTarget ? "kolam-search-reveal" : ""}`}
-      headerClassName="bg-surface-hover"
-      bodyClassName="bg-surface-default"
+      headerClassName="bg-slate-200"
+      bodyClassName="bg-white"
       leftHeader={
         <div className="inline-flex h-6 items-center leading-none uppercase gap-2">
           <span>S{sectionIndex + 1}</span>
@@ -234,7 +234,7 @@ export function LogSection({
         </div>
       }
       rightHeader={
-        <span className="leading-4 text-text-muted">
+        <span className="leading-4 text-slate-500">
           {section.updated_at
             ? new Date(section.updated_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -361,14 +361,14 @@ export function LogSection({
         )}
 
         {showEmptyAttachmentsNotice && (
-          <div className="bg-surface-default px-2 py-1.5 text-text-muted">
+          <div className="bg-white px-2 py-1.5 text-slate-500">
             No file attachments in this section.
           </div>
         )}
 
         {shouldShowAttachmentNotes && (
           <div className="">
-            <div className="p-1 uppercase tracking-[0.14em] text-text-muted">
+            <div className="p-1 uppercase tracking-[0.14em] text-slate-500">
               Attachment Notes
             </div>
             <div

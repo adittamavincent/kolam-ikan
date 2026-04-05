@@ -28,7 +28,7 @@ export interface MarkdownEditorProps {
 const BaseEditor = dynamic(() => import("./BaseEditor"), {
   ssr: false,
   loading: () => (
-    <div className="flex items-center justify-center p-4 text-text-muted">
+    <div className="flex items-center justify-center p-4 text-slate-500">
       <Loader2 className="h-5 w-5 animate-spin" />
     </div>
   ),

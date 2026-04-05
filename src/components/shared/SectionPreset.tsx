@@ -63,13 +63,13 @@ export function ThreadFrame({
         <>
           {showTopSegment && (
             <div
-              className="pointer-events-none absolute left-2 z-0 w-px bg-border-subtle"
+              className="pointer-events-none absolute left-2 z-0 w-px bg-slate-200"
               style={topSegmentStyle}
             />
           )}
           {showBottomSegment && (
             <div
-              className="pointer-events-none absolute left-2 z-0 w-px bg-border-subtle"
+              className="pointer-events-none absolute left-2 z-0 w-px bg-slate-200"
               style={{
                 top: connectorJointTop,
                 bottom: `calc(-1 * ${connectorGapBleed})`,
@@ -77,14 +77,14 @@ export function ThreadFrame({
             />
           )}
           <div
-            className="pointer-events-none absolute left-2 z-0 h-px bg-border-subtle"
+            className="pointer-events-none absolute left-2 z-0 h-px bg-slate-200"
             style={{ top: connectorJointTop, width: "0.6875rem" }}
           />
         </>
       )}
 
       <div
-        className={`relative z-10 bg-surface-default ${frameClassName}`.trim()}
+        className={`relative z-10 bg-white ${frameClassName}`.trim()}
         style={frameStyle}
       >
         {header && (
@@ -136,7 +136,7 @@ export function SectionPreset({
   className = "",
   headerClassName = "",
   bodyClassName = "",
-  frameClassName = "border-border-default",
+  frameClassName = "border-slate-300",
 }: SectionPresetProps) {
   const frameStyle = persona
     ? getPersonaTintStyle(persona, "muted")
@@ -151,7 +151,7 @@ export function SectionPreset({
       nested
       nestedConnector={nestedConnector}
       className={`group ${className}`.trim()}
-      frameClassName={`${frameClassName} ${isAttachment ? "bg-surface-subtle" : ""}`.trim()}
+      frameClassName={`${frameClassName} ${isAttachment ? "bg-slate-50" : ""}`.trim()}
       headerClassName={headerClassName}
       bodyClassName={bodyClassName}
       frameStyle={frameStyle}

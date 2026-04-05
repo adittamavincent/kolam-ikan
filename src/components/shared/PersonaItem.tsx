@@ -38,12 +38,12 @@ function PersonaButtonDisplay({
   if (!persona) {
     return (
       <div className="flex min-w-0 items-center gap-2">
-        <FileText className="persona-button-display__fallback-icon h-4 w-4 text-text-muted" />
-        <span className="text-text-subtle uppercase tracking-wider">
+        <FileText className="persona-button-display__fallback-icon h-4 w-4 text-slate-500" />
+        <span className="text-slate-600 uppercase tracking-wider">
           {isAttachment ? (filePersonaName ?? "Attachment") : "Unknown"}
         </span>
         {showChevron && (
-          <ChevronDown className="persona-button-display__chevron h-4 w-4 text-text-muted" />
+          <ChevronDown className="persona-button-display__chevron h-4 w-4 text-slate-500" />
         )}
       </div>
     );
@@ -65,7 +65,7 @@ function PersonaButtonDisplay({
             >
               {persona.name}
             </div>
-            <div className="truncate text-text-muted">
+            <div className="truncate text-slate-500">
               {getPersonaTypeLabel(persona.type)}
             </div>
           </div>
@@ -85,7 +85,7 @@ function PersonaButtonDisplay({
         )}
       </div>
       {showChevron && (
-        <ChevronDown className="persona-button-display__chevron h-4 w-4 text-text-muted opacity-50" />
+        <ChevronDown className="persona-button-display__chevron h-4 w-4 text-slate-500 opacity-50" />
       )}
     </div>
   );
@@ -128,8 +128,8 @@ export function PersonaItem({
   menuProps = null,
 }: PersonaItemProps) {
   const sharedClass = compact
-    ? `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-1 leading-4 transition-colors`
-    : `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 leading-4 transition-colors`;
+    ? `${focus ? "bg-slate-50 text-slate-800" : "text-slate-600"} group flex items-center gap-1 leading-4 transition-colors`
+    : `${focus ? "bg-slate-50 text-slate-800" : "text-slate-600"} group flex items-center gap-2 leading-4 transition-colors`;
   const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} text-left ${className}`;
   const nameClass =
     role === "local" ? "persona-button-display__name--local" : "";
@@ -156,7 +156,7 @@ export function PersonaItem({
             persona={currentPersona}
             isAttachment={isAttachment}
             filePersonaName={filePersonaName}
-            nameClass={nameClass || "text-text-subtle tracking-wider"}
+            nameClass={nameClass || "text-slate-600 tracking-wider"}
             showChevron={false}
             showMeta={false}
           />
@@ -171,7 +171,7 @@ export function PersonaItem({
             persona={currentPersona}
             isAttachment={isAttachment}
             filePersonaName={filePersonaName}
-            nameClass="text-text-subtle tracking-wider"
+            nameClass="text-slate-600 tracking-wider"
             showChevron={!readOnly}
             showMeta={false}
           />
@@ -189,13 +189,13 @@ export function PersonaItem({
           >
             <MenuItems
               anchor={{ to: "bottom start", gap: 4 }}
-              className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-2"
+              className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-slate-300 bg-slate-100 p-2"
             >
-              <div className="text-text-muted uppercase tracking-wider">
+              <div className="text-slate-500 uppercase tracking-wider">
                 Switch to...
               </div>
               {globalPersonas.length > 0 && (
-                <div className="text-text-muted">Available Everywhere</div>
+                <div className="text-slate-500">Available Everywhere</div>
               )}
               {globalPersonas.map((p) => (
                 <MenuItem key={p.id}>

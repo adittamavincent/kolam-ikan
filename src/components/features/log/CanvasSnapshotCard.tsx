@@ -98,14 +98,14 @@ export function CanvasSnapshotCard({
         hideBody={isCollapsed}
         className="group"
         frameClassName={`overflow-hidden transition-colors ${
-          isCollapsed ? "bg-surface-default" : "bg-surface-subtle"
+          isCollapsed ? "bg-white" : "bg-slate-50"
         }`}
         headerClassName={`transition-colors ${
           isCollapsed
-            ? "bg-surface-hover hover:bg-surface-subtle"
-            : "bg-surface-elevated hover:bg-surface-hover"
+            ? "bg-slate-200 hover:bg-slate-50"
+            : "bg-slate-100 hover:bg-slate-200"
         }`}
-        bodyClassName="bg-surface-subtle"
+        bodyClassName="bg-slate-50"
         header={
           <div
             role="button"
@@ -131,12 +131,12 @@ export function CanvasSnapshotCard({
                   <ChevronDown className="h-4 w-4" />
                 )}
               </span>
-              <Camera className="h-4 w-4 shrink-0 text-text-subtle" />
-              <span className="truncate uppercase text-text-default">
+              <Camera className="h-4 w-4 shrink-0 text-slate-600" />
+              <span className="truncate uppercase text-slate-800">
                 Canvas Snapshot
               </span>
             </div>
-            <span className="shrink-0 text-text-subtle">
+            <span className="shrink-0 text-slate-600">
               {new Date(version.created_at || "").toLocaleString(undefined, {
                 month: "short",
                 day: "numeric",
@@ -155,7 +155,7 @@ export function CanvasSnapshotCard({
                   <div className="persona-button-display__icon log-pane__accent-icon flex h-4 w-4 shrink-0 items-center justify-center">
                     <Sparkles className="h-4 w-4" />
                   </div>
-                  <span className="truncate tracking-wider text-text-subtle uppercase">
+                  <span className="truncate tracking-wider text-slate-600 uppercase">
                     {snapshotTitle}
                   </span>
                   <span className="persona-button-display__type-badge log-pane__accent-badge shrink-0 px-1 py-px uppercase tracking-[0.12em]">
@@ -163,13 +163,13 @@ export function CanvasSnapshotCard({
                   </span>
                 </div>
               ) : (
-                <div className="truncate text-text-default gap-2 flex">
+                <div className="truncate text-slate-800 gap-2 flex">
                   <div className="h-4 w-4" />
                   {snapshotTitle}
                 </div>
               )}
               {version.summary && (
-                <div className="mt-0.5 line-clamp-2 text-text-muted">
+                <div className="mt-0.5 line-clamp-2 text-slate-500">
                   {version.summary}
                 </div>
               )}

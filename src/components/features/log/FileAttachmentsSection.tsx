@@ -70,9 +70,9 @@ export function FileAttachmentsSection({
             ? isDragOver
               ? ""
               : hasItems
-                ? "border-border-default"
-                : "border-dashed border-border-default bg-surface-subtle"
-            : "border-border-default"
+                ? "border-slate-300"
+                : "border-dashed border-slate-300 bg-slate-50"
+            : "border-slate-300"
         }`}
         style={
           canUpload && isDragOver
@@ -107,13 +107,13 @@ export function FileAttachmentsSection({
             ))}
           </div>
         ) : (
-          <div className="relative flex h-12 items-center justify-center gap-2 text-text-muted">
+          <div className="relative flex h-12 items-center justify-center gap-2 text-slate-500">
             {canUpload ? <Upload className="h-4 w-4" /> : null}
             <span>{emptyStateMessage}</span>
 
             {canUpload ? (
               <div
-                className="absolute inset-0 flex items-center justify-center gap-2 bg-surface-subtle opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100"
+                className="absolute inset-0 flex items-center justify-center gap-2 bg-slate-50 opacity-0 transition-opacity hover:opacity-100 focus-within:opacity-100"
                 onClick={() => {
                   openFilePicker();
                 }}
@@ -121,7 +121,7 @@ export function FileAttachmentsSection({
                 {onOpenLibrary ? (
                   <button
                     type="button"
-                    className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 uppercase tracking-[0.12em] text-text-default transition-colors hover:bg-surface-hover"
+                    className="inline-flex h-7 items-center gap-1.5 border border-slate-300 bg-white px-2 uppercase tracking-[0.12em] text-slate-800 transition-colors hover:bg-slate-200"
                     onClick={(event) => {
                       event.stopPropagation();
                       onOpenLibrary();
@@ -134,7 +134,7 @@ export function FileAttachmentsSection({
 
                 <button
                   type="button"
-                  className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 uppercase tracking-[0.12em] text-text-default transition-colors hover:bg-surface-hover"
+                  className="inline-flex h-7 items-center gap-1.5 border border-slate-300 bg-white px-2 uppercase tracking-[0.12em] text-slate-800 transition-colors hover:bg-slate-200"
                   onClick={(event) => {
                     event.stopPropagation();
                     openFilePicker();

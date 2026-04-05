@@ -1854,7 +1854,7 @@ class HorizontalRuleWidget extends WidgetType {
 
 const kolamEditorTheme = EditorView.theme({
   "&": {
-    backgroundColor: "var(--bg-surface-default)",
+    backgroundColor: "var(--bg-white)",
     color: "var(--text-default)",
     fontFamily: "var(--font-text)",
   },
@@ -1874,20 +1874,20 @@ const kolamEditorTheme = EditorView.theme({
   },
   ".cm-activeLine": {
     backgroundColor:
-      "color-mix(in srgb, var(--text-selection) 28%, var(--bg-surface-default))",
+      "color-mix(in srgb, var(--text-selection) 28%, var(--bg-white))",
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--action-bg)",
   },
   ".cm-gutters": {
-    backgroundColor: "var(--bg-surface-default)",
+    backgroundColor: "var(--bg-white)",
     border: "none",
     color: "var(--text-muted)",
     fontFamily: "var(--font-monospace)",
   },
   ".cm-activeLineGutter": {
     backgroundColor:
-      "color-mix(in srgb, var(--text-selection) 28%, var(--bg-surface-default))",
+      "color-mix(in srgb, var(--text-selection) 28%, var(--bg-white))",
   },
   "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, ::selection":
     {

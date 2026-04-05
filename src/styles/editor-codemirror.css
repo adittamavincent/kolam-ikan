@@ -12,7 +12,7 @@
 
 .entry-creator-fullscreen__chrome {
   position: relative;
-  background: var(--bg-surface-subtle);
+  background: var(--bg-slate-50);
 }
 
 .entry-creator-fullscreen__chrome::after {
@@ -40,7 +40,7 @@
 }
 
 .entry-creator-fullscreen__body {
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
 }
 
 .entry-creator-fullscreen__editor-shell {
@@ -53,7 +53,7 @@
 .entry-creator-fullscreen .kolam-codemirror-root .cm-editor,
 .entry-creator-fullscreen .kolam-codemirror-root .cm-scroller,
 .entry-creator-fullscreen .kolam-codemirror-root .cm-gutters {
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
 }
 
 .entry-creator-fullscreen .kolam-codemirror-root {
@@ -157,13 +157,13 @@
 }
 
 .kolam-codemirror-frame {
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   color: var(--text-default);
   font-family: var(--font-text);
 }
 
 .kolam-codemirror-root .cm-editor {
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   color: var(--text-default);
   font-family: var(--font-text);
   min-height: 8rem;
@@ -181,7 +181,7 @@
 }
 
 .entry-creator .kolam-codemirror-root .cm-editor {
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   height: auto;
   min-height: 1.65em;
 }
@@ -189,7 +189,7 @@
 .entry-creator .kolam-codemirror-root,
 .entry-creator .kolam-codemirror-root .cm-editor,
 .entry-creator .kolam-codemirror-root .cm-scroller {
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   height: auto;
   min-height: 0;
 }
@@ -310,7 +310,7 @@
 }
 
 .kolam-codemirror-root .cm-gutters {
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   border-right: none;
   color: var(--text-muted);
   font-family: var(--font-monospace);
@@ -370,7 +370,7 @@
 
 .kolam-codemirror-root .cm-kolam-inline-code {
   border-radius: 0;
-  background: var(--bg-surface-elevated);
+  background: var(--bg-slate-100);
   color: var(--text-default);
   font-family: var(--font-monospace);
   padding: 0 0.25rem;
@@ -477,7 +477,7 @@
   padding: 0.12rem 0.45rem;
   border-right: 1px solid var(--border-default);
   border-bottom: 1px solid var(--border-default);
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   box-sizing: border-box;
 }
 
@@ -515,7 +515,7 @@
 
 .kolam-codemirror-root .cm-kolam-table-inline-code {
   border-radius: 0;
-  background: var(--bg-surface-elevated);
+  background: var(--bg-slate-100);
   color: var(--text-default);
   font-family: var(--font-monospace);
   padding: 0 0.25rem;
@@ -583,7 +583,7 @@
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -597,7 +597,7 @@
 }
 
 .kolam-codemirror-root .cm-kolam-table-handle:hover {
-  background: var(--bg-surface-hover);
+  background: var(--bg-slate-200);
   outline: 1px solid var(--action-bg);
   color: var(--action-bg);
 }
@@ -609,7 +609,7 @@
 .kolam-codemirror-root .cm-kolam-table-handle.is-dragging {
   background: var(--action-bg);
   outline: 1px solid var(--action-hover);
-  color: var(--bg-surface-default);
+  color: var(--bg-white);
 }
 
 .kolam-codemirror-root .cm-kolam-table-handle .cm-kolam-table-grip-dots {
@@ -628,7 +628,7 @@
   position: absolute;
   border: 1px dashed var(--border-strong);
   border-radius: 0;
-  background: var(--bg-surface-elevated);
+  background: var(--bg-slate-100);
   color: var(--text-subtle);
   touch-action: none;
   transition:
@@ -658,7 +658,7 @@
   padding: 0.06rem 0.4rem;
   font-size: 0.66rem;
   font-weight: 700;
-  color: var(--bg-surface-default);
+  color: var(--bg-white);
   background: var(--action-bg);
 }
 
@@ -680,7 +680,7 @@
 .kolam-codemirror-root
   .cm-kolam-table-shell.is-table-control-active
   .cm-kolam-table-handle {
-  background: var(--bg-surface-hover);
+  background: var(--bg-slate-200);
 }
 
 .kolam-codemirror-root .cm-kolam-table-add-zone:hover,
@@ -688,7 +688,7 @@
   .cm-kolam-table-shell.is-table-control-active
   .cm-kolam-table-add-zone {
   border-color: var(--action-bg);
-  background: var(--bg-surface-hover);
+  background: var(--bg-slate-200);
 }
 
 .kolam-codemirror-root .cm-kolam-table-drop-indicator {
@@ -803,7 +803,7 @@
 .kolam-properties-panel {
   margin-bottom: 0.75rem;
   border: 1px solid var(--border-default);
-  background: var(--bg-surface-subtle);
+  background: var(--bg-slate-50);
 }
 
 .kolam-properties-header {
@@ -820,7 +820,7 @@
 
 .kolam-property-action {
   border: 1px solid var(--border-default);
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   padding: 0.2rem 0.45rem;
   font-size: 0.7rem;
   font-weight: 700;
@@ -850,7 +850,7 @@
 .kolam-property-input {
   width: 100%;
   border: 1px solid var(--border-default);
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   padding: 0.35rem 0.5rem;
   font-size: 0.8125rem;
 }
@@ -864,7 +864,7 @@
 
 .kolam-property-pill {
   border: 1px solid var(--border-default);
-  background: var(--bg-surface-default);
+  background: var(--bg-white);
   padding: 0.1rem 0.45rem;
   font-size: 0.75rem;
 }
@@ -895,7 +895,7 @@
 
 .kolam-inline-code {
   border-radius: 0;
-  background: var(--bg-surface-subtle);
+  background: var(--bg-slate-50);
   padding: 0 0.25rem;
 }
 

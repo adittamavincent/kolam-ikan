@@ -540,13 +540,13 @@ export function BridgeModal({
           onClose={handleCloseModal}
           meta={
             streamMeta?.name ? (
-              <div className="flex flex-wrap items-center gap-2 text-text-muted">
+              <div className="flex flex-wrap items-center gap-2 text-slate-500">
                 <span>on</span>
-                <span className="font-semibold text-text-default">
+                <span className="font-semibold text-slate-800">
                   {streamMeta.name}
                 </span>
                 {currentStreamIsGlobal && (
-                  <div className="flex items-center gap-1 border border-action-bg bg-primary-100 px-2 py-0.5 font-semibold text-action-hover">
+                  <div className="flex items-center gap-1 border border-blue-500 bg-blue-100 px-2 py-0.5 font-semibold text-blue-700">
                     <Globe className="h-3 w-3" />
                     Global
                   </div>
@@ -558,11 +558,11 @@ export function BridgeModal({
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row overflow-hidden">
           {/* Left Sidebar: Configuration & Context */}
-          <aside className="w-full lg:w-[320px] xl:w-95 shrink-0 border-b lg:border-b-0 lg:border-r border-border-default overflow-y-auto bg-surface-subtle flex flex-col">
-            <div className="flex flex-col p-4 divide-y divide-border-default">
+          <aside className="w-full lg:w-[320px] xl:w-95 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-300 overflow-y-auto bg-slate-50 flex flex-col">
+            <div className="flex flex-col p-4 divide-y divide-slate-300">
               {/* Goal Section */}
               <section className="min-w-0 py-4 first:pt-0">
-                <div className="flex items-center gap-2 font-bold uppercase tracking-widest text-text-muted mb-4">
+                <div className="flex items-center gap-2 font-bold uppercase tracking-widest text-slate-500 mb-4">
                   <Layers3 className="h-3 w-3" />
                   Execution Goal
                 </div>
@@ -589,16 +589,16 @@ export function BridgeModal({
               {/* Destination Section */}
               <section className="min-w-0 py-4">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2 font-bold uppercase tracking-widest text-text-muted">
+                  <div className="flex items-center gap-2 font-bold uppercase tracking-widest text-slate-500">
                     <Send className="h-3 w-3" />
                     Provider
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="border border-border-subtle bg-surface-hover px-1.5 py-0.5 font-bold tracking-tighter text-text-muted uppercase">
+                    <span className="border border-slate-200 bg-slate-200 px-1.5 py-0.5 font-bold tracking-tighter text-slate-500 uppercase">
                       {currentProvider.hostLabel}
                     </span>
                     {bridgeSession?.sessionMemory && (
-                      <span className="border border-action-bg bg-primary-100 px-1.5 py-0.5 font-bold tracking-tighter text-action-hover uppercase">
+                      <span className="border border-blue-500 bg-blue-100 px-1.5 py-0.5 font-bold tracking-tighter text-blue-700 uppercase">
                         Memory Active
                       </span>
                     )}
@@ -609,7 +609,7 @@ export function BridgeModal({
                   onChange={(event) =>
                     setProviderId(event.target.value as typeof providerId)
                   }
-                  className="w-full border border-border-default bg-surface-default px-2 py-1.5 text-text-default focus:border-action-bg outline-none"
+                  className="w-full border border-slate-300 bg-white px-2 py-1.5 text-slate-800 focus:border-blue-500 outline-none"
                 >
                   {BRIDGE_PROVIDER_PRESETS.map((provider) => (
                     <option key={provider.id} value={provider.id}>
@@ -621,7 +621,7 @@ export function BridgeModal({
 
               {/* Context Section */}
               <section className="min-w-0 py-4 last:pb-0">
-                <div className="flex items-center gap-2 font-bold uppercase tracking-widest text-text-muted mb-4">
+                <div className="flex items-center gap-2 font-bold uppercase tracking-widest text-slate-500 mb-4">
                   <Sparkles className="h-3 w-3" />
                   Context Material
                 </div>
@@ -650,10 +650,10 @@ export function BridgeModal({
           </aside>
 
           {/* Main Execution Area */}
-          <main className="flex-1 min-w-0 overflow-y-auto bg-surface-default flex flex-col">
+          <main className="flex-1 min-w-0 overflow-y-auto bg-white flex flex-col">
             <div className="flex flex-col gap-6 p-4 flex-1 min-h-0">
               {isManualDetailedFlow && (
-                <section className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
+                <section className="border border-rose-300 bg-rose-100 p-4 text-rose-700">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="font-semibold uppercase tracking-wider">
@@ -670,7 +670,7 @@ export function BridgeModal({
                       type="button"
                       onClick={() => void runnerStatus.checkNow()}
                       disabled={runnerStatus.isChecking}
-                      className="inline-flex items-center gap-2 border border-status-error-border bg-surface-default px-3 py-1.5 font-bold uppercase tracking-widest text-status-error-text whitespace-nowrap"
+                      className="inline-flex items-center gap-2 border border-rose-300 bg-white px-3 py-1.5 font-bold uppercase tracking-widest text-rose-700 whitespace-nowrap"
                     >
                       {runnerStatus.isChecking ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -688,7 +688,7 @@ export function BridgeModal({
                   {/* Step 0: Request */}
                   <section className="min-w-0 flex flex-col gap-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-text-muted">
+                      <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-slate-500">
                         <Settings2 className="h-3.5 w-3.5" />
                         1. Instructions
                       </div>
@@ -697,7 +697,7 @@ export function BridgeModal({
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
                       placeholder="What should the AI accomplish with this context?"
-                      className="min-h-17.5 w-full resize-none border border-border-default bg-surface-subtle px-4 py-3 leading-relaxed text-text-default placeholder:text-text-muted focus:border-action-bg outline-none"
+                      className="min-h-17.5 w-full resize-none border border-slate-300 bg-slate-50 px-4 py-3 leading-relaxed text-slate-800 placeholder:text-slate-500 focus:border-blue-500 outline-none"
                     />
                   </section>
 
@@ -705,10 +705,10 @@ export function BridgeModal({
                   <section className="min-w-0 flex flex-col gap-0 flex-1 min-h-0">
                     <div className="flex flex-col items-start gap-3 pb-3">
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-text-muted">
+                        <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-slate-500">
                           2. Build Payload
                         </div>
-                        <p className="text-text-muted max-w-sm">
+                        <p className="text-slate-500 max-w-sm">
                           {isManualDetailedFlow
                             ? "Copy the generated prompt and send it to the provider manually."
                             : runnerStatus.online
@@ -720,19 +720,19 @@ export function BridgeModal({
                         <div className="flex flex-wrap gap-2 pb-3">
                           <button
                             onClick={handleCopyXML}
-                            className="border border-border-default bg-surface-default px-3 py-1.5 font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors"
+                            className="border border-slate-300 bg-white px-3 py-1.5 font-bold uppercase tracking-widest text-slate-800 hover:bg-slate-100 transition-colors"
                           >
                             Copy Prompt
                           </button>
                           <button
                             onClick={handleOpenProvider}
-                            className="bg-action-bg px-3 py-1.5 font-bold uppercase tracking-widest text-action-text hover:bg-action-hover transition-colors"
+                            className="bg-blue-500 px-3 py-1.5 font-bold uppercase tracking-widest text-white hover:bg-blue-700 transition-colors"
                           >
                             Open {currentProvider.label}
                           </button>
                           <button
                             onClick={handlePasteResult}
-                            className="inline-flex items-center gap-2 border border-border-default bg-surface-default px-3 py-1.5 font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors"
+                            className="inline-flex items-center gap-2 border border-slate-300 bg-white px-3 py-1.5 font-bold uppercase tracking-widest text-slate-800 hover:bg-slate-100 transition-colors"
                           >
                             <ClipboardPaste className="h-3 w-3" />
                             Paste Response
@@ -744,14 +744,14 @@ export function BridgeModal({
                           <button
                             onClick={handleCopyXML}
                             disabled={!payloadReady}
-                            className="inline-flex items-center gap-2 border border-border-default bg-surface-default px-3 py-1.5 font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                            className="inline-flex items-center gap-2 border border-slate-300 bg-white px-3 py-1.5 font-bold uppercase tracking-widest text-slate-800 hover:bg-slate-100 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <Copy className="h-3 w-3" />
                             Copy
                           </button>
                           <button
                             onClick={handlePasteResult}
-                            className="inline-flex items-center gap-2 border border-border-default bg-surface-default px-3 py-1.5 font-bold uppercase tracking-widest text-text-default hover:bg-surface-elevated transition-colors"
+                            className="inline-flex items-center gap-2 border border-slate-300 bg-white px-3 py-1.5 font-bold uppercase tracking-widest text-slate-800 hover:bg-slate-100 transition-colors"
                           >
                             <ClipboardPaste className="h-3 w-3" />
                             Paste
@@ -785,10 +785,10 @@ export function BridgeModal({
                 <section className="min-w-0 flex flex-col gap-0 flex-1 min-h-0">
                   <div className="flex flex-wrap items-start justify-between gap-4 pb-3">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-text-muted">
+                      <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-slate-500">
                         3. Apply Response
                       </div>
-                      <p className="text-text-muted max-w-sm">
+                      <p className="text-slate-500 max-w-sm">
                         {isManualDetailedFlow || !!pastedXML
                           ? "Review changes and apply them back to your workspace."
                           : "Once a response is received, it will be parsed and displayed here for review."}
@@ -798,7 +798,7 @@ export function BridgeModal({
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={handlePasteResult}
-                          className="inline-flex items-center gap-2 bg-action-bg px-3 py-1.5 font-bold uppercase tracking-widest text-action-text hover:bg-action-hover transition-colors"
+                          className="inline-flex items-center gap-2 bg-blue-500 px-3 py-1.5 font-bold uppercase tracking-widest text-white hover:bg-blue-700 transition-colors"
                         >
                           <ClipboardPaste className="h-3 w-3" />
                           Paste Response

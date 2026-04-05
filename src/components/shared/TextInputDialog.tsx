@@ -77,7 +77,7 @@ export function TextInputDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-overlay-backdrop" />
+          <div className="fixed inset-0 bg-black/45" />
         </Transition.Child>
 
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -94,14 +94,14 @@ export function TextInputDialog({
               title={title}
               description={description}
               icon={
-                <GitBranch className="h-6 w-6 text-action-bg" aria-hidden />
+                <GitBranch className="h-6 w-6 text-blue-500" aria-hidden />
               }
               actions={
                 <>
                   <button
                     type="button"
                     onClick={onCancel}
-                    className="border border-border-default px-4 py-2 font-semibold text-text-muted hover:text-text-default"
+                    className="border border-slate-300 px-4 py-2 font-semibold text-slate-500 hover:text-slate-800"
                   >
                     {cancelLabel}
                   </button>
@@ -109,7 +109,7 @@ export function TextInputDialog({
                     type="button"
                     onClick={onConfirm}
                     disabled={loading}
-                    className="inline-flex items-center justify-center gap-2 bg-action-bg px-4 py-2 font-semibold text-action-text hover:bg-action-hover disabled:cursor-not-allowed disabled:bg-action-disabled"
+                    className="inline-flex items-center justify-center gap-2 bg-blue-500 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-200"
                   >
                     {loading ? (
                       <Loader2 className="h-4 w-4 animate-spin text-current" />
@@ -120,7 +120,7 @@ export function TextInputDialog({
               }
             >
               <label className="block space-y-1.5">
-                <span className="font-semibold uppercase tracking-wide text-text-muted">
+                <span className="font-semibold uppercase tracking-wide text-slate-500">
                   {label}
                 </span>
                 <input
@@ -129,11 +129,11 @@ export function TextInputDialog({
                   value={value}
                   onChange={(event) => onChange(event.target.value)}
                   placeholder={placeholder}
-                  className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-text-default outline-none transition-colors focus:border-action-bg"
+                  className="w-full border border-slate-300 bg-slate-50 px-3 py-2 text-slate-800 outline-none transition-colors focus:border-blue-500"
                 />
               </label>
               {error ? (
-                <p className="mt-2 text-status-error-text">{error}</p>
+                <p className="mt-2 text-rose-700">{error}</p>
               ) : null}
             </DialogCard>
           </Transition.Child>

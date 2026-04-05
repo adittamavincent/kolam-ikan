@@ -1156,7 +1156,7 @@ export function CommitGraph({
 
   if (!nodes.length) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-text-muted">
+      <div className="flex h-full flex-col items-center justify-center gap-2 text-slate-500">
         <GitCommitHorizontal className="h-4 w-4" />
         <div>No commits to display</div>
       </div>
@@ -1164,9 +1164,9 @@ export function CommitGraph({
   }
 
   return (
-    <div className="relative h-full overflow-y-auto overflow-x-hidden bg-surface-default">
+    <div className="relative h-full overflow-y-auto overflow-x-hidden bg-white">
       {orderedBranches.length > 0 && (
-        <div className="sticky top-0 z-20 border-b border-border-default bg-surface-default px-3 py-2 backdrop-blur-sm">
+        <div className="sticky top-0 z-20 border-b border-slate-300 bg-white px-3 py-2 backdrop-blur-sm">
           <div className="flex gap-1.5 overflow-x-auto">
             {orderedBranches.map((branch) => {
               const virtualMainNode =
@@ -1198,7 +1198,7 @@ export function CommitGraph({
                   className={`grid min-w-31 grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
                     currentBranch === branch.name
                       ? "log-pane__accent-badge"
-                      : "border-border-default bg-surface-default hover:bg-surface-hover"
+                      : "border-slate-300 bg-white hover:bg-slate-200"
                   }`}
                   style={{ boxShadow: `inset 3px 0 0 ${branch.color}` }}
                   onClick={() => {
@@ -1217,7 +1217,7 @@ export function CommitGraph({
                       className="h-2.5 w-2.5 shrink-0"
                       style={{ backgroundColor: branch.color }}
                     />
-                    <span className="truncate text-text-default">
+                    <span className="truncate text-slate-800">
                       {branch.name}
                     </span>
                   </span>
@@ -1225,7 +1225,7 @@ export function CommitGraph({
                     role="button"
                     tabIndex={0}
                     aria-label={`Branch actions for ${branch.name}`}
-                    className="col-start-2 row-start-1 inline-flex h-5 w-5 items-center justify-center border border-border-subtle text-text-muted transition-colors hover:border-border-default hover:bg-surface-subtle hover:text-text-default"
+                    className="col-start-2 row-start-1 inline-flex h-5 w-5 items-center justify-center border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -1265,7 +1265,7 @@ export function CommitGraph({
                   >
                     <MoreHorizontal className="h-4 w-4" />
                   </span>
-                  <code className="col-span-2 col-start-1 row-start-2 w-fit bg-surface-subtle px-1 py-0.5 text-text-muted">
+                  <code className="col-span-2 col-start-1 row-start-2 w-fit bg-slate-50 px-1 py-0.5 text-slate-500">
                     {headHash}
                   </code>
                 </button>
@@ -1280,18 +1280,18 @@ export function CommitGraph({
           createPortal(
             <div
               ref={branchMenuRef}
-              className="fixed z-40 w-56 overflow-hidden border border-border-default bg-surface-elevated p-1"
+              className="fixed z-40 w-56 overflow-hidden border border-slate-300 bg-slate-100 p-1"
               style={{
                 left: branchMenuPosition.left,
                 top: branchMenuPosition.top,
               }}
             >
-              <div className="border-b border-border-subtle px-2 py-1.5">
-                <div className="flex items-center gap-2 text-text-default">
+              <div className="border-b border-slate-200 px-2 py-1.5">
+                <div className="flex items-center gap-2 text-slate-800">
                   <GitBranch className="h-4 w-4" />
                   {branchMenu.branch.name}
                 </div>
-                <code className="mt-1 block text-text-muted">
+                <code className="mt-1 block text-slate-500">
                   {branchMenu.branch.headCommitId
                     ? shortHash(branchMenu.branch.headCommitId)
                     : "no head"}
@@ -1300,40 +1300,40 @@ export function CommitGraph({
               <button
                 onClick={() => void handleBranchMenuAction("open")}
                 disabled={!branchMenu.branch.headCommitId}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500"
               >
-                <ArrowUpRight className="h-4 w-4 text-text-muted" />
+                <ArrowUpRight className="h-4 w-4 text-slate-500" />
                 Open head commit
               </button>
               <button
                 onClick={() => void handleBranchMenuAction("checkout")}
                 disabled={branchMenu.branch.name === currentBranch}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500"
               >
-                <GitBranch className="h-4 w-4 text-text-muted" />
+                <GitBranch className="h-4 w-4 text-slate-500" />
                 Checkout branch
               </button>
               <button
                 onClick={() => void handleBranchMenuAction("merge")}
                 disabled={branchMenu.branch.name === currentBranch}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500"
               >
-                <GitMerge className="h-4 w-4 text-text-muted" />
+                <GitMerge className="h-4 w-4 text-slate-500" />
                 Merge into {currentBranch}
               </button>
               <button
                 onClick={() => void handleBranchMenuAction("rename")}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50"
               >
-                <PencilLine className="h-4 w-4 text-text-muted" />
+                <PencilLine className="h-4 w-4 text-slate-500" />
                 Rename branch
               </button>
               <button
                 onClick={() => void handleBranchMenuAction("copy-sha")}
                 disabled={!branchMenu.branch.headCommitId}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-500"
               >
-                <Copy className="h-4 w-4 text-text-muted" />
+                <Copy className="h-4 w-4 text-slate-500" />
                 Copy head SHA
               </button>
             </div>,
@@ -1393,7 +1393,7 @@ export function CommitGraph({
                     cx={x}
                     cy={y}
                     r={DOT_R + 7}
-                    fill="var(--bg-surface-hover)"
+                    fill="var(--bg-slate-200)"
                   />
                 )}
 
@@ -1402,7 +1402,7 @@ export function CommitGraph({
                     cx={x}
                     cy={y}
                     r={DOT_R + 10}
-                    fill="var(--bg-surface-elevated)"
+                    fill="var(--bg-slate-100)"
                   />
                 )}
 
@@ -1410,13 +1410,13 @@ export function CommitGraph({
                   cx={x}
                   cy={y}
                   r={DOT_R + 1}
-                  fill="var(--bg-surface-default)"
+                  fill="var(--bg-white)"
                 />
                 <circle
                   cx={x}
                   cy={y}
                   r={DOT_R}
-                  fill={node.isHead ? nodeColor : "var(--bg-surface-default)"}
+                  fill={node.isHead ? nodeColor : "var(--bg-white)"}
                   stroke={nodeColor}
                   strokeWidth={2}
                 />
@@ -1482,13 +1482,13 @@ export function CommitGraph({
                 <div />
 
                 <div
-                  className="relative border border-border-default bg-surface-default px-4 py-3 transition-all duration-150 hover:bg-surface-hover"
+                  className="relative border border-slate-300 bg-white px-4 py-3 transition-all duration-150 hover:bg-slate-200"
                   style={{
                     boxShadow: isHovered
                       ? `0 0 0 1px ${solidColor(accent)}`
                       : undefined,
                     backgroundColor: isHovered
-                      ? "var(--bg-surface-hover)"
+                      ? "var(--bg-slate-200)"
                       : undefined,
                   }}
                 >
@@ -1500,7 +1500,7 @@ export function CommitGraph({
                   <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <code className="bg-surface-subtle px-1.5 py-0.5 text-text-default">
+                        <code className="bg-slate-50 px-1.5 py-0.5 text-slate-800">
                           {node.shortHash}
                         </code>
 
@@ -1511,28 +1511,28 @@ export function CommitGraph({
                         )}
 
                         {node.tag && (
-                          <span className="inline-flex items-center gap-1 border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-warning-text">
+                          <span className="inline-flex items-center gap-1 border border-amber-300 bg-amber-100 px-1.5 py-0.5 uppercase tracking-[0.14em] text-amber-700">
                             <TagIcon className="h-4 w-4" />
                             {node.tag}
                           </span>
                         )}
 
                         {node.nodeType === "canvas_snapshot" && (
-                          <span className="inline-flex items-center gap-1 border border-status-info-border bg-status-info-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-info-text">
+                          <span className="inline-flex items-center gap-1 border border-sky-300 bg-sky-100 px-1.5 py-0.5 uppercase tracking-[0.14em] text-sky-700">
                             <Camera className="h-4 w-4" />
                             canvas
                           </span>
                         )}
 
                         {node.nodeType === "draft" && (
-                          <span className="inline-flex items-center gap-1 border border-status-info-border bg-status-info-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-info-text">
+                          <span className="inline-flex items-center gap-1 border border-sky-300 bg-sky-100 px-1.5 py-0.5 uppercase tracking-[0.14em] text-sky-700">
                             <PencilLine className="h-4 w-4" />
                             working tree
                           </span>
                         )}
 
                         {node.nodeType === "stash" && (
-                          <span className="inline-flex items-center gap-1 border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-warning-text">
+                          <span className="inline-flex items-center gap-1 border border-amber-300 bg-amber-100 px-1.5 py-0.5 uppercase tracking-[0.14em] text-amber-700">
                             <Archive className="h-4 w-4" />
                             {node.stashSource === "entry"
                               ? "commit stash"
@@ -1541,7 +1541,7 @@ export function CommitGraph({
                         )}
 
                         {node.entryKind === "merge" && (
-                          <span className="inline-flex items-center gap-1 border border-status-success-border bg-status-success-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-success-text">
+                          <span className="inline-flex items-center gap-1 border border-emerald-300 bg-emerald-100 px-1.5 py-0.5 uppercase tracking-[0.14em] text-emerald-700">
                             <GitMerge className="h-4 w-4" />
                             merge
                           </span>
@@ -1550,10 +1550,10 @@ export function CommitGraph({
                         {refs.map((ref) => (
                           <span
                             key={ref.id}
-                            className="inline-flex items-center gap-1 border border-border-default px-1.5 py-0.5 uppercase tracking-[0.14em]"
+                            className="inline-flex items-center gap-1 border border-slate-300 px-1.5 py-0.5 uppercase tracking-[0.14em]"
                             style={{
                               color: ref.color,
-                              backgroundColor: "var(--bg-surface-subtle)",
+                              backgroundColor: "var(--bg-slate-50)",
                             }}
                           >
                             <GitBranch className="h-4 w-4" />
@@ -1563,10 +1563,10 @@ export function CommitGraph({
                         {branchLabel &&
                           !refs.some((ref) => ref.name === branchLabel) && (
                             <span
-                              className="inline-flex items-center gap-1 border border-border-default px-1.5 py-0.5 uppercase tracking-[0.14em]"
+                              className="inline-flex items-center gap-1 border border-slate-300 px-1.5 py-0.5 uppercase tracking-[0.14em]"
                               style={{
                                 color: accent,
-                                backgroundColor: "var(--bg-surface-subtle)",
+                                backgroundColor: "var(--bg-slate-50)",
                               }}
                             >
                               <GitBranch className="h-4 w-4" />
@@ -1575,7 +1575,7 @@ export function CommitGraph({
                           )}
                       </div>
 
-                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-text-muted">
+                      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500">
                         <span className="inline-flex items-center gap-1">
                           {node.nodeType === "canvas_snapshot" ? (
                             <Camera className="h-4 w-4" />
@@ -1628,10 +1628,10 @@ export function CommitGraph({
                     </div>
 
                     <div className="min-w-0 text-left sm:shrink-0 sm:text-right">
-                      <div className="text-text-default">
+                      <div className="text-slate-800">
                         {relativeTime(node.date)}
                       </div>
-                      <div className="mt-2 inline-flex items-center gap-1 text-text-muted">
+                      <div className="mt-2 inline-flex items-center gap-1 text-slate-500">
                         {node.nodeType === "canvas_snapshot"
                           ? "Open linked commit in commit list"
                           : node.nodeType === "draft"

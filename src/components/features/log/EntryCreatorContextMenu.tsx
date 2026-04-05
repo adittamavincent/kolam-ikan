@@ -64,16 +64,16 @@ export function EntryCreatorContextMenu({
       ariaLabel="Entry creator stash menu"
     >
       <div className="px-2 py-1">
-        <div className="uppercase tracking-[0.16em] text-text-muted">
+        <div className="uppercase tracking-[0.16em] text-slate-500">
           working tree
         </div>
         <div
-          className={`${CONTEXT_MENU_HEADER_CLASS} mt-1 px-0 py-0 text-text-default`}
+          className={`${CONTEXT_MENU_HEADER_CLASS} mt-1 px-0 py-0 text-slate-800`}
         >
           <GitBranch className={CONTEXT_MENU_ACTION_ICON_CLASS} />
           <span className="truncate">{selectedBranch}</span>
-          <span className="text-text-muted">·</span>
-          <span className="text-text-muted">
+          <span className="text-slate-500">·</span>
+          <span className="text-slate-500">
             {sectionCount} section{sectionCount === 1 ? "" : "s"}
           </span>
         </div>
@@ -114,7 +114,7 @@ export function EntryCreatorContextMenu({
 
       <ContextMenuDivider />
 
-      <div className="px-2 py-1 text-text-muted">
+      <div className="px-2 py-1 text-slate-500">
         {stashCount === 0
           ? "No stashed drafts"
           : `${stashCount} stashed draft${stashCount === 1 ? "" : "s"} available`}

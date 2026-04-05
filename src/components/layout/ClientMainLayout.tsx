@@ -514,7 +514,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
     return (
       <>
         {text.slice(0, index)}
-        <span className="bg-primary-900 text-text-default">
+        <span className="bg-blue-900 text-slate-800">
           {text.slice(index, index + term.length)}
         </span>
         {text.slice(index + term.length)}
@@ -525,12 +525,12 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   return (
     <div
       ref={layoutRootRef}
-      className="flex h-dvh overflow-hidden overscroll-none bg-surface-subtle"
+      className="flex h-dvh overflow-hidden overscroll-none bg-slate-50"
     >
       {/* ---- Mobile Menu Button ---- */}
       <button
         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        className="fixed left-4 top-4 z-50 bg-surface-default p-2 text-text-default md:hidden"
+        className="fixed left-4 top-4 z-50 bg-white p-2 text-slate-800 md:hidden"
       >
         {mobileMenuOpen ? (
           <X className="h-6 w-6" />
@@ -542,7 +542,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ---- Mobile Overlay ---- */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-overlay-backdrop md:hidden"
+          className="fixed inset-0 z-40 bg-black/45 md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -583,9 +583,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           <div
             className={`absolute top-0 right-0 z-50 h-full w-4 cursor-col-resize after:absolute after:inset-y-0 after:right-0 after:w-px after:content-[''] ${
               effectiveSidebarVisible
-                ? "hover:after:bg-primary-100 active:after:bg-action-bg"
+                ? "hover:after:bg-blue-100 active:after:bg-blue-500"
                 : "pointer-events-none"
-            } ${isResizing ? "after:w-1 after:bg-action-bg" : "after:bg-border-default"}`}
+            } ${isResizing ? "after:w-1 after:bg-blue-500" : "after:bg-slate-300"}`}
             onMouseDown={handleMouseDown}
           />
         </div>
@@ -601,7 +601,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== MAIN CONTENT ====== */}
       <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         {error && (
-          <div className="border-b border-border-default bg-status-error-bg px-4 py-2 text-status-error-text">
+          <div className="border-b border-slate-300 bg-rose-100 px-4 py-2 text-rose-700">
             {error}
           </div>
         )}
@@ -609,13 +609,13 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 border border-border-default bg-surface-default p-2 transition-all">
+          <div className="absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 border border-slate-300 bg-white p-2 transition-all">
             <button
               onClick={() => setMode("log-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isLogMaximized
-                  ? "bg-action-bg text-action-text"
-                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
               }`}
               title="Maximize Log (⌘J)"
             >
@@ -626,8 +626,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               onClick={() => setMode("balanced")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isBalanced
-                  ? "bg-action-bg text-action-text"
-                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
               }`}
               title="Reset Layout (⌘K)"
             >
@@ -638,8 +638,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               onClick={() => setMode("canvas-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isCanvasMaximized
-                  ? "bg-action-bg text-action-text"
-                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+                  ? "bg-blue-500 text-white"
+                  : "text-slate-500 hover:bg-slate-200 hover:text-slate-800"
               }`}
               title="Maximize Canvas (⌘L)"
             >
@@ -664,7 +664,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-overlay-backdrop" />
+            <div className="fixed inset-0 bg-black/45" />
           </TransitionChild>
           <div className="fixed inset-0 flex items-start justify-center p-4">
             <TransitionChild
@@ -676,8 +676,8 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <DialogPanel className="w-full max-w-2xl border border-border-default bg-surface-default p-5 shadow-2xl">
-                <DialogTitle className="font-semibold text-text-default">
+              <DialogPanel className="w-full max-w-2xl border border-slate-300 bg-white p-5 shadow-2xl">
+                <DialogTitle className="font-semibold text-slate-800">
                   Search
                 </DialogTitle>
                 <div className="mt-3">
@@ -685,28 +685,28 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="Search logs and canvases... (@persona, emoji for domain)"
-                    className="w-full border border-border-default bg-surface-subtle px-3 py-2 text-text-default focus:border-border-default focus: focus: focus:"
+                    className="w-full border border-slate-300 bg-slate-50 px-3 py-2 text-slate-800 focus:border-slate-300 focus: focus: focus:"
                     autoFocus
                   />
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-text-muted">
+                <div className="mt-3 flex flex-wrap gap-2 text-slate-500">
                   {parsedSearch.personaFilter && (
-                    <span className="border border-border-default px-2 py-0.5">
+                    <span className="border border-slate-300 px-2 py-0.5">
                       Persona: @{parsedSearch.personaFilter}
                     </span>
                   )}
                   {parsedSearch.domainEmoji && (
-                    <span className="border border-border-default px-2 py-0.5">
+                    <span className="border border-slate-300 px-2 py-0.5">
                       Domain: {parsedSearch.domainEmoji}
                     </span>
                   )}
                 </div>
                 <div className="mt-4 max-h-[50vh] space-y-2 overflow-y-auto">
                   {searchLoading && (
-                    <div className="text-text-muted">Searching...</div>
+                    <div className="text-slate-500">Searching...</div>
                   )}
                   {!searchLoading && searchResults.length === 0 && (
-                    <div className="text-text-muted">No results yet</div>
+                    <div className="text-slate-500">No results yet</div>
                   )}
                   {searchResults.map((result) => (
                     <button
@@ -734,9 +734,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                         setSearchOpen(false);
                         router.push(`/${result.domainId}/${result.streamId}`);
                       }}
-                      className="w-full border border-border-default bg-surface-subtle p-3 text-left text-text-default transition hover:bg-surface-hover"
+                      className="w-full border border-slate-300 bg-slate-50 p-3 text-left text-slate-800 transition hover:bg-slate-200"
                     >
-                      <div className="flex items-center justify-between gap-2 text-text-muted">
+                      <div className="flex items-center justify-between gap-2 text-slate-500">
                         <span className="flex items-center gap-2">
                           <span>{result.domainIcon}</span>
                           <span className="truncate">{result.streamName}</span>
@@ -747,7 +747,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                             : result.personaName}
                         </span>
                       </div>
-                      <div className="mt-1 text-text-default">
+                      <div className="mt-1 text-slate-800">
                         {renderHighlightedText(
                           result.contentPreview ?? "",
                           parsedSearch.cleaned,

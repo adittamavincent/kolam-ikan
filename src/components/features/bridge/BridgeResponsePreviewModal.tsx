@@ -48,8 +48,8 @@ export function BridgeResponsePreviewModal({
       />
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
-        <div className="border border-border-default bg-surface-elevated">
-          <pre className="overflow-x-auto whitespace-pre-wrap wrap-break-word p-4 leading-relaxed text-text-default">
+        <div className="border border-slate-300 bg-slate-100">
+          <pre className="overflow-x-auto whitespace-pre-wrap wrap-break-word p-4 leading-relaxed text-slate-800">
             {responseText.trim() || "No response available yet."}
           </pre>
         </div>

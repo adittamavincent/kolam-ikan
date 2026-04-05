@@ -22,7 +22,7 @@ export function MergeCommitCard({
   const targetBranchName = entry.merge_target_branch_name ?? "current";
 
   return (
-    <div className="log-pane__accent-panel group relative overflow-hidden border border-border-default transition-all">
+    <div className="log-pane__accent-panel group relative overflow-hidden border border-slate-300 transition-all">
       <div className="log-pane__accent-panel-header flex h-8 items-center justify-between border-b px-2.5">
         <div className="flex items-center gap-1.5">
           <GitMerge className="log-pane__accent-label h-4 w-4" />
@@ -30,7 +30,7 @@ export function MergeCommitCard({
             Merge Commit
           </span>
         </div>
-        <span className="text-text-subtle font-mono">{createdAtText}</span>
+        <span className="text-slate-600 font-mono">{createdAtText}</span>
       </div>
 
       <div className="px-2.5 py-2.5">
@@ -39,13 +39,13 @@ export function MergeCommitCard({
             <GitBranch className="h-4 w-4" />
             {sourceBranchName}
           </span>
-          <span className="font-mono text-text-muted">{sourceHash}</span>
-          <span className="font-mono text-text-muted">into</span>
+          <span className="font-mono text-slate-500">{sourceHash}</span>
+          <span className="font-mono text-slate-500">into</span>
           <span className="log-pane__accent-badge inline-flex items-center gap-1 px-1.5 py-0.5 uppercase tracking-[0.14em]">
             <GitBranch className="h-4 w-4" />
             {targetBranchName}
           </span>
-          <span className="font-mono text-text-muted">{targetHash}</span>
+          <span className="font-mono text-slate-500">{targetHash}</span>
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-3">

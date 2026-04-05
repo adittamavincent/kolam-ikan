@@ -87,16 +87,16 @@ export function LogPaneContextMenu({
       menuRef={contextMenuRef}
       position={contextMenuPosition}
       className={`${CONTEXT_MENU_BASE_CONTAINER_CLASS} ${CONTEXT_MENU_SCROLL_CONTAINER_CLASS} w-56`}
-      style={{ backgroundColor: "var(--bg-surface-elevated)" }}
+      style={{ backgroundColor: "var(--bg-slate-100)" }}
     >
       {contextMenu.kind === "entry" ? (
         <>
           <div className={CONTEXT_MENU_HEADER_CLASS}>
             <GitCommitHorizontal className={CONTEXT_MENU_ACTION_ICON_CLASS} />
-            <code className="font-mono text-action-bg">
+            <code className="font-mono text-blue-500">
               {shortHash(contextMenu.entry.id)}
             </code>
-            <span className="text-text-muted truncate">
+            <span className="text-slate-500 truncate">
               {contextMenu.entry.created_at &&
                 new Date(contextMenu.entry.created_at).toLocaleString(
                   undefined,
@@ -131,7 +131,7 @@ export function LogPaneContextMenu({
 
           <ContextMenuSectionLabel>modify</ContextMenuSectionLabel>
           <ContextMenuActionButton onClick={() => onEntryAction("cherry-pick")}>
-            <RotateCcw className="h-4 w-4 text-text-muted rotate-180" />
+            <RotateCcw className="h-4 w-4 text-slate-500 rotate-180" />
             Cherry-pick commit
           </ContextMenuActionButton>
           <ContextMenuActionButton onClick={() => onEntryAction("branch")}>
@@ -151,8 +151,8 @@ export function LogPaneContextMenu({
           <ContextMenuActionButton onClick={() => onEntryAction("stash")}>
             {stashedEntryIds.has(contextMenu.entry.id) ? (
               <>
-                <EyeOff className="h-4 w-4 text-status-warning-text" />
-                <span className="text-status-warning-text">Unstash commit</span>
+                <EyeOff className="h-4 w-4 text-amber-700" />
+                <span className="text-amber-700">Unstash commit</span>
               </>
             ) : (
               <>
@@ -166,7 +166,7 @@ export function LogPaneContextMenu({
 
           <ContextMenuSectionLabel>danger</ContextMenuSectionLabel>
           <ContextMenuActionButton onClick={() => onEntryAction("reset")}>
-            <RotateCcw className="h-4 w-4 text-status-warning-text" />
+            <RotateCcw className="h-4 w-4 text-amber-700" />
             Reset branch to this commit
           </ContextMenuActionButton>
           <ContextMenuActionButton
@@ -181,10 +181,10 @@ export function LogPaneContextMenu({
         <>
           <div className={CONTEXT_MENU_HEADER_CLASS}>
             <Eye className={CONTEXT_MENU_ACTION_ICON_CLASS} />
-            <code className="font-mono text-action-bg">
+            <code className="font-mono text-blue-500">
               {shortHash(contextMenu.snapshot.id)}
             </code>
-            <span className="text-text-muted truncate">
+            <span className="text-slate-500 truncate">
               {contextMenu.snapshot.created_at &&
                 new Date(contextMenu.snapshot.created_at).toLocaleString(
                   undefined,

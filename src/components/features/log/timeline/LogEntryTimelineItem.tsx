@@ -121,14 +121,14 @@ export function LogEntryTimelineItem({
       collapseKey={itemCollapseKey}
       onRef={onBindRef}
       onContextMenu={onEntryContextMenu}
-      className={isStashed ? "text-text-muted" : undefined}
+      className={isStashed ? "text-slate-500" : undefined}
       isHighlighted={isHighlighted}
     >
       <ThreadFrame
         hideBody={isCollapsed}
-        frameClassName={`group overflow-visible transition-colors hover:z-20 focus-within:z-20 bg-surface-default ${isAmending ? "ring-1 ring-action-bg" : ""}`}
+        frameClassName={`group overflow-visible transition-colors hover:z-20 focus-within:z-20 bg-white ${isAmending ? "ring-1 ring-blue-500" : ""}`}
         headerClassName={`entry-creator__topbar hover:brightness-105 ${isAmending ? "cursor-default" : "cursor-pointer"} transition-colors`}
-        bodyClassName="bg-surface-default"
+        bodyClassName="bg-white"
         header={
           <div
             role="button"
@@ -155,13 +155,13 @@ export function LogEntryTimelineItem({
                   <ChevronDown className="h-4 w-4" />
                 )}
               </span>
-              <GitCommitHorizontal className="h-4 w-4 shrink-0 text-text-muted" />
+              <GitCommitHorizontal className="h-4 w-4 shrink-0 text-slate-500" />
               <span className="relative inline-flex shrink-0 items-center group/hash">
-                <code className="cursor-help font-mono text-action-bg">
+                <code className="cursor-help font-mono text-blue-500">
                   {hash}
                 </code>
-                <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 bg-surface-elevated p-2 font-mono text-text-default group-hover/hash:block">
-                  <div className="mb-1 uppercase tracking-wider text-text-muted">
+                <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 bg-slate-100 p-2 font-mono text-slate-800 group-hover/hash:block">
+                  <div className="mb-1 uppercase tracking-wider text-slate-500">
                     Commit Metadata
                   </div>
                   <div>hash: {hash}</div>
@@ -181,7 +181,7 @@ export function LogEntryTimelineItem({
                 {sectionCount} section{sectionCount === 1 ? "" : "s"}
               </span>
               {tag && (
-                <span className="shrink-0 flex h-4 items-center bg-status-warning-bg px-1.5 text-status-warning-text">
+                <span className="shrink-0 flex h-4 items-center bg-amber-100 px-1.5 text-amber-700">
                   <Tag className="h-4 w-4" />
                   {tag}
                 </span>
@@ -202,7 +202,7 @@ export function LogEntryTimelineItem({
                 </span>
               )}
               {isStashed && (
-                <span className="shrink-0 flex h-4 items-center bg-status-warning-bg px-1.5 text-status-warning-text">
+                <span className="shrink-0 flex h-4 items-center bg-amber-100 px-1.5 text-amber-700">
                   <Archive className="h-4 w-4" />
                   stashed
                 </span>
@@ -221,11 +221,11 @@ export function LogEntryTimelineItem({
                     className="entry-creator__topbar-button flex h-6 items-center px-1.5 py-0 leading-4 transition-colors focus: disabled:cursor-not-allowed disabled:opacity-60 gap-2"
                   >
                     {amendSavePending ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-text-subtle" />
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-600" />
                     ) : (
-                      <Check className="h-4 w-4 text-text-subtle" />
+                      <Check className="h-4 w-4 text-slate-600" />
                     )}
-                    <span className="text-text-default">Save</span>
+                    <span className="text-slate-800">Save</span>
                   </button>
                   <button
                     onClick={(event) => {
@@ -235,8 +235,8 @@ export function LogEntryTimelineItem({
                     disabled={amendSavePending}
                     className="entry-creator__topbar-button flex h-6 items-center px-1.5 py-0 leading-4 transition-colors focus: disabled:cursor-not-allowed disabled:opacity-60 gap-2"
                   >
-                    <X className="h-4 w-4 text-text-subtle" />
-                    <span className="text-text-default">Cancel</span>
+                    <X className="h-4 w-4 text-slate-600" />
+                    <span className="text-slate-800">Cancel</span>
                   </button>
                 </>
               ) : isLatestEntry ? (
@@ -249,7 +249,7 @@ export function LogEntryTimelineItem({
                   title="Amend commit"
                 >
                   <PencilLine className="h-4 w-4" />
-                  <span className="text-text-default">Amend commit</span>
+                  <span className="text-slate-800">Amend commit</span>
                 </button>
               ) : null}
             </div>
@@ -257,7 +257,7 @@ export function LogEntryTimelineItem({
         }
       >
         {isAmending && amendError && (
-          <div className="bg-status-error-bg px-2.5 py-1 text-status-error-text">
+          <div className="bg-rose-100 px-2.5 py-1 text-rose-700">
             {amendError}
           </div>
         )}

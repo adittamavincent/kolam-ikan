@@ -371,7 +371,7 @@ const CreationInput = ({
             if (name.trim()) onConfirm(name.trim());
             else onCancel();
           }}
-          className="h-6 min-w-0 flex-1 bg-surface-default px-1"
+          className="h-6 min-w-0 flex-1 bg-white px-1"
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -542,10 +542,10 @@ const StreamNode = ({
         className={`flex h-6 min-w-0 flex-1 items-center gap-2 pr-2 cursor-pointer
  ${
    isStreamActive
-     ? "navigator-row--active text-action-bg font-semibold"
-     : "text-text-subtle hover:text-text-default"
+     ? "navigator-row--active text-blue-500 font-semibold"
+     : "text-slate-600 hover:text-slate-800"
  } ${!isStreamActive && isNewlyCreated ? " " : ""}
- ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-surface-default"}
+ ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-50" : "bg-slate-100"}
  ${isDragOver ? " " : ""}`}
         style={{
           paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)`,
@@ -586,7 +586,7 @@ const StreamNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, stream.id, "stream")}
             onBlur={() => handleRename(stream.id, editingName, "stream")}
-            className="h-6 min-w-0 flex-1 bg-surface-default px-1"
+            className="h-6 min-w-0 flex-1 bg-white px-1"
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit stream name"
@@ -595,12 +595,12 @@ const StreamNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{displayName}</span>
             {kindBadge && (
-              <span className="shrink-0 px-1.5 py-0.5 font-semibold text-text-muted">
+              <span className="shrink-0 px-1.5 py-0.5 font-semibold text-slate-500">
                 {kindBadge}
               </span>
             )}
             {disambiguationLabel && (
-              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-text-muted">
+              <span className="shrink-0 border border-slate-300 px-1.5 py-0.5 text-slate-500">
                 {disambiguationLabel}
               </span>
             )}
@@ -692,9 +692,9 @@ const CabinetNode = ({
         className={`flex h-6 items-center gap-2 pr-2 group cursor-pointer
  ${
    isActive
-     ? "navigator-row--active text-action-bg font-medium"
-     : "text-text-subtle"
- } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-surface-default"}
+     ? "navigator-row--active text-blue-500 font-medium"
+     : "text-slate-600"
+ } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-50" : "bg-white"}
  ${isDragOver ? " " : ""}`}
         style={{
           paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)`,
@@ -740,7 +740,7 @@ const CabinetNode = ({
                 e.stopPropagation();
                 toggleCabinet(cabinet.id);
               }}
-              className="text-text-muted hover:text-text-subtle p-0.5 focus: focus: focus:"
+              className="text-slate-500 hover:text-slate-600 p-0.5 focus: focus: focus:"
               aria-label={isExpanded ? "Collapse cabinet" : "Expand cabinet"}
             >
               {isExpanded ? (
@@ -760,7 +760,7 @@ const CabinetNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, cabinet.id, "cabinet")}
             onBlur={() => handleRename(cabinet.id, editingName, "cabinet")}
-            className="h-6 min-w-0 flex-1 bg-surface-default px-1"
+            className="h-6 min-w-0 flex-1 bg-white px-1"
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit cabinet name"
@@ -769,7 +769,7 @@ const CabinetNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{cabinet.name}</span>
             {disambiguationLabel && (
-              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-text-muted">
+              <span className="shrink-0 border border-slate-300 px-1.5 py-0.5 text-slate-500">
                 {disambiguationLabel}
               </span>
             )}
@@ -780,7 +780,7 @@ const CabinetNode = ({
       {isExpanded && (
         <div className="relative" role="group">
           <div
-            className="pointer-events-none absolute inset-y-0 w-0 border-border-default"
+            className="pointer-events-none absolute inset-y-0 w-0 border-slate-300"
             style={{
               left: `${getBorderCenterRem(depth) + 0.5}rem`,
               borderLeftWidth: "0.0625rem",
@@ -2536,8 +2536,8 @@ export function Navigator({}: NavigatorProps) {
 
   if (!domainId) {
     return (
-      <div className="flex h-full w-full flex-col border-r border-border-default bg-surface-subtle p-4">
-        <p className="text-text-subtle">Select a domain to begin</p>
+      <div className="flex h-full w-full flex-col border-r border-slate-300 bg-slate-50 p-4">
+        <p className="text-slate-600">Select a domain to begin</p>
       </div>
     );
   }
@@ -2545,12 +2545,12 @@ export function Navigator({}: NavigatorProps) {
   return (
     <>
       <div
-        className={`flex h-full w-full flex-col border-r border-border-default bg-surface-subtle transition-opacity duration-200 ${isPending ? "opacity-70 pointer-events-none" : ""}`}
+        className={`flex h-full w-full flex-col border-r border-slate-300 bg-slate-50 transition-opacity duration-200 ${isPending ? "opacity-70 pointer-events-none" : ""}`}
       >
         {/* Header */}
-        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-default bg-surface-default px-3">
+        <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-slate-300 bg-white px-3">
           <h2
-            className="truncate font-semibold text-text-default"
+            className="truncate font-semibold text-slate-800"
             title={currentDomainName}
           >
             {currentDomainName}
@@ -2567,7 +2567,7 @@ export function Navigator({}: NavigatorProps) {
                     ? "New Stream"
                     : "New Stream (Root is restricted)"
                 }
-                className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-default disabled:hover:text-text-muted"
+                className="p-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-500"
               >
                 <FilePlus className="h-4 w-4" />
               </button>
@@ -2578,7 +2578,7 @@ export function Navigator({}: NavigatorProps) {
               disabled={isCreateCabinetDisabled}
               aria-label="New cabinet"
               title="New Cabinet"
-              className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-default disabled:hover:text-text-muted"
+              className="p-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-slate-500"
             >
               <FolderPlus className="h-4 w-4" />
             </button>
@@ -2587,7 +2587,7 @@ export function Navigator({}: NavigatorProps) {
               onClick={hideSidebar}
               aria-label="Collapse sidebar"
               title="Collapse sidebar"
-              className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default"
+              className="p-1.5 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
             >
               <PanelLeftClose className="h-4 w-4" />
             </button>
@@ -2596,7 +2596,7 @@ export function Navigator({}: NavigatorProps) {
 
         {/* Tree View */}
         <div
-          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-primary-100" : ""}`}
+          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-blue-100" : ""}`}
           role="tree"
           onClick={() => {
             setManualActiveNode(null);
@@ -2637,7 +2637,7 @@ export function Navigator({}: NavigatorProps) {
 
           {rootGlobalStreams.length > 0 && hasNonGlobalTreeItems && (
             <div
-              className="border-t border-border-default"
+              className="border-t border-slate-300"
               role="separator"
               aria-label="Global stream separator"
             />
@@ -2740,7 +2740,7 @@ export function Navigator({}: NavigatorProps) {
             onClick={() => setContextMenu(null)}
           >
             <div
-              className="absolute w-48 border border-border-default bg-surface-elevated p-1 z-100"
+              className="absolute w-48 border border-slate-300 bg-slate-100 p-1 z-100"
               style={{
                 top: Math.min(
                   contextMenu.y,
@@ -2754,7 +2754,7 @@ export function Navigator({}: NavigatorProps) {
                     ? window.innerWidth - 200
                     : contextMenu.x,
                 ),
-                backgroundColor: "var(--bg-surface-elevated)",
+                backgroundColor: "var(--bg-slate-100)",
                 opacity: 1,
               }}
               onClick={(event) => event.stopPropagation()}
@@ -2762,47 +2762,47 @@ export function Navigator({}: NavigatorProps) {
             >
               <button
                 onClick={() => handleContextAction("rename")}
-                className="flex w-full items-center justify-between px-2 py-1.5 text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center justify-between px-2 py-1.5 text-slate-800 hover:bg-slate-50"
               >
                 <span className="flex items-center gap-2">
-                  <Pencil className="h-4 w-4 text-text-muted" />
+                  <Pencil className="h-4 w-4 text-slate-500" />
                   Rename
                 </span>
-                <span className="text-text-muted">F2</span>
+                <span className="text-slate-500">F2</span>
               </button>
               <button
                 onClick={() => handleContextAction("duplicate")}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50"
               >
-                <Copy className="h-4 w-4 text-text-muted" />
+                <Copy className="h-4 w-4 text-slate-500" />
                 Duplicate
               </button>
               <button
                 onClick={() => handleContextAction("move")}
                 disabled={contextMenuIsGlobal}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50"
               >
-                <Move className="h-4 w-4 text-text-muted" />
+                <Move className="h-4 w-4 text-slate-500" />
                 Move
               </button>
               <button
                 onClick={() => handleContextAction("properties")}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50"
               >
-                <Info className="h-4 w-4 text-text-muted" />
+                <Info className="h-4 w-4 text-slate-500" />
                 Properties
               </button>
-              <div className="my-1 h-px bg-border-subtle" />
+              <div className="my-1 h-px bg-slate-200" />
               <button
                 onClick={() => handleContextAction("delete")}
                 disabled={contextMenuIsGlobal}
-                className="flex w-full items-center justify-between px-2 py-1.5 text-status-error-text hover:bg-status-error-bg disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full items-center justify-between px-2 py-1.5 text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <span className="flex items-center gap-2">
                   <Trash2 className="h-4 w-4" />
                   Delete
                 </span>
-                <span className="text-status-error-text">Del</span>
+                <span className="text-rose-700">Del</span>
               </button>
             </div>
           </div>,
@@ -2840,7 +2840,7 @@ export function Navigator({}: NavigatorProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-overlay-backdrop" />
+            <div className="fixed inset-0 bg-black/45" />
           </TransitionChild>
           <div className="fixed inset-0 flex items-center justify-center p-4">
             <TransitionChild
@@ -2852,22 +2852,22 @@ export function Navigator({}: NavigatorProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm border border-border-default bg-surface-default p-5">
+              <DialogPanel className="w-full max-w-sm border border-slate-300 bg-white p-5">
                 <div className="flex items-start justify-between">
-                  <DialogTitle className="font-semibold text-text-default">
+                  <DialogTitle className="font-semibold text-slate-800">
                     Move {moveTarget?.type === "cabinet" ? "Cabinet" : "Stream"}
                   </DialogTitle>
                   <button
                     onClick={closeMoveDialog}
-                    className="p-1 text-text-muted hover:bg-surface-subtle"
+                    className="p-1 text-slate-500 hover:bg-slate-50"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="mt-3 space-y-2 text-text-subtle">
+                <div className="mt-3 space-y-2 text-slate-600">
                   <div className="flex items-center justify-between">
                     <span>Item</span>
-                    <span className="text-text-default">
+                    <span className="text-slate-800">
                       {moveItem?.name ?? "-"}
                     </span>
                   </div>
@@ -2878,7 +2878,7 @@ export function Navigator({}: NavigatorProps) {
                       onChange={(event) =>
                         setMoveDestination(event.target.value || null)
                       }
-                      className="border border-border-default bg-surface-default px-2 py-1.5 text-text-default focus:border-border-default focus: focus: focus:"
+                      className="border border-slate-300 bg-white px-2 py-1.5 text-slate-800 focus:border-slate-300 focus: focus: focus:"
                     >
                       <option
                         value=""
@@ -2908,7 +2908,7 @@ export function Navigator({}: NavigatorProps) {
                 <div className="mt-4 flex justify-end gap-2">
                   <button
                     onClick={closeMoveDialog}
-                    className="border border-border-default px-3 py-1.5 font-semibold text-text-default transition hover:bg-surface-subtle"
+                    className="border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 transition hover:bg-slate-50"
                   >
                     Cancel
                   </button>
@@ -2926,7 +2926,7 @@ export function Navigator({}: NavigatorProps) {
                         : (moveDestination ?? null) ===
                           (moveItem as Cabinet | undefined)?.parent_id
                     }
-                    className="bg-action-bg px-3 py-1.5 font-semibold text-action-text transition hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    className="bg-blue-500 px-3 py-1.5 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Move
                   </button>
@@ -2952,7 +2952,7 @@ export function Navigator({}: NavigatorProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-overlay-backdrop" />
+            <div className="fixed inset-0 bg-black/45" />
           </TransitionChild>
           <div className="fixed inset-0 flex items-center justify-center p-4">
             <TransitionChild
@@ -2964,28 +2964,28 @@ export function Navigator({}: NavigatorProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <DialogPanel className="w-full max-w-sm border border-border-default bg-surface-default p-5">
+              <DialogPanel className="w-full max-w-sm border border-slate-300 bg-white p-5">
                 <div className="flex items-start justify-between">
-                  <DialogTitle className="font-semibold text-text-default">
+                  <DialogTitle className="font-semibold text-slate-800">
                     Properties
                   </DialogTitle>
                   <button
                     onClick={() => setPropertiesTarget(null)}
-                    className="p-1 text-text-muted hover:bg-surface-subtle"
+                    className="p-1 text-slate-500 hover:bg-slate-50"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="mt-3 space-y-2 text-text-subtle">
+                <div className="mt-3 space-y-2 text-slate-600">
                   <div className="flex items-center justify-between">
                     <span>Name</span>
-                    <span className="text-text-default">
+                    <span className="text-slate-800">
                       {propertiesItem?.name ?? "-"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Type</span>
-                    <span className="text-text-default">
+                    <span className="text-slate-800">
                       {propertiesTarget?.type === "cabinet"
                         ? "Cabinet"
                         : "Stream"}
@@ -2994,7 +2994,7 @@ export function Navigator({}: NavigatorProps) {
                   {propertiesTarget?.type === "stream" && (
                     <div className="flex items-center justify-between">
                       <span>Kind</span>
-                      <span className="text-text-default">
+                      <span className="text-slate-800">
                         {(propertiesItem as Stream | undefined)
                           ? isGlobalStream(propertiesItem as Stream)
                             ? "Global"
@@ -3005,7 +3005,7 @@ export function Navigator({}: NavigatorProps) {
                   )}
                   <div className="flex items-center justify-between">
                     <span>Location</span>
-                    <span className="text-text-default">
+                    <span className="text-slate-800">
                       {propertiesTarget?.type === "cabinet"
                         ? (propertiesItem as Cabinet | undefined)?.parent_id
                           ? (getCabinetById(
@@ -3021,7 +3021,7 @@ export function Navigator({}: NavigatorProps) {
                   </div>
                   <div className="flex items-center justify-between">
                     <span>ID</span>
-                    <span className="truncate text-text-default">
+                    <span className="truncate text-slate-800">
                       {propertiesItem?.id ?? "-"}
                     </span>
                   </div>
@@ -3029,7 +3029,7 @@ export function Navigator({}: NavigatorProps) {
                 <div className="mt-4 flex justify-end">
                   <button
                     onClick={() => setPropertiesTarget(null)}
-                    className="border border-border-default px-3 py-1.5 font-semibold text-text-default transition hover:bg-surface-subtle"
+                    className="border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 transition hover:bg-slate-50"
                   >
                     Close
                   </button>

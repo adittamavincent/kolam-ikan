@@ -201,7 +201,7 @@ export function MainHeader() {
   const hasEntries = totalCommitCount > 0;
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
   const headerButtonClass =
-    "inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-bg disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-text-muted";
+    "inline-flex h-7 w-7 shrink-0 items-center justify-center border border-slate-300 bg-white text-slate-500 transition-all duration-150 hover:border-slate-300 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-500";
   const cloudStatusLabel =
     cloudStatus === "saving"
       ? "Cloud syncing"
@@ -216,10 +216,10 @@ export function MainHeader() {
       ? "Domain workspace"
       : "Kolam Ikan";
   const summaryPillClass =
-    "inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-subtle";
+    "inline-flex h-7 items-center gap-1.5 border border-slate-300 bg-white px-2 font-mono text-slate-600";
   const toolbarLeadGroupClass = "flex items-center gap-1";
   const toolbarGroupClass =
-    "flex items-center gap-1 border-l border-border-default pl-2";
+    "flex items-center gap-1 border-l border-slate-300 pl-2";
   const normalizedDescription = useMemo(() => {
     const value = descriptionDraft.trim();
     return value.length > 0 ? value : null;
@@ -307,13 +307,13 @@ export function MainHeader() {
   };
 
   return (
-    <header className="flex h-12 shrink-0 items-center border-b border-border-default bg-surface-default px-3">
+    <header className="flex h-12 shrink-0 items-center border-b border-slate-300 bg-white px-3">
       <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {domainId && !sidebarVisible && (
             <button
               onClick={showSidebar}
-              className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700"
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-slate-300 bg-white text-slate-500 transition-all duration-150 hover:border-slate-300 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-700"
               title="Expand navigator"
             >
               <PanelLeft className="h-4 w-4" />
@@ -323,7 +323,7 @@ export function MainHeader() {
           <div className="min-w-0 flex-1">
             <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="truncate font-semibold text-text-default">
+                <span className="truncate font-semibold text-slate-800">
                   {workspaceTitle}
                 </span>
                 {streamId && (
@@ -340,7 +340,7 @@ export function MainHeader() {
                         }
                         placeholder="Add a description"
                         autoFocus
-                        className="w-full max-w-2xl border-0 bg-surface-default px-0 py-0 leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
+                        className="w-full max-w-2xl border-0 bg-white px-0 py-0 leading-5 text-slate-600 placeholder:text-slate-500 focus:outline-none"
                       />
                     ) : (
                       <button
@@ -349,10 +349,10 @@ export function MainHeader() {
                           setDescriptionDraft(stream?.description ?? "");
                           setIsEditingDescription(true);
                         }}
-                        className={`block max-w-2xl text-left leading-5 transition-colors hover:text-text-default ${
+                        className={`block max-w-2xl text-left leading-5 transition-colors hover:text-slate-800 ${
                           hasDescription
-                            ? "text-text-subtle"
-                            : "text-text-muted"
+                            ? "text-slate-600"
+                            : "text-slate-500"
                         }`}
                       >
                         {stream?.description?.trim() || "Add a description"}
@@ -375,11 +375,11 @@ export function MainHeader() {
                       <span
                         className={`${headerButtonClass} pointer-events-none ${
                           cloudStatus === "saving"
-                            ? "border-status-warning-border text-status-warning-text"
+                            ? "border-amber-300 text-amber-700"
                             : cloudStatus === "error"
-                              ? "border-status-error-border text-status-error-text"
+                              ? "border-rose-300 text-rose-700"
                               : cloudStatus === "saved"
-                                ? "border-status-success-border text-status-success-text"
+                                ? "border-emerald-300 text-emerald-700"
                                 : ""
                         }`}
                         aria-label={cloudStatusLabel}
@@ -405,9 +405,9 @@ export function MainHeader() {
                         disabled={!hasEntries}
                         className={`${headerButtonClass} relative ${
                           collapseAllActive
-                            ? "border-action-bg bg-primary-100 text-action-hover"
+                            ? "border-blue-500 bg-blue-100 text-blue-700"
                             : collapsedEntryCount > 0
-                              ? "text-text-default"
+                              ? "text-slate-800"
                               : ""
                         }`}
                         title={
@@ -422,7 +422,7 @@ export function MainHeader() {
                           <ChevronDown className="h-3.5 w-3.5" />
                         )}
                         {collapsedEntryCount > 0 && (
-                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-border-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
+                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-slate-300 bg-slate-100 px-1 font-bold leading-none text-slate-500">
                             {collapsedEntryCount}
                           </span>
                         )}
@@ -433,9 +433,9 @@ export function MainHeader() {
                           event.preventDefault();
                           clearSearchKeepOpen();
                         }}
-                        className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-border-default bg-surface-default transition-[width,border-color,background-color] duration-300 ease-out ${
+                        className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-slate-300 bg-white transition-[width,border-color,background-color] duration-300 ease-out ${
                           isSearchOpen
-                            ? "w-[20rem] border-action-bg bg-primary-100"
+                            ? "w-[20rem] border-blue-500 bg-blue-100"
                             : "w-7"
                         }`}
                         style={{ willChange: "width" }}
@@ -452,10 +452,10 @@ export function MainHeader() {
                               return next;
                             });
                           }}
-                          className={`absolute inset-0 inline-flex items-center justify-center text-text-muted transition-all duration-200 ${
+                          className={`absolute inset-0 inline-flex items-center justify-center text-slate-500 transition-all duration-200 ${
                             isSearchOpen
                               ? "pointer-events-none opacity-0 scale-90"
-                              : "opacity-100 scale-100 hover:text-text-default"
+                              : "opacity-100 scale-100 hover:text-slate-800"
                           }`}
                           title="Show search"
                         >
@@ -469,7 +469,7 @@ export function MainHeader() {
                               : "pointer-events-none opacity-0 -translate-x-2"
                           }`}
                         >
-                          <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-action-bg" />
+                          <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-blue-500" />
                           <input
                             ref={searchInputRef}
                             type="text"
@@ -502,9 +502,9 @@ export function MainHeader() {
                               }
                             }}
                             placeholder="Find in log..."
-                            className="min-w-0 flex-1 bg-surface-default py-1.5 text-text-default outline-none placeholder:text-text-muted"
+                            className="min-w-0 flex-1 bg-white py-1.5 text-slate-800 outline-none placeholder:text-slate-500"
                           />
-                          <span className="inline-flex h-5 min-w-12 items-center justify-center border border-border-default bg-surface-default px-1.5 font-mono text-text-muted">
+                          <span className="inline-flex h-5 min-w-12 items-center justify-center border border-slate-300 bg-white px-1.5 font-mono text-slate-500">
                             {occurrenceCount > 0
                               ? `${activeOccurrenceIndex}/${occurrenceCount}`
                               : "0/0"}
@@ -514,7 +514,7 @@ export function MainHeader() {
                               emit("kolam_header_log_prev_occurrence")
                             }
                             disabled={occurrenceCount === 0}
-                            className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                            className="inline-flex h-5 w-5 items-center justify-center text-slate-500 transition-colors hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                             title="Previous occurrence"
                           >
                             <ChevronRight className="h-3.5 w-3.5 rotate-180" />
@@ -524,7 +524,7 @@ export function MainHeader() {
                               emit("kolam_header_log_next_occurrence")
                             }
                             disabled={occurrenceCount === 0}
-                            className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                            className="inline-flex h-5 w-5 items-center justify-center text-slate-500 transition-colors hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                             title="Next occurrence"
                           >
                             <ChevronRight className="h-3.5 w-3.5" />
@@ -534,7 +534,7 @@ export function MainHeader() {
 
                       <button
                         onClick={() => emit("kolam_header_log_toggle_stash")}
-                        className={`relative ${headerButtonClass} ${logState.showStash ? "border-status-warning-border bg-status-warning-bg text-status-warning-text" : ""}`}
+                        className={`relative ${headerButtonClass} ${logState.showStash ? "border-amber-300 bg-amber-100 text-amber-700" : ""}`}
                         title={
                           logState.showStash
                             ? "Close stash manager"
@@ -543,7 +543,7 @@ export function MainHeader() {
                       >
                         <Archive className="h-4 w-4" />
                         {(logState.stashCount ?? 0) > 0 && (
-                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-border-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
+                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-slate-300 bg-slate-100 px-1 font-bold leading-none text-slate-500">
                             {logState.stashCount}
                           </span>
                         )}
@@ -561,7 +561,7 @@ export function MainHeader() {
 
                       <button
                         onClick={() => emit("kolam_header_log_toggle_graph")}
-                        className={`${headerButtonClass} ${logState.graphView ? "border-action-bg bg-primary-100 text-action-hover" : ""}`}
+                        className={`${headerButtonClass} ${logState.graphView ? "border-blue-500 bg-blue-100 text-blue-700" : ""}`}
                         title={
                           logState.graphView
                             ? "Back to commit list"
@@ -600,7 +600,7 @@ export function MainHeader() {
 
                   <div className={toolbarGroupClass}>
                     <Menu as="div" className="relative hidden md:block">
-                      <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700">
+                      <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-slate-300 bg-white px-2 font-mono text-slate-500 transition-all duration-150 hover:border-slate-300 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-700">
                         <GitBranch className="h-3 w-3" />
                         {logState.currentBranch ?? "main"}
                         <ChevronDown className="h-3 w-3" />
@@ -617,9 +617,9 @@ export function MainHeader() {
                         <MenuItems
                           anchor={{ to: "bottom end", gap: 6 }}
                           portal
-                          className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+                          className="z-9999 w-60 overflow-hidden border border-slate-300 bg-slate-100 p-1 focus:"
                         >
-                          <div className="px-2 py-1 font-semibold uppercase tracking-wider text-text-muted">
+                          <div className="px-2 py-1 font-semibold uppercase tracking-wider text-slate-500">
                             Checkout Branch
                           </div>
                           {logState.branchNames?.map((branchName) => (
@@ -631,27 +631,27 @@ export function MainHeader() {
                                       branchName,
                                     })
                                   }
-                                  className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
+                                  className={`${active ? "bg-slate-50 text-slate-800" : "text-slate-600"} flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
                                 >
                                   <span className="flex items-center gap-1.5">
                                     <GitBranch className="h-3 w-3" />
                                     {branchName}
                                   </span>
                                   {logState.currentBranch === branchName && (
-                                    <Check className="h-3 w-3 text-action-bg" />
+                                    <Check className="h-3 w-3 text-blue-500" />
                                   )}
                                 </button>
                               )}
                             </MenuItem>
                           ))}
-                          <div className="my-1 h-px bg-border-subtle" />
+                          <div className="my-1 h-px bg-slate-200" />
                           <button
                             onClick={() => {
                               emit("kolam_header_log_open_create_branch", {
                                 defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
                               });
                             }}
-                            className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
+                            className="flex w-full items-center gap-2 px-2 py-1.5 text-slate-800 hover:bg-slate-50"
                           >
                             <Plus className="h-3 w-3" />
                             New branch
@@ -675,12 +675,12 @@ export function MainHeader() {
               <div className="flex items-center gap-2">
                 <div className={toolbarGroupClass}>
                   <span
-                    className="inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted"
+                    className="inline-flex h-7 w-7 items-center justify-center border border-slate-300 bg-white text-slate-500"
                     title="Canvas active"
                   >
                     <Blocks className="h-4 w-4" />
                   </span>
-                  <span className="inline-flex h-7 items-center border border-border-default bg-surface-default px-2 font-mono text-text-muted">
+                  <span className="inline-flex h-7 items-center border border-slate-300 bg-white px-2 font-mono text-slate-500">
                     Snapshot live
                   </span>
                 </div>

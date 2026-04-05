@@ -302,33 +302,33 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
   return (
     <>
       <div
-        className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
+        className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/45"
         onClick={onClose}
       >
         <div
-          className="relative w-full max-w-2xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default"
+          className="relative w-full max-w-2xl max-h-[80vh] flex flex-col border border-slate-300 bg-white"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-300 shrink-0">
             <div className="flex items-center gap-2">
-              <GitCompare className="h-4 w-4 text-text-muted" />
-              <span className="text-text-default">git diff</span>
-              <code className="bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
+              <GitCompare className="h-4 w-4 text-slate-500" />
+              <span className="text-slate-800">git diff</span>
+              <code className="bg-slate-50 text-slate-500 px-1.5 py-0.5 font-mono">
                 {prevEntry ? shortHash(prevEntry.id) : "0000000"}..
                 {shortHash(entry.id)}
               </code>
             </div>
             <div className="flex items-center gap-3">
-              <span className="font-mono text-status-success-text">
+              <span className="font-mono text-emerald-700">
                 +{additions}
               </span>
-              <span className="font-mono text-status-error-text">
+              <span className="font-mono text-rose-700">
                 -{deletions}
               </span>
               <button
                 onClick={onClose}
-                className="p-1 text-text-muted hover:bg-surface-subtle"
+                className="p-1 text-slate-500 hover:bg-slate-50"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -338,13 +338,13 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
           {/* Diff body */}
           <div className="overflow-y-auto flex-1 font-mono">
             {!prevEntry && (
-              <div className="px-4 py-3 text-text-muted italic border-b border-border-default">
+              <div className="px-4 py-3 text-slate-500 italic border-b border-slate-300">
                 No parent commit found. Showing the full commit content as
                 additions.
               </div>
             )}
             {diffs.length === 0 ? (
-              <div className="px-4 py-6 text-center text-text-muted">
+              <div className="px-4 py-6 text-center text-slate-500">
                 No differences
               </div>
             ) : (
@@ -353,13 +353,13 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
                   key={i}
                   className={`flex gap-3 px-4 py-0.5 leading-5 ${
                     line.type === "add"
-                      ? "bg-status-success-bg text-status-success-text"
+                      ? "bg-emerald-100 text-emerald-700"
                       : line.type === "del"
-                        ? "bg-status-error-bg text-status-error-text line-through opacity-70"
-                        : "text-text-subtle"
+                        ? "bg-rose-100 text-rose-700 line-through opacity-70"
+                        : "text-slate-600"
                   }`}
                 >
-                  <span className="select-none w-3 shrink-0 text-text-muted opacity-60">
+                  <span className="select-none w-3 shrink-0 text-slate-500 opacity-60">
                     {line.type === "add"
                       ? "+"
                       : line.type === "del"
@@ -392,17 +392,17 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
   const [value, setValue] = useState(currentTag ?? "");
   return (
     <div
-      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
+      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/45"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-xs border border-border-default bg-surface-default p-5"
+        className="relative w-full max-w-xs border border-slate-300 bg-white p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2 mb-3">
-          <Tag className="h-4 w-4 text-text-muted" />
-          <span className="text-text-default">git tag</span>
-          <code className="bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
+          <Tag className="h-4 w-4 text-slate-500" />
+          <span className="text-slate-800">git tag</span>
+          <code className="bg-slate-50 text-slate-500 px-1.5 py-0.5 font-mono">
             {shortHash(entryId)}
           </code>
         </div>
@@ -419,12 +419,12 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
             }
             if (e.key === "Escape") onClose();
           }}
-          className="w-full border border-border-default bg-surface-subtle px-3 py-1.5 text-text-default focus:border-border-default focus: focus: focus: mb-3"
+          className="w-full border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-800 focus:border-slate-300 focus: focus: focus: mb-3"
         />
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-subtle"
+            className="border border-slate-300 px-3 py-1.5 text-slate-800 hover:bg-slate-50"
           >
             Cancel
           </button>
@@ -433,7 +433,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
               onSave(value.trim() || null);
               onClose();
             }}
-            className="bg-action-bg px-3 py-1.5 text-action-text hover:bg-action-hover"
+            className="bg-blue-500 px-3 py-1.5 text-white hover:bg-blue-700"
           >
             Save Tag
           </button>
@@ -2667,7 +2667,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   return (
     <>
       <div
-        className={`log-pane bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
+        className={`log-pane bg-white relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
         style={containerStyle}
       >
         <div className="flex h-full flex-col" style={contentStyle}>
@@ -2726,7 +2726,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 {showLoadingState ? (
                   <div className="space-y-4 animate-pulse">
                     {[1, 2, 3].map((i) => (
-                      <div key={i} className="h-28 bg-surface-hover" />
+                      <div key={i} className="h-28 bg-slate-200" />
                     ))}
                   </div>
                 ) : (
@@ -2928,7 +2928,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                         <button
                           onClick={() => fetchNextPage()}
                           disabled={isFetchingNextPage}
-                          className="flex items-center gap-1.5 px-4 py-2 text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-hover transition-colors disabled:opacity-50"
+                          className="flex items-center gap-1.5 px-4 py-2 text-slate-500 hover:text-slate-800 bg-slate-50 hover:bg-slate-200 transition-colors disabled:opacity-50"
                         >
                           <ChevronsDown className="h-4 w-4" />
                           {isFetchingNextPage
@@ -3024,22 +3024,22 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           mergeConfirm ? (
             mergeConfirm.mode === "fast-forward" ? (
               <div className="space-y-1">
-                <p className="font-mono text-text-default">
+                <p className="font-mono text-slate-800">
                   {mergeConfirm.targetBranchName} {"->"}{" "}
                   {shortHash(mergeConfirm.sourceHeadId)}
                 </p>
-                <p className="text-text-muted">
+                <p className="text-slate-500">
                   This will move the current branch pointer forward without
                   creating a new commit.
                 </p>
               </div>
             ) : (
               <div className="space-y-1">
-                <p className="font-mono text-text-default">
+                <p className="font-mono text-slate-800">
                   merge {mergeConfirm.sourceBranchName} into{" "}
                   {mergeConfirm.targetBranchName}
                 </p>
-                <p className="text-text-muted">
+                <p className="text-slate-500">
                   This app will create a new commit on{" "}
                   {mergeConfirm.targetBranchName} using the source branch head
                   content.
@@ -3088,19 +3088,19 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           entryConfirm ? (
             entryConfirm.type === "reset" ? (
               <div className="space-y-1">
-                <p className="font-mono text-text-default">
+                <p className="font-mono text-slate-800">
                   git reset --hard {shortHash(entryConfirm.entry.id)}
                 </p>
-                <p className="text-text-muted">
+                <p className="text-slate-500">
                   This will delete all entries newer than this one.
                 </p>
               </div>
             ) : (
               <div className="space-y-1">
-                <p className="font-mono text-text-default">
+                <p className="font-mono text-slate-800">
                   git rm -- entry {shortHash(entryConfirm.entry.id)}
                 </p>
-                <p className="text-text-muted">
+                <p className="text-slate-500">
                   Delete this entry from history.
                 </p>
               </div>
@@ -3130,10 +3130,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         description={
           snapshotConfirm ? (
             <div className="space-y-1">
-              <p className="font-mono text-text-default">
+              <p className="font-mono text-slate-800">
                 canvas snapshot {shortHash(snapshotConfirm.snapshot.id)}
               </p>
-              <p className="text-text-muted">
+              <p className="text-slate-500">
                 The live canvas will rewind to the newest remaining snapshot. If
                 none remain, the canvas becomes empty.
               </p>

@@ -121,18 +121,18 @@ export function StreamView({ streamId }: { streamId: string }) {
       <LogPane streamId={streamId} logWidth={logWidth} />
       <CanvasPane streamId={streamId} />
 
-      <div className="fixed bottom-2 right-2 z-40 flex items-center gap-0.5 border border-border-default bg-surface-default p-2 shadow-lg backdrop-blur-md transition-all">
+      <div className="fixed bottom-2 right-2 z-40 flex items-center gap-0.5 border border-slate-300 bg-white p-2 shadow-lg backdrop-blur-md transition-all">
         <Menu as="div" className="relative">
           <MenuButton
-            className="inline-flex h-8 items-center gap-2 px-2 text-text-default transition-all hover:bg-surface-hover focus:"
+            className="inline-flex h-8 items-center gap-2 px-2 text-slate-800 transition-all hover:bg-slate-200 focus:"
             title="Preferred web LLM"
             aria-label="Preferred web LLM"
           >
-            <Globe className="h-3.5 w-3.5 text-text-muted" />
-            <span className="font-semibold text-text-default">
+            <Globe className="h-3.5 w-3.5 text-slate-500" />
+            <span className="font-semibold text-slate-800">
               {selectedProviderLabel}
             </span>
-            <ChevronDown className="h-3.5 w-3.5 text-text-muted" />
+            <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
           </MenuButton>
           <Transition
             as={Fragment}
@@ -146,9 +146,9 @@ export function StreamView({ streamId }: { streamId: string }) {
             <MenuItems
               anchor={{ to: "bottom end", gap: 6 }}
               portal
-              className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+              className="z-9999 w-44 overflow-hidden border border-slate-300 bg-slate-100 p-1 focus:"
             >
-              <div className="px-2 py-1 font-semibold uppercase tracking-wider text-text-muted">
+              <div className="px-2 py-1 font-semibold uppercase tracking-wider text-slate-500">
                 Preferred web LLM
               </div>
               {BRIDGE_PROVIDER_PRESETS.map((provider) => (
@@ -165,8 +165,8 @@ export function StreamView({ streamId }: { streamId: string }) {
                       }}
                       className={`${
                         focus
-                          ? "bg-surface-subtle text-text-default"
-                          : "text-text-subtle"
+                          ? "bg-slate-50 text-slate-800"
+                          : "text-slate-600"
                       } flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
                     >
                       <span className="flex items-center gap-1.5">
@@ -174,7 +174,7 @@ export function StreamView({ streamId }: { streamId: string }) {
                         {provider.label}
                       </span>
                       {selectedProviderId === provider.id && (
-                        <Check className="h-3 w-3 text-action-bg" />
+                        <Check className="h-3 w-3 text-blue-500" />
                       )}
                     </button>
                   )}
@@ -197,7 +197,7 @@ export function StreamView({ streamId }: { streamId: string }) {
               setBridgeModalSeed(null);
               setIsBridgeOpen(true);
             }}
-            className="inline-flex h-8 items-center gap-1.5 px-2 font-semibold text-text-default transition-all hover:bg-surface-hover hover:text-text-default"
+            className="inline-flex h-8 items-center gap-1.5 px-2 font-semibold text-slate-800 transition-all hover:bg-slate-200 hover:text-slate-800"
           >
             <Sparkles className="h-4 w-4" />
             <span>Detailed</span>
@@ -207,7 +207,7 @@ export function StreamView({ streamId }: { streamId: string }) {
         {shouldShowReset && (
           <button
             onClick={() => void resetBridgeSession.mutateAsync()}
-            className="inline-flex items-center gap-1.5 px-2 py-2 font-semibold text-text-muted hover:bg-surface-hover hover:text-text-default"
+            className="inline-flex items-center gap-1.5 px-2 py-2 font-semibold text-slate-500 hover:bg-slate-200 hover:text-slate-800"
             title={
               isAutomationActive
                 ? "Stop and reset current bridge session"

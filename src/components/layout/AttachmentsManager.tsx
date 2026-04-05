@@ -91,27 +91,27 @@ export function AttachmentsManager({
                 setRemoveError(null);
                 setDocImportOpen(true);
               }}
-              className="inline-flex items-center gap-2 border border-border-default px-3 py-1 bg-surface-subtle hover:bg-surface-hover"
+              className="inline-flex items-center gap-2 border border-slate-300 px-3 py-1 bg-slate-50 hover:bg-slate-200"
             >
               <span className="">Go to import</span>
             </button>
-            <p className="text-text-muted">
+            <p className="text-slate-500">
               Upload on the Document Import modal.
             </p>
           </div>
 
           {removeError && (
-            <div className="border border-status-error-border bg-status-error-bg px-3 py-2 text-status-error-text">
+            <div className="border border-rose-300 bg-rose-100 px-3 py-2 text-rose-700">
               {removeError}
             </div>
           )}
 
-          <div className="max-h-64 overflow-y-auto border border-border-default p-2 bg-surface-default">
+          <div className="max-h-64 overflow-y-auto border border-slate-300 p-2 bg-white">
             {isLoading && (
-              <div className="text-text-muted">Loading attachments…</div>
+              <div className="text-slate-500">Loading attachments…</div>
             )}
             {!isLoading && attachments.length === 0 && (
-              <div className="text-text-muted">No attachments yet.</div>
+              <div className="text-slate-500">No attachments yet.</div>
             )}
 
             <ul className="space-y-2">
@@ -124,7 +124,7 @@ export function AttachmentsManager({
                 return (
                   <li
                     key={att.id}
-                    className="flex items-center justify-between gap-2 p-2 hover:bg-surface-subtle"
+                    className="flex items-center justify-between gap-2 p-2 hover:bg-slate-50"
                   >
                     <div className="flex items-center gap-3">
                       <FileAttachmentThumbnail
@@ -137,10 +137,10 @@ export function AttachmentsManager({
                         importStatus={att.import_status}
                       />
                       <div className="min-w-0">
-                        <div className="truncate font-medium text-text-default">
+                        <div className="truncate font-medium text-slate-800">
                           {name}
                         </div>
-                        <div className="text-text-muted">
+                        <div className="text-slate-500">
                           {att.file_size_bytes
                             ? `${Math.round(att.file_size_bytes / 1024)} KB`
                             : "—"}
@@ -148,7 +148,7 @@ export function AttachmentsManager({
                           {att.content_type || "—"}
                         </div>
                         <div
-                          className={` ${isInUse ? "text-status-warning-text" : "text-text-muted"}`}
+                          className={` ${isInUse ? "text-amber-700" : "text-slate-500"}`}
                         >
                           {isInUse
                             ? `Used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
@@ -168,10 +168,10 @@ export function AttachmentsManager({
                               ? "Attach this file"
                               : "Only completed files can be attached"
                           }
-                          className={`border border-border-default px-2 py-1 font-semibold transition-colors ${
+                          className={`border border-slate-300 px-2 py-1 font-semibold transition-colors ${
                             canAttach
-                              ? "bg-action-bg text-action-text hover:bg-action-hover"
-                              : "cursor-not-allowed bg-surface-subtle text-text-muted"
+                              ? "bg-blue-500 text-white hover:bg-blue-700"
+                              : "cursor-not-allowed bg-slate-50 text-slate-500"
                           }`}
                         >
                           Attach
@@ -181,7 +181,7 @@ export function AttachmentsManager({
                         onClick={() =>
                           handleDownload(att.fileUrl ?? null, name)
                         }
-                        className="text-text-muted hover:text-text-default"
+                        className="text-slate-500 hover:text-slate-800"
                       >
                         <Download className="h-4 w-4" />
                       </button>
@@ -197,9 +197,9 @@ export function AttachmentsManager({
                         }
                         className={`${
                           isInUse
-                            ? "cursor-not-allowed text-text-muted"
-                            : "text-status-error-text hover:text-status-error-text"
-                        } disabled:text-text-muted`}
+                            ? "cursor-not-allowed text-slate-500"
+                            : "text-rose-700 hover:text-rose-700"
+                        } disabled:text-slate-500`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

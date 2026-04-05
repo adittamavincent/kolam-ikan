@@ -136,10 +136,10 @@ export function CreateDomainModal({
           <div className="relative">
             <input
               type="text"
-              className={`block w-full border px-4 py-3 text-text-default placeholder-text-muted focus: focus: transition-all ${
+              className={`block w-full border px-4 py-3 text-slate-800 placeholder-slate-500 focus: focus: transition-all ${
                 error
-                  ? "border-status-error-text focus:border-status-error-text focus:"
-                  : "border-border-default focus:border-border-default focus:"
+                  ? "border-rose-700 focus:border-rose-700 focus:"
+                  : "border-slate-300 focus:border-slate-300 focus:"
               }`}
               placeholder="e.g., My Knowledge Base"
               value={name}
@@ -152,7 +152,7 @@ export function CreateDomainModal({
           </div>
 
           <div className="mt-4">
-            <label className="mb-2 block font-medium uppercase tracking-wider text-text-muted">
+            <label className="mb-2 block font-medium uppercase tracking-wider text-slate-500">
               Icon
             </label>
             <div className="grid grid-cols-6 gap-2">
@@ -163,8 +163,8 @@ export function CreateDomainModal({
                   onClick={() => setIcon(option)}
                   className={`flex items-center justify-center border p-2 transition-colors ${
                     icon === option
-                      ? "border-border-default bg-primary-950 text-action-bg"
-                      : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                      ? "border-slate-300 bg-blue-950 text-blue-500"
+                      : "border-slate-300 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                   }`}
                   aria-label={`Select ${option} icon`}
                 >
@@ -175,7 +175,7 @@ export function CreateDomainModal({
           </div>
 
           {error && (
-            <div className="mt-3 flex items-center gap-2 text-status-error-text animate-fade-in">
+            <div className="mt-3 flex items-center gap-2 text-rose-700 animate-fade-in">
               <AlertCircle className="h-4 w-4" />
               {error}
             </div>

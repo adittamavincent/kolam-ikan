@@ -68,12 +68,20 @@ export function FileAttachmentsSection({
         className={`rounded-none border transition-colors ${
           canUpload
             ? isDragOver
-              ? "border-[color:var(--entry-accent-border)] bg-[color:var(--entry-accent-surface)]"
+              ? ""
               : hasItems
                 ? "border-transparent"
                 : "border-dashed border-border-default bg-surface-subtle"
             : "border-transparent"
         }`}
+        style={
+          canUpload && isDragOver
+            ? {
+                borderColor: "var(--entry-accent-border)",
+                backgroundColor: "var(--entry-accent-surface)",
+              }
+            : undefined
+        }
         onDragEnter={onDragEnter}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}

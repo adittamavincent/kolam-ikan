@@ -148,7 +148,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState(DEFAULT_PERSONA_TYPE);
   const [icon, setIcon] = useState("user");
-  const [color, setColor] = useState(DEFAULT_PERSONA_COLOR);
+  const [color, setColor] = useState<string>(DEFAULT_PERSONA_COLOR);
   const [error, setError] = useState<string | null>(null);
 
   const resetForm = () => {

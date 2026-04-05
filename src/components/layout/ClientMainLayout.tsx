@@ -581,11 +581,11 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
           {/* Resize Handle */}
           <div
-            className={`absolute top-0 right-0 z-50 h-full w-1 cursor-col-resize transition-colors ${
+            className={`absolute top-0 right-0 z-50 h-full w-4 cursor-col-resize after:absolute after:inset-y-0 after:right-0 after:w-px after:content-[''] ${
               effectiveSidebarVisible
-                ? "hover:bg-accent-subtle active:bg-action-primary-bg"
+                ? "hover:after:bg-primary-100 active:after:bg-action-bg"
                 : "pointer-events-none"
-            } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
+            } ${isResizing ? "after:w-1 after:bg-action-bg" : "after:bg-border-default"}`}
             onMouseDown={handleMouseDown}
           />
         </div>
@@ -614,7 +614,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               onClick={() => setMode("log-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isLogMaximized
-                  ? "bg-action-primary-bg text-action-primary-text"
+                  ? "bg-action-bg text-action-text"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
               }`}
               title="Maximize Log (⌘J)"
@@ -626,7 +626,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               onClick={() => setMode("balanced")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isBalanced
-                  ? "bg-action-primary-bg text-action-primary-text"
+                  ? "bg-action-bg text-action-text"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
               }`}
               title="Reset Layout (⌘K)"
@@ -638,7 +638,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               onClick={() => setMode("canvas-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isCanvasMaximized
-                  ? "bg-action-primary-bg text-action-primary-text"
+                  ? "bg-action-bg text-action-text"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
               }`}
               title="Maximize Canvas (⌘L)"

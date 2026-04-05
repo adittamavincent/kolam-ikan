@@ -66,7 +66,7 @@ export function ConfirmDialog({
 
   const confirmClasses = destructive
     ? "inline-flex items-center justify-center gap-2 bg-status-error-bg px-4 py-2 font-semibold text-status-error-text hover:bg-status-error-border disabled:cursor-not-allowed disabled:text-text-muted"
-    : "inline-flex items-center justify-center gap-2 bg-action-primary-bg px-4 py-2 font-semibold text-action-primary-text hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:bg-action-primary-disabled";
+    : "inline-flex items-center justify-center gap-2 bg-action-bg px-4 py-2 font-semibold text-action-text hover:bg-action-hover disabled:cursor-not-allowed disabled:bg-action-disabled";
 
   return (
     <Transition appear show={open} as={Fragment}>

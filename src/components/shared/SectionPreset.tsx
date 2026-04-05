@@ -63,13 +63,13 @@ export function ThreadFrame({
         <>
           {showTopSegment && (
             <div
-              className="pointer-events-none absolute left-2 z-0 w-px bg-border-default"
+              className="pointer-events-none absolute left-2 z-0 w-px bg-border-subtle"
               style={topSegmentStyle}
             />
           )}
           {showBottomSegment && (
             <div
-              className="pointer-events-none absolute left-2 z-0 w-px bg-border-default"
+              className="pointer-events-none absolute left-2 z-0 w-px bg-border-subtle"
               style={{
                 top: connectorJointTop,
                 bottom: `calc(-1 * ${connectorGapBleed})`,
@@ -77,7 +77,7 @@ export function ThreadFrame({
             />
           )}
           <div
-            className="pointer-events-none absolute left-2 z-0 h-px bg-border-default"
+            className="pointer-events-none absolute left-2 z-0 h-px bg-border-subtle"
             style={{ top: connectorJointTop, width: "0.6875rem" }}
           />
         </>
@@ -136,7 +136,7 @@ export function SectionPreset({
   className = "",
   headerClassName = "",
   bodyClassName = "",
-  frameClassName = "border-transparent",
+  frameClassName = "border-border-default",
 }: SectionPresetProps) {
   const frameStyle = persona
     ? getPersonaTintStyle(persona, "muted")

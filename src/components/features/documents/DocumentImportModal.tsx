@@ -676,7 +676,7 @@ export function DocumentImportModal({
                     // Reset input so same file can be selected again
                     event.target.value = "";
                   }}
-                  className="block w-full border border-border-default bg-surface-default px-3 py-3 text-text-default file:mr-4 file: file:border-none file:bg-action-primary-bg file:px-3 file:py-2 file:font-semibold file:text-action-primary-text"
+                  className="block w-full border border-border-default bg-surface-default px-3 py-3 text-text-default file:mr-4 file: file:border-none file:bg-action-bg file:px-3 file:py-2 file:font-semibold file:text-action-text"
                 />
               </label>
 
@@ -848,7 +848,7 @@ export function DocumentImportModal({
               {!isLoading && documents.length === 0 && (
                 <div className="border border-dashed border-border-strong bg-surface-default px-4 py-6 text-text-muted">
                   <div className="flex items-center gap-2 text-text-default">
-                    <CheckCircle2 className="h-4 w-4 text-action-primary-bg" />
+                    <CheckCircle2 className="h-4 w-4 text-action-bg" />
                     Nothing queued yet
                   </div>
                 </div>
@@ -987,7 +987,7 @@ export function DocumentImportModal({
                             {/* Progress Indicator */}
                             <div className="h-1.5 flex-1 overflow-hidden bg-surface-subtle">
                               <div
-                                className="h-full bg-action-primary-bg transition-[width] duration-500"
+                                className="h-full bg-action-bg transition-[width] duration-500"
                                 style={{ width: `${progressPercent}%` }}
                               />
                             </div>
@@ -1008,7 +1008,7 @@ export function DocumentImportModal({
                               onSelectDocument(document);
                               handleClose();
                             }}
-                            className="shrink-0 border border-border-default bg-action-primary-bg px-3 py-1.5 font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover"
+                            className="shrink-0 border border-border-default bg-action-bg px-3 py-1.5 font-semibold text-action-text transition-colors hover:bg-action-hover"
                           >
                             Attach
                           </button>

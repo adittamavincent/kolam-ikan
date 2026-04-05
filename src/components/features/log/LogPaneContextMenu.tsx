@@ -93,7 +93,7 @@ export function LogPaneContextMenu({
         <>
           <div className={CONTEXT_MENU_HEADER_CLASS}>
             <GitCommitHorizontal className={CONTEXT_MENU_ACTION_ICON_CLASS} />
-            <code className="font-mono text-action-primary-bg">
+            <code className="font-mono text-action-bg">
               {shortHash(contextMenu.entry.id)}
             </code>
             <span className="text-text-muted truncate">
@@ -181,7 +181,7 @@ export function LogPaneContextMenu({
         <>
           <div className={CONTEXT_MENU_HEADER_CLASS}>
             <Eye className={CONTEXT_MENU_ACTION_ICON_CLASS} />
-            <code className="font-mono text-action-primary-bg">
+            <code className="font-mono text-action-bg">
               {shortHash(contextMenu.snapshot.id)}
             </code>
             <span className="text-text-muted truncate">

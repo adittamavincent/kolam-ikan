@@ -47,8 +47,8 @@ export function CanvasCompareModal({
             <span className="text-text-default">{title}</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-diff-add-text">+{additions}</span>
-            <span className="font-mono text-diff-del-text">-{deletions}</span>
+            <span className="font-mono text-status-success-text">+{additions}</span>
+            <span className="font-mono text-status-error-text">-{deletions}</span>
             <button
               onClick={onClose}
               className="p-1 text-text-muted hover:bg-surface-subtle"
@@ -72,7 +72,7 @@ export function CanvasCompareModal({
           {primaryAction ? (
             <button
               onClick={primaryAction.onClick}
-              className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:bg-action-primary-hover"
+              className="inline-flex items-center gap-1.5 bg-action-bg px-3 py-1.5 text-action-text hover:bg-action-hover"
             >
               {primaryAction.icon}
               {primaryAction.label}

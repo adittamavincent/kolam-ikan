@@ -70,15 +70,15 @@ export function FileAttachmentsSection({
             ? isDragOver
               ? ""
               : hasItems
-                ? "border-transparent"
+                ? "border-border-default"
                 : "border-dashed border-border-default bg-surface-subtle"
-            : "border-transparent"
+            : "border-border-default"
         }`}
         style={
           canUpload && isDragOver
             ? {
-                borderColor: "var(--entry-accent-border)",
-                backgroundColor: "var(--entry-accent-surface)",
+                borderColor: "var(--color-primary-500)",
+                backgroundColor: "var(--color-primary-100)",
               }
             : undefined
         }

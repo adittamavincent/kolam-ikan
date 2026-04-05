@@ -2365,7 +2365,7 @@ export function WhatsAppImportModal({
               onDrop={(e) => void handleZipDrop(e)}
               className={`flex flex-wrap items-center gap-3 border px-3 py-2 transition-colors ${
                 zipDragActive
-                  ? "border-accent-default bg-accent-subtle"
+                  ? "border-action-bg bg-primary-100"
                   : "border-border-default bg-surface-subtle"
               } ${zipLoading ? "cursor-progress" : "cursor-pointer"}`}
             >
@@ -3123,7 +3123,7 @@ function PdfUploadRow({
 
         {/* Status indicator */}
         {isUploading && (
-          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-action-primary-bg" />
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-action-bg" />
         )}
         {isDone && (
           <span className="flex shrink-0 items-center gap-1 bg-status-success-bg px-2 py-0.5 text-status-success-text">
@@ -3221,7 +3221,7 @@ function PdfUploadRow({
 
               <button
                 onClick={() => inputRef.current?.click()}
-                className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-action-primary-text hover:bg-action-primary-hover"
+                className="inline-flex items-center gap-1 bg-action-bg px-2 py-1 text-action-text hover:bg-action-hover"
               >
                 <Upload className="h-4 w-4" />
                 {isError ? "Choose another" : "Select file"}

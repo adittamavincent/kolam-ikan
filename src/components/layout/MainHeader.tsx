@@ -201,7 +201,7 @@ export function MainHeader() {
   const hasEntries = totalCommitCount > 0;
   const collapseAllActive = Boolean(logState?.allEntriesCollapsed);
   const headerButtonClass =
-    "inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-text-muted";
+    "inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-bg disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-text-muted";
   const cloudStatusLabel =
     cloudStatus === "saving"
       ? "Cloud syncing"
@@ -340,7 +340,7 @@ export function MainHeader() {
                         }
                         placeholder="Add a description"
                         autoFocus
-                        className="w-full max-w-2xl border-0 bg-transparent px-0 py-0 leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
+                        className="w-full max-w-2xl border-0 bg-surface-default px-0 py-0 leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
                       />
                     ) : (
                       <button
@@ -405,7 +405,7 @@ export function MainHeader() {
                         disabled={!hasEntries}
                         className={`${headerButtonClass} relative ${
                           collapseAllActive
-                            ? "border-accent-default bg-accent-subtle text-accent-strong"
+                            ? "border-action-bg bg-primary-100 text-action-hover"
                             : collapsedEntryCount > 0
                               ? "text-text-default"
                               : ""
@@ -422,7 +422,7 @@ export function MainHeader() {
                           <ChevronDown className="h-3.5 w-3.5" />
                         )}
                         {collapsedEntryCount > 0 && (
-                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
+                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-border-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
                             {collapsedEntryCount}
                           </span>
                         )}
@@ -435,7 +435,7 @@ export function MainHeader() {
                         }}
                         className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-border-default bg-surface-default transition-[width,border-color,background-color] duration-300 ease-out ${
                           isSearchOpen
-                            ? "w-[20rem] border-accent-default bg-accent-subtle"
+                            ? "w-[20rem] border-action-bg bg-primary-100"
                             : "w-7"
                         }`}
                         style={{ willChange: "width" }}
@@ -469,7 +469,7 @@ export function MainHeader() {
                               : "pointer-events-none opacity-0 -translate-x-2"
                           }`}
                         >
-                          <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-action-primary-bg" />
+                          <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-action-bg" />
                           <input
                             ref={searchInputRef}
                             type="text"
@@ -502,7 +502,7 @@ export function MainHeader() {
                               }
                             }}
                             placeholder="Find in log..."
-                            className="min-w-0 flex-1 bg-transparent py-1.5 text-text-default outline-none placeholder:text-text-muted"
+                            className="min-w-0 flex-1 bg-surface-default py-1.5 text-text-default outline-none placeholder:text-text-muted"
                           />
                           <span className="inline-flex h-5 min-w-12 items-center justify-center border border-border-default bg-surface-default px-1.5 font-mono text-text-muted">
                             {occurrenceCount > 0
@@ -543,7 +543,7 @@ export function MainHeader() {
                       >
                         <Archive className="h-4 w-4" />
                         {(logState.stashCount ?? 0) > 0 && (
-                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
+                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-border-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
                             {logState.stashCount}
                           </span>
                         )}
@@ -561,7 +561,7 @@ export function MainHeader() {
 
                       <button
                         onClick={() => emit("kolam_header_log_toggle_graph")}
-                        className={`${headerButtonClass} ${logState.graphView ? "border-accent-default bg-accent-subtle text-accent-strong" : ""}`}
+                        className={`${headerButtonClass} ${logState.graphView ? "border-action-bg bg-primary-100 text-action-hover" : ""}`}
                         title={
                           logState.graphView
                             ? "Back to commit list"
@@ -638,7 +638,7 @@ export function MainHeader() {
                                     {branchName}
                                   </span>
                                   {logState.currentBranch === branchName && (
-                                    <Check className="h-3 w-3 text-action-primary-bg" />
+                                    <Check className="h-3 w-3 text-action-bg" />
                                   )}
                                 </button>
                               )}

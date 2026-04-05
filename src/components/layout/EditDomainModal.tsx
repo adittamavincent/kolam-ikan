@@ -241,7 +241,7 @@ export function EditDomainModal({
                   onClick={() => setIcon(option)}
                   className={`flex items-center justify-center border p-2 transition-colors ${
                     icon === option
-                      ? "border-border-default bg-primary-950 text-action-primary-bg"
+                      ? "border-border-default bg-primary-950 text-action-bg"
                       : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
                   }`}
                   aria-label={`Select ${option} icon`}

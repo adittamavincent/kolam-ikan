@@ -546,7 +546,7 @@ export function BridgeModal({
                   {streamMeta.name}
                 </span>
                 {currentStreamIsGlobal && (
-                  <div className="flex items-center gap-1 border border-accent-default bg-accent-subtle px-2 py-0.5 font-semibold text-accent-strong">
+                  <div className="flex items-center gap-1 border border-action-bg bg-primary-100 px-2 py-0.5 font-semibold text-action-hover">
                     <Globe className="h-3 w-3" />
                     Global
                   </div>
@@ -598,7 +598,7 @@ export function BridgeModal({
                       {currentProvider.hostLabel}
                     </span>
                     {bridgeSession?.sessionMemory && (
-                      <span className="border border-accent-default bg-accent-subtle px-1.5 py-0.5 font-bold tracking-tighter text-accent-strong uppercase">
+                      <span className="border border-action-bg bg-primary-100 px-1.5 py-0.5 font-bold tracking-tighter text-action-hover uppercase">
                         Memory Active
                       </span>
                     )}
@@ -609,7 +609,7 @@ export function BridgeModal({
                   onChange={(event) =>
                     setProviderId(event.target.value as typeof providerId)
                   }
-                  className="w-full border border-border-default bg-surface-default px-2 py-1.5 text-text-default focus:border-action-primary-bg outline-none"
+                  className="w-full border border-border-default bg-surface-default px-2 py-1.5 text-text-default focus:border-action-bg outline-none"
                 >
                   {BRIDGE_PROVIDER_PRESETS.map((provider) => (
                     <option key={provider.id} value={provider.id}>
@@ -697,7 +697,7 @@ export function BridgeModal({
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
                       placeholder="What should the AI accomplish with this context?"
-                      className="min-h-17.5 w-full resize-none border border-border-default bg-surface-subtle px-4 py-3 leading-relaxed text-text-default placeholder:text-text-muted focus:border-action-primary-bg outline-none"
+                      className="min-h-17.5 w-full resize-none border border-border-default bg-surface-subtle px-4 py-3 leading-relaxed text-text-default placeholder:text-text-muted focus:border-action-bg outline-none"
                     />
                   </section>
 
@@ -726,7 +726,7 @@ export function BridgeModal({
                           </button>
                           <button
                             onClick={handleOpenProvider}
-                            className="bg-action-primary-bg px-3 py-1.5 font-bold uppercase tracking-widest text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                            className="bg-action-bg px-3 py-1.5 font-bold uppercase tracking-widest text-action-text hover:bg-action-hover transition-colors"
                           >
                             Open {currentProvider.label}
                           </button>
@@ -798,7 +798,7 @@ export function BridgeModal({
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={handlePasteResult}
-                          className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 font-bold uppercase tracking-widest text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                          className="inline-flex items-center gap-2 bg-action-bg px-3 py-1.5 font-bold uppercase tracking-widest text-action-text hover:bg-action-hover transition-colors"
                         >
                           <ClipboardPaste className="h-3 w-3" />
                           Paste Response

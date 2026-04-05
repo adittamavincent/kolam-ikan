@@ -1,0 +1,1000 @@
+/* Extracted from globals.css to isolate editor-specific styling. */
+
+.entry-creator-fullscreen .section-editor-surface,
+.entry-creator-fullscreen .kolam-editor-shell,
+.entry-creator-fullscreen .kolam-codemirror-frame,
+.entry-creator-fullscreen .kolam-codemirror-root,
+.entry-creator-fullscreen .kolam-codemirror-root .cm-editor,
+.entry-creator-fullscreen .kolam-codemirror-root .cm-scroller {
+  height: 100%;
+  min-height: 0;
+}
+
+.entry-creator-fullscreen__chrome {
+  position: relative;
+  background: var(--bg-surface-subtle);
+}
+
+.entry-creator-fullscreen__chrome::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-bottom: 1px solid var(--border-default);
+  pointer-events: none;
+}
+
+.entry-creator-fullscreen__tab {
+  position: relative;
+  z-index: 0;
+}
+
+.entry-creator-fullscreen__tab--active {
+  z-index: 1;
+  margin-bottom: -1px;
+}
+
+.entry-creator-fullscreen__tab--compact {
+  align-self: stretch;
+}
+
+.entry-creator-fullscreen__body {
+  background: var(--bg-surface-default);
+}
+
+.entry-creator-fullscreen__editor-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.entry-creator-fullscreen .kolam-codemirror-frame,
+.entry-creator-fullscreen .kolam-codemirror-root,
+.entry-creator-fullscreen .kolam-codemirror-root .cm-editor,
+.entry-creator-fullscreen .kolam-codemirror-root .cm-scroller,
+.entry-creator-fullscreen .kolam-codemirror-root .cm-gutters {
+  background: var(--bg-surface-default);
+}
+
+.entry-creator-fullscreen .kolam-codemirror-root {
+  padding: 0;
+}
+
+.entry-creator-fullscreen .kolam-codemirror-root .cm-editor {
+  min-height: 100%;
+}
+
+.entry-creator-fullscreen .kolam-codemirror-root .cm-scroller {
+  overflow: auto;
+}
+
+.entry-creator-fullscreen .kolam-codemirror-root .cm-content {
+  min-height: 100%;
+  padding: 0 0 40vh;
+  font-size: 0.97rem;
+  line-height: 1.75;
+}
+
+.entry-creator-fullscreen .kolam-codemirror-root .cm-line {
+  max-width: none;
+}
+
+.entry-creator-fullscreen .kolam-codemirror-root .cm-gutters {
+  padding-right: 0;
+}
+
+.entry-creator-fullscreen .kolam-codemirror-root .cm-gutterElement,
+.entry-creator-fullscreen .kolam-codemirror-root .cm-line {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.entry-creator-fullscreen
+  .kolam-codemirror-root
+  .cm-lineNumbers
+  .cm-gutterElement {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+@layer base {
+  button,
+  [role="button"] {
+    @apply transition-colors duration-200;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Advanced Markdown (am-) styles                                              */
+/* -------------------------------------------------------------------------- */
+.am-root {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-default);
+}
+.am-root p {
+  margin: 0 0 0.75rem 0;
+}
+.am-block {
+  border-radius: 0;
+  padding: 12px;
+  margin: 0 0 0.75rem 0;
+}
+.am-code pre {
+  background: var(--code-block-bg);
+  color: var(--code-block-text);
+  padding: 12px;
+  border-radius: 0;
+  overflow: auto;
+}
+.am-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+.am-table th,
+.am-table td {
+  border: 1px solid var(--border-default);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+.am-table thead th {
+  background: var(--markdown-table-head-bg);
+  border-bottom-width: 2px;
+}
+.am-root mark {
+  padding: 0 4px;
+  border-radius: 0;
+  background: var(--mark-bg);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Kolam editor                                                               */
+/* -------------------------------------------------------------------------- */
+.kolam-editor-shell {
+  width: 100%;
+}
+
+.kolam-codemirror-frame {
+  background: var(--bg-surface-default);
+  color: var(--text-default);
+  font-family: var(--font-text);
+}
+
+.kolam-codemirror-root .cm-editor {
+  background: var(--bg-surface-default);
+  color: var(--text-default);
+  font-family: var(--font-text);
+  min-height: 8rem;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.kolam-codemirror-root .cm-editor:focus,
+.kolam-codemirror-root .cm-editor:focus-visible,
+.kolam-codemirror-root .cm-editor.cm-focused,
+.kolam-codemirror-root .cm-scroller:focus,
+.kolam-codemirror-root .cm-scroller:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.entry-creator .kolam-codemirror-root .cm-editor {
+  background: var(--bg-surface-default);
+  height: auto;
+  min-height: 1.65em;
+}
+
+.entry-creator .kolam-codemirror-root,
+.entry-creator .kolam-codemirror-root .cm-editor,
+.entry-creator .kolam-codemirror-root .cm-scroller {
+  background: var(--bg-surface-default);
+  height: auto;
+  min-height: 0;
+}
+
+.entry-creator .kolam-codemirror-root {
+  padding: 0.25rem;
+}
+
+.entry-creator .kolam-codemirror-root .cm-scroller {
+  overflow: hidden;
+}
+
+.log-pane .markdown-editor-readonly .kolam-codemirror-frame,
+.log-pane .markdown-editor-readonly .kolam-codemirror-root,
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-editor,
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-scroller {
+  height: auto;
+  min-height: 0;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-frame,
+.log-pane .markdown-editor-editable .kolam-codemirror-root,
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-editor,
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-scroller {
+  height: auto;
+  min-height: 0;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-editor {
+  min-height: 1.45em;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root {
+  padding: 0.25rem;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-content {
+  line-height: 1.45;
+}
+
+.log-pane .markdown-editor-readonly,
+.log-pane .markdown-editor-readonly .kolam-editor-shell,
+.log-pane .markdown-editor-readonly .kolam-codemirror-frame {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-editor {
+  overflow: visible;
+}
+
+.log-pane .markdown-editor-readonly .kolam-codemirror-root .cm-scroller {
+  overflow: hidden;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-scroller {
+  overflow: hidden;
+}
+
+.log-pane .markdown-editor-readonly .kolam-rendered-markdown {
+  gap: 0.2rem;
+}
+
+.log-pane .markdown-editor-readonly .kolam-paragraph,
+.log-pane .markdown-editor-readonly .kolam-list {
+  margin: 0;
+}
+
+.log-pane .markdown-editor-readonly .kolam-paragraph {
+  line-height: 1.45;
+}
+
+.bridge-response-parser .section-editor-surface {
+  padding: 0 !important;
+}
+
+.bridge-response-parser .markdown-editor-readonly,
+.bridge-response-parser .markdown-editor-readonly .kolam-editor-shell,
+.bridge-response-parser .markdown-editor-readonly .kolam-codemirror-frame {
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+}
+
+.bridge-response-parser .markdown-editor-readonly .kolam-rendered-markdown {
+  gap: 0.35rem;
+}
+
+.bridge-response-parser .markdown-editor-readonly .kolam-paragraph,
+.bridge-response-parser .markdown-editor-readonly .kolam-list {
+  margin: 0;
+}
+
+.bridge-response-parser .markdown-editor-readonly .kolam-paragraph {
+  line-height: 1.4;
+}
+
+.kolam-codemirror-root .cm-scroller {
+  overflow: auto;
+}
+
+.kolam-codemirror-root .cm-content {
+  color: var(--text-default);
+  font-family: var(--font-text);
+  padding: 0;
+  line-height: 1.65;
+}
+
+.kolam-codemirror-root .cm-line {
+  color: var(--text-default);
+  padding: 0;
+}
+
+.kolam-codemirror-root .cm-cursor,
+.kolam-codemirror-root .cm-dropCursor {
+  border-left-color: var(--action-bg);
+}
+
+.kolam-codemirror-root .cm-gutters {
+  background: var(--bg-surface-default);
+  border-right: none;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+}
+
+.kolam-codemirror-root .cm-selectionBackground {
+  background: var(--text-selection) !important;
+}
+
+.kolam-codemirror-root
+  .cm-focused
+  > .cm-scroller
+  > .cm-selectionLayer
+  .cm-selectionBackground {
+  background: var(--text-selection);
+}
+
+.kolam-codemirror-root .cm-placeholder {
+  color: var(--text-muted);
+}
+
+.kolam-codemirror-root .cm-kolam-heading {
+  color: var(--text-default);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.kolam-codemirror-root .cm-kolam-heading-1 {
+  font-size: 1.95rem;
+}
+
+.kolam-codemirror-root .cm-kolam-heading-2 {
+  font-size: 1.6rem;
+}
+
+.kolam-codemirror-root .cm-kolam-heading-3,
+.kolam-codemirror-root .cm-kolam-heading-4,
+.kolam-codemirror-root .cm-kolam-heading-5,
+.kolam-codemirror-root .cm-kolam-heading-6 {
+  font-size: 1.25rem;
+}
+
+.kolam-codemirror-root .cm-kolam-strong {
+  color: var(--text-default);
+  font-weight: 700;
+}
+
+.kolam-codemirror-root .cm-kolam-emphasis {
+  color: var(--text-default);
+  font-style: italic;
+}
+
+.kolam-codemirror-root .cm-kolam-strikethrough {
+  color: var(--text-default);
+  text-decoration: line-through;
+}
+
+.kolam-codemirror-root .cm-kolam-inline-code {
+  border-radius: 0;
+  background: var(--bg-surface-elevated);
+  color: var(--text-default);
+  font-family: var(--font-monospace);
+  padding: 0 0.25rem;
+}
+
+.kolam-codemirror-root .cm-kolam-link {
+  color: var(--text-default);
+  text-decoration: underline;
+}
+
+.kolam-codemirror-root .cm-kolam-highlight {
+  background: var(--status-warning-border);
+  border-radius: 0;
+}
+
+.kolam-codemirror-root .cm-line.cm-kolam-flash-target-line {
+  animation: kolam-flash-target-line 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 0;
+}
+
+.kolam-codemirror-root .cm-line.cm-kolam-hover-target-line {
+  border-radius: 0;
+}
+
+.kolam-codemirror-root .cm-kolam-hover-target-range {
+  background: var(--hover-target-bg) !important;
+  border-radius: 0;
+  box-shadow:
+    inset 0 -1px 0 var(--hover-target-shadow-inset),
+    0 0 0 1px var(--hover-target-shadow-outline);
+}
+
+.kolam-codemirror-root .cm-kolam-flash-target-range {
+  animation: kolam-flash-target-line 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  background: var(--transient-target-bg) !important;
+  border-radius: 0;
+  box-shadow:
+    inset 0 -1px 0 var(--transient-target-shadow-inset),
+    0 0 0 1px var(--transient-target-shadow-outline);
+}
+
+.kolam-codemirror-root .cm-kolam-blockquote {
+  border-left: 2px solid var(--border-strong);
+  color: var(--text-subtle);
+  padding-left: 0.9rem;
+}
+
+.kolam-codemirror-root .cm-kolam-callout-title {
+  border-radius: 0;
+  background: var(--text-selection);
+  color: var(--text-default);
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+}
+
+.kolam-codemirror-root .cm-kolam-list-marker {
+  display: inline-flex;
+  min-width: var(--kolam-list-marker-width, 1.5rem);
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--text-subtle);
+  font-variant-numeric: tabular-nums;
+  padding-right: 0.6rem;
+  margin-right: 0.15rem;
+}
+
+.kolam-codemirror-root .cm-kolam-bullet-marker {
+  min-width: 1rem;
+}
+
+.kolam-codemirror-root .cm-kolam-task-marker {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.45rem;
+  vertical-align: middle;
+}
+
+.kolam-codemirror-root .cm-kolam-task-marker input {
+  width: 0.9rem;
+  height: 0.9rem;
+  accent-color: var(--text-default);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-row {
+  display: grid;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  align-items: stretch;
+  box-sizing: border-box;
+  overflow: hidden;
+  font-size: 1rem;
+  line-height: 1.65;
+  vertical-align: top;
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-row {
+  grid-template-columns: var(--kolam-table-grid);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-cell {
+  min-width: 0;
+  padding: 0.12rem 0.45rem;
+  border-right: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-surface-default);
+  box-sizing: border-box;
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-row.is-header
+  .cm-kolam-table-preview-cell {
+  font-weight: 700;
+  background: var(--text-selection);
+  border-bottom-width: 2px;
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-cell:first-child {
+  border-left: 1px solid var(--border-default);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-cell[data-align="center"] {
+  text-align: center;
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-cell[data-align="right"] {
+  text-align: right;
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-cell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: inherit;
+}
+
+.kolam-codemirror-root .cm-kolam-table-inline-link {
+  color: var(--text-default);
+  text-decoration: underline;
+}
+
+.kolam-codemirror-root .cm-kolam-table-inline-code {
+  border-radius: 0;
+  background: var(--bg-surface-elevated);
+  color: var(--text-default);
+  font-family: var(--font-monospace);
+  padding: 0 0.25rem;
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block {
+  margin: 0 !important;
+  display: table;
+  table-layout: fixed;
+}
+
+.kolam-codemirror-root .cm-kolam-table-shell {
+  --kolam-table-gutter-left: 1.4rem;
+  --kolam-table-gutter-top: 1.35rem;
+  --kolam-table-gutter-right: 1.35rem;
+  --kolam-table-gutter-bottom: 1.35rem;
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  padding: var(--kolam-table-gutter-top) var(--kolam-table-gutter-right)
+    var(--kolam-table-gutter-bottom) var(--kolam-table-gutter-left);
+}
+
+.kolam-codemirror-root .cm-kolam-table-shell > .cm-kolam-table-preview-block {
+  position: relative;
+  z-index: 1;
+}
+
+.kolam-codemirror-root .cm-kolam-table-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.kolam-codemirror-root .cm-kolam-table-top-rail {
+  position: absolute;
+  top: 0;
+  left: var(--kolam-table-gutter-left);
+  right: var(--kolam-table-gutter-right);
+  height: var(--kolam-table-gutter-top);
+  display: grid;
+  align-items: center;
+  z-index: 2;
+}
+
+.kolam-codemirror-root .cm-kolam-table-left-rail {
+  position: absolute;
+  top: var(--kolam-table-gutter-top);
+  left: 0;
+  bottom: var(--kolam-table-gutter-bottom);
+  width: var(--kolam-table-gutter-left);
+  display: grid;
+  justify-items: center;
+  z-index: 2;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle {
+  pointer-events: auto;
+  align-self: stretch;
+  justify-self: stretch;
+  width: 100%;
+  height: 100%;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--bg-surface-default);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: grab;
+  touch-action: none;
+  transition:
+    background 140ms ease,
+    outline-color 140ms ease,
+    color 140ms ease;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle:hover {
+  background: var(--bg-surface-hover);
+  outline: 1px solid var(--action-bg);
+  color: var(--action-bg);
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle:active {
+  cursor: grabbing;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle.is-dragging {
+  background: var(--action-bg);
+  outline: 1px solid var(--action-hover);
+  color: var(--bg-surface-default);
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle .cm-kolam-table-grip-dots {
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 0;
+  background: currentColor;
+}
+
+.kolam-codemirror-root .cm-kolam-table-handle.is-row .cm-kolam-table-grip-dots {
+  transform: rotate(90deg);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone {
+  pointer-events: auto;
+  position: absolute;
+  border: 1px dashed var(--border-strong);
+  border-radius: 0;
+  background: var(--bg-surface-elevated);
+  color: var(--text-subtle);
+  touch-action: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+  z-index: 2;
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone::before {
+  content: "+";
+  position: absolute;
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-add-zone[data-intent]:not([data-intent=""])::after {
+  content: "+" attr(data-intent);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -160%);
+  border-radius: 0;
+  padding: 0.06rem 0.4rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--bg-surface-default);
+  background: var(--action-bg);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone.is-right {
+  top: var(--kolam-table-gutter-top);
+  right: 0;
+  bottom: var(--kolam-table-gutter-bottom);
+  width: var(--kolam-table-gutter-right);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone.is-bottom {
+  left: var(--kolam-table-gutter-left);
+  right: var(--kolam-table-gutter-right);
+  bottom: 0;
+  height: var(--kolam-table-gutter-bottom);
+}
+
+.kolam-codemirror-root .cm-kolam-table-shell:hover .cm-kolam-table-handle,
+.kolam-codemirror-root
+  .cm-kolam-table-shell.is-table-control-active
+  .cm-kolam-table-handle {
+  background: var(--bg-surface-hover);
+}
+
+.kolam-codemirror-root .cm-kolam-table-add-zone:hover,
+.kolam-codemirror-root
+  .cm-kolam-table-shell.is-table-control-active
+  .cm-kolam-table-add-zone {
+  border-color: var(--action-bg);
+  background: var(--bg-surface-hover);
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  border-radius: 0;
+  background: var(--action-bg);
+  outline: 1px solid var(--action-hover);
+  transition: none;
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-visible {
+  display: block;
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-column {
+  width: 0.28rem;
+  transform: translateX(-50%);
+}
+
+.kolam-codemirror-root .cm-kolam-table-drop-indicator.is-row {
+  height: 0.28rem;
+  transform: translateY(-50%);
+}
+
+.kolam-codemirror-root .cm-kolam-rule-preview-block {
+  display: block;
+  margin: 0 !important;
+}
+
+.kolam-codemirror-root .cm-kolam-rule-hitbox {
+  display: flex;
+  align-items: center;
+  min-height: 1.4rem;
+  cursor: text;
+}
+
+.kolam-codemirror-root .kolam-table {
+  margin: 0 !important;
+}
+
+.kolam-codemirror-root .kolam-rule {
+  margin: 0 !important;
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block th,
+.kolam-codemirror-root .cm-kolam-table-preview-block td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-row {
+  background: var(--color-primary-800);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-col {
+  background: var(--color-primary-900);
+}
+
+.kolam-codemirror-root .cm-kolam-table-preview-block .cm-kolam-table-hit-cell {
+  background: var(--text-selection);
+  outline: 2px solid var(--text-default);
+  outline-offset: -2px;
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-block
+  .cm-kolam-table-drag-source {
+  background: var(--color-primary-900);
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-block
+  .cm-kolam-table-drag-source-column {
+  border-left: 3px solid var(--action-bg);
+  border-right: 3px solid var(--action-bg);
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-block
+  .cm-kolam-table-drag-source-column.cm-kolam-table-drag-edge-start {
+  border-top: 3px solid var(--action-bg);
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-block
+  .cm-kolam-table-drag-source-column.cm-kolam-table-drag-edge-end {
+  border-bottom: 3px solid var(--action-bg);
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-block
+  .cm-kolam-table-drag-source-row {
+  border-top: 3px solid var(--action-bg);
+  border-bottom: 3px solid var(--action-bg);
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-block
+  .cm-kolam-table-drag-source-row.cm-kolam-table-drag-edge-start {
+  border-left: 3px solid var(--action-bg);
+}
+
+.kolam-codemirror-root
+  .cm-kolam-table-preview-block
+  .cm-kolam-table-drag-source-row.cm-kolam-table-drag-edge-end {
+  border-right: 3px solid var(--action-bg);
+}
+
+.kolam-properties-panel {
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface-subtle);
+}
+
+.kolam-properties-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-default);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.kolam-property-action {
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface-default);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.kolam-properties-grid {
+  display: grid;
+  grid-template-columns: minmax(8rem, 11rem) 1fr;
+  gap: 0.4rem 0.75rem;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.kolam-property-key {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.kolam-property-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.kolam-property-input {
+  width: 100%;
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface-default);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.kolam-property-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8125rem;
+}
+
+.kolam-property-pill {
+  border: 1px solid var(--border-default);
+  background: var(--bg-surface-default);
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+}
+
+.kolam-rendered-markdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.kolam-heading {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.kolam-heading-1 {
+  font-size: 2rem;
+}
+
+.kolam-heading-2 {
+  font-size: 1.6rem;
+}
+
+.kolam-heading-3 {
+  font-size: 1.3rem;
+}
+
+.kolam-inline-code {
+  border-radius: 0;
+  background: var(--bg-surface-subtle);
+  padding: 0 0.25rem;
+}
+
+.kolam-inline-link {
+  color: var(--color-primary-700);
+  text-decoration: underline;
+}
+
+.kolam-blockquote {
+  margin: 0;
+  border-left: 3px solid var(--border-default);
+  padding-left: 0.75rem;
+}
+
+.kolam-list {
+  margin: 0;
+  padding-left: 1.35rem;
+}
+
+.kolam-task-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.kolam-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.kolam-table th,
+.kolam-table td {
+  border: 1px solid var(--border-default);
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.kolam-table th {
+  background: var(--text-selection);
+  border-bottom-width: 2px;
+}
+
+.kolam-rule {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+}
+
+.kolam-code-block {
+  margin: 0;
+  overflow-x: auto;
+  background: var(--code-block-bg);
+  color: var(--code-block-text);
+}
+
+.kolam-code-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--code-block-border);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.kolam-code-block code {
+  display: block;
+  padding: 0.85rem;
+  white-space: pre;
+}
+
+.kolam-callout {
+  border-left: 4px solid var(--callout-info-border);
+  background: var(--callout-info-bg);
+  padding: 0.75rem;
+}
+
+.kolam-callout summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.kolam-callout-body {
+  margin-top: 0.75rem;
+}
+
+.kolam-callout-warning {
+  border-left-color: var(--callout-warning-border);
+  background: var(--callout-warning-bg);
+}
+
+.kolam-callout-danger,
+.kolam-callout-failure {
+  border-left-color: var(--callout-danger-border);
+  background: var(--callout-danger-bg);
+}
+
+.kolam-callout-success {
+  border-left-color: var(--callout-success-border);
+  background: var(--callout-success-bg);
+}

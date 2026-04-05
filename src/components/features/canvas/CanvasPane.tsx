@@ -560,7 +560,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           <div className="mx-3 mt-2 mb-1 border border-border-default bg-surface-elevated px-3 py-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 font-semibold text-action-primary-bg">
+                <div className="inline-flex items-center gap-1.5 font-semibold text-action-bg">
                   <Eye className="h-3.5 w-3.5" />
                   Snapshot Preview
                 </div>
@@ -587,7 +587,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                   onClick={() => {
                     void applyPreviewToCanvas();
                   }}
-                  className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 font-semibold text-action-primary-text hover:bg-action-primary-hover"
+                  className="inline-flex items-center gap-1 bg-action-bg px-2 py-1 font-semibold text-action-text hover:bg-action-hover"
                 >
                   <Save className="h-3 w-3" />
                   Apply to Canvas
@@ -635,10 +635,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="font-mono text-diff-add-text">
+                <span className="font-mono text-status-success-text">
                   +{previewAdditions}
                 </span>
-                <span className="font-mono text-diff-del-text">
+                <span className="font-mono text-status-error-text">
                   -{previewDeletions}
                 </span>
                 <button

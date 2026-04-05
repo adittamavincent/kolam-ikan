@@ -170,7 +170,7 @@ export function AttachmentsManager({
                           }
                           className={`border border-border-default px-2 py-1 font-semibold transition-colors ${
                             canAttach
-                              ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
+                              ? "bg-action-bg text-action-text hover:bg-action-hover"
                               : "cursor-not-allowed bg-surface-subtle text-text-muted"
                           }`}
                         >
@@ -198,7 +198,7 @@ export function AttachmentsManager({
                         className={`${
                           isInUse
                             ? "cursor-not-allowed text-text-muted"
-                            : "text-status-error-text hover:text-status-error-border"
+                            : "text-status-error-text hover:text-status-error-text"
                         } disabled:text-text-muted`}
                       >
                         <Trash2 className="h-4 w-4" />

@@ -1854,40 +1854,40 @@ class HorizontalRuleWidget extends WidgetType {
 
 const kolamEditorTheme = EditorView.theme({
   "&": {
-    backgroundColor: "transparent",
-    color: "var(--text-normal)",
+    backgroundColor: "var(--bg-surface-default)",
+    color: "var(--text-default)",
     fontFamily: "var(--font-text)",
   },
   ".cm-scroller": {
     fontFamily: "var(--font-text)",
   },
   ".cm-content": {
-    caretColor: "var(--caret-color)",
-    color: "var(--text-normal)",
+    caretColor: "var(--action-bg)",
+    color: "var(--text-default)",
     fontFamily: "var(--font-text)",
     padding: "0",
     lineHeight: "1.65",
   },
   ".cm-line": {
-    color: "var(--text-normal)",
+    color: "var(--text-default)",
     padding: "0",
   },
   ".cm-activeLine": {
     backgroundColor:
-      "color-mix(in srgb, var(--text-selection) 28%, var(--background-primary))",
+      "color-mix(in srgb, var(--text-selection) 28%, var(--bg-surface-default))",
   },
   ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "var(--caret-color)",
+    borderLeftColor: "var(--action-bg)",
   },
   ".cm-gutters": {
-    backgroundColor: "transparent",
+    backgroundColor: "var(--bg-surface-default)",
     border: "none",
-    color: "var(--text-faint)",
+    color: "var(--text-muted)",
     fontFamily: "var(--font-monospace)",
   },
   ".cm-activeLineGutter": {
     backgroundColor:
-      "color-mix(in srgb, var(--text-selection) 28%, var(--background-primary))",
+      "color-mix(in srgb, var(--text-selection) 28%, var(--bg-surface-default))",
   },
   "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, ::selection":
     {
@@ -1908,31 +1908,31 @@ const kolamHighlightStyle = HighlightStyle.define([
       tags.heading5,
       tags.heading6,
     ],
-    color: "var(--text-normal)",
+    color: "var(--text-default)",
     fontWeight: "700",
   },
   {
     tag: tags.strong,
-    color: "var(--text-normal)",
+    color: "var(--text-default)",
     fontWeight: "700",
   },
   {
     tag: tags.emphasis,
-    color: "var(--text-normal)",
+    color: "var(--text-default)",
     fontStyle: "italic",
   },
   {
     tag: [tags.link, tags.url],
-    color: "var(--text-normal)",
+    color: "var(--text-default)",
     textDecoration: "underline",
   },
   {
     tag: [tags.meta, tags.processingInstruction, tags.contentSeparator],
-    color: "var(--text-faint)",
+    color: "var(--text-muted)",
   },
   {
     tag: tags.monospace,
-    color: "var(--text-normal)",
+    color: "var(--text-default)",
     fontFamily: "var(--font-monospace)",
   },
 ]);

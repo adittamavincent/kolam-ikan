@@ -320,8 +320,8 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
               </code>
             </div>
             <div className="flex items-center gap-3">
-              <span className="font-mono text-diff-add-text">+{additions}</span>
-              <span className="font-mono text-diff-del-text">-{deletions}</span>
+              <span className="font-mono text-status-success-text">+{additions}</span>
+              <span className="font-mono text-status-error-text">-{deletions}</span>
               <button
                 onClick={onClose}
                 className="p-1 text-text-muted hover:bg-surface-subtle"
@@ -349,9 +349,9 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
                   key={i}
                   className={`flex gap-3 px-4 py-0.5 leading-5 ${
                     line.type === "add"
-                      ? "bg-diff-add-bg text-diff-add-text"
+                      ? "bg-status-success-bg text-status-success-text"
                       : line.type === "del"
-                        ? "bg-diff-del-bg text-diff-del-text line-through opacity-70"
+                        ? "bg-status-error-bg text-status-error-text line-through opacity-70"
                         : "text-text-subtle"
                   }`}
                 >
@@ -429,7 +429,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
               onSave(value.trim() || null);
               onClose();
             }}
-            className="bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:bg-action-primary-hover"
+            className="bg-action-bg px-3 py-1.5 text-action-text hover:bg-action-hover"
           >
             Save Tag
           </button>

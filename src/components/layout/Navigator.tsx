@@ -542,10 +542,10 @@ const StreamNode = ({
         className={`flex h-6 min-w-0 flex-1 items-center gap-2 pr-2 cursor-pointer
  ${
    isStreamActive
-     ? "navigator-row--active text-action-primary-bg font-semibold"
+     ? "navigator-row--active text-action-bg font-semibold"
      : "text-text-subtle hover:text-text-default"
  } ${!isStreamActive && isNewlyCreated ? " " : ""}
- ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
+ ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-surface-default"}
  ${isDragOver ? " " : ""}`}
         style={{
           paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)`,
@@ -692,9 +692,9 @@ const CabinetNode = ({
         className={`flex h-6 items-center gap-2 pr-2 group cursor-pointer
  ${
    isActive
-     ? "navigator-row--active text-action-primary-bg font-medium"
+     ? "navigator-row--active text-action-bg font-medium"
      : "text-text-subtle"
- } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
+ } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-surface-default"}
  ${isDragOver ? " " : ""}`}
         style={{
           paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)`,
@@ -2567,7 +2567,7 @@ export function Navigator({}: NavigatorProps) {
                     ? "New Stream"
                     : "New Stream (Root is restricted)"
                 }
-                className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+                className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-default disabled:hover:text-text-muted"
               >
                 <FilePlus className="h-4 w-4" />
               </button>
@@ -2578,7 +2578,7 @@ export function Navigator({}: NavigatorProps) {
               disabled={isCreateCabinetDisabled}
               aria-label="New cabinet"
               title="New Cabinet"
-              className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+              className="p-1.5 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface-default disabled:hover:text-text-muted"
             >
               <FolderPlus className="h-4 w-4" />
             </button>
@@ -2596,7 +2596,7 @@ export function Navigator({}: NavigatorProps) {
 
         {/* Tree View */}
         <div
-          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-accent-subtle" : ""}`}
+          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-primary-100" : ""}`}
           role="tree"
           onClick={() => {
             setManualActiveNode(null);
@@ -2926,7 +2926,7 @@ export function Navigator({}: NavigatorProps) {
                         : (moveDestination ?? null) ===
                           (moveItem as Cabinet | undefined)?.parent_id
                     }
-                    className="bg-action-primary-bg px-3 py-1.5 font-semibold text-action-primary-text transition hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    className="bg-action-bg px-3 py-1.5 font-semibold text-action-text transition hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Move
                   </button>

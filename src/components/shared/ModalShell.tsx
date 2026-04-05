@@ -78,7 +78,7 @@ function joinClassNames(...classes: Array<string | false | null | undefined>) {
 
 function getFooterActionToneClassName(tone: ModalFooterActionTone) {
   if (tone === "primary") {
-    return "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover disabled:bg-action-primary-disabled";
+    return "bg-action-bg text-action-text hover:bg-action-hover disabled:bg-action-disabled";
   }
   if (tone === "danger") {
     return "border border-status-error-border text-status-error-text hover:bg-status-error-bg";
@@ -292,7 +292,7 @@ export function ModalHeader({
       <div className={joinClassNames("min-w-0 flex-1", headingClassName)}>
         <div className="flex items-center gap-2">
           {icon ? (
-            <div className="shrink-0 text-action-primary-bg">{icon}</div>
+            <div className="shrink-0 text-action-bg">{icon}</div>
           ) : null}
           <DialogTitle
             as="h2"

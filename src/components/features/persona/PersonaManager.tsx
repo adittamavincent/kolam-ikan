@@ -744,7 +744,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         key={c}
                         type="button"
                         onClick={() => setColor(c)}
-                        className={`h-8 w-8 border-2 transition-transform hover:scale-110 ${color === c ? "border-text-default" : "border-transparent"}`}
+                        className={`h-8 w-8 border-2 transition-transform hover:scale-110 ${color === c ? "border-border-default" : "border-border-default"}`}
                         style={{ backgroundColor: c }}
                       />
                     ))}
@@ -792,7 +792,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
             <div className="mb-3 flex items-center justify-between">
               <button
                 onClick={beginCreate}
-                className="flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 font-medium text-action-primary-text hover:bg-action-primary-hover transition-colors"
+                className="flex items-center gap-2 bg-action-bg px-3 py-1.5 font-medium text-action-text hover:bg-action-hover transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 New Persona

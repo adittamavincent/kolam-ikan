@@ -2393,7 +2393,7 @@ export function EntryCreator({
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
         <ThreadFrame
-          frameClassName="border-transparent bg-surface-default"
+          frameClassName="border-border-default bg-surface-default"
           bodyClassName="bg-surface-default"
         >
           <div className="flex flex-col">
@@ -2882,7 +2882,7 @@ export function EntryCreator({
                   disabled={isCommitDisabled}
                   className={`inline-flex h-full w-32 items-center justify-center leading-4 transition-colors ${
                     !isCommitDisabled
-                      ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
+                      ? "bg-action-bg text-action-text hover:bg-action-hover"
                       : "bg-surface-subtle text-text-muted cursor-not-allowed"
                   }`}
                 >
@@ -2899,7 +2899,7 @@ export function EntryCreator({
           onClose={closeFullscreenEditor}
           className="relative z-120"
         >
-          <div className="fixed inset-0 bg-surface-overlay" />
+          <div className="fixed inset-0 bg-surface-default" />
           <div className="fixed inset-0">
             <DialogPanel className="entry-creator-fullscreen flex h-full w-full flex-col overflow-hidden bg-surface-default text-text-default">
               <div className="entry-creator-fullscreen__chrome flex items-center px-3 pt-2">
@@ -2918,7 +2918,7 @@ export function EntryCreator({
                         className={`entry-creator-fullscreen__tab group min-w-36 border border-b-0 px-3 py-2 text-left transition-colors ${
                           isActive
                             ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
-                            : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                            : "border-border-default bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
                         }`}
                       >
                         <div className="uppercase tracking-[0.18em] text-text-muted">
@@ -2933,7 +2933,7 @@ export function EntryCreator({
                   {renderAddPersonaMenu({
                     wrapperClassName: "relative shrink-0 self-center",
                     buttonClassName:
-                      "entry-creator-fullscreen__tab entry-creator-fullscreen__tab--compact flex h-[2.125rem] w-[2.125rem] min-w-[2.125rem] items-center justify-center border border-b-0 border-transparent bg-surface-hover p-0 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default",
+                      "entry-creator-fullscreen__tab entry-creator-fullscreen__tab--compact flex h-[2.125rem] w-[2.125rem] min-w-[2.125rem] items-center justify-center border border-b-0 border-border-default bg-surface-hover p-0 text-text-muted transition-colors hover:bg-surface-subtle hover:text-text-default",
                     buttonTitle: "Add section",
                     compact: true,
                   })}

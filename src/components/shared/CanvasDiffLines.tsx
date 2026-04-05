@@ -15,10 +15,10 @@ function formatSegmentText(text: string, showWhitespace: boolean): string {
 
 function rowClasses(type: DiffLine["type"]): string {
   if (type === "add") {
-    return "bg-diff-add-bg text-diff-add-text";
+    return "bg-status-success-bg text-status-success-text";
   }
   if (type === "del") {
-    return "bg-diff-del-bg text-diff-del-text";
+    return "bg-status-error-bg text-status-error-text";
   }
   return "text-text-subtle";
 }
@@ -26,10 +26,10 @@ function rowClasses(type: DiffLine["type"]): string {
 function segmentClasses(type: DiffLine["type"], changed: boolean): string {
   if (!changed) return "";
   if (type === "add") {
-    return "bg-diff-add-subtle text-diff-add-accent";
+    return "bg-surface-subtle text-status-success-text";
   }
   if (type === "del") {
-    return "bg-diff-del-subtle text-diff-del-accent";
+    return "bg-surface-subtle text-status-error-text";
   }
   return "";
 }

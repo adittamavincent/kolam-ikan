@@ -12,7 +12,6 @@ const config: Config = {
         primary: {
           100: "var(--color-primary-100)",
           200: "var(--color-primary-200)",
-          400: "var(--color-primary-400)",
           500: "var(--color-primary-500)",
           700: "var(--color-primary-700)",
           800: "var(--color-primary-800)",
@@ -25,15 +24,7 @@ const config: Config = {
           default: "var(--bg-surface-default)",
           subtle: "var(--bg-surface-subtle)",
           elevated: "var(--bg-surface-elevated)",
-          overlay: "var(--bg-surface-overlay)",
           hover: "var(--bg-surface-hover)",
-          emphasis: "var(--bg-surface-emphasis)",
-        },
-        accent: {
-          subtle: "var(--accent-surface-subtle)",
-          default: "var(--accent-border)",
-          muted: "var(--accent-text-muted)",
-          strong: "var(--accent-text)",
         },
         overlay: {
           backdrop: "var(--overlay-backdrop)",
@@ -50,18 +41,10 @@ const config: Config = {
           strong: "var(--border-strong)",
         },
         action: {
-          primary: {
-            bg: "var(--action-primary-bg)",
-            hover: "var(--action-primary-hover)",
-            text: "var(--action-primary-text)",
-            disabled: "var(--action-primary-disabled)",
-          },
-          secondary: {
-            bg: "var(--action-secondary-bg)",
-            hover: "var(--action-secondary-hover)",
-            text: "var(--action-secondary-text)",
-            border: "var(--action-secondary-border)",
-          },
+          bg: "var(--action-bg)",
+          hover: "var(--action-hover)",
+          text: "var(--action-text)",
+          disabled: "var(--action-disabled)",
         },
         status: {
           error: {
@@ -83,20 +66,6 @@ const config: Config = {
             bg: "var(--status-info-bg)",
             border: "var(--status-info-border)",
             text: "var(--status-info-text)",
-          },
-        },
-        diff: {
-          add: {
-            bg: "var(--diff-add-bg)",
-            subtle: "var(--diff-add-subtle)",
-            text: "var(--diff-add-text)",
-            accent: "var(--diff-add-accent)",
-          },
-          del: {
-            bg: "var(--diff-del-bg)",
-            subtle: "var(--diff-del-subtle)",
-            text: "var(--diff-del-text)",
-            accent: "var(--diff-del-accent)",
           },
         },
       },

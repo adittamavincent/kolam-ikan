@@ -590,9 +590,9 @@ export function QuickBridgeDialog({
               <section className="border border-border-default bg-surface-subtle p-6">
                 <div className="flex items-start gap-4">
                   {queueStatus === "running" || launchState === "queueing" ? (
-                    <Loader2 className="mt-1 h-6 w-6 animate-spin text-action-primary-bg" />
+                    <Loader2 className="mt-1 h-6 w-6 animate-spin text-action-bg" />
                   ) : (
-                    <CheckCircle2 className="mt-1 h-6 w-6 text-action-primary-bg" />
+                    <CheckCircle2 className="mt-1 h-6 w-6 text-action-bg" />
                   )}
                   <div className="space-y-2">
                     <div className="font-semibold text-text-default">

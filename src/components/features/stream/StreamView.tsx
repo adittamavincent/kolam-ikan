@@ -174,7 +174,7 @@ export function StreamView({ streamId }: { streamId: string }) {
                         {provider.label}
                       </span>
                       {selectedProviderId === provider.id && (
-                        <Check className="h-3 w-3 text-action-primary-bg" />
+                        <Check className="h-3 w-3 text-action-bg" />
                       )}
                     </button>
                   )}

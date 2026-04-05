@@ -126,7 +126,7 @@ export function LogEntryTimelineItem({
     >
       <ThreadFrame
         hideBody={isCollapsed}
-        frameClassName={`group overflow-visible transition-colors hover:z-20 focus-within:z-20 bg-surface-default ${isAmending ? "ring-1 ring-action-primary-bg" : ""}`}
+        frameClassName={`group overflow-visible transition-colors hover:z-20 focus-within:z-20 bg-surface-default ${isAmending ? "ring-1 ring-action-bg" : ""}`}
         headerClassName={`entry-creator__topbar hover:brightness-105 ${isAmending ? "cursor-default" : "cursor-pointer"} transition-colors`}
         bodyClassName="bg-surface-default"
         header={
@@ -157,7 +157,7 @@ export function LogEntryTimelineItem({
               </span>
               <GitCommitHorizontal className="h-4 w-4 shrink-0 text-text-muted" />
               <span className="relative inline-flex shrink-0 items-center group/hash">
-                <code className="cursor-help font-mono text-action-primary-bg">
+                <code className="cursor-help font-mono text-action-bg">
                   {hash}
                 </code>
                 <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 bg-surface-elevated p-2 font-mono text-text-default group-hover/hash:block">

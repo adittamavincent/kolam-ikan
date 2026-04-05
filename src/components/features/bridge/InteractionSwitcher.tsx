@@ -195,7 +195,7 @@ export function InteractionSwitcher({
               onClick={() => onChange(mode)}
               className={`relative flex-1 font-bold tracking-widest transition-all duration-200 ease-out ${
                 value === mode
-                  ? "bg-surface-elevated text-action-primary-bg font-black z-10"
+                  ? "bg-surface-elevated text-action-bg font-black z-10"
                   : "text-text-muted hover:text-text-default hover:bg-surface-hover"
               }`}
             >
@@ -214,7 +214,7 @@ export function InteractionSwitcher({
           <div className="flex flex-col items-center">
             <span
               className={` font-bold tabular-nums leading-none ${
-                overLimit ? "text-status-error-text" : "text-action-primary-bg"
+                overLimit ? "text-status-error-text" : "text-action-bg"
               }`}
             >
               {tokens > 999 ? `${(tokens / 1000).toFixed(1)}k` : tokens}

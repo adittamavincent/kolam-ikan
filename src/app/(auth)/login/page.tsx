@@ -486,8 +486,8 @@ function LoginForm() {
       <div className="w-full max-w-md space-y-8">
         {/* Branding */}
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center bg-action-primary-bg">
-            <span className="font-bold text-action-primary-text">K</span>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center bg-action-bg">
+            <span className="font-bold text-action-text">K</span>
           </div>
           <h2 className="mt-6 font-extrabold tracking-tight text-text-default">
             Kolam Ikan
@@ -633,7 +633,7 @@ function LoginForm() {
                   {mode === "signin" && (
                     <Link
                       href="/forgot-password"
-                      className="font-semibold text-action-primary-bg hover:text-accent-strong"
+                      className="font-semibold text-action-bg hover:text-action-hover"
                     >
                       Forgot password?
                     </Link>
@@ -767,7 +767,7 @@ function LoginForm() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMeState(e.target.checked)}
-                  className="h-4 w-4 border-border-default text-action-primary-bg focus:"
+                  className="h-4 w-4 border-border-default text-action-bg focus:"
                 />
                 <label
                   htmlFor="remember-me"
@@ -782,7 +782,7 @@ function LoginForm() {
               <button
                 type="submit"
                 disabled={loading}
-                className="group relative flex w-full justify-center bg-action-primary-bg px-4 py-2.5 font-bold text-action-primary-text hover:bg-action-primary-hover focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                className="group relative flex w-full justify-center bg-action-bg px-4 py-2.5 font-bold text-action-text hover:bg-action-hover focus: focus: focus: disabled:opacity-70 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -802,7 +802,7 @@ function LoginForm() {
                   Don&apos;t have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-primary-bg hover:text-accent-strong"
+                    className="font-bold text-action-bg hover:text-action-hover"
                   >
                     Sign up
                   </button>
@@ -812,7 +812,7 @@ function LoginForm() {
                   Already have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-primary-bg hover:text-accent-strong"
+                    className="font-bold text-action-bg hover:text-action-hover"
                   >
                     Sign in
                   </button>
@@ -855,7 +855,7 @@ function LoginForm() {
                     <button
                       onClick={() => quickSignup(acc)}
                       disabled={loading}
-                      className="font-medium text-action-primary-bg hover:text-accent-strong"
+                      className="font-medium text-action-bg hover:text-action-hover"
                     >
                       Sign up
                     </button>
@@ -876,7 +876,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex min-h-screen items-center justify-center bg-surface-subtle">
-          <Loader2 className="h-8 w-8 animate-spin text-action-primary-bg" />
+          <Loader2 className="h-8 w-8 animate-spin text-action-bg" />
         </div>
       }
     >

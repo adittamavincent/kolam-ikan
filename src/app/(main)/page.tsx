@@ -119,7 +119,7 @@ function StatCard({
 }) {
   const colorMap: Record<string, string> = {
     blue: "text-status-info-text",
-    purple: "text-accent-strong",
+    purple: "text-action-hover",
     emerald: "text-status-success-text",
     amber: "text-status-warning-text",
   };
@@ -191,11 +191,11 @@ function DomainCard({
       className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-action-primary-text group-hover:bg-primary-900 transition-colors">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-action-text group-hover:bg-primary-900 transition-colors">
           <DynamicIcon name={domain.icon ?? domain.name} />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold text-text-default group-hover:text-action-primary-bg transition-colors">
+          <h3 className="truncate font-semibold text-text-default group-hover:text-action-bg transition-colors">
             {domain.name}
           </h3>
           {domain.description && (
@@ -205,7 +205,7 @@ function DomainCard({
         <div className="ml-2 flex items-start">
           <button
             onClick={handleDuplicate}
-            className="text-action-primary-bg hover:underline"
+            className="text-action-bg hover:underline"
           >
             <Copy className="h-4 w-4" />
           </button>
@@ -244,7 +244,7 @@ function RecentActivityItem({
       onClick={onClick}
       className="group flex w-full items-start gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
     >
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle transition-colors group-hover:bg-accent-subtle group-hover:text-accent-strong">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle transition-colors group-hover:bg-primary-100 group-hover:text-action-hover">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -456,7 +456,7 @@ export default function HomePage() {
           <div>
             <h1 className="font-bold text-text-default">
               {greeting},{" "}
-              <span className="text-action-primary-bg">{displayName}</span>
+              <span className="text-action-bg">{displayName}</span>
             </h1>
             <p className="mt-1 text-text-subtle">Pick up where you left off.</p>
           </div>
@@ -659,7 +659,7 @@ export default function HomePage() {
         {/* ---- Footer tip ---- */}
         <div className="mt-10 border border-border-default bg-surface-default px-5 py-4 text-center">
           <p className="text-text-default">
-            <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
+            <span className="font-semibold text-action-bg">Tip:</span>{" "}
             Use the sidebar to quickly switch between domains, or click any card
             above to jump in.
           </p>

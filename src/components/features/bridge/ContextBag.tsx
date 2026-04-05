@@ -118,7 +118,7 @@ export function ContextBag({
             type="checkbox"
             checked={includeCanvas}
             onChange={(e) => onIncludeCanvasChange(e.target.checked)}
-            className="accent-action-primary-bg"
+            className="accent-action-bg"
           />
           Include current canvas
         </label>
@@ -135,20 +135,20 @@ export function ContextBag({
               checked={includeGlobalStream}
               onChange={(e) => onIncludeGlobalStreamChange(e.target.checked)}
               disabled={isGlobalToggleDisabled}
-              className="accent-action-primary-bg"
+              className="accent-action-bg"
             />
             <span className="flex items-center gap-1.5 text-text-default">
               <Globe
                 className={`h-3.5 w-3.5 ${
                   includeGlobalStream && !isGlobalToggleDisabled
-                    ? "text-action-primary-bg"
+                    ? "text-action-bg"
                     : "text-text-muted"
                 }`}
               />
               Include Domain Global Stream
             </span>
             {globalStreamLoading && (
-              <span className="ml-1 inline-block h-3 w-3 animate-spin border-2 border-border-default border-t-action-primary-bg" />
+              <span className="ml-1 inline-block h-3 w-3 animate-spin border-2 border-border-default border-t-action-bg" />
             )}
           </label>
           {!globalStreamLoading &&
@@ -226,7 +226,7 @@ export function ContextBag({
                     >
                       <input
                         type="checkbox"
-                        className="mt-0.5 accent-action-primary-bg disabled:opacity-50"
+                        className="mt-0.5 accent-action-bg disabled:opacity-50"
                         checked={selectedEntries.includes(entry.id)}
                         onChange={() => !isDisabled && toggleEntry(entry.id)}
                         disabled={isDisabled}
@@ -243,7 +243,7 @@ export function ContextBag({
                           </span>
                           {isAlreadySent && (
                             <span
-                              className={`font-bold ml-2 ${hasModifications ? "text-action-primary-bg" : "text-text-muted"}`}
+                              className={`font-bold ml-2 ${hasModifications ? "text-action-bg" : "text-text-muted"}`}
                             >
                               {hasModifications ? "AMENDED" : "SENT"}
                             </span>

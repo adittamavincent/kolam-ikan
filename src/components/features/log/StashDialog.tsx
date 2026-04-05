@@ -216,7 +216,7 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onPopDraftStash(stash.id)}
-                      className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:bg-action-primary-hover"
+                      className="inline-flex items-center gap-2 bg-action-bg px-3 py-1.5 text-action-text hover:bg-action-hover"
                     >
                       <ArchiveRestore className="h-4 w-4" />
                       Pop

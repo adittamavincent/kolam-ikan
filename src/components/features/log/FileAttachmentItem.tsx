@@ -304,7 +304,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
         <div
           className="absolute bottom-0 left-0 h-0.5 transition-all duration-500 ease-out"
           style={{
-            backgroundColor: "var(--entry-accent-surface-strong)",
+            backgroundColor: "var(--color-primary-200)",
             width: `${progressPercent}%`,
           }}
         />

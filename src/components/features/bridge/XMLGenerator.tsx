@@ -80,7 +80,7 @@ export function XMLGenerator({
               disabled={!isReady}
               className={`flex items-center gap-1.5 border px-3 py-1.5 font-semibold transition-all ${
                 copied
-                  ? "bg-status-success-bg text-status-success-text border border-status-success-bg"
+                  ? "bg-status-success-bg text-status-success-text border border-status-success-border"
                   : "border-border-default bg-surface-elevated text-text-inverse hover:bg-surface-hover"
               } ${!isReady ? "cursor-not-allowed opacity-60" : ""}`}
             >

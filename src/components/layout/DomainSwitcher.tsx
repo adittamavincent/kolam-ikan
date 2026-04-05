@@ -157,7 +157,7 @@ export function DomainSwitcher({
           onClick={navigateToHome}
           className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
             pathname === "/" || pendingHome
-              ? "bg-action-primary-bg text-action-primary-text"
+              ? "bg-action-bg text-action-text"
               : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
           }`}
         >
@@ -234,7 +234,7 @@ export function DomainSwitcher({
             aria-label={domain.name}
             className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
               activeDomainId === domain.id
-                ? "bg-action-primary-bg text-action-primary-text"
+                ? "bg-action-bg text-action-text"
                 : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
             }`}
           >
@@ -252,7 +252,7 @@ export function DomainSwitcher({
             {/* Active / Pending Indicator */}
             {(activeDomainId === domain.id ||
               (pendingDomainId === domain.id && isNavigating)) && (
-              <div className="absolute -left-2 h-5 w-1 bg-action-primary-bg" />
+              <div className="absolute -left-2 h-5 w-1 bg-action-bg" />
             )}
           </button>
         ))}
@@ -262,7 +262,7 @@ export function DomainSwitcher({
           onClick={() => setIsCreateModalOpen(true)}
           aria-label="Add Domain"
           title="Add Domain"
-          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-primary-950 hover:text-action-primary-bg"
+          className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-primary-950 hover:text-action-bg"
         >
           <Plus className="h-4 w-4" />
           <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 font-medium text-text-default group-hover:block whitespace-nowrap">
@@ -297,7 +297,7 @@ export function DomainSwitcher({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-action-primary-bg font-semibold text-action-primary-text">
+              <div className="flex h-full w-full items-center justify-center bg-action-bg font-semibold text-action-text">
                 {initials}
               </div>
             )}
@@ -411,7 +411,7 @@ export function DomainSwitcher({
                 className="object-cover border-2 border-border-default"
               />
             ) : (
-              <div className="flex h-16 w-16 items-center justify-center bg-primary-950 font-bold text-action-primary-bg border-2 border-border-subtle">
+              <div className="flex h-16 w-16 items-center justify-center bg-primary-950 font-bold text-action-bg border-2 border-border-subtle">
                 {initials}
               </div>
             )}

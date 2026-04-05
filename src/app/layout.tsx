@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Fira_Code } from "next/font/google";
 import "./globals.css";
+import "../styles/editor-codemirror.css";
 import DevelopmentLocatorOverlay from "@/components/DevelopmentLocatorOverlay";
 import { Providers } from "@/components/providers";
 import { DevelopmentSessionGuard } from "@/components/shared/DevelopmentSessionGuard";

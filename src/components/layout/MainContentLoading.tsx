@@ -41,7 +41,7 @@ export function MainContentLoading({
                 <p className="mt-1 text-text-muted">{hint}</p>
               </div>
               <div className="flex items-center gap-2 text-text-muted">
-                <span className="h-2 w-2 animate-pulse rounded-none bg-action-primary-bg" />
+                <span className="h-2 w-2 animate-pulse rounded-none bg-action-bg" />
                 <span>Loading</span>
               </div>
             </div>

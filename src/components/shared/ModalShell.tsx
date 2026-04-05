@@ -291,9 +291,7 @@ export function ModalHeader({
     >
       <div className={joinClassNames("min-w-0 flex-1", headingClassName)}>
         <div className="flex items-center gap-2">
-          {icon ? (
-            <div className="shrink-0 text-action-bg">{icon}</div>
-          ) : null}
+          {icon ? <div className="shrink-0 text-action-bg">{icon}</div> : null}
           <DialogTitle
             as="h2"
             className={joinClassNames(

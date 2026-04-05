@@ -94,10 +94,7 @@ export function TextInputDialog({
               title={title}
               description={description}
               icon={
-                <GitBranch
-                  className="h-6 w-6 text-action-bg"
-                  aria-hidden
-                />
+                <GitBranch className="h-6 w-6 text-action-bg" aria-hidden />
               }
               actions={
                 <>

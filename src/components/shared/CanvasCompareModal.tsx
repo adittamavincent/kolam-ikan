@@ -47,8 +47,12 @@ export function CanvasCompareModal({
             <span className="text-text-default">{title}</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-status-success-text">+{additions}</span>
-            <span className="font-mono text-status-error-text">-{deletions}</span>
+            <span className="font-mono text-status-success-text">
+              +{additions}
+            </span>
+            <span className="font-mono text-status-error-text">
+              -{deletions}
+            </span>
             <button
               onClick={onClose}
               className="p-1 text-text-muted hover:bg-surface-subtle"

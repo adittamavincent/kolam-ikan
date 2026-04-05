@@ -455,8 +455,7 @@ export default function HomePage() {
         <div className="mb-6 flex justify-between items-end">
           <div>
             <h1 className="font-bold text-text-default">
-              {greeting},{" "}
-              <span className="text-action-bg">{displayName}</span>
+              {greeting}, <span className="text-action-bg">{displayName}</span>
             </h1>
             <p className="mt-1 text-text-subtle">Pick up where you left off.</p>
           </div>
@@ -659,9 +658,9 @@ export default function HomePage() {
         {/* ---- Footer tip ---- */}
         <div className="mt-10 border border-border-default bg-surface-default px-5 py-4 text-center">
           <p className="text-text-default">
-            <span className="font-semibold text-action-bg">Tip:</span>{" "}
-            Use the sidebar to quickly switch between domains, or click any card
-            above to jump in.
+            <span className="font-semibold text-action-bg">Tip:</span> Use the
+            sidebar to quickly switch between domains, or click any card above
+            to jump in.
           </p>
         </div>
       </div>

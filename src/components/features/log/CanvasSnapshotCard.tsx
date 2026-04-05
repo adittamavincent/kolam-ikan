@@ -111,7 +111,7 @@ export function CanvasSnapshotCard({
             }}
             className="flex h-6 items-center justify-between"
           >
-            <div className="flex min-w-0 items-center">
+            <div className="flex min-w-0 items-center gap-2">
               <span
                 className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
                 aria-hidden="true"
@@ -123,7 +123,7 @@ export function CanvasSnapshotCard({
                 )}
               </span>
               <Camera className="h-4 w-4 shrink-0 text-text-subtle" />
-              <span className="truncate uppercase tracking-[0.14em] text-text-default">
+              <span className="truncate uppercase text-text-default">
                 Canvas Snapshot
               </span>
             </div>
@@ -143,18 +143,19 @@ export function CanvasSnapshotCard({
             <div className="min-w-0 flex-1">
               {isAIGenerated ? (
                 <div className="flex min-w-0 items-center">
-                  <div className="persona-button-display__icon flex h-4 w-4 shrink-0 items-center justify-center bg-action-primary-bg/10 text-action-primary-bg">
+                  <div className="persona-button-display__icon log-pane__accent-icon flex h-4 w-4 shrink-0 items-center justify-center">
                     <Sparkles className="h-4 w-4" />
                   </div>
                   <span className="truncate tracking-wider text-text-subtle uppercase">
                     {snapshotTitle}
                   </span>
-                  <span className="persona-button-display__type-badge shrink-0 px-1 py-px uppercase tracking-[0.12em]">
+                  <span className="persona-button-display__type-badge log-pane__accent-badge shrink-0 px-1 py-px uppercase tracking-[0.12em]">
                     AI
                   </span>
                 </div>
               ) : (
-                <div className="truncate text-text-default">
+                <div className="truncate text-text-default gap-2 flex">
+                  <div className="h-4 w-4"/>
                   {snapshotTitle}
                 </div>
               )}
@@ -169,13 +170,13 @@ export function CanvasSnapshotCard({
                 <div className="flex items-center">
                   <button
                     onClick={handleOpenInCanvas}
-                    className="bg-action-primary-bg px-2 py-0.5 text-action-primary-text transition-colors hover:bg-action-primary-hover"
+                    className="log-pane__action-button px-2 py-0.5 transition-colors"
                   >
                     Open
                   </button>
                   <button
                     onClick={() => setShowConfirm(false)}
-                    className="bg-surface-default px-2 py-0.5 text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+                    className="log-pane__action-button px-2 py-0.5 transition-colors"
                   >
                     Cancel
                   </button>
@@ -184,14 +185,14 @@ export function CanvasSnapshotCard({
                 <div className="flex items-center">
                   <button
                     onClick={() => setIsCompareOpen(true)}
-                    className="p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
+                    className="log-pane__action-button p-1 transition-colors"
                     title="Compare with current canvas draft"
                   >
                     <GitCompare className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setShowConfirm(true)}
-                    className="p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
+                    className="log-pane__action-button p-1 transition-colors"
                     title="Open this snapshot in canvas preview"
                   >
                     <RotateCcw className="h-4 w-4" />

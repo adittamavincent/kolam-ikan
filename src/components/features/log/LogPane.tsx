@@ -2616,9 +2616,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-20 pt-2">
-            <div>
+            <div className="flex flex-col gap-2">
               {sortOrder === "newest" && (
-                <div>
+                <div className="flex flex-col gap-2">
                   <EntryCreator
                     key={streamId}
                     streamId={streamId}
@@ -2651,7 +2651,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 </div>
               ) : (
                 <>
-                  <LogTimeline className="flex flex-col">
+                  <LogTimeline className="flex flex-col gap-2">
                     {branchTimelineItems.map((item) => {
                       if (item.type === "canvas_snapshot") {
                         const itemCollapseKey = getTimelineItemCollapseKey(item);

@@ -23,13 +23,13 @@ export const PRIMITIVES = {
     950: "#243963",
   },
 
-  // Domain-specific colors
-  domain: {
-    programming: "#75beff", // Accent blue
-    internship: "#c586c0", // Accent violet
-    gym: "#f48771", // Accent red
-    scholarship: "#89d185", // Accent green
-    hima: "#d7ba7d", // Accent amber
+  // Accent colors
+  accent: {
+    blue: "#75beff",
+    violet: "#8b5cf6",
+    coral: "#f48771",
+    green: "#89d185",
+    amber: "#d7ba7d",
   },
 } as const;
 
@@ -70,10 +70,10 @@ export const DARK_MODE = {
   // Actions
   action: {
     primary: {
-      bg: "#0e639c",
-      hover: "#1177bb",
+      bg: "#568af2",
+      hover: "#4d78cc",
       text: "#ffffff",
-      disabled: "#245b7a",
+      disabled: "#4269b9",
     },
     secondary: {
       bg: "#252526",
@@ -349,19 +349,36 @@ export function applyHexOpacity(color: string, opacity: number): string {
 /* ============================================================================ */
 
 /**
- * Preset persona colors for color picker
- * Uses semantic theme colors + Tailwind palette
+ * Shared persona swatches for all persona creation flows.
+ * Keep this list unified across manual persona creation and imports.
  */
-export const PERSONA_PRESET_COLORS = [
-  PRIMITIVES.domain.programming,
-  PRIMITIVES.domain.internship,
-  PRIMITIVES.domain.gym,
-  PRIMITIVES.domain.scholarship,
-  PRIMITIVES.domain.hima,
-  "#0ea5e9", // Sky
-  "#64748b", // Slate
+export const PERSONA_SWATCHES = [
+  PRIMITIVES.accent.blue, // Blue
+  "#14b8a6", // Teal
+  PRIMITIVES.accent.green, // Green
+  PRIMITIVES.accent.amber, // Amber
+  "#f97316", // Orange
+  PRIMITIVES.accent.coral, // Coral
+  "#f43f5e", // Rose
+  "#ec4899", // Pink
   "#8b5cf6", // Violet
+  "#64748b", // Slate
 ] as const;
+
+/**
+ * Persona tint scale shared across the UI.
+ */
+export const PERSONA_TINT_ALPHA = {
+  muted: 0.05,
+  body: 0.08,
+  header: 0.14,
+  interactive: 0.18,
+} as const;
+
+/**
+ * Backwards-compatible alias for older color picker imports.
+ */
+export const PERSONA_PRESET_COLORS = PERSONA_SWATCHES;
 
 /**
  * Get person preset icon names for icon picker
@@ -396,20 +413,9 @@ export const BRANCH_COLORS = [
 ] as const;
 
 /**
- * WhatsApp import persona colors palette
+ * Backwards-compatible alias for import flows until all call sites migrate.
  */
-export const WHATSAPP_PERSONA_COLORS = [
-  "#6366f1", // Indigo
-  "#8b5cf6", // Violet
-  "#ec4899", // Pink
-  "#f43f5e", // Rose
-  "#f97316", // Orange
-  "#eab308", // Yellow
-  "#22c55e", // Green
-  "#0ea5e9", // Sky
-  "#14b8a6", // Teal
-  "#a855f7", // Purple
-] as const;
+export const WHATSAPP_PERSONA_COLORS = PERSONA_SWATCHES;
 
 /**
  * Default snapshot persona color

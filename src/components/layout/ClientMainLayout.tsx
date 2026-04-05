@@ -585,7 +585,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           <div
             className={`absolute top-0 right-0 z-50 h-full w-1 cursor-col-resize transition-colors ${
               effectiveSidebarVisible
-                ? "hover:bg-primary-9500 active:bg-action-primary-bg"
+                ? "hover:bg-primary-950 active:bg-action-primary-bg"
                 : "pointer-events-none"
             } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
             onMouseDown={handleMouseDown}

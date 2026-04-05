@@ -22,11 +22,11 @@ export function MergeCommitCard({
   const targetBranchName = entry.merge_target_branch_name ?? "current";
 
   return (
-    <div className="group relative overflow-hidden border border-border-default bg-primary-950 transition-all">
-      <div className="flex h-8 items-center justify-between border-b border-border-default bg-primary-950 px-2.5">
+    <div className="log-pane__accent-panel group relative overflow-hidden border border-border-default transition-all">
+      <div className="log-pane__accent-panel-header flex h-8 items-center justify-between border-b px-2.5">
         <div className="flex items-center gap-1.5">
-          <GitMerge className="h-4 w-4 text-action-primary-bg" />
-          <span className="uppercase tracking-[0.14em] text-action-primary-bg">
+          <GitMerge className="log-pane__accent-label h-4 w-4" />
+          <span className="log-pane__accent-label uppercase tracking-[0.14em]">
             Merge Commit
           </span>
         </div>
@@ -37,13 +37,13 @@ export function MergeCommitCard({
 
       <div className="px-2.5 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 border border-emerald-800 bg-emerald-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-emerald-400">
+          <span className="log-pane__accent-badge inline-flex items-center gap-1 px-1.5 py-0.5 uppercase tracking-[0.14em]">
             <GitBranch className="h-4 w-4" />
             {sourceBranchName}
           </span>
           <span className="font-mono text-text-muted">{sourceHash}</span>
           <span className="font-mono text-text-muted">into</span>
-          <span className="inline-flex items-center gap-1 border border-primary-800 bg-primary-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-action-primary-bg">
+          <span className="log-pane__accent-badge inline-flex items-center gap-1 px-1.5 py-0.5 uppercase tracking-[0.14em]">
             <GitBranch className="h-4 w-4" />
             {targetBranchName}
           </span>
@@ -51,14 +51,14 @@ export function MergeCommitCard({
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 text-text-muted">
+          <div className="log-pane__info-text flex items-center gap-1.5">
             <Info className="h-4 w-4" />
             This merge keeps merged content in history and tracks the source branch join.
           </div>
           {onOpenInGraph ? (
             <button
               onClick={onOpenInGraph}
-              className="inline-flex items-center gap-1 text-text-muted transition-colors hover:text-text-default"
+              className="log-pane__action-button inline-flex items-center gap-1 transition-colors"
             >
               <GitCommitHorizontal className="h-4 w-4" />
               View in graph

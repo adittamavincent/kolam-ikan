@@ -21,6 +21,7 @@ import {
 } from "@/components/shared/ModalShell";
 import {
   DEFAULT_PERSONA_TYPE,
+  getPersonaAccentStyle,
   getPersonaScopeDescription,
   getPersonaScopeLabel,
   getPersonaTintStyle,
@@ -28,7 +29,7 @@ import {
   sanitizePersonaTypeInput,
 } from "@/lib/personas";
 import {
-  PERSONA_PRESET_COLORS,
+  PERSONA_SWATCHES,
   PERSONA_PRESET_ICONS,
 } from "@/lib/theme/colors";
 
@@ -52,7 +53,7 @@ interface PersonaManagerProps {
 
 const PRESET_ICONS = Array.from(PERSONA_PRESET_ICONS);
 
-const PRESET_COLORS = Array.from(PERSONA_PRESET_COLORS);
+const PRESET_COLORS = Array.from(PERSONA_SWATCHES);
 
 function PersonaIconTile({
   icon,
@@ -103,8 +104,7 @@ function PersonaIconTile({
       ref={tileRef}
       className={className}
       style={{
-        backgroundColor: `${color}20`,
-        color,
+        ...getPersonaAccentStyle(color, "header"),
         ...(syncWidthToHeight && squareWidth
           ? { width: `${squareWidth}px` }
           : null),
@@ -699,12 +699,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                       is_shadow: previewScopeSource.is_shadow,
                       type: previewTypeLabel,
                     },
-                    {
-                      backgroundAlpha: previewScopeSource.is_shadow
-                        ? 0.14
-                        : 0.08,
-                      borderAlpha: 0.24,
-                    },
+                    "interactive",
                   )}
                 >
                   <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-text-muted">
@@ -769,7 +764,12 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         key={ic}
                         type="button"
                         onClick={() => setIcon(ic)}
-                        className={`flex items-center justify-center border p-2 transition-colors ${icon === ic ? "bg-primary-950 border-border-default text-action-primary-bg" : "border-border-default hover:bg-surface-subtle text-text-subtle"}`}
+                        className={`flex items-center justify-center border p-2 transition-colors ${
+                          icon === ic
+                            ? "text-text-default"
+                            : "border-border-default text-text-subtle hover:bg-surface-subtle"
+                        }`}
+                        style={icon === ic ? getPersonaAccentStyle(color, "interactive") : undefined}
                       >
                         <DynamicIcon name={ic} className="h-[80%] w-[80%]" />
                       </button>

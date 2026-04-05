@@ -68,7 +68,7 @@ export function FileAttachmentsSection({
         className={`rounded-sm border transition-colors ${
           canUpload
             ? isDragOver
-              ? "border-action-primary-bg bg-primary-950"
+              ? "border-[color:var(--entry-accent-border)] bg-[color:var(--entry-accent-surface)]"
               : hasItems
                 ? "border-transparent"
                 : "border-dashed border-border-default bg-surface-subtle"

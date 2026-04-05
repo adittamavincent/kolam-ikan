@@ -3,6 +3,7 @@ import {
   normalizeHexColor,
   blendHexColors,
   DARK_MODE,
+  PERSONA_TINT_ALPHA,
 } from "@/lib/theme/colors";
 
 export const AI_PERSONA_TYPE = "AI";
@@ -10,6 +11,15 @@ export const DEFAULT_PERSONA_TYPE = "Perspective";
 export const DEFAULT_IMPORTED_PERSONA_TYPE = "Participant";
 
 type PersonaScope = Pick<Persona, "color" | "is_shadow" | "type">;
+type PersonaColorSource = PersonaScope | { color: string } | string;
+export type PersonaTintTone = keyof typeof PERSONA_TINT_ALPHA;
+
+const PERSONA_TINT_BASE_SURFACES: Record<PersonaTintTone, string> = {
+  muted: DARK_MODE.surface.default,
+  body: DARK_MODE.surface.default,
+  header: DARK_MODE.surface.subtle,
+  interactive: DARK_MODE.surface.elevated,
+};
 
 function trimPersonaType(value?: string | null): string {
   return typeof value === "string" ? value.trim() : "";
@@ -63,28 +73,51 @@ export function normalizePersonaColor(color?: string | null): string | undefined
   return normalizeHexColor(color);
 }
 
+function resolvePersonaColor(persona?: PersonaColorSource | null): string | undefined {
+  if (!persona) return undefined;
+  if (typeof persona === "string") return normalizeHexColor(persona);
+
+  return normalizeHexColor(persona.color);
+}
+
 export function getPersonaTintStyle(
   persona?: PersonaScope | null,
-  options?: {
-    backgroundAlpha?: number;
-    borderAlpha?: number;
-  },
+  options?:
+    | PersonaTintTone
+    | {
+        backgroundAlpha?: number;
+        backgroundBase?: string;
+      },
 ) {
   if (!persona) return undefined;
 
-  const backgroundAlpha = options?.backgroundAlpha ?? 0.06;
-  const borderAlpha = options?.borderAlpha ?? 0.18;
+  const tone = typeof options === "string" ? options : "body";
+  const backgroundAlpha =
+    (typeof options === "string" ? undefined : options?.backgroundAlpha) ??
+    PERSONA_TINT_ALPHA[tone];
   const baseSurface =
-    backgroundAlpha >= 0.12
-      ? DARK_MODE.surface.elevated
-      : backgroundAlpha >= 0.08
-        ? DARK_MODE.surface.subtle
-        : DARK_MODE.surface.default;
+    (typeof options === "string" ? undefined : options?.backgroundBase) ??
+    PERSONA_TINT_BASE_SURFACES[tone];
   const backgroundColor = blendHexColors(persona.color, baseSurface, backgroundAlpha);
-  const borderColor = blendHexColors(persona.color, DARK_MODE.surface.default, borderAlpha);
+  const borderColor = normalizeHexColor(persona.color);
 
   return {
     backgroundColor: backgroundColor ?? baseSurface,
     borderColor: borderColor ?? "var(--border-default)",
+  };
+}
+
+export function getPersonaAccentStyle(
+  persona?: PersonaColorSource | null,
+  tone: PersonaTintTone = "header",
+) {
+  const color = resolvePersonaColor(persona);
+
+  return {
+    backgroundColor:
+      blendHexColors(color, PERSONA_TINT_BASE_SURFACES[tone], PERSONA_TINT_ALPHA[tone]) ??
+      PERSONA_TINT_BASE_SURFACES[tone],
+    borderColor: color ?? "var(--border-default)",
+    color: color ?? "var(--text-default)",
   };
 }

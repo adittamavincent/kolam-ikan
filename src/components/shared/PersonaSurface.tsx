@@ -1,26 +1,14 @@
 import type React from "react";
 
 import type { Persona } from "@/lib/types";
-import { getPersonaTintStyle } from "@/lib/personas";
+import { getPersonaTintStyle, type PersonaTintTone } from "@/lib/personas";
 
 type PersonaSurfaceTone = "body" | "code" | "editor";
 
-const PERSONA_SURFACE_TONES: Record<
-  PersonaSurfaceTone,
-  { backgroundAlpha: number; borderAlpha: number }
-> = {
-  body: {
-    backgroundAlpha: 0.06,
-    borderAlpha: 0.16,
-  },
-  code: {
-    backgroundAlpha: 0.1,
-    borderAlpha: 0.2,
-  },
-  editor: {
-    backgroundAlpha: 0.05,
-    borderAlpha: 0.15,
-  },
+const PERSONA_SURFACE_TONES: Record<PersonaSurfaceTone, PersonaTintTone> = {
+  body: "body",
+  code: "body",
+  editor: "body",
 };
 
 interface PersonaSurfaceProps {

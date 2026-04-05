@@ -1134,7 +1134,7 @@ export function CommitGraph({
                   }}
                   className={`grid min-w-31 grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
                     currentBranch === branch.name
-                      ? "border-primary-800 bg-primary-950"
+                      ? "log-pane__accent-badge"
                       : "border-border-default bg-surface-default hover:bg-surface-hover"
                   }`}
                   style={{ boxShadow: `inset 3px 0 0 ${branch.color}` }}
@@ -1442,7 +1442,7 @@ export function CommitGraph({
                         </code>
 
                         {node.isHead && (
-                          <span className="inline-flex items-center gap-1 border border-primary-800 bg-primary-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-action-primary-bg">
+                          <span className="log-pane__accent-badge inline-flex items-center gap-1 px-1.5 py-0.5 uppercase tracking-[0.14em]">
                             HEAD
                           </span>
                         )}

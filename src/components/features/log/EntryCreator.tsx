@@ -1299,7 +1299,7 @@ export function EntryCreator({
     return (
       <Menu as="div" className={wrapperClassName}>
         <MenuButton className={buttonClassName} title={buttonTitle}>
-          <Plus className="h-4 w-4 text-text-subtle" />
+          <Plus className="h-4 w-4" />
           {!compact && <span className="text-text-default">Add Persona</span>}
         </MenuButton>
 
@@ -2359,7 +2359,7 @@ export function EntryCreator({
               ref={quickPersonaStripRef}
               className="relative flex min-w-0 flex-1 items-stretch overflow-hidden"
             >
-              <div className="flex min-w-0 items-stretch overflow-hidden">
+              <div className="flex min-w-0 items-stretch overflow-hidden gap-2">
                 {visibleQuickPersonas.map((persona) => (
                   <PersonaItem
                     key={`quick-persona-${persona.id}`}
@@ -2367,11 +2367,8 @@ export function EntryCreator({
                     compact
                     showTypeBadge={false}
                     title={`Quick add ${persona.name}`}
-                    className="h-full shrink-0 border-0 text-text-default hover:brightness-[0.98]"
-                    style={getPersonaTintStyle(persona, {
-                      backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
-                      borderAlpha: 0.24,
-                    })}
+                    className="h-full px-2 shrink-0 border-0 text-text-default"
+                    style={getPersonaTintStyle(persona, "interactive")}
                     onClick={() => addPersona(persona.id)}
                   />
                 ))}
@@ -2396,10 +2393,7 @@ export function EntryCreator({
                       compact
                       showTypeBadge={false}
                       className="h-full border-0 text-text-default"
-                      style={getPersonaTintStyle(persona, {
-                        backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
-                        borderAlpha: 0.24,
-                      })}
+                      style={getPersonaTintStyle(persona, "interactive")}
                     />
                   </div>
                 ))}
@@ -2415,7 +2409,7 @@ export function EntryCreator({
             {renderAddPersonaMenu({
               wrapperClassName: "relative z-30 shrink-0",
               buttonClassName:
-                "entry-creator__topbar-button flex h-6 w-32 items-center justify-center leading-4 transition-colors focus:",
+                "entry-creator__topbar-button flex h-6 w-40 items-center justify-center leading-4 transition-colors gap-2",
               buttonTitle: "Add Persona",
             })}
 

@@ -239,7 +239,7 @@ export function FileAttachmentThumbnail({
             <div className="flex flex-col items-center gap-1">
               {typeof progressPercent === "number" ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
+                  <Loader2 className="log-pane__accent-label h-4 w-4 animate-spin" />
                   <div className="text-text-default">
                     {progressPercent}%
                   </div>

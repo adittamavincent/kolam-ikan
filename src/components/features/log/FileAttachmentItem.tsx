@@ -292,7 +292,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
       {/* Progress bar background */}
       {isProcessing && (
         <div
-          className="absolute bottom-0 left-0 h-0.5 bg-primary-950 transition-all duration-500 ease-out"
+          className="absolute bottom-0 left-0 h-0.5 bg-[color:var(--entry-accent-surface-strong)] transition-all duration-500 ease-out"
           style={{ width: `${progressPercent}%` }}
         />
       )}
@@ -325,7 +325,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               )}
               {isProcessing && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-action-primary-bg">
+                  <span className="log-pane__accent-label">
                     {progressPercent}%
                   </span>
                   {progressMessage && (

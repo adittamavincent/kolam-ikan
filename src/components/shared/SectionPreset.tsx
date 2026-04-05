@@ -2,12 +2,6 @@ import React from "react";
 import { Persona } from "@/lib/types";
 import { getPersonaTintStyle } from "@/lib/personas";
 
-function isLocalPersona(
-  persona: { is_shadow?: boolean | null } | null | undefined,
-): boolean {
-  return persona?.is_shadow === true;
-}
-
 interface ThreadFrameProps {
   header?: React.ReactNode;
   footer?: React.ReactNode;
@@ -150,26 +144,9 @@ export function SectionPreset({
   bodyClassName = "",
   frameClassName = "border-transparent",
 }: SectionPresetProps) {
-  const frameStyle = persona
-    ? getPersonaTintStyle(persona, {
-        backgroundAlpha: isLocalPersona(persona) ? 0.08 : 0.04,
-        borderAlpha: 0.18,
-      })
-    : undefined;
-
-  const headerStyle = persona
-    ? getPersonaTintStyle(persona, {
-        backgroundAlpha: isLocalPersona(persona) ? 0.18 : 0.1,
-        borderAlpha: 0.24,
-      })
-    : undefined;
-
-  const bodyStyle = persona
-    ? getPersonaTintStyle(persona, {
-        backgroundAlpha: isLocalPersona(persona) ? 0.06 : 0.03,
-        borderAlpha: 0.16,
-      })
-    : undefined;
+  const frameStyle = persona ? getPersonaTintStyle(persona, "muted") : undefined;
+  const headerStyle = persona ? getPersonaTintStyle(persona, "header") : undefined;
+  const bodyStyle = persona ? getPersonaTintStyle(persona, "body") : undefined;
 
   return (
     <ThreadFrame

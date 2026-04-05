@@ -562,8 +562,8 @@ export default function HomePage() {
                 <DomainCardSkeleton />
               </div>
             ) : totalDomains === 0 ? (
-              <div className=" border-2 border-dashed border-border-default bg-surface-default p-10 text-center">
-                <Globe className="mx-auto h-10 w-10 text-text-muted" />
+              <div className=" border-2 border-dashed border-border-default bg-surface-default p-8 text-center">
+                <Globe className="mx-auto h-8 w-8 text-text-muted" />
                 <h3 className="mt-3 text-sm font-semibold text-text-default">
                   No domains yet
                 </h3>
@@ -685,7 +685,7 @@ export default function HomePage() {
         </div>
 
         {/* ---- Footer tip ---- */}
-        <div className="mt-10 bg-primary-950 px-5 py-4 text-center">
+        <div className="mt-10 border border-border-default bg-surface-default px-5 py-4 text-center dark:bg-primary-950 dark:border-transparent">
           <p className="text-xs text-text-default">
             <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
             Use the sidebar to quickly switch between domains, or click any card

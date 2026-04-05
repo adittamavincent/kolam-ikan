@@ -4,6 +4,11 @@
 :root {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --navigator-row-active-bg: color-mix(
+    in srgb,
+    var(--color-primary-950) 68%,
+    var(--bg-surface-subtle)
+  );
 
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
@@ -112,10 +117,10 @@
   --border-strong: #3c3c3c;
 
   /* Action */
-  --action-primary-bg: #0e639c;
-  --action-primary-hover: #1177bb;
+  --action-primary-bg: var(--color-primary-500);
+  --action-primary-hover: var(--color-primary-600);
   --action-primary-text: #ffffff;
-  --action-primary-disabled: #245b7a;
+  --action-primary-disabled: var(--color-primary-700);
 
   --action-secondary-bg: #252526;
   --action-secondary-hover: #2a2d2e;
@@ -162,10 +167,10 @@
     --border-subtle: #232323;
     --border-strong: #3c3c3c;
 
-    --action-primary-bg: #0e639c;
-    --action-primary-hover: #1177bb;
+    --action-primary-bg: var(--color-primary-500);
+    --action-primary-hover: var(--color-primary-600);
     --action-primary-text: #ffffff;
-    --action-primary-disabled: #245b7a;
+    --action-primary-disabled: var(--color-primary-700);
 
     --action-secondary-bg: #252526;
     --action-secondary-hover: #2a2d2e;
@@ -186,6 +191,11 @@
     --diff-del-subtle: #5e2323;
     --diff-del-text: #f48771;
     --diff-del-accent: #f14c4c;
+    --navigator-row-active-bg: color-mix(
+      in srgb,
+      var(--color-primary-950) 68%,
+      var(--bg-surface-subtle)
+    );
   }
 }
 
@@ -235,6 +245,11 @@
     --diff-del-subtle: #fff5f7;
     --diff-del-text: #c41e3a;
     --diff-del-accent: #ef5350;
+    --navigator-row-active-bg: color-mix(
+      in srgb,
+      var(--color-primary-500) 16%,
+      var(--bg-surface-subtle)
+    );
   }
 }
 
@@ -285,6 +300,19 @@
   --diff-del-subtle: #fff5f7;
   --diff-del-text: #c41e3a;
   --diff-del-accent: #ef5350;
+  --navigator-row-active-bg: color-mix(
+    in srgb,
+    var(--color-primary-500) 16%,
+    var(--bg-surface-subtle)
+  );
+}
+
+.dark {
+  --navigator-row-active-bg: color-mix(
+    in srgb,
+    var(--color-primary-950) 68%,
+    var(--bg-surface-subtle)
+  );
 }
 
 body {
@@ -424,14 +452,19 @@ body {
 
 .entry-creator,
 .log-pane {
-  --entry-local-hover: #1f2833;
+  --entry-local-hover: color-mix(in srgb, var(--color-primary-950) 72%, var(--bg-surface-subtle));
+  --entry-accent-surface: color-mix(in srgb, var(--color-primary-950) 72%, var(--bg-surface-subtle));
+  --entry-accent-surface-strong: var(--color-primary-950);
+  --entry-accent-border: var(--color-primary-500);
+  --entry-accent-text: var(--color-primary-100);
+  --entry-accent-text-muted: var(--color-primary-200);
   --entry-topbar-bg: #1f1f1f;
   --entry-topbar-border: #2b2b2b;
   --entry-topbar-button-bg: #252526;
-  --entry-topbar-button-hover: #2a2d2e;
+  --entry-topbar-button-hover: var(--entry-accent-surface);
   --entry-topbar-button-border: #3c3c3c;
-  --entry-topbar-button-text: #d4d4d4;
-  --entry-topbar-icon: #75beff;
+  --entry-topbar-button-text: var(--entry-accent-text-muted);
+  --entry-topbar-icon: var(--entry-accent-text-muted);
   --entry-section-header-bg: #1b1b1c;
   --entry-section-header-border: #2b2b2b;
   --entry-section-label-bg: #252526;
@@ -444,17 +477,17 @@ body {
   --entry-icon-hover-bg: #2a2d2e;
   --entry-icon-danger: #f48771;
   --entry-icon-danger-border: #7a2d2d;
-  --entry-badge-bg: #1f2833;
-  --entry-badge-border: #0e639c;
-  --entry-badge-text: #9cdcfe;
-  --entry-local-text: #75beff;
+  --entry-badge-bg: var(--bg-surface-subtle);
+  --entry-badge-border: var(--border-default);
+  --entry-badge-text: var(--text-muted);
+  --entry-local-text: var(--color-primary-300);
   --entry-footer-bg: #1f1f1f;
   --entry-footer-border: #2b2b2b;
   --entry-shortcut-bg: #111111;
   --entry-shortcut-border: #3c3c3c;
-  --entry-branch-bg: #1f2833;
-  --entry-branch-border: #0e639c;
-  --entry-branch-text: #75beff;
+  --entry-branch-bg: var(--entry-accent-surface);
+  --entry-branch-border: var(--entry-accent-border);
+  --entry-branch-text: var(--entry-accent-text-muted);
   --entry-warning-bg: #332b1f;
   --entry-warning-border: #6b5a33;
   --entry-warning-text: #d7ba7d;
@@ -500,12 +533,12 @@ body {
 
 .entry-creator__topbar-button:hover {
   background: var(--entry-topbar-button-hover);
-  border-color: #4d4d4d;
-  color: #ffffff;
+  border-color: var(--entry-accent-border);
+  color: var(--entry-accent-text);
 }
 
 .entry-creator__topbar-button .lucide {
-  color: var(--entry-topbar-icon);
+  color: inherit;
 }
 
 .entry-creator__topbar-button--icon {
@@ -561,9 +594,7 @@ body {
 }
 
 .persona-button-display__type-badge {
-  background: var(--entry-badge-bg, #1f2833);
-  border-color: var(--entry-badge-border, #0e639c);
-  color: var(--entry-badge-text, #9cdcfe);
+  color: var(--entry-badge-text, var(--text-muted));
 }
 
 .persona-button-display__chevron {
@@ -577,6 +608,60 @@ body {
 .persona-button-display__name--local,
 .persona-button-display__local-label {
   color: var(--entry-local-text, #8acbf2);
+}
+
+.log-pane__accent-label {
+  color: var(--entry-accent-text-muted);
+}
+
+.log-pane__info-text {
+  color: var(--entry-accent-text-muted);
+}
+
+.log-pane__action-button {
+  color: var(--entry-accent-text-muted);
+}
+
+.log-pane__action-button:hover {
+  background: var(--entry-accent-surface);
+  color: var(--entry-accent-text);
+}
+
+.log-pane__action-button .lucide {
+  color: inherit;
+}
+
+.log-pane__accent-badge {
+  border: 1px solid var(--entry-accent-border);
+  background: color-mix(in srgb, var(--entry-accent-border) 16%, transparent);
+  color: var(--color-primary-500);
+}
+
+.log-pane__accent-icon {
+  border-color: var(--entry-accent-border);
+  background: var(--entry-accent-surface);
+  color: var(--entry-accent-text-muted);
+}
+
+.navigator-row--active {
+  background: var(--navigator-row-active-bg);
+}
+
+.log-pane__accent-panel {
+  background: var(--entry-accent-surface);
+}
+
+.log-pane__accent-panel-header {
+  background: var(--entry-accent-surface);
+  border-bottom-color: var(--entry-accent-border);
+}
+
+.log-pane__branch-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--text-muted);
+  padding: 0 0.375rem;
 }
 
 .entry-creator-fullscreen .section-editor-surface,
@@ -766,11 +851,15 @@ body {
 }
 
 .log-pane .markdown-editor-editable .kolam-codemirror-root .cm-editor {
-  min-height: 1.65em;
+  min-height: 1.45em;
 }
 
 .log-pane .markdown-editor-editable .kolam-codemirror-root {
   padding: 0.25rem;
+}
+
+.log-pane .markdown-editor-editable .kolam-codemirror-root .cm-content {
+  line-height: 1.45;
 }
 
 .log-pane .markdown-editor-readonly,

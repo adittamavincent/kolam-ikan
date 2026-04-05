@@ -145,7 +145,7 @@ export function LogEntryTimelineItem({
             }}
             className="flex h-6 items-center justify-between"
           >
-            <div className="flex min-w-0 items-center">
+            <div className="flex min-w-0 items-center gap-2">
               <span
                 className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
                 aria-hidden="true"
@@ -158,7 +158,7 @@ export function LogEntryTimelineItem({
               </span>
               <GitCommitHorizontal className="h-4 w-4 shrink-0 text-text-muted" />
               <span className="relative inline-flex shrink-0 items-center group/hash">
-                <code className="cursor-help font-mono text-primary-400">
+                <code className="cursor-help font-mono text-action-primary-bg">
                   {hash}
                 </code>
                 <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 bg-surface-elevated p-2 font-mono text-text-default group-hover/hash:block">
@@ -177,10 +177,6 @@ export function LogEntryTimelineItem({
                   </div>
                 </div>
               </span>
-              <Calendar className="h-4 w-4 shrink-0 text-text-muted" />
-              <span className="truncate text-text-subtle">
-                {createdAtText}
-              </span>
               <span className="shrink-0 leading-4 uppercase tracking-wide">
                 {sectionCount} section{sectionCount === 1 ? "" : "s"}
               </span>
@@ -191,35 +187,17 @@ export function LogEntryTimelineItem({
                 </span>
               )}
               {entryBranches.map((branchName) => (
-                <span
+                <div
                   key={`${entry.id}-${branchName}`}
-                  className="relative inline-flex h-4.5 shrink-0 items-center px-1.5 pr-3 uppercase tracking-wide text-sky-700 dark:text-sky-300"
+                  className="log-pane__branch-tag shrink-0"
                   title={`${branchName} points at this commit`}
                 >
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-sky-800"
-                    style={{
-                      clipPath:
-                        "polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%)",
-                    }}
-                  />
-                  <span
-                    aria-hidden="true"
-                    className="absolute inset-px bg-sky-950"
-                    style={{
-                      clipPath:
-                        "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)",
-                    }}
-                  />
-                  <span className="relative z-10 inline-flex items-center gap-1">
-                    <GitBranch className="h-4 w-4" />
-                    {branchName}
-                  </span>
-                </span>
+                  <GitBranch className="h-4 w-4" />
+                  {branchName}
+                </div>
               ))}
               {isLatestEntry && (
-                <span className="shrink-0 inline-flex h-4 items-center bg-primary-950 px-2 leading-4 text-action-primary-bg">
+                <span className="log-pane__accent-badge shrink-0 inline-flex h-4 items-center leading-4">
                   HEAD
                 </span>
               )}
@@ -240,7 +218,7 @@ export function LogEntryTimelineItem({
                       onSaveAmend();
                     }}
                     disabled={amendSavePending}
-                    className="entry-creator__topbar-button flex h-6 items-center px-1.5 py-0 leading-4 transition-colors focus: disabled:cursor-not-allowed disabled:opacity-60"
+                    className="entry-creator__topbar-button flex h-6 items-center px-1.5 py-0 leading-4 transition-colors focus: disabled:cursor-not-allowed disabled:opacity-60 gap-2"
                   >
                     {amendSavePending ? (
                       <Loader2 className="h-4 w-4 animate-spin text-text-subtle" />
@@ -255,7 +233,7 @@ export function LogEntryTimelineItem({
                       onCancelAmend();
                     }}
                     disabled={amendSavePending}
-                    className="entry-creator__topbar-button flex h-6 items-center px-1.5 py-0 leading-4 transition-colors focus: disabled:cursor-not-allowed disabled:opacity-60"
+                    className="entry-creator__topbar-button flex h-6 items-center px-1.5 py-0 leading-4 transition-colors focus: disabled:cursor-not-allowed disabled:opacity-60 gap-2"
                   >
                     <X className="h-4 w-4 text-text-subtle" />
                     <span className="text-text-default">Cancel</span>
@@ -267,10 +245,10 @@ export function LogEntryTimelineItem({
                     event.stopPropagation();
                     onStartAmend();
                   }}
-                  className="entry-creator__topbar-button flex h-6 w-32 shrink-0 items-center justify-center leading-4 transition-colors focus:"
+                  className="entry-creator__topbar-button flex h-6 w-40 shrink-0 items-center justify-center leading-4 transition-colors gap-2"
                   title="Amend commit"
                 >
-                  <PencilLine className="h-4 w-4 text-text-subtle" />
+                  <PencilLine className="h-4 w-4" />
                   <span className="text-text-default">Amend commit</span>
                 </button>
               ) : null}

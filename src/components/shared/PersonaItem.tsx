@@ -6,6 +6,7 @@ import { Menu, MenuButton, MenuItems, MenuItem, Transition } from "@headlessui/r
 import { ChevronDown, FileText } from "lucide-react";
 // PersonaIcon removed from this file (unused import)
 import {
+  getPersonaAccentStyle,
   getPersonaTypeLabel,
 } from "@/lib/personas";
 
@@ -13,7 +14,6 @@ interface PersonaButtonDisplayProps {
   persona: Persona | null;
   isAttachment?: boolean;
   filePersonaName?: string;
-  compact?: boolean;
   nameClass?: string;
   showChevron?: boolean;
   showMeta?: boolean;
@@ -24,7 +24,6 @@ function PersonaButtonDisplay({
   persona,
   isAttachment = false,
   filePersonaName,
-  compact = false,
   nameClass = "",
   showChevron = true,
   showMeta = false,
@@ -34,7 +33,7 @@ function PersonaButtonDisplay({
 
   if (!persona) {
     return (
-      <>
+      <div className="flex min-w-0 items-center gap-2">
         <FileText className="persona-button-display__fallback-icon h-4 w-4 text-text-muted" />
         <span className="text-text-subtle uppercase tracking-wider">
           {isAttachment ? (filePersonaName ?? "Attachment") : "Unknown"}
@@ -42,20 +41,16 @@ function PersonaButtonDisplay({
         {showChevron && (
           <ChevronDown className="persona-button-display__chevron h-4 w-4 text-text-muted" />
         )}
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <div className={`flex min-w-0 items-center ${compact ? "" : ""}`}>
+    <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <div
           className="persona-button-display__icon flex h-4 w-4 items-center justify-center"
-          style={{
-            backgroundColor: `${persona.color}20`,
-            color: persona.color,
-            borderColor: `${persona.color}4d`,
-          }}
+          style={getPersonaAccentStyle(persona, "header")}
         >
           <DynamicIcon name={persona.icon} className="h-4 w-4" />
         </div>
@@ -71,14 +66,14 @@ function PersonaButtonDisplay({
             </div>
           </div>
         ) : (
-          <div className="flex min-w-0 items-center">
+          <div className="flex min-w-0 items-center gap-2">
             <span
               className={`${nameClass} truncate ${persona.is_shadow ? "persona-button-display__name--local" : ""}`.trim()}
             >
               {persona.name}
             </span>
             {showTypeBadge && (
-              <span className="persona-button-display__type-badge shrink-0 px-1 py-px uppercase">
+              <span className="persona-button-display__type-badge shrink-0 uppercase">
                 {personaTypeLabel}
               </span>
             )}
@@ -86,9 +81,9 @@ function PersonaButtonDisplay({
         )}
       </div>
       {showChevron && (
-        <ChevronDown className="persona-button-display__chevron ml-2 h-4 w-4 text-text-muted opacity-50" />
+        <ChevronDown className="persona-button-display__chevron h-4 w-4 text-text-muted opacity-50" />
       )}
-    </>
+    </div>
   );
 }
 
@@ -130,7 +125,7 @@ export function PersonaItem({
 }: PersonaItemProps) {
   const sharedClass = compact
     ? `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-1 leading-4 transition-colors`
-    : `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 transition-colors`;
+    : `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 leading-4 transition-colors`;
   const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} text-left ${className}`;
   const nameClass = role === "local" ? "persona-button-display__name--local" : "";
   const resolvedShowMeta = showMeta ?? !compact;
@@ -148,7 +143,6 @@ export function PersonaItem({
             persona={currentPersona}
             isAttachment={isAttachment}
             filePersonaName={filePersonaName}
-            compact={compact}
             nameClass={nameClass || "text-text-subtle tracking-wider"}
             showChevron={false}
             showMeta={false}
@@ -159,12 +153,11 @@ export function PersonaItem({
 
     return (
       <Menu as="div" className="relative z-30">
-        <MenuButton className="flex items-center gap-2">
+        <MenuButton className="flex items-center gap-2 leading-4">
           <PersonaButtonDisplay
             persona={currentPersona}
             isAttachment={isAttachment}
             filePersonaName={filePersonaName}
-            compact={false}
             nameClass="text-text-subtle tracking-wider"
             showChevron={!readOnly}
             showMeta={false}
@@ -239,7 +232,6 @@ export function PersonaItem({
     >
       <PersonaButtonDisplay
         persona={persona}
-        compact={compact}
         nameClass={nameClass}
         showChevron={false}
         showMeta={resolvedShowMeta}

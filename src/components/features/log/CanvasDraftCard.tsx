@@ -190,14 +190,14 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     <div className="overflow-hidden bg-surface-subtle transition-colors">
       {/* Header */}
       <div className="flex items-center bg-surface-elevated">
-        <div className="flex h-6 w-full items-center">
+        <div className="flex h-6 w-full items-center gap-2">
           <div className="h-4 w-4"/>
-          <div className="flex items-center">
-            <CircleDot className="h-4 w-4 animate-pulse text-action-primary-bg" />
-            <span className="uppercase tracking-[0.14em] text-action-primary-bg">
+          <div className="flex items-center gap-2">
+            <CircleDot className="log-pane__accent-label h-4 w-4 animate-pulse" />
+            <span className="log-pane__accent-label uppercase">
               Canvas Draft
             </span>
-            <span className="text-text-muted">
+            <span className="log-pane__info-text">
               changes since {compareLabel.toLowerCase()}
             </span>
           </div>
@@ -210,7 +210,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
           <div className="flex h-full items-stretch">
             <button
               onClick={() => setIsCompareOpen(true)}
-              className="inline-flex h-full items-center text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+              className="log-pane__action-button inline-flex h-full items-center transition-colors"
             >
               <GitCompare className="h-4 w-4" />
               Compare
@@ -229,7 +229,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             <button
               onClick={() => commitMutation.mutate()}
               disabled={commitMutation.isPending}
-              className="inline-flex h-full items-center text-action-primary-bg transition-colors hover:bg-surface-hover hover:text-action-primary-hover disabled:opacity-50"
+              className="log-pane__action-button inline-flex h-full items-center transition-colors disabled:opacity-50"
             >
               {commitMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -240,16 +240,17 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             </button>
             <button
               onClick={() => setIsExpanded(false)}
-              className="inline-flex h-full items-center text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+              className="log-pane__action-button inline-flex h-full items-center transition-colors"
             >
               Cancel
             </button>
           </div>
         ) : (
-          <div className="flex h-full items-stretch">
+          <div className="flex h-full items-stretch gap-2">
+            <div className="h-4 w-4"/>
             <button
               onClick={() => setIsCompareOpen(true)}
-              className="inline-flex h-full items-center text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+              className="log-pane__action-button inline-flex h-full items-center transition-colors gap-2"
               title={`Compare against ${compareLabel.toLowerCase()}`}
             >
               <GitCompare className="h-4 w-4" />
@@ -257,7 +258,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             </button>
             <button
               onClick={() => setIsExpanded(true)}
-              className="inline-flex h-full items-center text-action-primary-bg transition-colors hover:bg-surface-hover hover:text-action-primary-hover"
+              className="log-pane__action-button inline-flex h-full items-center transition-colors gap-2"
             >
               <GitCommitHorizontal className="h-4 w-4" />
               Commit Snapshot

@@ -297,7 +297,7 @@ export function DomainSwitcher({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-primary-950 text-xs font-semibold text-action-primary-bg">
+              <div className="flex h-full w-full items-center justify-center bg-action-primary-bg text-xs font-semibold text-action-primary-text">
                 {initials}
               </div>
             )}

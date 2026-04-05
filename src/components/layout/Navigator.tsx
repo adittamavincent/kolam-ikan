@@ -334,7 +334,7 @@ const CreationInput = ({
       : getStreamPaddingRem(depth);
 
   return (
-    <div className="mb-0.5">
+    <div className="mb-2 last:mb-0">
       <div
         className="flex h-6 items-center gap-2 pr-2"
         style={{ paddingLeft: `calc(${paddingLeftRem}rem + 0.5rem)` }}
@@ -518,7 +518,7 @@ const StreamNode = ({
 
   return (
     <div
-      className={`group relative flex items-center transition-opacity duration-200 ${isDragged ? "opacity-40" : "opacity-100"}`}
+      className={`group relative mb-2 flex items-center transition-opacity duration-200 last:mb-0 ${isDragged ? "opacity-40" : "opacity-100"}`}
       role="treeitem"
       aria-selected={isStreamActive}
       aria-label={ariaLabel}
@@ -539,10 +539,10 @@ const StreamNode = ({
         className={`flex h-6 min-w-0 flex-1 items-center gap-2 pr-2 cursor-pointer
             ${
               isStreamActive
-                ? "text-action-primary-bg font-semibold  "
+                ? "navigator-row--active text-action-primary-bg font-semibold"
                 : "text-text-subtle hover:text-text-default"
             } ${!isStreamActive && isNewlyCreated ? " " : ""}
-            ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
+            ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
             ${isDragOver ? "  " : ""}`}
         style={{
           paddingLeft: `calc(${getStreamPaddingRem(depth)}rem + 0.5rem)`,
@@ -667,7 +667,7 @@ const CabinetNode = ({
 
   return (
     <div
-      className={`mb-0.5 transition-opacity duration-200 ${isDragged ? "opacity-40" : "opacity-100"}`}
+      className={`mb-2 transition-opacity duration-200 last:mb-0 ${isDragged ? "opacity-40" : "opacity-100"}`}
       role="treeitem"
       aria-expanded={isExpanded}
       aria-selected={isActive}
@@ -689,9 +689,9 @@ const CabinetNode = ({
         className={`flex h-6 items-center gap-2 pr-2 group cursor-pointer
             ${
               isActive
-                ? "text-action-primary-bg   font-medium"
+                ? "navigator-row--active text-action-primary-bg font-medium"
                 : "text-text-subtle"
-            } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-slate-100/30 dark:bg-slate-800/30" : "bg-transparent"}
+            } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
             ${isDragOver ? "  " : ""}`}
         style={{
           paddingLeft: `calc(${getCabinetPaddingRem(depth)}rem + 0.5rem)`,

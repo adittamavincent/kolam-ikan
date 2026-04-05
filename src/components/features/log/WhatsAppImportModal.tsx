@@ -23,7 +23,7 @@ import {
 
 import { useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { WHATSAPP_PERSONA_COLORS } from "@/lib/theme/colors";
+import { PERSONA_SWATCHES } from "@/lib/theme/colors";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { FileAttachmentThumbnail } from "@/components/features/log/FileAttachmentThumbnail";
@@ -83,6 +83,7 @@ import {
 import { calculateFileHash } from "@/lib/utils/hash";
 import {
   DEFAULT_IMPORTED_PERSONA_TYPE,
+  getPersonaAccentStyle,
   getPersonaScopeLabel,
 } from "@/lib/personas";
 
@@ -1422,7 +1423,7 @@ export function WhatsAppImportModal({
 
       const rows: PersonaCreateRow[] = sendersToCreate.map((sender, idx) => ({
         name: sender,
-        color: WHATSAPP_PERSONA_COLORS[idx % WHATSAPP_PERSONA_COLORS.length],
+        color: PERSONA_SWATCHES[idx % PERSONA_SWATCHES.length],
         icon: "user",
         type: DEFAULT_IMPORTED_PERSONA_TYPE,
         user_id: user.id,
@@ -2707,10 +2708,7 @@ export function WhatsAppImportModal({
                       <div className="flex items-center gap-1.5">
                         <div
                           className="flex h-5 w-5 shrink-0 items-center justify-center "
-                          style={{
-                            backgroundColor: `${assignedPersona.color}20`,
-                            color: assignedPersona.color,
-                          }}
+                          style={getPersonaAccentStyle(assignedPersona, "header")}
                         >
                           <DynamicIcon
                             name={assignedPersona.icon}
@@ -2830,7 +2828,7 @@ export function WhatsAppImportModal({
                         const draft = {
                           id,
                           name: sender,
-                          color: WHATSAPP_PERSONA_COLORS[i % WHATSAPP_PERSONA_COLORS.length],
+                          color: PERSONA_SWATCHES[i % PERSONA_SWATCHES.length],
                           icon: "user",
                           is_shadow: true as const,
                           isDraft: true as const,

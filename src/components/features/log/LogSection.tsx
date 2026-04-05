@@ -8,7 +8,6 @@ import type { PartialBlock } from "@/lib/types/editor";
 import { useMemo, useState } from "react";
 import { SectionPreset } from "@/components/shared/SectionPreset";
 import { PersonaItem } from "../../shared/PersonaItem";
-import { FileText, Paperclip } from "lucide-react";
 import { FileAttachmentsSection } from "./FileAttachmentsSection";
 import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-protocol";
 
@@ -206,24 +205,26 @@ export function LogSection({
       className={`flex flex-col ${isSearchTarget ? "kolam-search-reveal" : ""}`}
       headerClassName="bg-surface-hover"
       bodyClassName="bg-surface-default"
-      centerHeader={
-        <PersonaItem
-          persona={currentPersona ?? null}
-          menuProps={{
-            currentPersona: currentPersona || null,
-            isAttachment: isAttachmentSection,
-            filePersonaName: section.persona_name_snapshot ?? undefined,
-            globalPersonas: globalPersonas,
-            localPersonas: localPersonas,
-            onSelect: handlePersonaSelect,
-            readOnly: !editable,
-          }}
-        />
-      }
       leftHeader={
-        <div className="inline-flex h-6 items-center leading-none uppercase">
+        <div className="inline-flex h-6 items-center leading-none uppercase gap-2">
           <span>S{sectionIndex + 1}</span>
           <span>{sectionLabel}</span>
+        </div>
+      }
+      centerHeader={
+        <div className="ml-2 min-w-0 flex items-center">
+          <PersonaItem
+            persona={currentPersona ?? null}
+            menuProps={{
+              currentPersona: currentPersona || null,
+              isAttachment: isAttachmentSection,
+              filePersonaName: section.persona_name_snapshot ?? undefined,
+              globalPersonas: globalPersonas,
+              localPersonas: localPersonas,
+              onSelect: handlePersonaSelect,
+              readOnly: !editable,
+            }}
+          />
         </div>
       }
       rightHeader={

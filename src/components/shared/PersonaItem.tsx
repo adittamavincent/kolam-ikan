@@ -5,7 +5,6 @@ import { Fragment } from "react";
 import { Menu, MenuButton, MenuItems, MenuItem, Transition } from "@headlessui/react";
 import { ChevronDown, FileText } from "lucide-react";
 // PersonaIcon removed from this file (unused import)
-import { getPersonaHoverClass } from "./getPersonaHoverClass";
 import {
   getPersonaTypeLabel,
 } from "@/lib/personas";
@@ -36,12 +35,12 @@ function PersonaButtonDisplay({
   if (!persona) {
     return (
       <>
-        <FileText className="persona-button-display__fallback-icon h-3 w-3 text-text-muted" />
-        <span className="text-[10px] font-medium text-text-subtle uppercase tracking-wider">
+        <FileText className="persona-button-display__fallback-icon h-4 w-4 text-text-muted" />
+        <span className="text-text-subtle uppercase tracking-wider">
           {isAttachment ? (filePersonaName ?? "Attachment") : "Unknown"}
         </span>
         {showChevron && (
-          <ChevronDown className="persona-button-display__chevron h-3 w-3 text-text-muted" />
+          <ChevronDown className="persona-button-display__chevron h-4 w-4 text-text-muted" />
         )}
       </>
     );
@@ -49,7 +48,7 @@ function PersonaButtonDisplay({
 
   return (
     <>
-      <div className={`flex min-w-0 items-center ${compact ? "gap-1.5" : "gap-2"}`}>
+      <div className={`flex min-w-0 items-center ${compact ? "" : ""}`}>
         <div
           className="persona-button-display__icon flex h-4 w-4 items-center justify-center"
           style={{
@@ -58,7 +57,7 @@ function PersonaButtonDisplay({
             borderColor: `${persona.color}4d`,
           }}
         >
-          <DynamicIcon name={persona.icon} className="h-2.5 w-2.5" />
+          <DynamicIcon name={persona.icon} className="h-4 w-4" />
         </div>
         {showMeta ? (
           <div className="min-w-0">
@@ -67,19 +66,19 @@ function PersonaButtonDisplay({
             >
               {persona.name}
             </div>
-            <div className="truncate text-[10px] text-text-muted">
+            <div className="truncate text-text-muted">
               {getPersonaTypeLabel(persona.type)}
             </div>
           </div>
         ) : (
-          <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 items-center">
             <span
               className={`${nameClass} truncate ${persona.is_shadow ? "persona-button-display__name--local" : ""}`.trim()}
             >
               {persona.name}
             </span>
             {showTypeBadge && (
-              <span className="persona-button-display__type-badge shrink-0 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em]">
+              <span className="persona-button-display__type-badge shrink-0 px-1 py-px uppercase">
                 {personaTypeLabel}
               </span>
             )}
@@ -87,7 +86,7 @@ function PersonaButtonDisplay({
         )}
       </div>
       {showChevron && (
-        <ChevronDown className="persona-button-display__chevron ml-2 h-3 w-3 text-text-muted opacity-50" />
+        <ChevronDown className="persona-button-display__chevron ml-2 h-4 w-4 text-text-muted opacity-50" />
       )}
     </>
   );
@@ -129,7 +128,9 @@ export function PersonaItem({
   showTypeBadge = true,
   menuProps = null,
 }: PersonaItemProps) {
-  const sharedClass = `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 px-2 py-1.5 text-xs transition-colors hover:bg-surface-subtle hover:text-text-default`;
+  const sharedClass = compact
+    ? `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-1 leading-4 transition-colors`
+    : `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 transition-colors`;
   const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} text-left ${className}`;
   const nameClass = role === "local" ? "persona-button-display__name--local" : "";
   const resolvedShowMeta = showMeta ?? !compact;
@@ -148,7 +149,7 @@ export function PersonaItem({
             isAttachment={isAttachment}
             filePersonaName={filePersonaName}
             compact={compact}
-            nameClass={nameClass || "text-[10px] font-medium text-text-subtle  tracking-wider"}
+            nameClass={nameClass || "text-text-subtle tracking-wider"}
             showChevron={false}
             showMeta={false}
           />
@@ -156,17 +157,15 @@ export function PersonaItem({
       );
     }
 
-    const hoverClass = getPersonaHoverClass(currentPersona, isAttachment);
-
     return (
       <Menu as="div" className="relative z-30">
-        <MenuButton className={`flex items-center gap-2 px-1 py-0.5 ${hoverClass} transition-colors focus:`}>
+        <MenuButton className="flex items-center gap-2">
           <PersonaButtonDisplay
             persona={currentPersona}
             isAttachment={isAttachment}
             filePersonaName={filePersonaName}
             compact={false}
-            nameClass="text-[10px] font-medium text-text-subtle tracking-wider"
+            nameClass="text-text-subtle tracking-wider"
             showChevron={!readOnly}
             showMeta={false}
           />
@@ -184,13 +183,13 @@ export function PersonaItem({
           >
             <MenuItems
               anchor={{ to: "bottom start", gap: 4 }}
-              className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1"
+              className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-2"
             >
-              <div className="px-2 py-1.5 text-[10px] font-semibold text-text-muted uppercase tracking-wider">
+              <div className="text-text-muted uppercase tracking-wider">
                 Switch to...
               </div>
               {globalPersonas.length > 0 && (
-                <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
+                <div className="text-text-muted">
                   Available Everywhere
                 </div>
               )}
@@ -208,7 +207,7 @@ export function PersonaItem({
               ))}
 
               {localPersonas.length > 0 && (
-                <div className="persona-button-display__local-label mt-1 px-2 py-1 text-[10px] font-semibold">
+                <div className="persona-button-display__local-label mt-1 px-2 py-1">
                   Local To This Stream
                 </div>
               )}

@@ -90,12 +90,12 @@ export function ThreadFrame({
       )}
 
       <div
-        className={`relative z-10 border border-border-default bg-surface-default ${frameClassName}`.trim()}
+        className={`relative z-10 bg-surface-default ${frameClassName}`.trim()}
         style={frameStyle}
       >
         {header && (
           <div
-            className={`${hideBody ? "" : "border-b border-border-subtle"} px-0.75 ${headerClassName}`.trim()}
+            className={`px-0 ${headerClassName}`.trim()}
             style={headerStyle}
           >
             {header}
@@ -110,7 +110,7 @@ export function ThreadFrame({
 
         {footer && (
           <div
-            className={`border-t border-border-subtle p-1 ${footerClassName}`.trim()}
+            className={`p-1 ${footerClassName}`.trim()}
             style={footerStyle}
           >
             {footer}
@@ -133,6 +133,7 @@ interface SectionPresetProps {
   className?: string;
   headerClassName?: string;
   bodyClassName?: string;
+  frameClassName?: string;
 }
 
 export function SectionPreset({
@@ -147,6 +148,7 @@ export function SectionPreset({
   className = "",
   headerClassName = "",
   bodyClassName = "",
+  frameClassName = "border-transparent",
 }: SectionPresetProps) {
   const frameStyle = persona
     ? getPersonaTintStyle(persona, {
@@ -174,18 +176,18 @@ export function SectionPreset({
       nested
       nestedConnector={nestedConnector}
       className={`group ${className}`.trim()}
-      frameClassName={isAttachment ? "bg-surface-subtle" : ""}
+      frameClassName={`${frameClassName} ${isAttachment ? "bg-surface-subtle" : ""}`.trim()}
       headerClassName={headerClassName}
       bodyClassName={bodyClassName}
       frameStyle={frameStyle}
       headerStyle={headerStyle}
       bodyStyle={bodyStyle}
       header={
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex min-w-0 items-center">
           {leftHeader && <div className="flex shrink-0 items-center">{leftHeader}</div>}
           <div className="min-w-0 flex flex-1 items-center">{centerHeader}</div>
           {rightHeader && (
-            <div className="ml-auto flex shrink-0 items-center gap-1">
+            <div className="ml-auto flex shrink-0 items-center">
               {rightHeader}
             </div>
           )}

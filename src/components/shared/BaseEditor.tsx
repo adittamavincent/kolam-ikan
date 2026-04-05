@@ -56,6 +56,7 @@ import {
   normalizeFrontmatterKey,
   default as KolamRenderedMarkdown,
 } from "@/components/shared/KolamRenderedMarkdown";
+import { PersonaSurface } from "@/components/shared/PersonaSurface";
 import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
 import type {
   MarkdownEditorProps,
@@ -1809,7 +1810,7 @@ class HorizontalRuleWidget extends WidgetType {
 
 const kolamEditorTheme = EditorView.theme({
   "&": {
-    backgroundColor: "var(--background-primary)",
+    backgroundColor: "transparent",
     color: "var(--text-normal)",
     fontFamily: "var(--font-text)",
   },
@@ -1835,7 +1836,7 @@ const kolamEditorTheme = EditorView.theme({
     borderLeftColor: "var(--caret-color)",
   },
   ".cm-gutters": {
-    backgroundColor: "var(--background-primary)",
+    backgroundColor: "transparent",
     border: "none",
     color: "var(--text-faint)",
     fontFamily: "var(--font-monospace)",
@@ -3309,6 +3310,7 @@ export default function BaseEditor({
   initialMarkdown,
   onChange,
   editable = true,
+  persona,
   placeholder,
   onEditorReady,
   onFocusChange,
@@ -3712,12 +3714,17 @@ export default function BaseEditor({
           />
         ) : null}
 
-        <div className="kolam-codemirror-frame is-readonly">
+        <PersonaSurface
+          persona={persona}
+          tone="body"
+          className="kolam-codemirror-frame is-readonly"
+        >
           <KolamRenderedMarkdown
             source={frontmatter.body}
+            persona={persona}
             highlightTerm={highlightTerm}
           />
-        </div>
+        </PersonaSurface>
       </div>
     );
   }
@@ -3732,11 +3739,13 @@ export default function BaseEditor({
         />
       ) : null}
 
-      <div
+      <PersonaSurface
+        persona={persona}
+        tone="body"
         className={`kolam-codemirror-frame ${editable ? "is-editable" : "is-readonly"}`}
       >
         <div className="kolam-codemirror-root" ref={containerRef} />
-      </div>
+      </PersonaSurface>
     </div>
   );
 }

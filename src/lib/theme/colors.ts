@@ -25,97 +25,97 @@ export const PRIMITIVES = {
 
   // Domain-specific colors
   domain: {
-    programming: "#61afef", // One Dark blue
-    internship: "#c678dd", // One Dark purple
-    gym: "#e06c75", // One Dark red
-    scholarship: "#98c379", // One Dark green
-    hima: "#e5c07b", // One Dark yellow
+    programming: "#75beff", // Accent blue
+    internship: "#c586c0", // Accent violet
+    gym: "#f48771", // Accent red
+    scholarship: "#89d185", // Accent green
+    hima: "#d7ba7d", // Accent amber
   },
 } as const;
 
 /* ============================================================================ */
-/* DARK MODE - One Dark Pro Theme (Default)                                    */
+/* DARK MODE - Kolam Dark (Default)                                            */
 /* ============================================================================ */
 
 export const DARK_MODE = {
   // Base
-  background: "#21252b",
-  foreground: "#abb2bf",
+  background: "#181818",
+  foreground: "#cccccc",
 
   // Surfaces
   surface: {
-    default: "#21252b",
-    subtle: "#282c34",
-    elevated: "#2c313a",
-    hover: "#323844",
-    dark: "#1b1f24",
-    overlay: "#1b1f24",
+    default: "#181818",
+    subtle: "#1f1f1f",
+    elevated: "#252526",
+    hover: "#2a2d2e",
+    dark: "#111111",
+    overlay: "#202020",
   },
 
   // Text
   text: {
-    default: "#abb2bf",
-    subtle: "#a0a7b4",
-    muted: "#5c6370",
+    default: "#cccccc",
+    subtle: "#c5c5c5",
+    muted: "#8b949e",
     inverse: "#ffffff",
   },
 
   // Borders
   border: {
-    default: "#333841",
-    subtle: "#2d3137",
-    strong: "#464c55",
+    default: "#2b2b2b",
+    subtle: "#232323",
+    strong: "#3c3c3c",
   },
 
   // Actions
   action: {
     primary: {
-      bg: "#568af2",
-      hover: "#6494ed",
-      text: "#eef3ff",
-      disabled: "#4269b9",
+      bg: "#0e639c",
+      hover: "#1177bb",
+      text: "#ffffff",
+      disabled: "#245b7a",
     },
     secondary: {
-      bg: "#3d424b",
-      hover: "#414855",
-      text: "#a0a7b4",
-      border: "#464c55",
+      bg: "#252526",
+      hover: "#2a2d2e",
+      text: "#cccccc",
+      border: "#3c3c3c",
     },
   },
 
   // Status / Feedback
   status: {
     error: {
-      bg: "#4d232e",
-      border: "#692746",
-      text: "#e06c75",
+      bg: "#5a1d1d",
+      border: "#7a2d2d",
+      text: "#f48771",
     },
     success: {
-      bg: "#2b4242",
-      text: "#98c379",
+      bg: "#19362b",
+      text: "#89d185",
     },
   },
 
   // Git / Diff
   diff: {
     add: {
-      bg: "#173a2f",
-      subtle: "#1f4a3d",
-      text: "#6fd3a8",
-      accent: "#baf3dc",
+      bg: "#1b3a2f",
+      subtle: "#224536",
+      text: "#89d185",
+      accent: "#73c991",
     },
     del: {
-      bg: "#4a2029",
-      subtle: "#5c2933",
-      text: "#f08b9d",
-      accent: "#ffd0d8",
+      bg: "#4b1818",
+      subtle: "#5e2323",
+      text: "#f48771",
+      accent: "#f14c4c",
     },
   },
 
-  // Editor-specific (One Dark Pro)
+  // Editor-specific
   editor: {
-    background: "#0d1117", // GitHub dark (used for code blocks)
-    text: "#c9d1d9", // GitHub light text
+    background: "#1e1e1e",
+    text: "#d4d4d4",
   },
 } as const;
 

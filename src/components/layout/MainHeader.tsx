@@ -209,7 +209,7 @@ export function MainHeader() {
       ? "Domain workspace"
       : "Kolam Ikan";
   const summaryPillClass =
-    "inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-subtle";
+    "inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-subtle";
   const toolbarLeadGroupClass = "flex items-center gap-1";
   const toolbarGroupClass =
     "flex items-center gap-1 border-l border-border-default pl-2";
@@ -316,7 +316,7 @@ export function MainHeader() {
             <div className="min-w-0 flex-1">
               <div className="min-w-0">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="truncate text-[15px] font-semibold text-text-default md:text-base">
+                  <span className="truncate font-semibold text-text-default md:text-base">
                     {workspaceTitle}
                   </span>
                   {streamId && (
@@ -338,7 +338,7 @@ export function MainHeader() {
                             setDescriptionDraft(stream?.description ?? "");
                             setIsEditingDescription(true);
                           }}
-                          className={`block max-w-2xl text-left text-xs leading-5 transition-colors hover:text-text-default ${
+                          className={`block max-w-2xl text-left leading-5 transition-colors hover:text-text-default ${
                             hasDescription ? "text-text-subtle" : "text-text-muted"
                           }`}
                         >
@@ -580,7 +580,7 @@ export function MainHeader() {
 
                     <div className={toolbarGroupClass}>
                       <Menu as="div" className="relative hidden md:block">
-                        <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 text-[10px] font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
+                        <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
                           <GitBranch className="h-3 w-3" />
                           {logState.currentBranch ?? "main"}
                           <ChevronDown className="h-3 w-3" />

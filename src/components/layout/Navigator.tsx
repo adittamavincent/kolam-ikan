@@ -336,7 +336,7 @@ const CreationInput = ({
   return (
     <div className="mb-0.5">
       <div
-        className="flex items-center gap-2 pr-2 py-0 text-sm"
+        className="flex h-6 items-center gap-2 pr-2"
         style={{ paddingLeft: `calc(${paddingLeftRem}rem + 0.5rem)` }}
       >
         {type === "cabinet" ? (
@@ -368,7 +368,7 @@ const CreationInput = ({
             if (name.trim()) onConfirm(name.trim());
             else onCancel();
           }}
-          className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 "
+          className="h-6 min-w-0 flex-1 bg-surface-default px-1"
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -536,7 +536,7 @@ const StreamNode = ({
       }}
     >
       <div
-        className={`flex min-w-0 flex-1 items-center gap-2 pr-2 py-0.5 text-sm cursor-pointer
+        className={`flex h-6 min-w-0 flex-1 items-center gap-2 pr-2 cursor-pointer
             ${
               isStreamActive
                 ? "text-action-primary-bg font-semibold  "
@@ -583,7 +583,7 @@ const StreamNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, stream.id, "stream")}
             onBlur={() => handleRename(stream.id, editingName, "stream")}
-            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 "
+            className="h-6 min-w-0 flex-1 bg-surface-default px-1"
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit stream name"
@@ -592,12 +592,12 @@ const StreamNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{displayName}</span>
             {kindBadge && (
-              <span className="shrink-0 border border-border-subtle bg-primary-950 px-1.5 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+              <span className="shrink-0 px-1.5 py-0.5 font-semibold text-text-muted">
                 {kindBadge}
               </span>
             )}
             {disambiguationLabel && (
-              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
+              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-text-muted">
                 {disambiguationLabel}
               </span>
             )}
@@ -686,7 +686,7 @@ const CabinetNode = ({
       }}
     >
       <div
-        className={`flex items-center gap-2 pr-2 py-0.5 text-sm group cursor-pointer
+        className={`flex h-6 items-center gap-2 pr-2 group cursor-pointer
             ${
               isActive
                 ? "text-action-primary-bg   font-medium"
@@ -757,7 +757,7 @@ const CabinetNode = ({
             onChange={(e) => setEditingName(e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, cabinet.id, "cabinet")}
             onBlur={() => handleRename(cabinet.id, editingName, "cabinet")}
-            className="min-w-0 flex-1 bg-surface-default px-1 py-0.5 "
+            className="h-6 min-w-0 flex-1 bg-surface-default px-1"
             onClick={(e) => e.stopPropagation()}
             autoFocus
             aria-label="Edit cabinet name"
@@ -766,7 +766,7 @@ const CabinetNode = ({
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate flex-1 select-none">{cabinet.name}</span>
             {disambiguationLabel && (
-              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-[10px] text-text-muted">
+              <span className="shrink-0 border border-border-default px-1.5 py-0.5 text-text-muted">
                 {disambiguationLabel}
               </span>
             )}
@@ -1205,7 +1205,7 @@ export function Navigator({}: NavigatorProps) {
       const { error } = await supabase.from("streams").insert({
         domain_id: domainId,
         cabinet_id: null,
-        name: "Global User Entry",
+        name: "Welcome",
         sort_order: LEGACY_GLOBAL_STREAM_SORT_ORDER,
         stream_kind: STREAM_KIND.GLOBAL,
       });
@@ -2518,7 +2518,7 @@ export function Navigator({}: NavigatorProps) {
         {/* Header */}
         <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-border-default bg-surface-default px-3">
           <h2
-            className="truncate text-sm font-semibold text-text-default"
+            className="truncate font-semibold text-text-default"
             title={currentDomainName}
           >
             {currentDomainName}
@@ -2564,7 +2564,7 @@ export function Navigator({}: NavigatorProps) {
 
         {/* Tree View */}
         <div
-          className={`flex-1 overflow-y-auto transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-primary-950" : ""}`}
+          className={`flex-1 overflow-y-auto p-2 transition-colors duration-200 ${dragOverId === null && draggedItem ? "bg-primary-950" : ""}`}
           role="tree"
           onClick={() => {
             setManualActiveNode(null);

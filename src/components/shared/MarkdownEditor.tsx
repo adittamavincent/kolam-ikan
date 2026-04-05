@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
+import type { Persona } from "@/lib/types";
 import type { PartialBlock } from "@/lib/types/editor";
 
 export interface MarkdownEditorHandle {
@@ -15,6 +16,7 @@ export interface MarkdownEditorProps {
   initialMarkdown?: string;
   onChange?: (blocks: PartialBlock[], markdown: string) => void;
   editable?: boolean;
+  persona?: Persona | null;
   placeholder?: string;
   onEditorReady?: (editor: MarkdownEditorHandle) => void;
   onFocusChange?: (isFocused: boolean) => void;

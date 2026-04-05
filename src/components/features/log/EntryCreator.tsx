@@ -9,7 +9,6 @@ import React, {
   useMemo,
   useCallback,
 } from "react";
-import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { dispatchKolamLogState } from "@/lib/hooks/useLogBranchContext";
@@ -34,11 +33,7 @@ import {
   GitCommitHorizontal,
   Info,
   Minimize2,
-  Archive,
-  ArchiveRestore,
-  Copy,
-  RotateCcw,
-  Trash2,
+  ChevronRight,
 } from "lucide-react";
 import { usePersonas } from "@/lib/hooks/usePersonas";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -73,6 +68,8 @@ import { useKeyboard } from "@/lib/hooks/useKeyboard";
 import { NavigationGuard } from "@/components/features/log/NavigationGuard";
 import { FileAttachmentPreviewDialog } from "./FileAttachmentPreviewDialog";
 import { getPersonaTintStyle } from "@/lib/personas";
+import type { Persona } from "@/lib/types";
+import { EntryCreatorContextMenu } from "./EntryCreatorContextMenu";
 import {
   DndContext,
   closestCenter,
@@ -1216,12 +1213,18 @@ export function EntryCreator({
   );
 
   const renderPersonaEditor = useCallback(
-    (instanceId: string, personaId: string, personaName: string | null) => (
+    (
+      instanceId: string,
+      personaId: string,
+      personaName: string | null,
+      persona: Persona | null,
+    ) => (
       <div className="section-editor-surface">
         <MarkdownEditor
           initialContent={getDraftContent(instanceId)}
           initialMarkdown={getDraftMarkdown(instanceId)}
           viewStateKey={`entry-creator:${instanceId}`}
+          persona={persona}
           onChange={(content, markdown) => {
             handlePersonaEditorChange(
               instanceId,
@@ -1296,7 +1299,7 @@ export function EntryCreator({
     return (
       <Menu as="div" className={wrapperClassName}>
         <MenuButton className={buttonClassName} title={buttonTitle}>
-          <Plus className="h-3 w-3 text-text-subtle" />
+          <Plus className="h-4 w-4 text-text-subtle" />
           {!compact && <span className="text-text-default">Add Persona</span>}
         </MenuButton>
 
@@ -1312,13 +1315,13 @@ export function EntryCreator({
           <MenuItems
             anchor={{ to: "bottom start", gap: 4 }}
             portal
-            className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-1 focus:"
+            className="z-9999 w-fit min-w-56 max-w-[calc(100vw-2rem)] max-h-60 overflow-x-hidden overflow-y-auto border border-border-default bg-surface-elevated p-2 focus:"
           >
-            <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+            <div className="uppercase tracking-wider text-text-muted">
               Add Author Section
             </div>
             {globalPersonas.length > 0 && (
-              <div className="px-2 py-1 text-[10px] font-semibold text-text-muted">
+              <div className="text-text-muted">
                 Available Everywhere
               </div>
             )}
@@ -1336,7 +1339,7 @@ export function EntryCreator({
               </MenuItem>
             ))}
             {localPersonas.length > 0 && (
-              <div className="mt-1 px-2 py-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+              <div className="mt-1 px-2 py-1 text-amber-700 dark:text-amber-400">
                 Local To This Stream
               </div>
             )}
@@ -1364,9 +1367,9 @@ export function EntryCreator({
                     active
                       ? "bg-surface-subtle text-text-default"
                       : "text-text-subtle"
-                  } group flex w-full items-center px-2 py-1.5 text-xs transition-colors`}
+                  } group flex w-full items-center transition-colors`}
                 >
-                  <Settings className="mr-2 h-3 w-3" />
+                  <Settings className="mr-2 h-4 w-4" />
                   Manage Personas
                 </button>
               )}
@@ -2331,7 +2334,7 @@ export function EntryCreator({
   if (isLoading) {
     return (
       <div className="relative border border-border-default bg-surface-default p-4 min-h-25 flex items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-text-muted" />
+        <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
       </div>
     );
   }
@@ -2346,17 +2349,17 @@ export function EntryCreator({
           <NavigationGuard onFlush={flushPendingSaves} />
         )}
         <ThreadFrame
-          frameClassName="border-border-default bg-surface-default"
+          frameClassName="border-transparent bg-surface-default"
           bodyClassName="bg-surface-default"
         >
           <div className="flex flex-col">
           {/* Persona picker */}
-          <div className="entry-creator__topbar flex items-center gap-1.5 p-1">
+          <div className="entry-creator__topbar flex h-6 items-stretch">
             <div
               ref={quickPersonaStripRef}
-              className="relative flex min-w-0 flex-1 items-center overflow-hidden"
+              className="relative flex min-w-0 flex-1 items-stretch overflow-hidden"
             >
-              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+              <div className="flex min-w-0 items-stretch overflow-hidden">
                 {visibleQuickPersonas.map((persona) => (
                   <PersonaItem
                     key={`quick-persona-${persona.id}`}
@@ -2364,7 +2367,7 @@ export function EntryCreator({
                     compact
                     showTypeBadge={false}
                     title={`Quick add ${persona.name}`}
-                    className="shrink-0 border text-text-default hover:brightness-[0.98]"
+                    className="h-full shrink-0 border-0 text-text-default hover:brightness-[0.98]"
                     style={getPersonaTintStyle(persona, {
                       backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
                       borderAlpha: 0.24,
@@ -2373,13 +2376,13 @@ export function EntryCreator({
                   />
                 ))}
                 {hiddenQuickPersonaCount > 0 && (
-                  <div className="shrink-0 border border-border-subtle bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted">
+                  <div className="flex h-full shrink-0 items-center bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted">
                     +{hiddenQuickPersonaCount}
                   </div>
                 )}
               </div>
 
-              <div className="pointer-events-none absolute left-0 top-0 -z-10 flex items-center gap-1.5 opacity-0">
+              <div className="pointer-events-none absolute left-0 top-0 -z-10 flex items-center opacity-0">
                 {quickPersonas.map((persona) => (
                   <div
                     key={`quick-persona-measure-${persona.id}`}
@@ -2392,7 +2395,7 @@ export function EntryCreator({
                       persona={persona}
                       compact
                       showTypeBadge={false}
-                      className="border text-text-default"
+                      className="h-full border-0 text-text-default"
                       style={getPersonaTintStyle(persona, {
                         backgroundAlpha: isLocalPersona(persona) ? 0.16 : 0.1,
                         borderAlpha: 0.24,
@@ -2402,7 +2405,7 @@ export function EntryCreator({
                 ))}
                 <div
                   ref={quickPersonaOverflowMeasureRef}
-                  className="shrink-0 border border-border-subtle bg-surface-subtle px-2 py-1 text-[11px] font-semibold text-text-muted"
+                  className="shrink-0 bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted"
                 >
                   +{quickPersonas.length}
                 </div>
@@ -2412,26 +2415,20 @@ export function EntryCreator({
             {renderAddPersonaMenu({
               wrapperClassName: "relative z-30 shrink-0",
               buttonClassName:
-                "entry-creator__topbar-button flex items-center gap-1 border px-1.5 py-1 text-[11px] font-medium transition-colors focus:",
+                "entry-creator__topbar-button flex h-6 w-32 items-center justify-center leading-4 transition-colors focus:",
               buttonTitle: "Add Persona",
             })}
 
             {sections.length > 0 && (
               <button
                 onClick={requestClearSections}
-                className="entry-creator__topbar-button entry-creator__topbar-button--icon ml-auto border p-1 text-text-muted transition-colors"
+                className="entry-creator__topbar-button entry-creator__topbar-button--icon entry-creator__icon-button--danger ml-auto flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
                 title="Delete all sections"
               >
                 <X className="h-4 w-4" />
               </button>
             )}
           </div>
-
-          {sections.length === 0 && (
-            <div className="bg-surface-default px-2 py-8 text-center text-xs text-text-muted">
-              Add a persona or attach a file to start building this entry.
-            </div>
-          )}
 
           {/* Editor sections */}
           {!fullscreenSectionId && (
@@ -2444,7 +2441,7 @@ export function EntryCreator({
                 items={sections.map((s) => s.instanceId)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col">
                   {sections.map((section, sectionIndex) => {
                     const { instanceId } = section;
                     const isAttachment = section.kind === "FILE_ATTACHMENT";
@@ -2513,19 +2510,18 @@ export function EntryCreator({
                             headerClassName="entry-creator__section-header"
                             bodyClassName="bg-surface-default"
                             leftHeader={
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center">
                                 <button
-                                  className={`entry-creator__icon-button cursor-grab p-0.5 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
+                                  className={`entry-creator__icon-button flex h-6 w-6 items-center justify-center cursor-grab p-0 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
                                   aria-label="Drag to reorder"
                                   {...dragHandleProps}
                                 >
-                                  <GripVertical className="h-3 w-3" />
+                                  <GripVertical className="h-4 w-4" />
                                 </button>
-                                <div className="entry-creator__section-label inline-flex items-center gap-1 border px-1 py-px text-[9px] font-semibold uppercase tracking-[0.16em]">
+                                <div className="inline-flex h-6 items-center leading-none uppercase">
                                   <span className="entry-creator__section-label-index">
                                     S{sectionIndex + 1}
                                   </span>
-                                  <span className="entry-creator__section-label-divider h-px w-1.5" />
                                   <span>{isAttachment ? "Attachment" : "Message"}</span>
                                 </div>
                               </div>
@@ -2548,17 +2544,17 @@ export function EntryCreator({
                                 {isPersona && (
                                   <button
                                     onClick={() => openFullscreenEditor(instanceId)}
-                                    className="entry-creator__icon-button mr-1 p-0.5 text-text-muted transition-colors"
+                                    className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
                                     title="Open fullscreen editor"
                                   >
-                                    <Expand className="h-3.5 w-3.5" />
+                                    <Expand className="h-4 w-4" />
                                   </button>
                                 )}
 
                                 {persona && !isLocalPersona(persona) && (
                                   <button
                                     onClick={() => toggleSectionKind(instanceId)}
-                                    className="entry-creator__icon-button mr-1 p-0.5 text-text-muted transition-colors"
+                                    className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
                                     title={
                                       isAttachment
                                         ? "Switch to Text Editor"
@@ -2566,19 +2562,19 @@ export function EntryCreator({
                                     }
                                   >
                                     {isAttachment ? (
-                                      <Type className="h-3.5 w-3.5" />
+                                      <Type className="h-4 w-4" />
                                     ) : (
-                                      <Paperclip className="h-3.5 w-3.5" />
+                                      <Paperclip className="h-4 w-4" />
                                     )}
                                   </button>
                                 )}
 
                                 <button
                                   onClick={() => requestRemoveSection(instanceId)}
-                                  className="entry-creator__icon-button entry-creator__icon-button--danger p-0.5 text-text-muted transition-colors"
+                                  className="entry-creator__icon-button entry-creator__icon-button--danger flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
                                   title="Remove this section"
                                 >
-                                  <X className="h-3 w-3" />
+                                  <X className="h-4 w-4" />
                                 </button>
                               </>
                             }
@@ -2590,10 +2586,11 @@ export function EntryCreator({
                                 instanceId,
                                 section.personaId,
                                 persona?.name ?? null,
+                                persona ?? null,
                               )
                             ) : (
                               /* FILE ATTACHMENTS BLOCK */
-                              <div className="p-2">
+                              <div>
                                 <FileAttachmentsSection
                                   items={effectiveAttachments.map(
                                     (attachment, attachmentIndex) => {
@@ -2642,6 +2639,7 @@ export function EntryCreator({
                                           latestJob?.progress_message,
                                         previewUrl: attachment.previewUrl,
                                         canOpenParsed,
+                                          persona: persona ?? null,
                                         displayMode:
                                           attachmentSection?.displayMode,
                                         onPreviewFile: () =>
@@ -2722,14 +2720,15 @@ export function EntryCreator({
                                     );
                                   }}
                                   notes={
-                                    <div className="pt-2">
-                                      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                                    <div>
+                                      <div className="uppercase tracking-[0.14em] text-text-muted">
                                         Attachment Notes
                                       </div>
                                       <div className="section-editor-surface">
                                         <MarkdownEditor
                                           initialContent={getDraftContent(instanceId)}
                                           initialMarkdown={getDraftMarkdown(instanceId)}
+                                          persona={persona ?? null}
                                           onChange={(content, markdown) => {
                                             handleAttachmentNotesChange(
                                               instanceId,
@@ -2757,29 +2756,29 @@ export function EntryCreator({
 
           {/* Footer — commit action */}
           {sections.length > 0 && !fullscreenSectionId && (
-            <div className="entry-creator__footer flex items-center justify-between p-1">
-              <div className="flex min-w-0 items-center gap-2 text-[10px] text-text-muted">
-                  <kbd className="entry-creator__shortcut border px-1 py-0.5 text-[9px] font-mono">
+            <div className="entry-creator__footer flex h-6 items-center justify-between">
+              <div className="flex min-w-0 items-center leading-4 text-text-muted">
+                <kbd className="flex h-6 items-center font-mono">
                   ⌘+Enter
                 </kbd>
-                <span className="text-text-muted">→</span>
-                <span className="entry-creator__branch-pill inline-flex min-w-0 items-center gap-1 border px-1.5 py-0.5">
-                  <GitBranch className="h-3 w-3 shrink-0" />
-                  <span className="truncate font-medium">
+                <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
+                <span className="entry-creator__branch-pill inline-flex h-6 min-w-0 items-center">
+                  <GitBranch className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
                     {selectedBranch || "main"}
                   </span>
                 </span>
-                <span className="hidden items-center gap-1 text-text-muted sm:inline-flex">
-                  <GitCommitHorizontal className="h-3 w-3 shrink-0" />
+                <span className="hidden items-center text-text-muted sm:inline-flex">
+                  <GitCommitHorizontal className="h-4 w-4 shrink-0" />
                   {currentBranchHeadId
-                    ? `tip ${shortHash(currentBranchHeadId)}`
+                    ? `${shortHash(currentBranchHeadId)}`
                     : currentBranchRecord
                       ? "no commits yet"
                       : "creates branch on commit"}
                 </span>
               </div>
               {commitBlockedByFileAttachmentStatus && (
-                <div className="entry-creator__warning inline-flex items-center gap-2 ml-3 border px-2 py-0.5 text-[11px]">
+                <div className="entry-creator__warning inline-flex h-full items-center leading-4">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-3 w-3 shrink-0"
@@ -2804,13 +2803,13 @@ export function EntryCreator({
               <button
                 onClick={handleCommit}
                 disabled={isCommitDisabled}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`inline-flex h-full w-32 items-center justify-center leading-4 transition-colors ${
                   !isCommitDisabled
                     ? "bg-action-primary-bg text-white hover:bg-action-primary-hover"
                     : "bg-surface-subtle text-text-muted cursor-not-allowed"
                 }`}
               >
-                <Send className="h-3 w-3" />
+                <Send className="h-4 w-4" />
                 Commit Entry
               </button>
             </div>
@@ -2826,8 +2825,8 @@ export function EntryCreator({
           <div className="fixed inset-0 bg-surface-overlay" />
           <div className="fixed inset-0">
             <DialogPanel className="entry-creator-fullscreen flex h-full w-full flex-col overflow-hidden bg-surface-dark text-text-default">
-              <div className="entry-creator-fullscreen__chrome flex items-center gap-2 px-3 pt-2">
-                <div className="entry-creator-fullscreen__tabs scrollbar-hide flex min-w-0 flex-1 items-end gap-1 overflow-x-auto">
+              <div className="entry-creator-fullscreen__chrome flex items-center px-3 pt-2">
+                <div className="entry-creator-fullscreen__tabs scrollbar-hide flex min-w-0 flex-1 items-end overflow-x-auto">
                   {fullscreenPersonaSections.map((section) => {
                     const isActive = section.instanceId === activeFullscreenSection?.instanceId;
                     return (
@@ -2841,10 +2840,10 @@ export function EntryCreator({
                             : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
                         }`}
                       >
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
+                        <div className="uppercase tracking-[0.18em] text-text-muted">
                           Section {section.sectionIndex + 1}
                         </div>
-                        <div className="truncate text-xs font-medium">
+                        <div className="truncate">
                           {section.persona?.name ?? "Untitled"}
                         </div>
                       </button>
@@ -2882,6 +2881,7 @@ export function EntryCreator({
                       activeFullscreenSection.instanceId,
                       activeFullscreenSection.personaId,
                       activeFullscreenSection.persona?.name ?? null,
+                      activeFullscreenSection.persona ?? null,
                     )}
                   </div>
                 ) : null}
@@ -2936,121 +2936,26 @@ export function EntryCreator({
           }}
         />
 
-        {contextMenuPosition &&
-          typeof window !== "undefined" &&
-          createPortal(
-            <div
-              ref={contextMenuRef}
-              className="fixed z-50 w-64 border border-border-default bg-surface-elevated p-1.5 shadow-lg"
-              style={{
-                top: contextMenuPosition.top,
-                left: contextMenuPosition.left,
-              }}
-              role="menu"
-              aria-label="Entry creator stash menu"
-            >
-              <div className="px-2 py-1">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-                  working tree
-                </div>
-                <div className="mt-1 flex items-center gap-1.5 text-xs text-text-default">
-                  <GitBranch className="h-3.5 w-3.5 text-text-muted" />
-                  <span className="truncate">{selectedBranch}</span>
-                  <span className="text-text-muted">·</span>
-                  <span className="text-text-muted">
-                    {sections.length} section{sections.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="my-1 h-px bg-border-subtle" />
-
-              <button
-                type="button"
-                onClick={() => {
-                  stashCurrentDraft();
-                  setContextMenuPosition(null);
-                }}
-                disabled={!hasCommitableContent}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
-              >
-                <Archive className="h-3.5 w-3.5 text-text-muted" />
-                Stash changes
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  applyLatestStash(false);
-                  setContextMenuPosition(null);
-                }}
-                disabled={stashItems.length === 0}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
-              >
-                <ArchiveRestore className="h-3.5 w-3.5 text-text-muted" />
-                Apply latest stash
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  applyLatestStash(true);
-                  setContextMenuPosition(null);
-                }}
-                disabled={stashItems.length === 0}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
-              >
-                <RotateCcw className="h-3.5 w-3.5 text-text-muted" />
-                Pop latest stash
-              </button>
-
-              <div className="my-1 h-px bg-border-subtle" />
-
-              <div className="px-2 py-1 text-[10px] text-text-muted">
-                {stashItems.length === 0
-                  ? "No stashed drafts"
-                  : `${stashItems.length} stashed draft${stashItems.length === 1 ? "" : "s"} available`}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  dropLatestStash();
-                  setContextMenuPosition(null);
-                }}
-                disabled={stashItems.length === 0}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-text-muted" />
-                Drop latest stash
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  clearAllStashes();
-                  setContextMenuPosition(null);
-                }}
-                disabled={stashItems.length === 0}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
-              >
-                <Trash2 className="h-3.5 w-3.5 text-text-muted" />
-                Clear stash stack
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const latest = stashItems[0];
-                  if (!latest) return;
-                  await navigator.clipboard.writeText(JSON.stringify(latest, null, 2));
-                  setContextMenuPosition(null);
-                }}
-                disabled={stashItems.length === 0}
-                className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
-              >
-                <Copy className="h-3.5 w-3.5 text-text-muted" />
-                Copy latest stash payload
-              </button>
-            </div>,
-            document.body,
-          )}
+        <EntryCreatorContextMenu
+          isOpen={Boolean(contextMenuPosition)}
+          menuRef={contextMenuRef}
+          position={contextMenuPosition}
+          selectedBranch={selectedBranch}
+          sectionCount={sections.length}
+          stashCount={stashItems.length}
+          hasCommitableContent={hasCommitableContent}
+          onClose={() => setContextMenuPosition(null)}
+          onStashChanges={stashCurrentDraft}
+          onApplyLatestStash={() => applyLatestStash(false)}
+          onPopLatestStash={() => applyLatestStash(true)}
+          onDropLatestStash={dropLatestStash}
+          onClearStashStack={clearAllStashes}
+          onCopyLatestStashPayload={async () => {
+            const latest = stashItems[0];
+            if (!latest) return;
+            await navigator.clipboard.writeText(JSON.stringify(latest, null, 2));
+          }}
+        />
       </div>
 
       <PersonaManager

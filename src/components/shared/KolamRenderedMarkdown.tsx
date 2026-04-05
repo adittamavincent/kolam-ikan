@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useCallback, useRef } from "react";
+import type { Persona } from "@/lib/types";
 import { scanMarkdownTableBlock } from "@/lib/markdownTables";
 import { normalizeOaiCitationsInMarkdown } from "@/lib/oaicite";
+import { PersonaSurface } from "@/components/shared/PersonaSurface";
 
 export type FrontmatterProperty = {
   key: string;
@@ -326,12 +328,14 @@ type RendererProps = {
   source: string;
   highlightTerm?: string;
   onToggleTask?: (lineNumber: number, nextChecked: boolean) => void;
+  persona?: Persona | null;
 };
 
 function renderMarkdownBody(
   source: string,
   highlightTerm?: string,
   onToggleTask?: (lineNumber: number, nextChecked: boolean) => void,
+  persona?: Persona | null,
 ): React.ReactNode[] {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
   const nodes: React.ReactNode[] = [];
@@ -359,7 +363,13 @@ function renderMarkdownBody(
       }
       i += 1;
       nodes.push(
-        <pre className="kolam-code-block" key={`code-${start}`}>
+        <PersonaSurface
+          as="div"
+          className="kolam-code-block"
+          key={`code-${start}`}
+          persona={persona}
+          tone="code"
+        >
           <div className="kolam-code-header">
             <span>{language || "plain text"}</span>
           </div>
@@ -370,7 +380,7 @@ function renderMarkdownBody(
               `code-${start}`,
             )}
           </code>
-        </pre>,
+        </PersonaSurface>,
       );
       continue;
     }
@@ -395,7 +405,12 @@ function renderMarkdownBody(
         >
           <summary>{renderInline(title, highlightTerm, `callout-${start}-summary`)}</summary>
           <div className="kolam-callout-body">
-            {renderMarkdownBody(innerLines.join("\n"), highlightTerm, onToggleTask)}
+            {renderMarkdownBody(
+              innerLines.join("\n"),
+              highlightTerm,
+              onToggleTask,
+              persona,
+            )}
           </div>
         </details>,
       );
@@ -533,7 +548,12 @@ function renderMarkdownBody(
       }
       nodes.push(
         <blockquote className="kolam-blockquote" key={`quote-${start}`}>
-          {renderMarkdownBody(quoteLines.join("\n"), highlightTerm, onToggleTask)}
+          {renderMarkdownBody(
+            quoteLines.join("\n"),
+            highlightTerm,
+            onToggleTask,
+            persona,
+          )}
         </blockquote>,
       );
       continue;
@@ -557,7 +577,13 @@ function renderMarkdownBody(
     }
 
     nodes.push(
-      <p className="kolam-paragraph p-1" key={`paragraph-${start}`}>
+      <PersonaSurface
+        as="p"
+        className="kolam-paragraph p-1"
+        key={`paragraph-${start}`}
+        persona={persona}
+        tone="body"
+      >
         {paragraphLines.flatMap((paragraphLine, lineIndex) => {
           const lineNodes = renderInline(
             paragraphLine,
@@ -567,7 +593,7 @@ function renderMarkdownBody(
           if (lineIndex === 0) return lineNodes;
           return [<br key={`paragraph-${start}-br-${lineIndex}`} />, ...lineNodes];
         })}
-      </p>,
+      </PersonaSurface>,
     );
   }
 
@@ -578,6 +604,7 @@ export default function KolamRenderedMarkdown({
   source,
   highlightTerm,
   onToggleTask,
+  persona,
 }: RendererProps) {
   const normalizedSource = normalizeOaiCitationsInMarkdown(source);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -694,7 +721,7 @@ export default function KolamRenderedMarkdown({
       onMouseOver={handleMouseOver}
       ref={rootRef}
     >
-      {renderMarkdownBody(normalizedSource, highlightTerm, onToggleTask)}
+      {renderMarkdownBody(normalizedSource, highlightTerm, onToggleTask, persona)}
     </div>
   );
 }

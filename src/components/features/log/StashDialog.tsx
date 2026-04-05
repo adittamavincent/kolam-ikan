@@ -45,8 +45,8 @@ function formatTimestamp(value: string) {
 function EmptyState() {
   return (
     <div className="border border-dashed border-border-default bg-surface-subtle px-4 py-8 text-center">
-      <div className="text-sm font-semibold text-text-default">No stashes yet</div>
-      <p className="mt-1 text-xs text-text-muted">
+      <div className="text-text-default">No stashes yet</div>
+      <p className="mt-1 text-text-muted">
         Stashed commits and composer drafts will show up here.
       </p>
     </div>
@@ -77,7 +77,7 @@ export function StashDialog({
       <ModalHeader
         title="Stash"
         description={`${totalCount} item${totalCount === 1 ? "" : "s"} stored across commits and drafts.`}
-        icon={<Archive className="h-5 w-5" />}
+        icon={<Archive className="h-4 w-4" />}
         onClose={onClose}
       />
 
@@ -87,10 +87,10 @@ export function StashDialog({
         {committedStashes.length > 0 && (
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              <div className="uppercase tracking-[0.18em] text-text-muted">
                 Stashed Commits
               </div>
-              <div className="text-[11px] text-text-muted">
+              <div className="text-text-muted">
                 Hidden from the log list, visible in the commit graph.
               </div>
             </div>
@@ -103,32 +103,32 @@ export function StashDialog({
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 border border-amber-800 bg-amber-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300">
-                        <Archive className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 border border-amber-800 bg-amber-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-amber-300">
+                        <Archive className="h-4 w-4" />
                         commit stash
                       </span>
-                      <code className="bg-surface-default px-1.5 py-0.5 text-[11px] font-semibold text-text-default">
+                      <code className="bg-surface-default px-1.5 py-0.5 text-text-default">
                         {shortHash(stash.entryId)}
                       </code>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
-                        <GitBranch className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center gap-1 text-text-muted">
+                        <GitBranch className="h-4 w-4" />
                         {stash.branchName}
                       </span>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-muted">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-text-muted">
                       <span className="inline-flex items-center gap-1">
-                        <Layers3 className="h-3.5 w-3.5" />
+                        <Layers3 className="h-4 w-4" />
                         {stash.sectionCount} section
                         {stash.sectionCount === 1 ? "" : "s"}
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Clock3 className="h-3.5 w-3.5" />
+                        <Clock3 className="h-4 w-4" />
                         stashed {formatTimestamp(stash.createdAt)}
                       </span>
                       {stash.originalCreatedAt && (
                         <span className="inline-flex items-center gap-1">
-                          <GitCommitHorizontal className="h-3.5 w-3.5" />
+                          <GitCommitHorizontal className="h-4 w-4" />
                           original commit {formatTimestamp(stash.originalCreatedAt)}
                         </span>
                       )}
@@ -139,17 +139,17 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onOpenCommittedStashInGraph(stash.id)}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-hover"
                     >
-                      <GitCommitHorizontal className="h-3.5 w-3.5" />
+                      <GitCommitHorizontal className="h-4 w-4" />
                       Open in graph
                     </button>
                     <button
                       type="button"
                       onClick={() => onUnstashCommittedEntry(stash.id)}
-                      className="inline-flex items-center gap-2 bg-amber-500 px-3 py-1.5 text-xs font-semibold text-black hover:bg-amber-400"
+                      className="inline-flex items-center gap-2 bg-amber-500 px-3 py-1.5 text-black hover:bg-amber-400"
                     >
-                      <ArchiveRestore className="h-3.5 w-3.5" />
+                      <ArchiveRestore className="h-4 w-4" />
                       Unstash
                     </button>
                   </div>
@@ -162,10 +162,10 @@ export function StashDialog({
         {draftStashes.length > 0 && (
           <section className="space-y-2">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+              <div className="uppercase tracking-[0.18em] text-text-muted">
                 Stashed Drafts
               </div>
-              <div className="text-[11px] text-text-muted">
+              <div className="text-text-muted">
                 Saved composer workspaces you can apply or pop back in.
               </div>
             </div>
@@ -178,27 +178,27 @@ export function StashDialog({
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 border border-cyan-800 bg-cyan-950 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">
-                        <PencilLine className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 border border-cyan-800 bg-cyan-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-cyan-300">
+                        <PencilLine className="h-4 w-4" />
                         draft stash
                       </span>
-                      <code className="bg-surface-default px-1.5 py-0.5 text-[11px] font-semibold text-text-default">
+                      <code className="bg-surface-default px-1.5 py-0.5 text-text-default">
                         {shortHash(stash.id)}
                       </code>
-                      <span className="inline-flex items-center gap-1 text-[11px] text-text-muted">
-                        <GitBranch className="h-3.5 w-3.5" />
+                      <span className="inline-flex items-center gap-1 text-text-muted">
+                        <GitBranch className="h-4 w-4" />
                         {stash.branchName}
                       </span>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-text-muted">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-text-muted">
                       <span className="inline-flex items-center gap-1">
-                        <Layers3 className="h-3.5 w-3.5" />
+                        <Layers3 className="h-4 w-4" />
                         {stash.sections.length} section
                         {stash.sections.length === 1 ? "" : "s"}
                       </span>
                       <span className="inline-flex items-center gap-1">
-                        <Clock3 className="h-3.5 w-3.5" />
+                        <Clock3 className="h-4 w-4" />
                         saved {formatTimestamp(stash.createdAt)}
                       </span>
                     </div>
@@ -208,24 +208,24 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onApplyDraftStash(stash.id)}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-hover"
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-hover"
                     >
                       Apply
                     </button>
                     <button
                       type="button"
                       onClick={() => onPopDraftStash(stash.id)}
-                      className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover"
+                      className="inline-flex items-center gap-2 bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:bg-action-primary-hover"
                     >
-                      <ArchiveRestore className="h-3.5 w-3.5" />
+                      <ArchiveRestore className="h-4 w-4" />
                       Pop
                     </button>
                     <button
                       type="button"
                       onClick={() => onDropDraftStash(stash.id)}
-                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-xs font-semibold text-text-muted hover:text-text-default"
+                      className="inline-flex items-center gap-2 border border-border-default px-3 py-1.5 text-text-muted hover:text-text-default"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                       Drop
                     </button>
                   </div>

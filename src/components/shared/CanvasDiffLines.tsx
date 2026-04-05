@@ -40,7 +40,7 @@ export function CanvasDiffLines({
 }: CanvasDiffLinesProps) {
   if (lines.length === 0) {
     return (
-      <div className="px-4 py-6 text-center text-xs text-text-muted">
+      <div className="px-4 py-6 text-center text-text-muted">
         No differences.
       </div>
     );

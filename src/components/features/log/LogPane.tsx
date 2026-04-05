@@ -12,41 +12,34 @@ import {
 import { useEntries } from "@/lib/hooks/useEntries";
 import { useDocuments } from "@/lib/hooks/useDocuments";
 import { EntryCreator } from "./EntryCreator";
-import { LogSection } from "./LogSection";
+import { LogTimeline } from "./LogTimeline";
+import { TimelineItemRenderer } from "./timeline/TimelineItemRenderer";
+import { LogEntryTimelineItem } from "./timeline/LogEntryTimelineItem";
+import { LogCanvasSnapshotTimelineItem } from "./timeline/LogCanvasSnapshotTimelineItem";
+import { LogMergeCommitTimelineItem } from "./timeline/LogMergeCommitTimelineItem";
 import {
   FileAttachmentPreviewData,
   FileAttachmentPreviewDialog,
   ParsedPreviewData,
 } from "./FileAttachmentPreviewDialog";
-import { CanvasSnapshotCard } from "./CanvasSnapshotCard";
 import { CanvasDraftCard } from "./CanvasDraftCard";
-import { MergeCommitCard } from "./MergeCommitCard";
 import { StashDialog } from "./StashDialog";
 import { useStream } from "@/lib/hooks/useStream";
 import { useTimelineItems } from "@/lib/hooks/useTimelineItems";
 import { CommitGraph } from "./CommitGraph";
 import {
-  Calendar,
-  Check,
   X,
-  PencilLine,
-  Loader2,
-  Copy,
-  RotateCcw,
-  Trash2,
-  GitCommitHorizontal,
-  Undo2,
   ChevronsDown,
-  Archive,
   GitCompare,
-  Eye,
-  EyeOff,
   Tag,
-  GitBranch,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { createPortal } from "react-dom";
+import {
+  type GitAction,
+  LogPaneContextMenu,
+  type LogContextMenuState,
+  type SnapshotAction,
+} from "./LogPaneContextMenu";
 import { exportEntriesToMarkdown, downloadMarkdown } from "@/lib/utils/export";
 import { dispatchKolamLogState } from "@/lib/hooks/useLogBranchContext";
 import {
@@ -60,7 +53,6 @@ import { createClient } from "@/lib/supabase/client";
 import type { PartialBlock } from "@/lib/types/editor";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { TextInputDialog } from "@/components/shared/TextInputDialog";
-import { ThreadFrame } from "@/components/shared/SectionPreset";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import {
   BRIDGE_JOB_PROVIDER_LABELS,
@@ -85,6 +77,9 @@ import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { CANVAS_PREVIEW_OPEN_EVENT } from "@/lib/utils/canvasPreview";
 import type { BridgeJob } from "@/lib/types";
+import {
+  type TimelineItem,
+} from "@/lib/types/timeline";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -146,7 +141,7 @@ function countSearchOccurrences(source: string, term: string): number {
   return matches?.length ?? 0;
 }
 
-function getTimelineItemCollapseKey(item: { type: "entry" | "canvas_snapshot"; data: { id: string } }): string {
+function getTimelineItemCollapseKey(item: TimelineItem): string {
   return `${item.type}:${item.data.id}`;
 }
 
@@ -246,20 +241,6 @@ type BranchDialogState =
       currentName: string;
     };
 
-type LogContextMenuState =
-  | {
-      kind: "entry";
-      entry: EntryWithSections;
-      x: number;
-      y: number;
-    }
-  | {
-      kind: "snapshot";
-      snapshot: CanvasVersion;
-      x: number;
-      y: number;
-    };
-
 function isParsedReadyStatus(status?: string | null): boolean {
   return status === "completed" || status === "done";
 }
@@ -337,19 +318,19 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
           <div className="flex items-center gap-2">
             <GitCompare className="h-4 w-4 text-text-muted" />
-            <span className="text-sm font-semibold text-text-default">
+            <span className="text-text-default">
               git diff
             </span>
-            <code className="text-[11px] bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
+            <code className="bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
               {prevEntry ? shortHash(prevEntry.id) : "0000000"}..
               {shortHash(entry.id)}
             </code>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[11px] font-mono text-diff-add-text">
+            <span className="font-mono text-diff-add-text">
               +{additions}
             </span>
-            <span className="text-[11px] font-mono text-diff-del-text">
+            <span className="font-mono text-diff-del-text">
               -{deletions}
             </span>
             <button
@@ -362,14 +343,14 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
         </div>
 
         {/* Diff body */}
-        <div className="overflow-y-auto flex-1 font-mono text-[11px] ">
+        <div className="overflow-y-auto flex-1 font-mono ">
           {!prevEntry && (
-            <div className="px-4 py-3 text-text-muted text-xs italic border-b border-border-default">
+            <div className="px-4 py-3 text-text-muted italic border-b border-border-default">
               No parent commit found. Showing the full commit content as additions.
             </div>
           )}
           {diffs.length === 0 ? (
-            <div className="px-4 py-6 text-center text-text-muted text-xs">
+            <div className="px-4 py-6 text-center text-text-muted">
               No differences
             </div>
           ) : (
@@ -422,10 +403,10 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
       >
         <div className="flex items-center gap-2 mb-3">
           <Tag className="h-4 w-4 text-text-muted" />
-          <span className="text-sm font-semibold text-text-default">
+          <span className="text-text-default">
             git tag
           </span>
-          <code className="text-[11px] bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
+          <code className="bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
             {shortHash(entryId)}
           </code>
         </div>
@@ -442,12 +423,12 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
             }
             if (e.key === "Escape") onClose();
           }}
-          className="w-full border border-border-default bg-surface-subtle px-3 py-1.5 text-xs text-text-default focus:border-border-default focus: focus: focus: mb-3"
+          className="w-full border border-border-default bg-surface-subtle px-3 py-1.5 text-text-default focus:border-border-default focus: focus: focus: mb-3"
         />
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className=" border border-border-default px-3 py-1.5 text-xs font-semibold text-text-default hover:bg-surface-subtle"
+            className=" border border-border-default px-3 py-1.5 text-text-default hover:bg-surface-subtle"
           >
             Cancel
           </button>
@@ -456,7 +437,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
               onSave(value.trim() || null);
               onClose();
             }}
-            className=" bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text hover:opacity-90"
+            className=" bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:opacity-90"
           >
             Save Tag
           </button>
@@ -1849,20 +1830,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     setContextMenu({ kind: "snapshot", snapshot, x: e.clientX, y: e.clientY });
   };
 
-  type GitAction =
-    | "copy-sha"
-    | "copy-content"
-    | "cherry-pick"
-    | "revert"
-    | "diff"
-    | "tag"
-    | "stash"
-    | "branch"
-    | "reset"
-    | "delete";
-
-  type SnapshotAction = "open" | "copy-content" | "delete";
-
   const handleContextAction = async (action: GitAction) => {
     if (!contextMenu || contextMenu.kind !== "entry") return;
     const { entry } = contextMenu;
@@ -2620,7 +2587,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   return (
     <>
       <div
-        className={`log-pane border-r border-border-default bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
+        className={`log-pane bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
         style={containerStyle}
       >
       <div className="flex h-full flex-col" style={contentStyle}>
@@ -2648,10 +2615,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-20">
-            <div className="py-2">
+          <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-20 pt-2">
+            <div>
               {sortOrder === "newest" && (
-                <div className="mb-2 space-y-1.5">
+                <div>
                   <EntryCreator
                     key={streamId}
                     streamId={streamId}
@@ -2664,7 +2631,13 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       );
                     }}
                   />
-                  <CanvasDraftCard streamId={streamId} />
+                  <TimelineItemRenderer
+                    kind="canvas_draft"
+                    itemId={`canvas-draft:${streamId}`}
+                    collapseKey={`canvas_draft:${streamId}`}
+                  >
+                    <CanvasDraftCard streamId={streamId} />
+                  </TimelineItemRenderer>
                 </div>
               )}
               {showLoadingState ? (
@@ -2676,43 +2649,33 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                     />
                   ))}
                 </div>
-              ) : showEmptyState ? (
-                <div className="text-center py-10 text-text-muted text-sm">
-                  No commits found.
-                </div>
               ) : (
                 <>
-                  <div className="flex flex-col gap-1.5">
+                  <LogTimeline className="flex flex-col">
                     {branchTimelineItems.map((item) => {
                       if (item.type === "canvas_snapshot") {
                         const itemCollapseKey = getTimelineItemCollapseKey(item);
                         return (
-                          <div
+                          <LogCanvasSnapshotTimelineItem
                             key={`snapshot-${item.data.id}`}
-                            ref={(node) => {
+                            snapshot={item.data}
+                            streamId={streamId}
+                            collapseKey={itemCollapseKey}
+                            isCollapsed={collapsedEntryIds.has(itemCollapseKey)}
+                            isHighlighted={animatedItemKey === itemCollapseKey}
+                            aiModelLabel={
+                              aiModelLabelBySnapshotId.get(item.data.id) ?? null
+                            }
+                            onBindRef={(node) => {
                               entryRefs.current[itemCollapseKey] = node;
                             }}
                             onContextMenu={(event) =>
                               handleSnapshotContextMenu(event, item.data)
                             }
-                            className={
-                              animatedItemKey === itemCollapseKey
-                                ? "kolam-search-reveal"
-                                : undefined
+                            onToggleCollapsed={() =>
+                              toggleEntryCollapsed(itemCollapseKey)
                             }
-                          >
-                            <CanvasSnapshotCard
-                              version={item.data}
-                              streamId={streamId}
-                              aiModelLabel={
-                                aiModelLabelBySnapshotId.get(item.data.id) ?? null
-                              }
-                              isCollapsed={collapsedEntryIds.has(itemCollapseKey)}
-                              onToggleCollapsed={() =>
-                                toggleEntryCollapsed(itemCollapseKey)
-                              }
-                            />
-                          </div>
+                          />
                         );
                       }
 
@@ -2741,330 +2704,107 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
                       if (entry.entry_kind === "merge") {
                         return (
-                          <div
+                          <LogMergeCommitTimelineItem
                             key={entry.id}
-                            ref={(node) => {
+                            collapseKey={itemCollapseKey}
+                            entry={entry}
+                            createdAtText={createdAtText}
+                            sourceHash={shortHash(entry.merge_source_commit_id ?? entry.id)}
+                            targetHash={shortHash(entry.parent_commit_id ?? entry.id)}
+                            isDimmed={isStashed}
+                            onBindRef={(node) => {
                               entryRefs.current[entry.id] = node;
                               entryRefs.current[itemCollapseKey] = node;
                             }}
-                            className={isStashed ? "opacity-50" : undefined}
-                          >
-                            <MergeCommitCard
-                              entry={entry}
-                              sourceHash={shortHash(entry.merge_source_commit_id ?? entry.id)}
-                              targetHash={shortHash(entry.parent_commit_id ?? entry.id)}
-                              createdAtText={createdAtText}
-                              onOpenInGraph={() => setGraphView(true)}
-                            />
-                          </div>
+                            onContextMenu={(event) =>
+                              handleEntryContextMenu(event, entry)
+                            }
+                            onOpenInGraph={() => setGraphView(true)}
+                          />
                         );
                       }
 
+                      const amendSections = isAmending
+                        ? amendState?.sections
+                        : undefined;
+
                       return (
-                        <div
+                        <LogEntryTimelineItem
                           key={entry.id}
-                          ref={(node) => {
+                          entry={entry}
+                          streamId={streamId}
+                          itemCollapseKey={itemCollapseKey}
+                          hash={hash}
+                          tag={tag}
+                          entryBranches={entryBranches}
+                          sectionCount={sectionCount}
+                          createdAtText={createdAtText}
+                          isCollapsed={isCollapsed}
+                          isAmending={isAmending}
+                          isLatestEntry={isLatestEntry}
+                          isStashed={isStashed}
+                          isHighlighted={animatedItemKey === itemCollapseKey}
+                          amendError={amendError}
+                          amendSavePending={amendEntry.isPending}
+                          normalizedSearchTerm={normalizedSearchTerm}
+                          highlightTerm={highlightTerm}
+                          highlightEntryId={highlightEntryId}
+                          highlightSectionId={highlightSectionId}
+                          uploadingAmendSectionIds={uploadingAmendSectionIds}
+                          amendSections={amendSections}
+                          onBindRef={(node) => {
                             entryRefs.current[entry.id] = node;
                             entryRefs.current[itemCollapseKey] = node;
                           }}
-                          onContextMenu={(e) => handleEntryContextMenu(e, entry)}
-                          className={[
-                            isStashed ? "text-text-muted" : "",
-                            animatedItemKey === itemCollapseKey
-                              ? "kolam-search-reveal"
-                              : "",
-                          ]
-                            .filter(Boolean)
-                            .join(" ") || undefined}
-                        >
-                          <ThreadFrame
-                            hideBody={isCollapsed}
-                            frameClassName={`group overflow-visible transition-colors hover:z-20 focus-within:z-20 ${
-                              isCollapsed
-                                ? "border-border-strong bg-surface-default"
-                                : "border-border-default bg-surface-default"
-                            } ${isAmending ? "ring-1 ring-action-primary-bg" : ""}`}
-                            headerClassName={`${
-                              isCollapsed
-                                ? "bg-surface-hover hover:bg-surface-subtle"
-                                : "bg-primary-950 hover:bg-primary-950"
-                            } ${isAmending ? "cursor-default" : "cursor-pointer"} transition-colors`}
-                            bodyClassName="bg-surface-default"
-                            header={
-                              <div
-                                role="button"
-                                tabIndex={isAmending ? -1 : 0}
-                                aria-expanded={!isCollapsed}
-                                onClick={() => toggleEntryCollapsed(itemCollapseKey)}
-                                onKeyDown={(event) => {
-                                  if (isAmending) return;
-                                  if (event.key === "Enter" || event.key === " ") {
-                                    event.preventDefault();
-                                    toggleEntryCollapsed(itemCollapseKey);
-                                  }
-                                }}
-                                className="flex h-8 items-center justify-between gap-2"
-                              >
-                                <div className="flex min-w-0 items-center gap-1.5">
-                                  <span
-                                    className={`inline-flex h-5 w-5 shrink-0 items-center justify-center border ${
-                                      isCollapsed
-                                        ? "border-border-default bg-surface-default text-text-muted"
-                                        : "border-action-primary-bg bg-surface-default text-action-primary-bg"
-                                    }`}
-                                    aria-hidden="true"
-                                  >
-                                    {isCollapsed ? (
-                                      <ChevronRight className="h-3.5 w-3.5" />
-                                    ) : (
-                                      <ChevronDown className="h-3.5 w-3.5" />
-                                    )}
-                                  </span>
-                                  <GitCommitHorizontal className="h-3 w-3 shrink-0 text-text-muted" />
-                                  <span className="relative shrink-0 group/hash">
-                                    <code className="cursor-help text-[10px] font-mono text-primary-400">
-                                      {hash}
-                                    </code>
-                                    <div className="pointer-events-none absolute left-0 top-full z-40 mt-1 hidden w-64 border border-border-default bg-surface-elevated p-2 text-[10px] font-mono text-text-default group-hover/hash:block">
-                                      <div className="mb-1 text-[9px] uppercase tracking-wider text-text-muted">
-                                        Commit Metadata
-                                      </div>
-                                      <div>hash: {hash}</div>
-                                      <div className="truncate">
-                                        id: {entry.id}
-                                      </div>
-                                      <div>time: {createdAtText}</div>
-                                      <div>sections: {entry.sections?.length ?? 0}</div>
-                                      <div>tag: {tag || "-"}</div>
-                                      <div>stashed: {isStashed ? "yes" : "no"}</div>
-                                      <div>
-                                        latest: {isLatestEntry ? "HEAD" : "no"}
-                                      </div>
-                                      <div className="truncate">
-                                        branches:{" "}
-                                        {entryBranches.length
-                                          ? entryBranches.join(", ")
-                                          : "-"}
-                                      </div>
-                                    </div>
-                                  </span>
-                                  <span className="text-border-default">·</span>
-                                  <Calendar className="h-3 w-3 shrink-0 text-text-muted" />
-                                  <span className="truncate font-mono text-[10px] font-medium text-text-subtle">
-                                    {createdAtText}
-                                  </span>
-                                  <span
-                                    className={`shrink-0 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
-                                      isCollapsed
-                                        ? "border-border-default bg-surface-default text-text-muted"
-                                        : "bg-surface-default text-text-subtle"
-                                    }`}
-                                  >
-                                    {sectionCount} section{sectionCount === 1 ? "" : "s"}
-                                  </span>
-                                  {tag && (
-                                    <span className="shrink-0 flex items-center gap-0.5 bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-600 dark:text-amber-400">
-                                      <Tag className="h-2.5 w-2.5" />
-                                      {tag}
-                                    </span>
-                                  )}
-                                  {entryBranches.map((branchName) => (
-                                    <span
-                                      key={`${entry.id}-${branchName}`}
-                                      className="relative inline-flex h-4.5 shrink-0 items-center px-1.5 pr-3 text-[9px] font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
-                                      title={`${branchName} points at this commit`}
-                                    >
-                                      <span
-                                        aria-hidden="true"
-                                        className="absolute inset-0 bg-sky-800"
-                                        style={{
-                                          clipPath:
-                                            "polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%)",
-                                        }}
-                                      />
-                                      <span
-                                        aria-hidden="true"
-                                        className="absolute inset-px bg-sky-950"
-                                        style={{
-                                          clipPath:
-                                            "polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%)",
-                                        }}
-                                      />
-                                      <span className="relative z-10 inline-flex items-center gap-1">
-                                        <GitBranch className="h-2.5 w-2.5" />
-                                        {branchName}
-                                      </span>
-                                    </span>
-                                  ))}
-                                  {isLatestEntry && (
-                                    <span className="shrink-0 inline-flex items-center bg-primary-950 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
-                                      HEAD
-                                    </span>
-                                  )}
-                                  {isStashed && (
-                                    <span className="shrink-0 flex items-center gap-0.5 bg-amber-950 px-1.5 py-0.5 text-[9px] font-semibold text-amber-500">
-                                      <Archive className="h-2.5 w-2.5" />
-                                      stashed
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex shrink-0 items-center gap-1">
-                                  {isAmending ? (
-                                    <>
-                                      <button
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          handleSaveAmend(entry);
-                                        }}
-                                        disabled={amendEntry.isPending}
-                                        className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-[10px] font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover disabled:cursor-not-allowed disabled:bg-action-primary-disabled"
-                                      >
-                                        {amendEntry.isPending ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                          <Check className="h-3 w-3" />
-                                        )}
-                                        Save
-                                      </button>
-                                      <button
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          handleCancelAmend();
-                                        }}
-                                        disabled={amendEntry.isPending}
-                                        className="inline-flex items-center gap-1 border border-border-default px-2 py-1 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle disabled:cursor-not-allowed disabled:text-text-muted"
-                                      >
-                                        <X className="h-3 w-3" />
-                                        Cancel
-                                      </button>
-                                    </>
-                                  ) : isLatestEntry ? (
-                                    <button
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        handleStartAmend(entry);
-                                      }}
-                                      className="inline-flex items-center gap-1 px-1 py-px text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-subtle"
-                                      title="Amend commit"
-                                    >
-                                      <PencilLine className="h-3 w-3" />
-                                      Amend commit
-                                    </button>
-                                  ) : null}
-                                </div>
-                              </div>
-                            }
-                          >
-                            {/* Commit header — mimics git log --oneline */}
-                            {isAmending && amendError && (
-                              <div className="border border-status-error-border bg-status-error-bg px-2.5 py-1 text-[11px] text-status-error-text">
-                                {amendError}
-                              </div>
-                            )}
-                            {!isCollapsed && (
-                              <div className="flex flex-col gap-2">
-                                {entry.sections?.map(
-                                  (
-                                    section: EntryWithSections["sections"][number],
-                                    sectionIndex,
-                                  ) => (
-                                    <div
-                                      key={section.id}
-                                      ref={(node) => {
-                                        sectionRefs.current[section.id] = node;
-                                      }}
-                                    >
-                                      <LogSection
-                                        section={section}
-                                        streamId={streamId}
-                                        sectionIndex={sectionIndex}
-                                        totalSections={entry.sections.length}
-                                        onPreviewAttachment={openAttachmentPreview}
-                                        editable={isAmending}
-                                        currentEditedContent={
-                                          isAmending
-                                            ? amendState.sections[section.id]?.content
-                                            : undefined
-                                        }
-                                        currentEditedMarkdown={
-                                          isAmending
-                                            ? amendState.sections[section.id]?.markdown
-                                            : undefined
-                                        }
-                                        attachmentOverrides={
-                                          isAmending
-                                            ? amendState.sections[section.id]?.attachments
-                                            : undefined
-                                        }
-                                        onRemoveAttachment={
-                                          isAmending
-                                            ? (attachment, attachmentIndex) =>
-                                                handleRemoveAmendAttachment(
-                                                  section.id,
-                                                  amendState.sections[section.id]?.attachments ??
-                                                    section.section_attachments ??
-                                                    [],
-                                                  attachment,
-                                                  attachmentIndex,
-                                                )
-                                            : undefined
-                                        }
-                                        onAddAttachments={
-                                          isAmending
-                                            ? (files) =>
-                                                handleAddAmendAttachments(
-                                                  section.id,
-                                                  amendState.sections[section.id]
-                                                    ?.attachments ??
-                                                    section.section_attachments ??
-                                                    [],
-                                                  files,
-                                                )
-                                            : undefined
-                                        }
-                                        isUploadingAttachments={
-                                          uploadingAmendSectionIds.has(section.id)
-                                        }
-                                        isSearchTarget={
-                                          section.id === highlightSectionId
-                                        }
-                                        onContentChange={(content, markdown) => {
-                                          if (!isAmending) return;
-                                          setAmendState((prev) => {
-                                            if (!prev || prev.entryId !== entry.id)
-                                              return prev;
-                                            return {
-                                              ...prev,
-                                              sections: {
-                                                ...prev.sections,
-                                                [section.id]: { content, markdown },
-                                              },
-                                            };
-                                          });
-                                        }}
-                                        highlightTerm={
-                                          normalizedSearchTerm
-                                            ? normalizedSearchTerm
-                                            : entry.id === highlightEntryId
-                                              ? (highlightTerm ?? undefined)
-                                              : undefined
-                                        }
-                                      />
-                                    </div>
-                                  ),
-                                )}
-                              </div>
-                            )}
-                          </ThreadFrame>
-                        </div>
+                          onEntryContextMenu={(event) =>
+                            handleEntryContextMenu(event, entry)
+                          }
+                          onToggleCollapsed={() =>
+                            toggleEntryCollapsed(itemCollapseKey)
+                          }
+                          onSaveAmend={() => {
+                            void handleSaveAmend(entry);
+                          }}
+                          onCancelAmend={handleCancelAmend}
+                          onStartAmend={() => handleStartAmend(entry)}
+                          onPreviewAttachment={openAttachmentPreview}
+                          onRemoveAmendAttachment={handleRemoveAmendAttachment}
+                          onAddAmendAttachments={(sectionId, currentAttachments, files) => {
+                            void handleAddAmendAttachments(
+                              sectionId,
+                              currentAttachments,
+                              files,
+                            );
+                          }}
+                          onAmendSectionChange={(sectionId, content, markdown) => {
+                            setAmendState((prev) => {
+                              if (!prev || prev.entryId !== entry.id) return prev;
+                              return {
+                                ...prev,
+                                sections: {
+                                  ...prev.sections,
+                                  [sectionId]: { content, markdown },
+                                },
+                              };
+                            });
+                          }}
+                          onBindSectionRef={(sectionId, node) => {
+                            sectionRefs.current[sectionId] = node;
+                          }}
+                        />
                       );
                     })}
-                  </div>
+                  </LogTimeline>
 
                   {sortOrder === "oldest" && (
-                    <div className="mt-2 space-y-1.5">
-                      <CanvasDraftCard streamId={streamId} />
+                    <div>
+                      <TimelineItemRenderer
+                        kind="canvas_draft"
+                        itemId={`canvas-draft:${streamId}`}
+                        collapseKey={`canvas_draft:${streamId}`}
+                      >
+                        <CanvasDraftCard streamId={streamId} />
+                      </TimelineItemRenderer>
                       <EntryCreator
                         key={streamId}
                         streamId={streamId}
@@ -3085,9 +2825,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                       <button
                         onClick={() => fetchNextPage()}
                         disabled={isFetchingNextPage}
-                        className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-hover transition-colors disabled:opacity-50"
+                        className="flex items-center gap-1.5 px-4 py-2 text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-hover transition-colors disabled:opacity-50"
                       >
-                        <ChevronsDown className="h-3.5 w-3.5" />
+                        <ChevronsDown className="h-4 w-4" />
                         {isFetchingNextPage
                           ? "Loading..."
                           : "Load more commits"}
@@ -3129,197 +2869,19 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         }}
       />
 
-      {contextMenu &&
-        typeof window !== "undefined" &&
-        createPortal(
-          <div
-            ref={contextMenuRef}
-            className="fixed z-50 w-56 max-h-[calc(100vh-16px)] overflow-y-auto border border-border-default bg-surface-elevated p-1.5 "
-            style={{
-              top: contextMenuPosition.top,
-              left: contextMenuPosition.left,
-              backgroundColor: "var(--bg-surface-elevated)",
-            }}
-            role="menu"
-          >
-            {contextMenu.kind === "entry" ? (
-              <>
-                <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
-                  <GitCommitHorizontal className="h-3.5 w-3.5 text-text-muted" />
-                  <code className="text-[11px] font-mono text-primary-400">
-                    {shortHash(contextMenu.entry.id)}
-                  </code>
-                  <span className="text-[10px] text-text-muted truncate">
-                    {contextMenu.entry.created_at &&
-                      new Date(contextMenu.entry.created_at).toLocaleString(
-                        undefined,
-                        {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        },
-                      )}
-                  </span>
-                </div>
-                <div className="h-px bg-border-subtle mb-0.5" />
-
-                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-                  inspect
-                </div>
-                <button
-                  onClick={() => handleContextAction("copy-sha")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <Copy className="h-3.5 w-3.5 text-text-muted" />
-                  Copy commit SHA
-                </button>
-                <button
-                  onClick={() => handleContextAction("copy-content")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <Eye className="h-3.5 w-3.5 text-text-muted" />
-                  Copy commit content
-                </button>
-                <button
-                  onClick={() => handleContextAction("diff")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <GitCompare className="h-3.5 w-3.5 text-text-muted" />
-                  Compare with parent
-                </button>
-
-                <div className="my-1 h-px bg-border-subtle" />
-
-                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-                  modify
-                </div>
-                <button
-                  onClick={() => handleContextAction("cherry-pick")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-text-muted rotate-180" />
-                  Cherry-pick commit
-                </button>
-                <button
-                  onClick={() => handleContextAction("branch")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <GitBranch className="h-3.5 w-3.5 text-text-muted" />
-                  Create branch here
-                </button>
-                <button
-                  onClick={() => handleContextAction("revert")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <Undo2 className="h-3.5 w-3.5 text-text-muted" />
-                  Revert this commit
-                </button>
-                <button
-                  onClick={() => handleContextAction("tag")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <Tag className="h-3.5 w-3.5 text-text-muted" />
-                  {tags[contextMenu.entry.id]
-                    ? `Edit tag (${tags[contextMenu.entry.id]})`
-                    : "Add tag"}
-                </button>
-                <button
-                  onClick={() => handleContextAction("stash")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  {stashedEntryIds.has(contextMenu.entry.id) ? (
-                    <>
-                      <EyeOff className="h-3.5 w-3.5 text-amber-500" />
-                      <span className="text-amber-600 dark:text-amber-400">
-                        Unstash commit
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Archive className="h-3.5 w-3.5 text-text-muted" />
-                      Stash commit
-                    </>
-                  )}
-                </button>
-
-                <div className="my-1 h-px bg-border-subtle" />
-
-                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-                  danger
-                </div>
-                <button
-                  onClick={() => handleContextAction("reset")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-amber-500" />
-                  Reset branch to this commit
-                </button>
-                <button
-                  onClick={() => handleContextAction("delete")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete commit
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="px-2 py-1 mb-0.5 flex items-center gap-1.5">
-                  <Eye className="h-3.5 w-3.5 text-text-muted" />
-                  <code className="text-[11px] font-mono text-primary-400">
-                    {shortHash(contextMenu.snapshot.id)}
-                  </code>
-                  <span className="text-[10px] text-text-muted truncate">
-                    {contextMenu.snapshot.created_at &&
-                      new Date(contextMenu.snapshot.created_at).toLocaleString(
-                        undefined,
-                        {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        },
-                      )}
-                  </span>
-                </div>
-                <div className="h-px bg-border-subtle mb-0.5" />
-
-                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-                  inspect
-                </div>
-                <button
-                  onClick={() => handleSnapshotAction("open")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <RotateCcw className="h-3.5 w-3.5 text-text-muted" />
-                  Open in canvas preview
-                </button>
-                <button
-                  onClick={() => handleSnapshotAction("copy-content")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-text-default hover:bg-surface-subtle"
-                >
-                  <Copy className="h-3.5 w-3.5 text-text-muted" />
-                  Copy snapshot content
-                </button>
-
-                <div className="my-1 h-px bg-border-subtle" />
-
-                <div className="mb-0.5 px-1.5 pt-0.5 pb-0.5 text-[9px] uppercase tracking-widest text-text-muted font-semibold">
-                  danger
-                </div>
-                <button
-                  onClick={() => handleSnapshotAction("delete")}
-                  className="flex w-full items-center gap-2 px-2 py-1.5 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete canvas snapshot
-                </button>
-              </>
-            )}
-          </div>,
-          document.body,
-        )}
+      <LogPaneContextMenu
+        contextMenu={contextMenu}
+        contextMenuRef={contextMenuRef}
+        contextMenuPosition={contextMenuPosition}
+        tags={tags}
+        stashedEntryIds={stashedEntryIds}
+        onEntryAction={(action) => {
+          void handleContextAction(action);
+        }}
+        onSnapshotAction={(action) => {
+          void handleSnapshotAction(action);
+        }}
+      />
 
       {/* ─── Diff Modal ───────────────────────────────────────────────────────── */}
       {diffTarget &&
@@ -3357,19 +2919,19 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           mergeConfirm ? (
             mergeConfirm.mode === "fast-forward" ? (
               <div className="space-y-1">
-                <p className="text-xs font-mono text-text-default">
+                <p className="font-mono text-text-default">
                   {mergeConfirm.targetBranchName} {"->"} {shortHash(mergeConfirm.sourceHeadId)}
                 </p>
-                <p className="text-sm text-text-muted">
+                <p className="text-text-muted">
                   This will move the current branch pointer forward without creating a new commit.
                 </p>
               </div>
             ) : (
               <div className="space-y-1">
-                <p className="text-xs font-mono text-text-default">
+                <p className="font-mono text-text-default">
                   merge {mergeConfirm.sourceBranchName} into {mergeConfirm.targetBranchName}
                 </p>
-                <p className="text-sm text-text-muted">
+                <p className="text-text-muted">
                   This app will create a new commit on {mergeConfirm.targetBranchName} using the source branch head content.
                 </p>
               </div>
@@ -3414,19 +2976,19 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
           entryConfirm ? (
             entryConfirm.type === "reset" ? (
               <div className="space-y-1">
-                <p className="text-xs font-mono text-text-default">
+                <p className="font-mono text-text-default">
                   git reset --hard {shortHash(entryConfirm.entry.id)}
                 </p>
-                <p className="text-sm text-text-muted">
+                <p className="text-text-muted">
                   This will delete all entries newer than this one.
                 </p>
               </div>
             ) : (
               <div className="space-y-1">
-                <p className="text-xs font-mono text-text-default">
+                <p className="font-mono text-text-default">
                   git rm -- entry {shortHash(entryConfirm.entry.id)}
                 </p>
-                <p className="text-sm text-text-muted">
+                <p className="text-text-muted">
                   Delete this entry from history.
                 </p>
               </div>
@@ -3456,10 +3018,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         description={
           snapshotConfirm ? (
             <div className="space-y-1">
-              <p className="text-xs font-mono text-text-default">
+              <p className="font-mono text-text-default">
                 canvas snapshot {shortHash(snapshotConfirm.snapshot.id)}
               </p>
-              <p className="text-sm text-text-muted">
+              <p className="text-text-muted">
                 The live canvas will rewind to the newest remaining snapshot. If none remain, the canvas becomes empty.
               </p>
             </div>

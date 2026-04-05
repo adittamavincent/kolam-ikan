@@ -125,7 +125,7 @@ export function StreamView({ streamId }: { streamId: string }) {
       <LogPane streamId={streamId} logWidth={logWidth} />
       <CanvasPane streamId={streamId} />
 
-      <div className="fixed bottom-4 right-4 z-40 flex items-center gap-0.5 border border-border-default bg-surface-default p-2 shadow-lg backdrop-blur-md transition-all">
+      <div className="fixed bottom-2 right-2 z-40 flex items-center gap-0.5 border border-border-default bg-surface-default p-2 shadow-lg backdrop-blur-md transition-all">
         <Menu as="div" className="relative">
           <MenuButton
             className="inline-flex h-8 items-center gap-2 px-2 text-text-default transition-all hover:bg-surface-hover focus:"

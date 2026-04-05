@@ -553,7 +553,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         )}
         {/* Editor area */}
         <div
-          className="flex-1 overflow-y-auto overscroll-contain px-3 pt-2 pb-20"
+          className="flex-1 overflow-y-auto overscroll-contain px-2 pt-2 pb-20"
           onMouseDown={handleEditorAreaMouseDown}
         >
           {canvas ? (

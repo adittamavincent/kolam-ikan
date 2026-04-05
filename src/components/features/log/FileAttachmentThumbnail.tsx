@@ -231,7 +231,7 @@ export function FileAttachmentThumbnail({
               <div className="bg-rose-600 p-1 text-white">
                 <X className="h-4 w-4" />
               </div>
-              <div className="text-[10px] font-semibold text-rose-600">
+              <div className="text-rose-600">
                 Failed
               </div>
             </div>
@@ -240,12 +240,12 @@ export function FileAttachmentThumbnail({
               {typeof progressPercent === "number" ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin text-action-primary-bg" />
-                  <div className="text-[10px] font-semibold text-text-default">
+                  <div className="text-text-default">
                     {progressPercent}%
                   </div>
                 </>
               ) : (
-                <div className="text-[10px] font-medium text-text-default">
+                <div className="text-text-default">
                   {showQueued ? "Queued" : "Processing"}
                 </div>
               )}
@@ -258,7 +258,7 @@ export function FileAttachmentThumbnail({
 
       {(importStatus === "completed" || importStatus === "done") && (
         <div className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center border border-emerald-400/60 bg-emerald-500/95 text-white">
-          <Check className="h-3.5 w-3.5" />
+          <Check className="h-4 w-4" />
         </div>
       )}
     </div>

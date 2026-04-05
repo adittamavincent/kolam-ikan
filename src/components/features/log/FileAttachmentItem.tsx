@@ -1,4 +1,6 @@
 import { Eye, FileText, Download, ExternalLink, X } from "lucide-react";
+import type { Persona } from "@/lib/types";
+import { PersonaSurface } from "@/components/shared/PersonaSurface";
 import { FileAttachmentThumbnail } from "./FileAttachmentThumbnail";
 
 export interface FileAttachmentViewProps {
@@ -17,6 +19,7 @@ export interface FileAttachmentViewProps {
   
   // Conditional UI features
   variant: "creator" | "log";
+  persona?: Persona | null;
   
   // Interactivity (for creator mode)
   previewUrl?: string | null;
@@ -96,7 +99,7 @@ function FileAttachmentActions({
           aria-label={`Preview ${title}`}
           title={onPreviewFile ? "Open file preview" : "File preview unavailable"}
         >
-          <Eye className="h-3.5 w-3.5" />
+          <Eye className="h-4 w-4" />
         </button>
       )}
       
@@ -118,7 +121,7 @@ function FileAttachmentActions({
                 : "Parsed content not ready"
           }
         >
-          <FileText className="h-3.5 w-3.5" />
+          <FileText className="h-4 w-4" />
         </button>
       )}
       
@@ -133,9 +136,9 @@ function FileAttachmentActions({
           title="Open in new tab"
         >
           {displayMode === "download" ? (
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-4 w-4" />
           ) : (
-            <ExternalLink className="h-3.5 w-3.5" />
+            <ExternalLink className="h-4 w-4" />
           )}
         </a>
       )}
@@ -153,7 +156,7 @@ function FileAttachmentActions({
           className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
           aria-label={`Remove ${title}`}
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
       )}
     </div>
@@ -173,6 +176,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
     progressPercent = 0,
     progressMessage,
     variant,
+    persona,
     previewUrl,
     isProcessing,
     canOpenParsed,
@@ -192,9 +196,10 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
 
   if (variant === "log") {
     return (
-      <div
+      <PersonaSurface
+        persona={persona}
+        tone="body"
         className="group/log-pdf relative h-40 w-28 overflow-hidden border border-border-default bg-surface-elevated transition-colors hover:border-border-strong"
-        title={annotationText || subtitle || title}
       >
         <FileAttachmentThumbnail
           url={previewUrl}
@@ -223,7 +228,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
             className="absolute left-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center border border-border-default bg-surface-default/95 text-text-muted opacity-0 transition-all duration-150 hover:text-text-default group-hover/log-pdf:opacity-100"
             aria-label={`Remove ${title}`}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-4 w-4" />
           </button>
         )}
 
@@ -235,11 +240,11 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               onPreviewFile?.();
             }}
             disabled={!onPreviewFile}
-            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
             aria-label={`Preview ${title}`}
             title={onPreviewFile ? "Open original file preview" : "File preview unavailable"}
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
             <span>Original</span>
           </button>
 
@@ -250,7 +255,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               if (canOpenParsed && onPreviewParsed) onPreviewParsed();
             }}
             disabled={!canOpenParsed || !onPreviewParsed}
-            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
             aria-label={`Open parsed Docling for ${title}`}
             title={
               !onPreviewParsed
@@ -260,21 +265,21 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
                   : "Parsed content not ready"
             }
           >
-            <FileText className="h-3.5 w-3.5" />
+            <FileText className="h-4 w-4" />
             <span>Parsed</span>
           </button>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 z-1 truncate bg-surface-default/85 px-2 py-1 text-[10px] font-medium text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+        <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 z-1 truncate bg-surface-default/85 px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
           {title}
         </div>
 
         {overlaySubtitle && (
-          <div className="pointer-events-none absolute inset-x-1.5 bottom-8 z-1 line-clamp-2 bg-surface-default/85 px-2 py-1 text-[10px] text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+          <div className="pointer-events-none absolute inset-x-1.5 bottom-8 z-1 line-clamp-2 bg-surface-default/85 px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
             {overlaySubtitle}
           </div>
         )}
-      </div>
+      </PersonaSurface>
     );
   }
 
@@ -308,23 +313,23 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <div className="text-xs font-medium text-text-default">
+              <div className="text-text-default">
                 {title}
               </div>
             </div>
             <div className="flex flex-col gap-0.5">
               {subtitle && (
-                <div className="text-[11px] text-text-muted">
+                <div className="text-text-muted">
                   {subtitle}
                 </div>
               )}
               {isProcessing && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-medium text-action-primary-bg">
+                  <span className="text-action-primary-bg">
                     {progressPercent}%
                   </span>
                   {progressMessage && (
-                    <span className="truncate text-[10px] text-text-subtle">
+                    <span className="truncate text-text-subtle">
                       {progressMessage}
                     </span>
                   )}

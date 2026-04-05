@@ -6,12 +6,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
+import { useCanvasDiff } from "@/lib/hooks/useCanvasDiff";
 import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
 import type { CanvasVersion } from "@/lib/types";
 import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
-import { contentToDiffText, lineDiff } from "@/lib/utils/canvasPreview";
-import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
-import { CircleDot, GitCommitHorizontal, GitCompare, Loader2, X } from "lucide-react";
+import { CanvasCompareModal } from "@/components/shared/CanvasCompareModal";
+import { CircleDot, GitCommitHorizontal, GitCompare, Loader2 } from "lucide-react";
 import {
   buildStoredContentPayload,
   storedContentToMarkdown,
@@ -118,14 +118,12 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     currentContent,
   ]);
 
-  const diffs = useMemo(() => {
-    const oldText = contentToDiffText(baselineContent, baselineMarkdown);
-    const newText = contentToDiffText(currentContent, currentMarkdown);
-    return lineDiff(oldText, newText);
-  }, [baselineContent, baselineMarkdown, currentContent, currentMarkdown]);
-
-  const additions = diffs.filter((d) => d.type === "add").length;
-  const deletions = diffs.filter((d) => d.type === "del").length;
+  const { diffs, additions, deletions } = useCanvasDiff({
+    oldContent: baselineContent,
+    oldMarkdown: baselineMarkdown,
+    newContent: currentContent,
+    newMarkdown: currentMarkdown,
+  });
 
   // Clear the local committedBaseline override once the server's latest
   // snapshot matches the local committed content — avoids stale override.
@@ -189,17 +187,17 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   if (!hasDraftDiff) return null;
 
   return (
-    <div className="overflow-hidden border border-border-default bg-surface-subtle transition-colors">
+    <div className="overflow-hidden bg-surface-subtle transition-colors">
       {/* Header */}
-      <div className="flex items-center border-b border-border-subtle bg-surface-elevated px-2.5 py-2">
-        <div className="flex w-full items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="h-4 w-1 bg-action-primary-bg" aria-hidden="true" />
-            <CircleDot className="h-3 w-3 animate-pulse text-action-primary-bg" />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-action-primary-bg">
+      <div className="flex items-center bg-surface-elevated">
+        <div className="flex h-6 w-full items-center">
+          <div className="h-4 w-4"/>
+          <div className="flex items-center">
+            <CircleDot className="h-4 w-4 animate-pulse text-action-primary-bg" />
+            <span className="uppercase tracking-[0.14em] text-action-primary-bg">
               Canvas Draft
             </span>
-            <span className="text-[10px] text-text-muted">
+            <span className="text-text-muted">
               changes since {compareLabel.toLowerCase()}
             </span>
           </div>
@@ -207,21 +205,21 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       </div>
 
       {/* Body */}
-      <div className="px-2.5 py-2.5">
+      <div className="h-6">
         {isExpanded ? (
-          <div className="flex items-center gap-1.5">
+          <div className="flex h-full items-stretch">
             <button
               onClick={() => setIsCompareOpen(true)}
-              className="inline-flex items-center gap-1 border border-border-default bg-surface-default px-2 py-1 text-xs font-medium text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+              className="inline-flex h-full items-center text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
             >
-              <GitCompare className="h-3 w-3" />
+              <GitCompare className="h-4 w-4" />
               Compare
             </button>
             <input
               value={snapshotName}
               onChange={(e) => setSnapshotName(e.target.value)}
               placeholder="Snapshot name (optional)..."
-              className="flex-1 border border-border-default bg-surface-default px-2 py-1 text-xs text-text-default outline-none placeholder:text-text-muted focus:border-border-strong"
+              className="flex-1 bg-surface-default text-text-default outline-none placeholder:text-text-muted focus:border-border-strong"
               onKeyDown={(e) => {
                 if (e.key === "Enter") commitMutation.mutate();
                 if (e.key === "Escape") setIsExpanded(false);
@@ -231,90 +229,51 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
             <button
               onClick={() => commitMutation.mutate()}
               disabled={commitMutation.isPending}
-              className="inline-flex items-center gap-1 bg-action-primary-bg px-2.5 py-1 text-xs font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover disabled:opacity-50"
+              className="inline-flex h-full items-center text-action-primary-bg transition-colors hover:bg-surface-hover hover:text-action-primary-hover disabled:opacity-50"
             >
               {commitMutation.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <GitCommitHorizontal className="h-3 w-3" />
+                <GitCommitHorizontal className="h-4 w-4" />
               )}
               Commit
             </button>
             <button
               onClick={() => setIsExpanded(false)}
-              className="border border-border-default bg-surface-default px-2 py-1 text-xs font-medium text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+              className="inline-flex h-full items-center text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
             >
               Cancel
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5">
+          <div className="flex h-full items-stretch">
             <button
               onClick={() => setIsCompareOpen(true)}
-              className="inline-flex items-center gap-1.5 border border-border-default bg-surface-default px-2.5 py-1.5 text-[11px] font-semibold text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+              className="inline-flex h-full items-center text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
               title={`Compare against ${compareLabel.toLowerCase()}`}
             >
-              <GitCompare className="h-3 w-3" />
+              <GitCompare className="h-4 w-4" />
               Compare
             </button>
             <button
               onClick={() => setIsExpanded(true)}
-              className="inline-flex items-center gap-1.5 border border-action-primary-bg bg-surface-elevated px-2.5 py-1.5 text-[11px] font-semibold text-action-primary-bg transition-colors hover:bg-surface-hover hover:text-action-primary-hover"
+              className="inline-flex h-full items-center text-action-primary-bg transition-colors hover:bg-surface-hover hover:text-action-primary-hover"
             >
-              <GitCommitHorizontal className="h-3 w-3" />
+              <GitCommitHorizontal className="h-4 w-4" />
               Commit Snapshot
             </button>
           </div>
         )}
       </div>
 
-      {isCompareOpen && (
-        <div
-          className="fixed inset-0 z-200 flex items-center justify-center bg-surface-dark p-4"
-          onClick={() => setIsCompareOpen(false)}
-        >
-          <div
-            className="relative flex max-h-[80vh] w-full max-w-3xl flex-col border border-border-default bg-surface-default"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-center justify-between border-b border-border-default px-4 py-3">
-              <div className="flex items-center gap-2">
-                <GitCompare className="h-4 w-4 text-text-muted" />
-                <span className="text-sm font-semibold text-text-default">
-                  Compare {compareLabel} vs Current Draft
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-diff-add-text">
-                  +{additions}
-                </span>
-                <span className="text-[11px] font-mono text-diff-del-text">
-                  -{deletions}
-                </span>
-                <button
-                  onClick={() => setIsCompareOpen(false)}
-                  className="p-1 text-text-muted hover:bg-surface-subtle"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto font-mono text-[11px]">
-              <CanvasDiffLines lines={diffs} />
-            </div>
-
-            <div className="flex items-center justify-end border-t border-border-default px-4 py-3">
-              <button
-                onClick={() => setIsCompareOpen(false)}
-                className="border border-border-default px-3 py-1.5 text-xs font-medium text-text-subtle hover:bg-surface-subtle"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CanvasCompareModal
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        title={`Compare ${compareLabel} vs Current Draft`}
+        diffs={diffs}
+        additions={additions}
+        deletions={deletions}
+      />
     </div>
   );
 }

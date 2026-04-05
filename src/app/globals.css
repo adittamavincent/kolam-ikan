@@ -13,7 +13,7 @@
   --text-normal: var(--text-default);
   --text-faint: var(--text-muted);
   --caret-color: var(--action-primary-bg);
-  --text-selection: #375698;
+  --text-selection: #264f78;
 
   /* -------------------------------------------------------------------------- */
   /*  PRIMITIVES (Brand & Base Colors)                                         */
@@ -88,104 +88,104 @@
 :root {
   color-scheme: dark;
 
-  /* Base - One Dark */
-  --background: #21252b;
-  --foreground: #abb2bf;
+  /* Base - Kolam dark */
+  --background: #181818;
+  --foreground: #cccccc;
 
   /* Surfaces */
-  --bg-surface-default: #21252b;
-  --bg-surface-subtle: #282c34;
-  --bg-surface-elevated: #2c313a;
-  --bg-surface-hover: #323844;
-  --bg-surface-dark: #1b1f24;
-  --bg-surface-overlay: #1b1f24;
+  --bg-surface-default: #181818;
+  --bg-surface-subtle: #1f1f1f;
+  --bg-surface-elevated: #252526;
+  --bg-surface-hover: #2a2d2e;
+  --bg-surface-dark: #111111;
+  --bg-surface-overlay: #202020;
 
   /* Text */
-  --text-default: #abb2bf;
-  --text-subtle: #a0a7b4;
-  --text-muted: #5c6370;
+  --text-default: #cccccc;
+  --text-subtle: #c5c5c5;
+  --text-muted: #8b949e;
   --text-inverse: #ffffff;
 
   /* Borders */
-  --border-default: #333841;
-  --border-subtle: #2d3137;
-  --border-strong: #464c55;
+  --border-default: #2b2b2b;
+  --border-subtle: #232323;
+  --border-strong: #3c3c3c;
 
   /* Action */
-  --action-primary-bg: #568af2;
-  --action-primary-hover: #6494ed;
-  --action-primary-text: #eef3ff;
-  --action-primary-disabled: #4269b9;
+  --action-primary-bg: #0e639c;
+  --action-primary-hover: #1177bb;
+  --action-primary-text: #ffffff;
+  --action-primary-disabled: #245b7a;
 
-  --action-secondary-bg: #3d424b;
-  --action-secondary-hover: #414855;
-  --action-secondary-text: #a0a7b4;
-  --action-secondary-border: #464c55;
+  --action-secondary-bg: #252526;
+  --action-secondary-hover: #2a2d2e;
+  --action-secondary-text: #cccccc;
+  --action-secondary-border: #3c3c3c;
 
   /* Status */
-  --status-error-bg: #4d232e;
-  --status-error-border: #692746;
-  --status-error-text: #e06c75;
-  --status-success-bg: #2b4242;
-  --status-success-text: #98c379;
+  --status-error-bg: #5a1d1d;
+  --status-error-border: #7a2d2d;
+  --status-error-text: #f48771;
+  --status-success-bg: #19362b;
+  --status-success-text: #89d185;
 
   /* Git / Diff */
-  --diff-add-bg: #173a2f;
-  --diff-add-subtle: #1f4a3d;
-  --diff-add-text: #6fd3a8;
-  --diff-add-accent: #baf3dc;
-  --diff-del-bg: #4a2029;
-  --diff-del-subtle: #5c2933;
-  --diff-del-text: #f08b9d;
-  --diff-del-accent: #ffd0d8;
+  --diff-add-bg: #1b3a2f;
+  --diff-add-subtle: #224536;
+  --diff-add-text: #89d185;
+  --diff-add-accent: #73c991;
+  --diff-del-bg: #4b1818;
+  --diff-del-subtle: #5e2323;
+  --diff-del-text: #f48771;
+  --diff-del-accent: #f14c4c;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Keep One Dark tokens for all system appearances */
-    --background: #21252b;
-    --foreground: #abb2bf;
+    /* Keep Kolam dark tokens for all system appearances */
+    --background: #181818;
+    --foreground: #cccccc;
 
-    --bg-surface-default: #21252b;
-    --bg-surface-subtle: #282c34;
-    --bg-surface-elevated: #2c313a;
-    --bg-surface-hover: #323844;
-    --bg-surface-dark: #1b1f24;
-    --bg-surface-overlay: #1b1f24;
+    --bg-surface-default: #181818;
+    --bg-surface-subtle: #1f1f1f;
+    --bg-surface-elevated: #252526;
+    --bg-surface-hover: #2a2d2e;
+    --bg-surface-dark: #111111;
+    --bg-surface-overlay: #202020;
 
-    --text-default: #abb2bf;
-    --text-subtle: #a0a7b4;
-    --text-muted: #5c6370;
+    --text-default: #cccccc;
+    --text-subtle: #c5c5c5;
+    --text-muted: #8b949e;
     --text-inverse: #ffffff;
 
-    --border-default: #333841;
-    --border-subtle: #2d3137;
-    --border-strong: #464c55;
+    --border-default: #2b2b2b;
+    --border-subtle: #232323;
+    --border-strong: #3c3c3c;
 
-    --action-primary-bg: #568af2;
-    --action-primary-hover: #6494ed;
-    --action-primary-text: #eef3ff;
-    --action-primary-disabled: #4269b9;
+    --action-primary-bg: #0e639c;
+    --action-primary-hover: #1177bb;
+    --action-primary-text: #ffffff;
+    --action-primary-disabled: #245b7a;
 
-    --action-secondary-bg: #3d424b;
-    --action-secondary-hover: #414855;
-    --action-secondary-text: #a0a7b4;
-    --action-secondary-border: #464c55;
+    --action-secondary-bg: #252526;
+    --action-secondary-hover: #2a2d2e;
+    --action-secondary-text: #cccccc;
+    --action-secondary-border: #3c3c3c;
 
-    --status-error-bg: #4d232e;
-    --status-error-border: #692746;
-    --status-error-text: #e06c75;
-    --status-success-bg: #2b4242;
-    --status-success-text: #98c379;
+    --status-error-bg: #5a1d1d;
+    --status-error-border: #7a2d2d;
+    --status-error-text: #f48771;
+    --status-success-bg: #19362b;
+    --status-success-text: #89d185;
 
-    --diff-add-bg: #173a2f;
-    --diff-add-subtle: #1f4a3d;
-    --diff-add-text: #6fd3a8;
-    --diff-add-accent: #baf3dc;
-    --diff-del-bg: #4a2029;
-    --diff-del-subtle: #5c2933;
-    --diff-del-text: #f08b9d;
-    --diff-del-accent: #ffd0d8;
+    --diff-add-bg: #1b3a2f;
+    --diff-add-subtle: #224536;
+    --diff-add-text: #89d185;
+    --diff-add-accent: #73c991;
+    --diff-del-bg: #4b1818;
+    --diff-del-subtle: #5e2323;
+    --diff-del-text: #f48771;
+    --diff-del-accent: #f14c4c;
   }
 }
 
@@ -298,38 +298,38 @@ body {
 }
 
 .kolam-search-hit {
-  background: color-mix(in srgb, #d19a66 28%, transparent);
-  color: #e5c07b;
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, #d19a66 55%, transparent);
+  background: color-mix(in srgb, #d7ba7d 24%, transparent);
+  color: #d7ba7d;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, #d7ba7d 58%, transparent);
 }
 
 .kolam-search-hit-active {
-  background: color-mix(in srgb, #56b6c2 62%, transparent);
-  color: #f4feff;
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, #56b6c2 90%, transparent);
+  background: color-mix(in srgb, #4fc1ff 44%, transparent);
+  color: #f5fbff;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, #4fc1ff 88%, transparent);
 }
 
 .kolam-hover-target {
-  background: color-mix(in srgb, #d19a66 24%, transparent);
+  background: color-mix(in srgb, #d7ba7d 20%, transparent);
   border-radius: 0.3rem;
   box-shadow:
-    inset 0 -1px 0 color-mix(in srgb, #d19a66 65%, transparent),
-    0 0 0 1px color-mix(in srgb, #d19a66 16%, transparent);
+    inset 0 -1px 0 color-mix(in srgb, #d7ba7d 60%, transparent),
+    0 0 0 1px color-mix(in srgb, #d7ba7d 16%, transparent);
 }
 
 .kolam-transient-target {
   animation: kolam-flash-target-line 1.6s cubic-bezier(0.22, 1, 0.36, 1);
-  background: color-mix(in srgb, #56b6c2 42%, transparent);
+  background: color-mix(in srgb, #4fc1ff 34%, transparent);
   border-radius: 0.3rem;
   box-shadow:
-    inset 0 -1px 0 color-mix(in srgb, #56b6c2 90%, transparent),
-    0 0 0 1px color-mix(in srgb, #56b6c2 24%, transparent);
+    inset 0 -1px 0 color-mix(in srgb, #4fc1ff 88%, transparent),
+    0 0 0 1px color-mix(in srgb, #4fc1ff 22%, transparent);
 }
 
 @keyframes kolam-flash-target-line {
   0% {
-    background: color-mix(in srgb, #56b6c2 52%, transparent);
-    box-shadow: inset 3px 0 0 color-mix(in srgb, #56b6c2 88%, transparent);
+    background: color-mix(in srgb, #4fc1ff 46%, transparent);
+    box-shadow: inset 3px 0 0 color-mix(in srgb, #4fc1ff 84%, transparent);
   }
   100% {
     background: transparent;
@@ -338,8 +338,8 @@ body {
 }
 
 ::selection {
-  background: #323844;
-  color: #d7dae0;
+  background: #264f78;
+  color: #f6fbff;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -422,58 +422,86 @@ body {
   padding: 0 !important;
 }
 
-.entry-creator {
-  --entry-local-hover: #2a3a4d;
-  --entry-topbar-bg: #2b3340;
-  --entry-topbar-border: #374860;
-  --entry-topbar-button-bg: #272e39;
-  --entry-topbar-button-hover: #2e3949;
-  --entry-topbar-button-border: #445874;
-  --entry-topbar-button-text: #d6e6ff;
-  --entry-topbar-icon: #88baf5;
-  --entry-section-header-bg: #232b3a;
-  --entry-section-header-border: #363f4e;
-  --entry-section-label-bg: #282e38;
-  --entry-section-label-border: #414e62;
-  --entry-section-label-text: #9caeca;
-  --entry-section-label-index: #edf4ff;
-  --entry-section-label-divider: #56657c;
-  --entry-icon-color: #89a2c6;
-  --entry-icon-hover: #dceaff;
-  --entry-icon-hover-bg: #2d3643;
-  --entry-icon-danger: #f0b8ad;
-  --entry-icon-danger-border: #634543;
-  --entry-badge-bg: #2b3340;
-  --entry-badge-border: #405068;
-  --entry-badge-text: #cbdcff;
-  --entry-local-text: #8acbf2;
-  --entry-footer-bg: #2f3a4c;
-  --entry-footer-border: #34445a;
-  --entry-shortcut-bg: #1c212a;
-  --entry-shortcut-border: #3a4455;
-  --entry-branch-bg: #283344;
-  --entry-branch-border: #395170;
-  --entry-branch-text: #86c7ff;
-  --entry-warning-bg: #30302b;
-  --entry-warning-border: #524935;
-  --entry-warning-text: #e2c77a;
+.entry-creator,
+.log-pane {
+  --entry-local-hover: #1f2833;
+  --entry-topbar-bg: #1f1f1f;
+  --entry-topbar-border: #2b2b2b;
+  --entry-topbar-button-bg: #252526;
+  --entry-topbar-button-hover: #2a2d2e;
+  --entry-topbar-button-border: #3c3c3c;
+  --entry-topbar-button-text: #d4d4d4;
+  --entry-topbar-icon: #75beff;
+  --entry-section-header-bg: #1b1b1c;
+  --entry-section-header-border: #2b2b2b;
+  --entry-section-label-bg: #252526;
+  --entry-section-label-border: #3c3c3c;
+  --entry-section-label-text: #9cdcfe;
+  --entry-section-label-index: #f3f9ff;
+  --entry-section-label-divider: #4d4d4d;
+  --entry-icon-color: #9da5b4;
+  --entry-icon-hover: #ffffff;
+  --entry-icon-hover-bg: #2a2d2e;
+  --entry-icon-danger: #f48771;
+  --entry-icon-danger-border: #7a2d2d;
+  --entry-badge-bg: #1f2833;
+  --entry-badge-border: #0e639c;
+  --entry-badge-text: #9cdcfe;
+  --entry-local-text: #75beff;
+  --entry-footer-bg: #1f1f1f;
+  --entry-footer-border: #2b2b2b;
+  --entry-shortcut-bg: #111111;
+  --entry-shortcut-border: #3c3c3c;
+  --entry-branch-bg: #1f2833;
+  --entry-branch-border: #0e639c;
+  --entry-branch-text: #75beff;
+  --entry-warning-bg: #332b1f;
+  --entry-warning-border: #6b5a33;
+  --entry-warning-text: #d7ba7d;
+  --timeline-item-gap: 0;
+  --timeline-shell-entry: transparent;
+  --timeline-shell-draft: transparent;
+  --timeline-shell-snapshot: transparent;
+  --timeline-shell-merge: transparent;
+}
+
+.timeline-item {
+  margin: var(--timeline-item-gap);
+}
+
+.timeline-item--entry {
+  background: var(--timeline-shell-entry);
+}
+
+.timeline-item--draft {
+  background: var(--timeline-shell-draft);
+}
+
+.timeline-item--snapshot {
+  background: var(--timeline-shell-snapshot);
+}
+
+.timeline-item--merge {
+  background: var(--timeline-shell-merge);
 }
 
 .entry-creator__topbar {
   background: var(--entry-topbar-bg);
   border-color: var(--entry-topbar-border);
+  min-height: 24px;
 }
 
 .entry-creator__topbar-button {
   background: var(--entry-topbar-button-bg);
   border-color: var(--entry-topbar-button-border);
   color: var(--entry-topbar-button-text);
+  line-height: 1;
 }
 
 .entry-creator__topbar-button:hover {
   background: var(--entry-topbar-button-hover);
-  border-color: #56657c;
-  color: #f3f8ff;
+  border-color: #4d4d4d;
+  color: #ffffff;
 }
 
 .entry-creator__topbar-button .lucide {
@@ -481,55 +509,38 @@ body {
 }
 
 .entry-creator__topbar-button--icon {
-  background: #272e39;
+  background: #252526;
 }
 
 .entry-creator__section-header {
   background: var(--entry-section-header-bg);
   border-bottom-color: var(--entry-section-header-border);
-}
-
-.entry-creator__section-label {
-  background: var(--entry-section-label-bg);
-  border-color: var(--entry-section-label-border);
-  color: var(--entry-section-label-text);
-  min-height: calc(9px + 2px + 2px + 2px);
-  line-height: 1;
+  min-height: 24px;
 }
 
 .entry-creator__section-label-index {
   color: var(--entry-section-label-index);
 }
 
-.entry-creator__section-label-divider {
-  background: var(--entry-section-label-divider);
-}
-
 .entry-creator__icon-button {
   color: var(--entry-icon-color);
-  border: 1px solid var(--entry-section-header-border);
+  background: transparent;
 }
 
 .entry-creator__icon-button:hover {
   background: var(--entry-icon-hover-bg);
-  border-color: #56657c;
   color: var(--entry-icon-hover);
 }
 
 .entry-creator__icon-button--danger:hover {
-  background: #4d232e;
-  border-color: var(--entry-icon-danger-border);
+  background: #5a1d1d;
   color: var(--entry-icon-danger);
 }
 
 .entry-creator__footer {
   background: var(--entry-footer-bg);
   border-color: var(--entry-footer-border);
-}
-
-.entry-creator__shortcut {
-  background: var(--entry-shortcut-bg);
-  border-color: var(--entry-shortcut-border);
+  min-height: 24px;
 }
 
 .entry-creator__branch-pill {
@@ -550,9 +561,9 @@ body {
 }
 
 .persona-button-display__type-badge {
-  background: var(--entry-badge-bg, #2e477b);
-  border-color: var(--entry-badge-border, #568af2);
-  color: var(--entry-badge-text, #cbdcff);
+  background: var(--entry-badge-bg, #1f2833);
+  border-color: var(--entry-badge-border, #0e639c);
+  color: var(--entry-badge-text, #9cdcfe);
 }
 
 .persona-button-display__chevron {
@@ -679,7 +690,7 @@ body {
 }
 .am-root p { margin: 0 0 0.75rem 0; }
 .am-block { border-radius: 0; padding: 12px; margin: 0 0 0.75rem 0; }
-.am-code pre { background: #0b0f14; color: #e6edf3; padding: 12px; border-radius: 0; overflow: auto; }
+.am-code pre { background: #111111; color: #d4d4d4; padding: 12px; border-radius: 0; overflow: auto; }
 .am-table { border-collapse: collapse; width: 100%; margin-bottom: 0.75rem; }
 .am-table th, .am-table td { border: 1px solid var(--border-default); padding: 6px 8px; text-align: left; vertical-align: top; }
 .am-table thead th { background: #f6f9ff; border-bottom-width: 2px; }
@@ -699,7 +710,7 @@ body {
 }
 
 .kolam-codemirror-root .cm-editor {
-  background: var(--background-primary);
+  background: transparent;
   color: var(--text-normal);
   font-family: var(--font-text);
   min-height: 8rem;
@@ -717,16 +728,15 @@ body {
 }
 
 .entry-creator .kolam-codemirror-root .cm-editor {
-  background: var(--background-primary);
+  background: transparent;
   height: auto;
   min-height: 1.65em;
 }
 
-.entry-creator .kolam-codemirror-frame,
 .entry-creator .kolam-codemirror-root,
 .entry-creator .kolam-codemirror-root .cm-editor,
 .entry-creator .kolam-codemirror-root .cm-scroller {
-  background: var(--background-primary);
+  background: transparent;
   height: auto;
   min-height: 0;
 }

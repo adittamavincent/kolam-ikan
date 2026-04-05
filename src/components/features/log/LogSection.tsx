@@ -189,7 +189,6 @@ export function LogSection({
     section.section_type === "FILE_ATTACHMENT" && !hasAttachments && !canAddAttachments;
   const isAttachmentSection = section.section_type === "FILE_ATTACHMENT";
   const sectionLabel = isAttachmentSection ? "Attachment" : "Message";
-  const SectionIcon = isAttachmentSection ? Paperclip : FileText;
   const nestedConnector =
     totalSections === 1
       ? "single"
@@ -222,15 +221,13 @@ export function LogSection({
         />
       }
       leftHeader={
-        <div className="inline-flex items-center gap-1 bg-surface-default px-1 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-          <span className="text-text-default">S{sectionIndex + 1}</span>
-          <span className="h-px w-1.5 bg-border-strong" />
-          <SectionIcon className="h-3 w-3" />
+        <div className="inline-flex h-6 items-center leading-none uppercase">
+          <span>S{sectionIndex + 1}</span>
           <span>{sectionLabel}</span>
         </div>
       }
       rightHeader={
-        <span className="px-1 py-px text-[10px] text-text-muted">
+        <span className="leading-4 text-text-muted">
           {section.updated_at
             ? new Date(section.updated_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -244,7 +241,7 @@ export function LogSection({
       <div className="min-w-0 flex-1 space-y-0.5">
         {shouldShowEditorAboveAttachments && (
           <div
-            className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose prose-sm max-w-none dark:prose-invert`}
+            className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose max-w-none dark:prose-invert`}
           >
             <MarkdownEditor
               key={
@@ -259,6 +256,7 @@ export function LogSection({
                   : storedContentToMarkdown(section)
               }
               editable={editable}
+              persona={currentPersona}
               onChange={editable ? onContentChange : undefined}
               highlightTerm={editable ? undefined : highlightTerm}
             />
@@ -291,6 +289,7 @@ export function LogSection({
                 importStatus,
                 progressPercent:
                   attachment.document?.latestJob?.progress_percent ?? 0,
+                persona: currentPersona,
                 canOpenParsed,
                 onPreviewFile: onPreviewAttachment
                   ? () => onPreviewAttachment(attachment, "file")
@@ -343,18 +342,18 @@ export function LogSection({
         )}
 
         {showEmptyAttachmentsNotice && (
-          <div className="border border-dashed border-border-default bg-surface-default px-2 py-1.5 text-[11px] text-text-muted">
+          <div className="bg-surface-default px-2 py-1.5 text-text-muted">
             No file attachments in this section.
           </div>
         )}
 
         {shouldShowAttachmentNotes && (
           <div className="">
-            <div className="p-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+            <div className="p-1 uppercase tracking-[0.14em] text-text-muted">
               Attachment Notes
             </div>
             <div
-              className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose prose-sm max-w-none dark:prose-invert`}
+              className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose max-w-none dark:prose-invert`}
             >
               <MarkdownEditor
                 key={
@@ -369,6 +368,7 @@ export function LogSection({
                   editable ? currentEditedMarkdown : storedContentToMarkdown(section)
                 }
                 editable={editable}
+                persona={currentPersona}
                 onChange={editable ? onContentChange : undefined}
                 highlightTerm={editable ? undefined : highlightTerm}
               />

@@ -79,7 +79,7 @@ export function FileAttachmentPreviewDialog({
             <DialogPanel className="mx-auto flex max-h-[90vh] w-full max-w-4xl flex-col border border-border-default bg-surface-default transition-all">
           <div className="flex items-start justify-between gap-3 border-b border-border-default px-4 py-3">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-sm font-semibold text-text-default">
+              <DialogTitle className="truncate text-text-default">
                 {attachmentPreview?.title ?? parsedPreview?.title ?? "File Preview"}
               </DialogTitle>
               <div className="mt-2 flex items-center gap-1.5">
@@ -88,7 +88,7 @@ export function FileAttachmentPreviewDialog({
                   onClick={() => {
                     onActivePreviewTabChange("file");
                   }}
-                  className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                  className={`px-2 py-1 transition-colors ${
                     activePreviewTab === "file"
                       ? "bg-action-primary-bg text-white"
                       : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
@@ -110,7 +110,7 @@ export function FileAttachmentPreviewDialog({
                       );
                     }
                   }}
-                  className={`px-2 py-1 text-[11px] font-medium transition-colors ${
+                  className={`px-2 py-1 transition-colors ${
                     activePreviewTab === "parsed"
                       ? "bg-action-primary-bg text-white"
                       : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
@@ -140,7 +140,7 @@ export function FileAttachmentPreviewDialog({
                   title={`File preview for ${attachmentPreview.title}`}
                 />
               ) : (
-                <div className="border border-border-default bg-surface-subtle px-3 py-2 text-sm text-text-muted">
+                <div className="border border-border-default bg-surface-subtle px-3 py-2 text-text-muted">
                   Preview is not available for this attachment yet.
                 </div>
               ))}
@@ -148,14 +148,14 @@ export function FileAttachmentPreviewDialog({
             {activePreviewTab === "parsed" && (
               <>
                 {!isParsedReadyStatus(attachmentPreview?.importStatus) && (
-                  <div className="border border-border-subtle bg-amber-950 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+                  <div className="border border-border-subtle bg-amber-950 px-3 py-2 text-amber-700 dark:text-amber-400">
                     Parsed Docling output is not ready yet. Wait until import status is completed.
                   </div>
                 )}
 
                 {isParsedReadyStatus(attachmentPreview?.importStatus) &&
                   parsedPreviewLoading && (
-                    <div className="flex items-center gap-2 text-sm text-text-muted">
+                    <div className="flex items-center gap-2 text-text-muted">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading parsed content...
                     </div>
@@ -164,7 +164,7 @@ export function FileAttachmentPreviewDialog({
                 {isParsedReadyStatus(attachmentPreview?.importStatus) &&
                   !parsedPreviewLoading &&
                   parsedPreviewError && (
-                    <div className="border border-rose-800 bg-rose-950 px-3 py-2 text-sm text-rose-600">
+                    <div className="border border-rose-800 bg-rose-950 px-3 py-2 text-rose-600">
                       {parsedPreviewError}
                     </div>
                   )}
@@ -173,7 +173,7 @@ export function FileAttachmentPreviewDialog({
                   !parsedPreviewLoading &&
                   !parsedPreviewError &&
                   parsedPreview && (
-                    <pre className="whitespace-pre-wrap wrap-break-word border border-border-default bg-surface-subtle p-3 text-xs text-text-default">
+                    <pre className="whitespace-pre-wrap wrap-break-word border border-border-default bg-surface-subtle p-3 text-text-default">
                       {parsedPreview.markdown}
                     </pre>
                   )}

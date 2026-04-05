@@ -10,18 +10,14 @@ import {
   GitCompare,
   RotateCcw,
   Sparkles,
-  X,
 } from "lucide-react";
 import { useCanvas } from "@/lib/hooks/useCanvas";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import type { PartialBlock } from "@/lib/types/editor";
-import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
+import { useCanvasDiff } from "@/lib/hooks/useCanvasDiff";
+import { CanvasCompareModal } from "@/components/shared/CanvasCompareModal";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
-import {
-  CANVAS_PREVIEW_OPEN_EVENT,
-  contentToDiffText,
-  lineDiff,
-} from "@/lib/utils/canvasPreview";
+import { CANVAS_PREVIEW_OPEN_EVENT } from "@/lib/utils/canvasPreview";
 import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-protocol";
 
 interface CanvasSnapshotCardProps {
@@ -62,14 +58,12 @@ export function CanvasSnapshotCard({
   const snapshotContent = storedContentToBlocks(version);
   const snapshotMarkdown = storedContentToMarkdown(version);
 
-  const diffs = useMemo(() => {
-    const oldText = contentToDiffText(currentContent, currentMarkdown);
-    const newText = contentToDiffText(snapshotContent, snapshotMarkdown);
-    return lineDiff(oldText, newText);
-  }, [currentContent, currentMarkdown, snapshotContent, snapshotMarkdown]);
-
-  const additions = diffs.filter((d) => d.type === "add").length;
-  const deletions = diffs.filter((d) => d.type === "del").length;
+  const { diffs, additions, deletions } = useCanvasDiff({
+    oldContent: currentContent,
+    oldMarkdown: currentMarkdown,
+    newContent: snapshotContent,
+    newMarkdown: snapshotMarkdown,
+  });
 
   const handleOpenInCanvas = () => {
     if (typeof window === "undefined") return;
@@ -95,9 +89,7 @@ export function CanvasSnapshotCard({
         hideBody={isCollapsed}
         className="group"
         frameClassName={`overflow-hidden transition-colors ${
-          isCollapsed
-            ? "border-border-strong bg-surface-default"
-            : "border-border-default bg-surface-subtle"
+          isCollapsed ? "bg-surface-default" : "bg-surface-subtle"
         }`}
         headerClassName={`transition-colors ${
           isCollapsed
@@ -117,30 +109,25 @@ export function CanvasSnapshotCard({
                 onToggleCollapsed?.();
               }
             }}
-            className="flex h-8 items-center justify-between gap-2"
+            className="flex h-6 items-center justify-between"
           >
-            <div className="flex min-w-0 items-center gap-1.5">
+            <div className="flex min-w-0 items-center">
               <span
-                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center border ${
-                  isCollapsed
-                    ? "border-border-default bg-surface-default text-text-muted"
-                    : "border-action-primary-bg bg-surface-default text-action-primary-bg"
-                }`}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
                 aria-hidden="true"
               >
                 {isCollapsed ? (
-                  <ChevronRight className="h-3.5 w-3.5" />
+                  <ChevronRight className="h-4 w-4" />
                 ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
+                  <ChevronDown className="h-4 w-4" />
                 )}
               </span>
-              <span className="h-4 w-1 shrink-0 bg-border-strong" aria-hidden="true" />
-              <Camera className="h-3 w-3 shrink-0 text-text-subtle" />
-              <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-text-default">
+              <Camera className="h-4 w-4 shrink-0 text-text-subtle" />
+              <span className="truncate uppercase tracking-[0.14em] text-text-default">
                 Canvas Snapshot
               </span>
             </div>
-            <span className="shrink-0 font-mono text-[10px] font-medium text-text-subtle">
+            <span className="shrink-0 text-text-subtle">
               {new Date(version.created_at || "").toLocaleString(undefined, {
                 month: "short",
                 day: "numeric",
@@ -151,63 +138,63 @@ export function CanvasSnapshotCard({
           </div>
         }
       >
-        <div className="px-2.5 py-2.5">
-          <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               {isAIGenerated ? (
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <div className="persona-button-display__icon flex h-4 w-4 shrink-0 items-center justify-center border bg-action-primary-bg/10 text-action-primary-bg">
-                    <Sparkles className="h-2.5 w-2.5" />
+                <div className="flex min-w-0 items-center">
+                  <div className="persona-button-display__icon flex h-4 w-4 shrink-0 items-center justify-center bg-action-primary-bg/10 text-action-primary-bg">
+                    <Sparkles className="h-4 w-4" />
                   </div>
-                  <span className="truncate text-[10px] font-medium tracking-wider text-text-subtle uppercase">
+                  <span className="truncate tracking-wider text-text-subtle uppercase">
                     {snapshotTitle}
                   </span>
-                  <span className="persona-button-display__type-badge shrink-0 px-1 py-px text-[9px] font-semibold uppercase tracking-[0.12em]">
+                  <span className="persona-button-display__type-badge shrink-0 px-1 py-px uppercase tracking-[0.12em]">
                     AI
                   </span>
                 </div>
               ) : (
-                <div className="truncate text-xs font-medium text-text-default">
+                <div className="truncate text-text-default">
                   {snapshotTitle}
                 </div>
               )}
               {version.summary && (
-                <div className="mt-0.5 line-clamp-2 text-[10px] text-text-muted">
+                <div className="mt-0.5 line-clamp-2 text-text-muted">
                   {version.summary}
                 </div>
               )}
             </div>
             <div className="ml-2 shrink-0">
               {showConfirm ? (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center">
                   <button
                     onClick={handleOpenInCanvas}
-                    className="bg-action-primary-bg px-2 py-0.5 text-[10px] font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover"
+                    className="bg-action-primary-bg px-2 py-0.5 text-action-primary-text transition-colors hover:bg-action-primary-hover"
                   >
                     Open
                   </button>
                   <button
                     onClick={() => setShowConfirm(false)}
-                    className="border border-border-default bg-surface-default px-2 py-0.5 text-[10px] font-semibold text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
+                    className="bg-surface-default px-2 py-0.5 text-text-subtle transition-colors hover:bg-surface-hover hover:text-text-default"
                   >
                     Cancel
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center">
                   <button
                     onClick={() => setIsCompareOpen(true)}
-                    className="border border-border-subtle p-1 text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
+                    className="p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
                     title="Compare with current canvas draft"
                   >
-                    <GitCompare className="h-3 w-3" />
+                    <GitCompare className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setShowConfirm(true)}
-                    className="border border-border-subtle p-1 text-text-muted transition-colors hover:border-border-default hover:bg-surface-hover hover:text-text-default"
+                    className="p-1 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default"
                     title="Open this snapshot in canvas preview"
                   >
-                    <RotateCcw className="h-3 w-3" />
+                    <RotateCcw className="h-4 w-4" />
                   </button>
                 </div>
               )}
@@ -216,60 +203,19 @@ export function CanvasSnapshotCard({
         </div>
       </ThreadFrame>
 
-      {isCompareOpen && (
-        <div
-          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
-          onClick={() => setIsCompareOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-3xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
-              <div className="flex items-center gap-2">
-                <GitCompare className="h-4 w-4 text-text-muted" />
-                <span className="text-sm font-semibold text-text-default">
-                  Compare Snapshot vs Current Draft
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[11px] font-mono text-diff-add-text">
-                  +{additions}
-                </span>
-                <span className="text-[11px] font-mono text-diff-del-text">
-                  -{deletions}
-                </span>
-                <button
-                  onClick={() => setIsCompareOpen(false)}
-                  className="p-1 text-text-muted hover:bg-surface-subtle"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="overflow-y-auto flex-1 font-mono text-[11px]">
-              <CanvasDiffLines lines={diffs} />
-            </div>
-
-            <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border-default">
-              <button
-                onClick={() => setIsCompareOpen(false)}
-                className="border border-border-default px-3 py-1.5 text-xs font-medium text-text-subtle hover:bg-surface-subtle"
-              >
-                Close
-              </button>
-              <button
-                onClick={handleOpenInCanvas}
-                className="inline-flex items-center gap-1.5 bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text hover:bg-action-primary-hover"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Open in Canvas
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CanvasCompareModal
+        isOpen={isCompareOpen}
+        onClose={() => setIsCompareOpen(false)}
+        title="Compare Snapshot vs Current Draft"
+        diffs={diffs}
+        additions={additions}
+        deletions={deletions}
+        primaryAction={{
+          label: "Open in Canvas",
+          onClick: handleOpenInCanvas,
+          icon: <Eye className="h-4 w-4" />,
+        }}
+      />
     </>
   );
 }

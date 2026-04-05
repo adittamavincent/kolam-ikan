@@ -2,10 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { EntryWithSections, CanvasVersion } from "@/lib/types";
-
-export type TimelineItem =
-  | { type: "entry"; data: EntryWithSections; created_at: string }
-  | { type: "canvas_snapshot"; data: CanvasVersion; created_at: string };
+import type { TimelineItem } from "@/lib/types/timeline";
 
 interface UseTimelineItemsOptions {
   sortOrder?: "newest" | "oldest";

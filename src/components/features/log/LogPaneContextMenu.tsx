@@ -146,8 +146,8 @@ export function LogPaneContextMenu({
           <ContextMenuActionButton onClick={() => onEntryAction("stash")}>
             {stashedEntryIds.has(contextMenu.entry.id) ? (
               <>
-                <EyeOff className="h-4 w-4 text-amber-500" />
-                <span className="text-amber-600 dark:text-amber-400">
+                <EyeOff className="h-4 w-4 text-status-warning-text" />
+                <span className="text-status-warning-text">
                   Unstash commit
                 </span>
               </>
@@ -163,7 +163,7 @@ export function LogPaneContextMenu({
 
           <ContextMenuSectionLabel>danger</ContextMenuSectionLabel>
           <ContextMenuActionButton onClick={() => onEntryAction("reset")}>
-            <RotateCcw className="h-4 w-4 text-amber-500" />
+            <RotateCcw className="h-4 w-4 text-status-warning-text" />
             Reset branch to this commit
           </ContextMenuActionButton>
           <ContextMenuActionButton danger onClick={() => onEntryAction("delete")}>

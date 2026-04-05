@@ -12,7 +12,11 @@ import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
-import { BRANCH_COLORS } from "@/lib/theme/colors";
+import {
+  BRANCH_COLORS,
+  CANVAS_SNAPSHOT_COLOR,
+  DEFAULT_BRANCH_COLOR,
+} from "@/lib/theme/colors";
 import {
   CommittedEntryStashItem,
   EntryCreatorStashItem,
@@ -729,7 +733,9 @@ export function CommitGraph({
         refs[0]?.color ??
         (refCommitId ? colorByCommitId.get(refCommitId) : undefined) ??
         workspaceBranchColor ??
-        (graphRow.nodeType === "canvas_snapshot" ? "#a855f7" : undefined) ??
+        (graphRow.nodeType === "canvas_snapshot"
+          ? CANVAS_SNAPSHOT_COLOR
+          : undefined) ??
         BRANCH_COLORS[lane % BRANCH_COLORS.length];
 
       nextNodes.push({
@@ -1374,7 +1380,7 @@ export function CommitGraph({
           {nodes.map((node) => {
             const refs = getNodeRefs(node);
             const isHovered = hoveredId === node.id;
-            const accent = refs[0]?.color ?? "#568af2";
+            const accent = refs[0]?.color ?? DEFAULT_BRANCH_COLOR;
             const isWorkspaceNode =
               node.nodeType === "draft" || node.nodeType === "stash";
             const branchLabel = node.workspaceBranchName;
@@ -1448,35 +1454,35 @@ export function CommitGraph({
                         )}
 
                         {node.tag && (
-                          <span className="inline-flex items-center gap-1 border border-amber-800 bg-amber-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">
+                          <span className="inline-flex items-center gap-1 border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-warning-text">
                             <TagIcon className="h-4 w-4" />
                             {node.tag}
                           </span>
                         )}
 
                         {node.nodeType === "canvas_snapshot" && (
-                          <span className="inline-flex items-center gap-1 border border-violet-800 bg-violet-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-violet-500">
+                          <span className="inline-flex items-center gap-1 border border-status-info-border bg-status-info-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-info-text">
                             <Camera className="h-4 w-4" />
                             canvas
                           </span>
                         )}
 
                         {node.nodeType === "draft" && (
-                          <span className="inline-flex items-center gap-1 border border-cyan-800 bg-cyan-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-cyan-300">
+                          <span className="inline-flex items-center gap-1 border border-status-info-border bg-status-info-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-info-text">
                             <PencilLine className="h-4 w-4" />
                             working tree
                           </span>
                         )}
 
                         {node.nodeType === "stash" && (
-                          <span className="inline-flex items-center gap-1 border border-amber-800 bg-amber-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-amber-300">
+                          <span className="inline-flex items-center gap-1 border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-warning-text">
                             <Archive className="h-4 w-4" />
                             {node.stashSource === "entry" ? "commit stash" : "draft stash"}
                           </span>
                         )}
 
                         {node.entryKind === "merge" && (
-                          <span className="inline-flex items-center gap-1 border border-emerald-800 bg-emerald-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-emerald-400">
+                          <span className="inline-flex items-center gap-1 border border-status-success-border bg-status-success-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-success-text">
                             <GitMerge className="h-4 w-4" />
                             merge
                           </span>

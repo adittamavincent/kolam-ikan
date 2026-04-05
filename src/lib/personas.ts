@@ -2,7 +2,7 @@ import { Persona } from "@/lib/types";
 import {
   normalizeHexColor,
   blendHexColors,
-  DARK_MODE,
+  LIGHT_SURFACE_BASES,
   PERSONA_TINT_ALPHA,
 } from "@/lib/theme/colors";
 
@@ -15,10 +15,10 @@ type PersonaColorSource = PersonaScope | { color: string } | string;
 export type PersonaTintTone = keyof typeof PERSONA_TINT_ALPHA;
 
 const PERSONA_TINT_BASE_SURFACES: Record<PersonaTintTone, string> = {
-  muted: DARK_MODE.surface.default,
-  body: DARK_MODE.surface.default,
-  header: DARK_MODE.surface.subtle,
-  interactive: DARK_MODE.surface.elevated,
+  muted: LIGHT_SURFACE_BASES.default,
+  body: LIGHT_SURFACE_BASES.default,
+  header: LIGHT_SURFACE_BASES.subtle,
+  interactive: LIGHT_SURFACE_BASES.elevated,
 };
 
 function trimPersonaType(value?: string | null): string {

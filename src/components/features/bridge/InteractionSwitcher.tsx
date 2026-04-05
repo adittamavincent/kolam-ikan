@@ -231,7 +231,7 @@ export function InteractionSwitcher({
       {/* Recommendations */}
       {overLimit && (
         <div className="flex flex-col gap-1.5">
-          <div className="border border-border-default bg-status-error-bg/20 px-2 py-1.5 text-[10px] font-medium text-status-error-text leading-tight">
+          <div className="border border-border-default bg-status-error-bg px-2 py-1.5 text-[10px] font-medium text-status-error-text leading-tight">
             Payload over limit. Reduce selection to proceed.
           </div>
           <div className="flex flex-col gap-1">

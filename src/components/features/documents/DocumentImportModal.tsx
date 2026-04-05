@@ -86,11 +86,11 @@ function formatEta(seconds: number | null | undefined) {
 }
 
 function getStatusTone(status: string) {
-  if (status === "queued") return "bg-amber-950 text-amber-600";
-  if (status === "completed") return "bg-emerald-950 text-emerald-600";
+  if (status === "queued") return "bg-status-warning-bg text-status-warning-text";
+  if (status === "completed") return "bg-status-success-bg text-status-success-text";
   if (status === "failed" || status === "canceled")
-    return "bg-rose-950 text-rose-600";
-  if (status === "processing") return "bg-amber-950 text-amber-600";
+    return "bg-status-error-bg text-status-error-text";
+  if (status === "processing") return "bg-status-warning-bg text-status-warning-text";
   return "bg-surface-subtle text-text-muted";
 }
 
@@ -799,14 +799,14 @@ export function DocumentImportModal({
             </div>
 
             {submitError && (
-              <div className="flex items-start gap-3 border border-rose-800 bg-rose-950 px-4 py-3 text-sm text-rose-600">
+              <div className="flex items-start gap-3 border border-status-error-border bg-status-error-bg px-4 py-3 text-sm text-status-error-text">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 {submitError}
               </div>
             )}
 
             {submitWarning && (
-              <div className="flex items-start gap-3 border border-border-subtle bg-amber-950 px-4 py-3 text-sm text-amber-600">
+              <div className="flex items-start gap-3 border border-status-warning-border bg-status-warning-bg px-4 py-3 text-sm text-status-warning-text">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 {submitWarning}
               </div>
@@ -910,7 +910,7 @@ export function DocumentImportModal({
                         className={`absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-surface-default focus: disabled:text-text-muted ${
                           isInUse && !isPending
                             ? "cursor-not-allowed text-text-muted"
-                            : "text-text-muted hover:bg-surface-hover hover:text-rose-600"
+                            : "text-text-muted hover:bg-surface-hover hover:text-status-error-text"
                         }`}
                       >
                         <svg
@@ -961,7 +961,7 @@ export function DocumentImportModal({
                               </span>
                             </div>
                             <div
-                              className={`mt-1 text-[11px] ${isInUse ? "text-amber-600" : "text-text-muted"}`}
+                              className={`mt-1 text-[11px] ${isInUse ? "text-status-warning-text" : "text-text-muted"}`}
                             >
                               {isInUse
                                 ? `Used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
@@ -1005,7 +1005,7 @@ export function DocumentImportModal({
                               onSelectDocument(document);
                               handleClose();
                             }}
-                            className="shrink-0 border border-border-default bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition-opacity hover:opacity-90"
+                            className="shrink-0 border border-border-default bg-action-primary-bg px-3 py-1.5 text-xs font-semibold text-action-primary-text transition-colors hover:bg-action-primary-hover"
                           >
                             Attach
                           </button>
@@ -1015,7 +1015,7 @@ export function DocumentImportModal({
                       <div className="flex-1 items-center gap-3">
                         {/* Error Message */}
                         {latestJob?.error_message && (
-                          <div className=" border border-rose-800 bg-rose-950 px-2.5 py-1.5 text-xs text-rose-600">
+                          <div className=" border border-status-error-border bg-status-error-bg px-2.5 py-1.5 text-xs text-status-error-text">
                             {latestJob.error_message}
                           </div>
                         )}

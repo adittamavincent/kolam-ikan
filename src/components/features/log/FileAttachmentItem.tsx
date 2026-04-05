@@ -167,7 +167,6 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
   const {
     title,
     subtitle,
-    annotationText,
     storagePath,
     thumbnailPath,
     thumbnailStatus,
@@ -213,7 +212,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           className="h-full w-full border-0"
         />
 
-        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-surface-default via-surface-default/90 to-surface-default/15 opacity-0 transition-opacity duration-150 group-hover/log-pdf:opacity-100" />
+        <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-surface-default via-surface-default to-surface-elevated opacity-0 transition-opacity duration-150 group-hover/log-pdf:opacity-100" />
 
         {onRemove && (
           <button
@@ -225,7 +224,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
             onTouchStart={(event) => event.stopPropagation()}
-            className="absolute left-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center border border-border-default bg-surface-default/95 text-text-muted opacity-0 transition-all duration-150 hover:text-text-default group-hover/log-pdf:opacity-100"
+            className="absolute left-1.5 top-1.5 z-10 inline-flex h-6 w-6 items-center justify-center border border-border-default bg-surface-default text-text-muted opacity-0 transition-all duration-150 hover:text-text-default group-hover/log-pdf:opacity-100"
             aria-label={`Remove ${title}`}
           >
             <X className="h-4 w-4" />
@@ -240,7 +239,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               onPreviewFile?.();
             }}
             disabled={!onPreviewFile}
-            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
             aria-label={`Preview ${title}`}
             title={onPreviewFile ? "Open original file preview" : "File preview unavailable"}
           >
@@ -255,7 +254,7 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
               if (canOpenParsed && onPreviewParsed) onPreviewParsed();
             }}
             disabled={!canOpenParsed || !onPreviewParsed}
-            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default/95 px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
+            className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
             aria-label={`Open parsed Docling for ${title}`}
             title={
               !onPreviewParsed
@@ -270,12 +269,12 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           </button>
         </div>
 
-        <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 z-1 truncate bg-surface-default/85 px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+        <div className="pointer-events-none absolute inset-x-1.5 bottom-1.5 z-1 truncate bg-surface-elevated px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
           {title}
         </div>
 
         {overlaySubtitle && (
-          <div className="pointer-events-none absolute inset-x-1.5 bottom-8 z-1 line-clamp-2 bg-surface-default/85 px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
+          <div className="pointer-events-none absolute inset-x-1.5 bottom-8 z-1 line-clamp-2 bg-surface-elevated px-2 py-1 text-text-default transition-opacity duration-150 group-hover/log-pdf:opacity-0">
             {overlaySubtitle}
           </div>
         )}

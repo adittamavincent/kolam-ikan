@@ -9,21 +9,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Kolam Ikan Brand Colors
         primary: {
-          50: "#eef3ff",
-          100: "#dae6ff",
-          200: "#b7cfff",
-          300: "#95b8ff",
-          400: "#7fa8ff",
-          500: "#568af2",
-          600: "#4d78cc",
-          700: "#4269b9",
-          800: "#375698",
-          900: "#2e477b",
-          950: "#243963",
+          100: "var(--color-primary-100)",
+          200: "var(--color-primary-200)",
+          400: "var(--color-primary-400)",
+          500: "var(--color-primary-500)",
+          700: "var(--color-primary-700)",
+          800: "var(--color-primary-800)",
+          900: "var(--color-primary-900)",
+          950: "var(--color-primary-950)",
         },
-        // Semantic Tokens
         background: "var(--background)",
         foreground: "var(--foreground)",
         surface: {
@@ -32,7 +27,16 @@ const config: Config = {
           elevated: "var(--bg-surface-elevated)",
           overlay: "var(--bg-surface-overlay)",
           hover: "var(--bg-surface-hover)",
-          dark: "var(--bg-surface-dark)",
+          emphasis: "var(--bg-surface-emphasis)",
+        },
+        accent: {
+          subtle: "var(--accent-surface-subtle)",
+          default: "var(--accent-border)",
+          muted: "var(--accent-text-muted)",
+          strong: "var(--accent-text)",
+        },
+        overlay: {
+          backdrop: "var(--overlay-backdrop)",
         },
         text: {
           default: "var(--text-default)",
@@ -67,7 +71,18 @@ const config: Config = {
           },
           success: {
             bg: "var(--status-success-bg)",
+            border: "var(--status-success-border)",
             text: "var(--status-success-text)",
+          },
+          warning: {
+            bg: "var(--status-warning-bg)",
+            border: "var(--status-warning-border)",
+            text: "var(--status-warning-text)",
+          },
+          info: {
+            bg: "var(--status-info-bg)",
+            border: "var(--status-info-border)",
+            text: "var(--status-info-text)",
           },
         },
         diff: {
@@ -88,6 +103,14 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains-mono)", "monospace"],
+      },
+      fontSize: {
+        sm: ["0.875rem", { lineHeight: "1.25rem" }],
+        base: ["1rem", { lineHeight: "1.5rem" }],
+        lg: ["1.125rem", { lineHeight: "1.75rem" }],
+      },
+      borderRadius: {
+        none: "0px",
       },
       animation: {
         "fade-in": "fadeIn 0.2s ease-in-out",

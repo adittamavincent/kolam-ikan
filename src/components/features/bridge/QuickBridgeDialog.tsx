@@ -669,7 +669,7 @@ export function QuickBridgeDialog({
 
           {phase === "accepting" && (
             <div className="flex h-full flex-col gap-5 overflow-hidden">
-              <section className="border border-status-success-bg bg-status-success-bg/40 p-4">
+              <section className="border border-status-success-border bg-status-success-bg p-4">
                 <div className="flex items-start gap-4">
                   <CheckCircle2 className="mt-1 h-5 w-5 text-status-success-text" />
                   <div className="flex-1 space-y-1">

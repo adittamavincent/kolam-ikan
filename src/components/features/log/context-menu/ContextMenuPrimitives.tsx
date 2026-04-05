@@ -21,7 +21,7 @@ export const CONTEXT_MENU_ACTION_CLASS =
   "flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle";
 export const CONTEXT_MENU_ACTION_ICON_CLASS = "h-3.5 w-3.5 text-text-muted";
 export const CONTEXT_MENU_DANGER_ACTION_CLASS =
-  "flex w-full items-center gap-2 px-2 py-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950";
+  "flex w-full items-center gap-2 px-2 py-1.5 text-status-error-text hover:bg-status-error-bg";
 export const CONTEXT_MENU_DISABLED_ACTION_CLASS =
   "disabled:cursor-not-allowed disabled:text-text-muted";
 

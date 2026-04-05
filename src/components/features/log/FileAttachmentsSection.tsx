@@ -65,7 +65,7 @@ export function FileAttachmentsSection({
       />
 
       <div
-        className={`rounded-sm border transition-colors ${
+        className={`rounded-none border transition-colors ${
           canUpload
             ? isDragOver
               ? "border-[color:var(--entry-accent-border)] bg-[color:var(--entry-accent-surface)]"

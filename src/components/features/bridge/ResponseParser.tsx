@@ -1938,7 +1938,7 @@ export const ResponseParser = forwardRef<
                   Log Pane (New Entry)
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  <div className="section-editor-surface markdown-editor-readonly prose prose-sm max-w-none dark:prose-invert min-h-full">
+                  <div className="section-editor-surface markdown-editor-readonly prose prose-sm max-w-none min-h-full">
                     <MarkdownEditor
                       key={`bridge-log-${lastParsedContent ?? "empty"}`}
                       initialMarkdown={thoughtLog}
@@ -1957,7 +1957,7 @@ export const ResponseParser = forwardRef<
                   Canvas Pane (Proposed Merged Content)
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                  <div className="section-editor-surface markdown-editor-readonly prose prose-sm max-w-none dark:prose-invert min-h-full">
+                  <div className="section-editor-surface markdown-editor-readonly prose prose-sm max-w-none min-h-full">
                     <MarkdownEditor
                       key={`bridge-canvas-${lastParsedContent ?? "empty"}-${canvasApplyMode}`}
                       initialMarkdown={displayCanvasMarkdown}

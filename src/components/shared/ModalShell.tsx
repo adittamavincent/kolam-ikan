@@ -139,7 +139,7 @@ export function ModalShell({
         >
           <div
             className={joinClassNames(
-              "fixed inset-0 bg-surface-dark backdrop-blur-sm",
+              "fixed inset-0 bg-overlay-backdrop",
               backdropClassName,
             )}
           />

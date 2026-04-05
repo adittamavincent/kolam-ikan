@@ -1339,7 +1339,7 @@ export function EntryCreator({
               </MenuItem>
             ))}
             {localPersonas.length > 0 && (
-              <div className="mt-1 px-2 py-1 text-amber-700 dark:text-amber-400">
+              <div className="mt-1 px-2 py-1 text-status-warning-text">
                 Local To This Stream
               </div>
             )}
@@ -2799,7 +2799,7 @@ export function EntryCreator({
                 disabled={isCommitDisabled}
                 className={`inline-flex h-full w-32 items-center justify-center leading-4 transition-colors ${
                   !isCommitDisabled
-                    ? "bg-action-primary-bg text-white hover:bg-action-primary-hover"
+                    ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
                     : "bg-surface-subtle text-text-muted cursor-not-allowed"
                 }`}
               >
@@ -2818,7 +2818,7 @@ export function EntryCreator({
         >
           <div className="fixed inset-0 bg-surface-overlay" />
           <div className="fixed inset-0">
-            <DialogPanel className="entry-creator-fullscreen flex h-full w-full flex-col overflow-hidden bg-surface-dark text-text-default">
+            <DialogPanel className="entry-creator-fullscreen flex h-full w-full flex-col overflow-hidden bg-surface-default text-text-default">
               <div className="entry-creator-fullscreen__chrome flex items-center px-3 pt-2">
                 <div className="entry-creator-fullscreen__tabs scrollbar-hide flex min-w-0 flex-1 items-end overflow-x-auto">
                   {fullscreenPersonaSections.map((section) => {

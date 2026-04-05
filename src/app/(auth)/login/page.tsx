@@ -479,7 +479,7 @@ function LoginForm() {
         {/* Branding */}
         <div className="text-center">
           <div className="mx-auto flex h-16 w-16 items-center justify-center bg-action-primary-bg">
-            <span className="text-3xl font-bold text-white">K</span>
+            <span className="text-3xl font-bold text-action-primary-text">K</span>
           </div>
           <h2 className="mt-6 text-3xl font-extrabold tracking-tight text-text-default">
             Kolam Ikan
@@ -625,7 +625,7 @@ function LoginForm() {
                   {mode === "signin" && (
                     <Link
                       href="/forgot-password"
-                      className="text-xs font-semibold text-action-primary-bg hover:text-primary-400"
+                      className="text-xs font-semibold text-action-primary-bg hover:text-accent-strong"
                     >
                       Forgot password?
                     </Link>
@@ -794,7 +794,7 @@ function LoginForm() {
                   Don&apos;t have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-primary-bg hover:text-primary-400"
+                    className="font-bold text-action-primary-bg hover:text-accent-strong"
                   >
                     Sign up
                   </button>
@@ -804,7 +804,7 @@ function LoginForm() {
                   Already have an account?{" "}
                   <button
                     onClick={toggleMode}
-                    className="font-bold text-action-primary-bg hover:text-primary-400"
+                    className="font-bold text-action-primary-bg hover:text-accent-strong"
                   >
                     Sign in
                   </button>
@@ -847,7 +847,7 @@ function LoginForm() {
                     <button
                       onClick={() => quickSignup(acc)}
                       disabled={loading}
-                      className="text-xs font-medium text-action-primary-bg hover:text-primary-400"
+                      className="text-xs font-medium text-action-primary-bg hover:text-accent-strong"
                     >
                       Sign up
                     </button>

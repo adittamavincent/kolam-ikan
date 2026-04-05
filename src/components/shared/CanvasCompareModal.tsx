@@ -34,7 +34,7 @@ export function CanvasCompareModal({
 
   return (
     <div
-      className="fixed inset-0 z-200 flex items-center justify-center bg-surface-dark p-4"
+      className="fixed inset-0 z-200 flex items-center justify-center bg-overlay-backdrop p-4"
       onClick={onClose}
     >
       <div

@@ -204,7 +204,7 @@ export function FileAttachmentThumbnail({
   const showPlaceholder = previewKind === "none" || imageFailed;
   const showOverlay =
     showError || showProcessing || showQueued || showPlaceholder;
-  const overlayBg = hasPreview ? "bg-surface-dark" : "bg-surface-subtle";
+  const overlayBg = hasPreview ? "bg-overlay-backdrop" : "bg-surface-subtle";
 
   return (
     <div
@@ -228,10 +228,10 @@ export function FileAttachmentThumbnail({
         >
           {showError ? (
             <div className="flex flex-col items-center gap-1">
-              <div className="bg-rose-600 p-1 text-white">
+              <div className="bg-status-error-bg p-1 text-status-error-text">
                 <X className="h-4 w-4" />
               </div>
-              <div className="text-rose-600">
+              <div className="text-status-error-text">
                 Failed
               </div>
             </div>
@@ -257,7 +257,7 @@ export function FileAttachmentThumbnail({
       )}
 
       {(importStatus === "completed" || importStatus === "done") && (
-        <div className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center border border-emerald-400/60 bg-emerald-500/95 text-white">
+        <div className="absolute right-1.5 top-1.5 inline-flex h-6 w-6 items-center justify-center border border-status-success-border bg-status-success-bg text-status-success-text">
           <Check className="h-4 w-4" />
         </div>
       )}

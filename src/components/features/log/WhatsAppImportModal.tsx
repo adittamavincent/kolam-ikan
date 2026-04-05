@@ -2372,7 +2372,7 @@ export function WhatsAppImportModal({
               onDrop={(e) => void handleZipDrop(e)}
               className={`flex flex-wrap items-center gap-3 border px-3 py-2 transition-colors ${
                 zipDragActive
-                  ? "border-action-primary-bg bg-action-primary-bg/10"
+                  ? "border-accent-default bg-accent-subtle"
                   : "border-border-default bg-surface-subtle"
               } ${zipLoading ? "cursor-progress" : "cursor-pointer"}`}
             >
@@ -2389,7 +2389,7 @@ export function WhatsAppImportModal({
                 </span>
               </div>
               {zipLoadError && (
-                <span className="text-red-500">{zipLoadError}</span>
+                <span className="text-status-error-text">{zipLoadError}</span>
               )}
               {!zipLoadError && !zipSourceName && (
                 <span className="text-text-muted">
@@ -2410,7 +2410,7 @@ export function WhatsAppImportModal({
             {rawText.trim() && (
               <div className="flex flex-wrap gap-x-4 gap-y-1">
                 {liveMsgs.length === 0 ? (
-                  <span className="flex items-center gap-1 text-amber-500">
+                  <span className="flex items-center gap-1 text-status-warning-text">
                     <AlertTriangle className="h-4 w-4" />
                     No messages recognized — check the format.
                   </span>
@@ -2429,7 +2429,7 @@ export function WhatsAppImportModal({
                       sender{liveSenders.length !== 1 ? "s" : ""}
                     </span>
                     {liveAttachmentCounts.pdf > 0 && (
-                      <span className="flex items-center gap-1 text-blue-500">
+                      <span className="flex items-center gap-1 text-status-info-text">
                         <FileText className="h-4 w-4" />
                         {liveAttachmentCounts.pdf} PDF
                         {liveAttachmentCounts.pdf !== 1 ? "s" : ""}
@@ -2471,7 +2471,7 @@ export function WhatsAppImportModal({
                       </span>
                     )}
                     {liveCleanedSenders > 0 && (
-                      <span className="text-emerald-600 dark:text-emerald-400">
+                      <span className="text-status-success-text">
                         {liveCleanedSenders} sender name
                         {liveCleanedSenders !== 1 ? "s" : ""} cleaned
                       </span>
@@ -2667,7 +2667,7 @@ export function WhatsAppImportModal({
                 </div>
               </div>
               {unmappedCount > 0 && (
-                <span className="flex shrink-0 items-center gap-1 bg-amber-950 px-2 py-1 text-amber-600 dark:text-amber-400">
+                <span className="flex shrink-0 items-center gap-1 bg-status-warning-bg px-2 py-1 text-status-warning-text">
                   <AlertTriangle className="h-4 w-4" />
                   {unmappedCount} unmapped
                 </span>
@@ -2675,14 +2675,14 @@ export function WhatsAppImportModal({
             </div>
 
             {mapError && (
-              <div className="flex items-start gap-1.5 border border-red-800 bg-red-950 px-3 py-2 text-red-600 dark:text-red-400">
+              <div className="flex items-start gap-1.5 border border-status-error-border bg-status-error-bg px-3 py-2 text-status-error-text">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{mapError}</span>
               </div>
             )}
 
             {mapNotice && (
-              <div className="flex items-start gap-1.5 border border-border-subtle bg-amber-950 px-3 py-2 text-amber-700 dark:text-amber-400">
+              <div className="flex items-start gap-1.5 border border-status-warning-border bg-status-warning-bg px-3 py-2 text-status-warning-text">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{mapNotice}</span>
               </div>
@@ -2721,7 +2721,7 @@ export function WhatsAppImportModal({
                         <span
                           className={` px-1.5 py-0.5 ${
                             isLocalPersona(assignedPersona)
-                              ? "border border-border-subtle bg-amber-950 text-amber-700 dark:text-amber-400"
+                              ? "border border-status-warning-border bg-status-warning-bg text-status-warning-text"
                               : "border border-border-default bg-surface-subtle text-text-muted"
                           }`}
                         >
@@ -2783,7 +2783,7 @@ export function WhatsAppImportModal({
             </div>
 
             {unmappedCount > 0 && (
-              <div className="flex items-start justify-between gap-2 border border-blue-800 bg-blue-950 px-3 py-2 text-blue-600 dark:text-blue-400">
+              <div className="flex items-start justify-between gap-2 border border-status-info-border bg-status-info-bg px-3 py-2 text-status-info-text">
                 <div className="flex items-start gap-1.5 max-w-[70%]">
                   <Info className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>
@@ -2843,7 +2843,7 @@ export function WhatsAppImportModal({
                       setMapping((prev) => ({ ...prev, ...newMappingEntries }));
                     }}
                     disabled={creatingAllPersonas}
-                    className="bg-blue-950 px-2.5 py-1.5 flex items-center gap-1.5 hover:bg-blue-900 disabled:opacity-50 transition-colors border border-blue-800"
+                    className="flex items-center gap-1.5 border border-status-info-border bg-status-info-bg px-2.5 py-1.5 text-status-info-text transition-colors hover:bg-status-info-border disabled:opacity-50"
                   >
                     {creatingAllPersonas ? (
                       <>
@@ -2863,7 +2863,7 @@ export function WhatsAppImportModal({
             )}
 
             {hasPdfTurns && allMapped && (
-              <div className="flex items-start gap-1.5 border border-blue-800 bg-blue-950 px-3 py-2 text-blue-600 dark:text-blue-400">
+              <div className="flex items-start gap-1.5 border border-status-info-border bg-status-info-bg px-3 py-2 text-status-info-text">
                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>
                   {pdfTurns.length} PDF file
@@ -2888,7 +2888,7 @@ export function WhatsAppImportModal({
                 Choose a file for each detected PDF, then press Import.
               </p>
               {zipSourceName && (
-                <p className="mt-1 text-blue-600 dark:text-blue-400">
+                <p className="mt-1 text-status-info-text">
                   ZIP: {zipSourceName} · {autoMatchCount}/{pdfTurns.length} PDF
                   {pdfTurns.length !== 1 ? "s" : ""} auto-matched.
                 </p>
@@ -3075,7 +3075,7 @@ function PdfUploadRow({
         isSkipped
           ? "border-border-subtle opacity-50"
           : isDone
-            ? "border-green-800 bg-green-950"
+            ? "border-status-success-border bg-status-success-bg"
             : "border-border-default bg-surface-subtle"
       }`}
     >
@@ -3102,7 +3102,7 @@ function PdfUploadRow({
           />
         ) : (
           <FileText
-            className={`mt-0.5 h-4 w-4 shrink-0 ${isDone ? "text-green-500" : "text-blue-500"}`}
+            className={`mt-0.5 h-4 w-4 shrink-0 ${isDone ? "text-status-success-text" : "text-status-info-text"}`}
           />
         )}
         <div className="min-w-0 flex-1">
@@ -3141,7 +3141,7 @@ function PdfUploadRow({
           <Loader2 className="h-4 w-4 shrink-0 animate-spin text-action-primary-bg" />
         )}
         {isDone && (
-          <span className="flex shrink-0 items-center gap-1 bg-green-950 px-2 py-0.5 text-green-600 dark:text-green-400">
+          <span className="flex shrink-0 items-center gap-1 bg-status-success-bg px-2 py-0.5 text-status-success-text">
             <Check className="h-4 w-4" />
             Uploaded
           </span>
@@ -3152,7 +3152,7 @@ function PdfUploadRow({
           </span>
         )}
         {isQueued && (
-          <span className="shrink-0 bg-blue-950 px-2 py-0.5 text-blue-600 dark:text-blue-400">
+          <span className="shrink-0 bg-status-info-bg px-2 py-0.5 text-status-info-text">
             Queued
           </span>
         )}
@@ -3176,7 +3176,7 @@ function PdfUploadRow({
 
       {/* Error message */}
       {isError && (
-        <p className="wrap-break-word text-red-500">
+        <p className="wrap-break-word text-status-error-text">
           {upload.error}
         </p>
       )}
@@ -3231,7 +3231,7 @@ function PdfUploadRow({
               {isError && (
                 <button
                   onClick={onRetry}
-                  className="inline-flex items-center gap-1 border border-red-800 bg-red-950 px-2 py-1 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                  className="inline-flex items-center gap-1 border border-status-error-border bg-status-error-bg px-2 py-1 text-status-error-text hover:bg-status-error-border"
                 >
                   <RefreshCw className="h-4 w-4" />
                   Retry
@@ -3240,7 +3240,7 @@ function PdfUploadRow({
 
               <button
                 onClick={() => inputRef.current?.click()}
-                className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-action-primary-text hover:opacity-90"
+                className="inline-flex items-center gap-1 bg-action-primary-bg px-2 py-1 text-action-primary-text hover:bg-action-primary-hover"
               >
                 <Upload className="h-4 w-4" />
                 {isError ? "Choose another" : "Select file"}

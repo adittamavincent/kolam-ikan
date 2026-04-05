@@ -11,6 +11,7 @@ import {
 import { EntryCreator } from "../EntryCreator";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
+import { PERSONA_SWATCHES } from "@/lib/theme/colors";
 
 // Mock dependencies
 const mockSupabase = {
@@ -37,9 +38,9 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 const mockPersonas = [
-  { id: "persona-a", name: "Persona A", icon: "user", color: "#0ea5e9" },
-  { id: "persona-b", name: "Persona B", icon: "brain", color: "#8b5cf6" },
-  { id: "persona-c", name: "Persona C", icon: "heart", color: "#ec4899" },
+  { id: "persona-a", name: "Persona A", icon: "user", color: PERSONA_SWATCHES[0] },
+  { id: "persona-b", name: "Persona B", icon: "brain", color: PERSONA_SWATCHES[6] },
+  { id: "persona-c", name: "Persona C", icon: "heart", color: PERSONA_SWATCHES[8] },
 ];
 
 vi.mock("@/lib/hooks/usePersonas", () => ({

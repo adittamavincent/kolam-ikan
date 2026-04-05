@@ -29,7 +29,7 @@ export function MainContentLoading({
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b border-border-default bg-surface-default px-6 py-4">
           <div className="flex items-center gap-3">
-            <SkeletonBlock className="h-9 w-9 rounded-full" />
+            <SkeletonBlock className="h-9 w-9 rounded-none" />
             <div className="space-y-2">
               <SkeletonBlock className="h-4 w-40" />
               <SkeletonBlock className="h-3 w-56" />
@@ -38,7 +38,7 @@ export function MainContentLoading({
         </div>
 
         <div className="flex flex-1 flex-col gap-5 overflow-hidden px-6 py-5">
-          <div className="border border-border-default bg-surface-default/70 px-4 py-3">
+          <div className="border border-border-default bg-surface-default px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-text-default">
@@ -47,7 +47,7 @@ export function MainContentLoading({
                 <p className="mt-1 text-xs text-text-muted">{hint}</p>
               </div>
               <div className="flex items-center gap-2 text-xs text-text-muted">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-action-primary-bg" />
+                <span className="h-2 w-2 animate-pulse rounded-none bg-action-primary-bg" />
                 <span>Loading</span>
               </div>
             </div>
@@ -55,7 +55,7 @@ export function MainContentLoading({
 
           {mode === "stream" ? (
             <div className="flex min-h-0 flex-1 gap-4">
-              <div className="flex min-h-0 flex-[1.05] flex-col border border-border-default bg-surface-default/70">
+              <div className="flex min-h-0 flex-[1.05] flex-col border border-border-default bg-surface-default">
                 <div className="border-b border-border-default px-4 py-3">
                   <SkeletonBlock className="h-4 w-28" />
                 </div>
@@ -67,7 +67,7 @@ export function MainContentLoading({
                 </div>
               </div>
 
-              <div className="hidden min-h-0 flex-1 flex-col border border-border-default bg-surface-default/70 lg:flex">
+              <div className="hidden min-h-0 flex-1 flex-col border border-border-default bg-surface-default lg:flex">
                 <div className="border-b border-border-default px-4 py-3">
                   <SkeletonBlock className="h-4 w-24" />
                 </div>
@@ -80,7 +80,7 @@ export function MainContentLoading({
               </div>
             </div>
           ) : (
-            <div className="flex flex-1 items-center justify-center border border-dashed border-border-default bg-surface-default/40 px-6 py-12">
+            <div className="flex flex-1 items-center justify-center border border-dashed border-border-default bg-surface-subtle px-6 py-12">
               <div className="w-full max-w-xl space-y-4">
                 <SkeletonBlock className="mx-auto h-5 w-44" />
                 <SkeletonBlock className="mx-auto h-3 w-72" />

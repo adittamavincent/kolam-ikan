@@ -307,7 +307,7 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
   return (
     <>
       <div
-      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
+      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
       onClick={onClose}
     >
       <div
@@ -394,7 +394,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
   const [value, setValue] = useState(currentTag ?? "");
   return (
     <div
-      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
+      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
       onClick={onClose}
     >
       <div
@@ -437,7 +437,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
               onSave(value.trim() || null);
               onClose();
             }}
-            className=" bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:opacity-90"
+            className=" bg-action-primary-bg px-3 py-1.5 text-action-primary-text hover:bg-action-primary-hover"
           >
             Save Tag
           </button>
@@ -2287,11 +2287,6 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     !hasHydrated ||
     ((isEntriesLoading || isEntriesFetching) &&
       branchTimelineItems.length === 0);
-  const showEmptyState =
-    hasHydrated &&
-    branchTimelineItems.length === 0 &&
-    !isEntriesLoading &&
-    !isEntriesFetching;
 
   const headEntryId = useMemo(() => {
     if (!branchEntries.length) return null;

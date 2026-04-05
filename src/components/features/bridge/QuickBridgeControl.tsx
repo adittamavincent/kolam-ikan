@@ -568,7 +568,7 @@ export function QuickBridgeControl({
           onClick={handleClick}
           disabled={disabled}
           title={`${label} · ${detail}`}
-          className="inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold transition-all hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:text-text-muted data-[phase=active]:bg-action-primary-bg data-[phase=active]:text-white data-[phase=active]:hover:bg-action-primary-hover"
+          className="inline-flex h-8 items-center gap-1.5 px-2 text-[11px] font-semibold transition-all hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:text-text-muted data-[phase=active]:bg-action-primary-bg data-[phase=active]:text-action-primary-text data-[phase=active]:hover:bg-action-primary-hover"
           data-phase={phase === "send" || phase === "apply" ? "active" : "idle"}
         >
           <span className="shrink-0">{icon}</span>

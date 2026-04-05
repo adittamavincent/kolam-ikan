@@ -242,7 +242,7 @@ export function LogSection({
       <div className="min-w-0 flex-1 space-y-0.5">
         {shouldShowEditorAboveAttachments && (
           <div
-            className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose max-w-none dark:prose-invert`}
+            className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose max-w-none`}
           >
             <MarkdownEditor
               key={
@@ -354,7 +354,7 @@ export function LogSection({
               Attachment Notes
             </div>
             <div
-              className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose max-w-none dark:prose-invert`}
+              className={`section-editor-surface ${editable ? "markdown-editor-editable" : "markdown-editor-readonly"} prose max-w-none`}
             >
               <MarkdownEditor
                 key={

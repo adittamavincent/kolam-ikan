@@ -150,7 +150,7 @@ export function AttachmentsManager({
                           {att.content_type || "—"}
                         </div>
                         <div
-                          className={`text-[10px] ${isInUse ? "text-amber-600" : "text-text-muted"}`}
+                          className={`text-[10px] ${isInUse ? "text-status-warning-text" : "text-text-muted"}`}
                         >
                           {isInUse
                             ? `Used in ${usageCount} section${usageCount === 1 ? "" : "s"}`
@@ -172,7 +172,7 @@ export function AttachmentsManager({
                           }
                           className={`border border-border-default px-2 py-1 text-[11px] font-semibold transition-colors ${
                             canAttach
-                              ? "bg-action-primary-bg text-action-primary-text hover:opacity-90"
+                              ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
                               : "cursor-not-allowed bg-surface-subtle text-text-muted"
                           }`}
                         >

@@ -7,7 +7,6 @@ import type {
 } from "@/lib/types";
 import {
   Archive,
-  Calendar,
   Check,
   ChevronDown,
   ChevronRight,
@@ -181,7 +180,7 @@ export function LogEntryTimelineItem({
                 {sectionCount} section{sectionCount === 1 ? "" : "s"}
               </span>
               {tag && (
-                <span className="shrink-0 flex h-4 items-center bg-amber-950 px-1.5 text-amber-600 dark:text-amber-400">
+                <span className="shrink-0 flex h-4 items-center bg-status-warning-bg px-1.5 text-status-warning-text">
                   <Tag className="h-4 w-4" />
                   {tag}
                 </span>
@@ -202,7 +201,7 @@ export function LogEntryTimelineItem({
                 </span>
               )}
               {isStashed && (
-                <span className="shrink-0 flex h-4 items-center bg-amber-950 px-1.5 text-amber-500">
+                <span className="shrink-0 flex h-4 items-center bg-status-warning-bg px-1.5 text-status-warning-text">
                   <Archive className="h-4 w-4" />
                   stashed
                 </span>

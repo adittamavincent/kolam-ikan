@@ -10,6 +10,7 @@ import {
 import React from "react";
 import { EntryCreator } from "./EntryCreator";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PERSONA_SWATCHES } from "@/lib/theme/colors";
 
 // Mocks
 const { mockUseKeyboard } = vi.hoisted(() => ({
@@ -24,7 +25,7 @@ const mockDraftContents: Record<string, unknown[]> = {};
 const mockDraftMarkdown: Record<string, string> = {};
 const mockInitialDrafts: Record<string, unknown> = {};
 const mockPersonas = [
-  { id: "p1", name: "Myself", icon: "User", color: "#0ea5e9" },
+  { id: "p1", name: "Myself", icon: "User", color: PERSONA_SWATCHES[0] },
 ];
 const mockGetDraftContent = (instanceId: string) =>
   mockDraftContents[instanceId] ??

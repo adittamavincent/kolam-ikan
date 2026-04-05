@@ -103,7 +103,7 @@ export function StashDialog({
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 border border-amber-800 bg-amber-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-amber-300">
+                      <span className="inline-flex items-center gap-1 border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-warning-text">
                         <Archive className="h-4 w-4" />
                         commit stash
                       </span>
@@ -147,7 +147,7 @@ export function StashDialog({
                     <button
                       type="button"
                       onClick={() => onUnstashCommittedEntry(stash.id)}
-                      className="inline-flex items-center gap-2 bg-amber-500 px-3 py-1.5 text-black hover:bg-amber-400"
+                      className="inline-flex items-center gap-2 bg-status-warning-bg px-3 py-1.5 text-status-warning-text hover:bg-status-warning-border"
                     >
                       <ArchiveRestore className="h-4 w-4" />
                       Unstash
@@ -178,7 +178,7 @@ export function StashDialog({
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 border border-cyan-800 bg-cyan-950 px-1.5 py-0.5 uppercase tracking-[0.14em] text-cyan-300">
+                      <span className="inline-flex items-center gap-1 border border-status-info-border bg-status-info-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-info-text">
                         <PencilLine className="h-4 w-4" />
                         draft stash
                       </span>

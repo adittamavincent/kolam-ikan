@@ -549,7 +549,7 @@ export function BridgeModal({
                   {streamMeta.name}
                 </span>
                 {currentStreamIsGlobal && (
-                  <div className="flex items-center gap-1 border border-border-subtle bg-primary-950 px-2 py-0.5 text-[10px] font-semibold text-action-primary-bg">
+                  <div className="flex items-center gap-1 border border-accent-default bg-accent-subtle px-2 py-0.5 text-[10px] font-semibold text-accent-strong">
                     <Globe className="h-3 w-3" />
                     Global
                   </div>
@@ -601,7 +601,7 @@ export function BridgeModal({
                       {currentProvider.hostLabel}
                     </span>
                     {bridgeSession?.sessionMemory && (
-                      <span className="border border-border-subtle bg-action-primary-bg/10 px-1.5 py-0.5 text-[9px] font-bold tracking-tighter text-action-primary-bg uppercase">
+                      <span className="border border-accent-default bg-accent-subtle px-1.5 py-0.5 text-[9px] font-bold tracking-tighter text-accent-strong uppercase">
                         Memory Active
                       </span>
                     )}
@@ -672,7 +672,7 @@ export function BridgeModal({
                       type="button"
                       onClick={() => void runnerStatus.checkNow()}
                       disabled={runnerStatus.isChecking}
-                      className="inline-flex items-center gap-2 border border-status-error-border bg-surface-default/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-status-error-text whitespace-nowrap"
+                      className="inline-flex items-center gap-2 border border-status-error-border bg-surface-default px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-status-error-text whitespace-nowrap"
                     >
                       {runnerStatus.isChecking ? (
                         <Loader2 className="h-3 w-3 animate-spin" />

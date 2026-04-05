@@ -157,7 +157,7 @@ export function DomainSwitcher({
           onClick={navigateToHome}
           className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
             pathname === "/" || pendingHome
-              ? "bg-action-primary-bg text-white"
+              ? "bg-action-primary-bg text-action-primary-text"
               : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
           }`}
         >
@@ -166,7 +166,7 @@ export function DomainSwitcher({
           ) : (
             <Home className="h-4 w-4" />
           )}
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
             Home
           </div>
         </button>
@@ -179,7 +179,7 @@ export function DomainSwitcher({
           title="Global Search (⌘⇧K)"
         >
           <Search className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
             Global Search
           </div>
         </button>
@@ -190,7 +190,7 @@ export function DomainSwitcher({
           title="Manage Personas"
         >
           <Users className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
             Personas
           </div>
         </button>
@@ -201,7 +201,7 @@ export function DomainSwitcher({
           title="Attachments"
         >
           <Paperclip className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
             Attachments
           </div>
         </button>
@@ -234,7 +234,7 @@ export function DomainSwitcher({
             aria-label={domain.name}
             className={`group relative flex h-8 w-8 items-center justify-center  transition-all duration-200 ${
               activeDomainId === domain.id
-                ? "bg-action-primary-bg text-white"
+                ? "bg-action-primary-bg text-action-primary-text"
                 : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
             }`}
           >
@@ -265,7 +265,7 @@ export function DomainSwitcher({
           className="group relative flex h-8 w-8 items-center justify-center bg-surface-subtle text-text-muted transition-all duration-200 hover:bg-primary-950 hover:text-action-primary-bg"
         >
           <Plus className="h-4 w-4" />
-          <div className="absolute left-14 hidden bg-surface-dark px-2 py-1 text-[10px] font-medium text-white group-hover:block whitespace-nowrap">
+          <div className="absolute left-14 hidden bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default group-hover:block whitespace-nowrap">
             Add Domain
           </div>
         </button>
@@ -273,7 +273,7 @@ export function DomainSwitcher({
 
       {hoveredDomainTooltip && (
         <div
-          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-surface-dark px-2 py-1 text-[10px] font-medium text-white"
+          className="pointer-events-none absolute left-14 z-60 -translate-y-1/2 whitespace-nowrap bg-surface-elevated px-2 py-1 text-[10px] font-medium text-text-default"
           style={{ top: hoveredDomainTooltip.top }}
         >
           {hoveredDomainTooltip.name}

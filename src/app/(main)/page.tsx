@@ -120,36 +120,19 @@ function StatCard({
   label: string;
   color: string;
 }) {
-  const colorMap: Record<string, { bg: string; text: string; iconBg: string }> =
-    {
-      blue: {
-        bg: "bg-blue-950",
-        text: "text-blue-600 dark:text-blue-400",
-        iconBg: "bg-blue-950",
-      },
-      purple: {
-        bg: "bg-purple-950",
-        text: "text-purple-600 dark:text-purple-400",
-        iconBg: "bg-purple-950",
-      },
-      emerald: {
-        bg: "bg-emerald-500/5",
-        text: "text-emerald-600 dark:text-emerald-400",
-        iconBg: "bg-emerald-950",
-      },
-      amber: {
-        bg: "bg-amber-950",
-        text: "text-amber-600 dark:text-amber-400",
-        iconBg: "bg-amber-950",
-      },
-    };
-  const c = colorMap[color] ?? colorMap.blue;
+  const colorMap: Record<string, string> = {
+    blue: "text-status-info-text",
+    purple: "text-accent-strong",
+    emerald: "text-status-success-text",
+    amber: "text-status-warning-text",
+  };
+  const accentClass = colorMap[color] ?? colorMap.blue;
 
   return (
     <div className="group border border-border-default bg-surface-default p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs uppercase tracking-wider text-text-subtle font-medium">{label}</p>
-        <Icon className={`h-4 w-4 ${c.text}`} />
+        <Icon className={`h-4 w-4 ${accentClass}`} />
       </div>
       <p className="text-2xl font-bold text-text-default">{value}</p>
     </div>
@@ -209,7 +192,7 @@ function DomainCard({
       className="group flex w-full flex-col border border-border-default bg-surface-default p-4 text-left transition-all active:scale-[0.98] active:translate-y-px"
     >
       <div className="mb-3 flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-xl group-hover:bg-primary-900 transition-colors">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center bg-primary-950 text-action-primary-text text-xl group-hover:bg-primary-900 transition-colors">
           <DynamicIcon name={domain.icon ?? domain.name} />
         </span>
         <div className="min-w-0 flex-1">
@@ -225,7 +208,7 @@ function DomainCard({
         <div className="ml-2 flex items-start">
           <button
             onClick={handleDuplicate}
-            className="text-sm text-action-primary hover:underline"
+            className="text-sm text-action-primary-bg hover:underline"
           >
             <Copy className="h-4 w-4" />
           </button>
@@ -264,7 +247,7 @@ function RecentActivityItem({
       onClick={onClick}
       className="group flex w-full items-start gap-3 border border-border-default bg-surface-default p-3 text-left transition-all hover:bg-surface-subtle active:scale-[0.99] active:translate-y-px relative"
     >
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle text-sm transition-colors group-hover:bg-primary-950">
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-surface-subtle text-sm transition-colors group-hover:bg-accent-subtle group-hover:text-accent-strong">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
@@ -685,7 +668,7 @@ export default function HomePage() {
         </div>
 
         {/* ---- Footer tip ---- */}
-        <div className="mt-10 border border-border-default bg-surface-default px-5 py-4 text-center dark:bg-primary-950 dark:border-transparent">
+        <div className="mt-10 border border-border-default bg-surface-default px-5 py-4 text-center">
           <p className="text-xs text-text-default">
             <span className="font-semibold text-action-primary-bg">Tip:</span>{" "}
             Use the sidebar to quickly switch between domains, or click any card

@@ -1,245 +1,63 @@
 /**
- * Centralized color system for Kolam Ikan
- * Single source of truth for all application colors
+ * Shared light-only palette for non-CSS color logic.
+ * Runtime UI colors should come from `src/app/globals.css` tokens.
  */
 
-/* ============================================================================ */
-/* PRIMITIVES - Brand & Base Colors                                           */
-/* ============================================================================ */
-
-export const PRIMITIVES = {
-  // Primary Brand Colors (blue scale)
+export const SHARED_PALETTE = {
+  neutral: {
+    0: "#ffffff",
+    50: "#f6f8fb",
+    100: "#eef2f6",
+    200: "#dbe2ea",
+    300: "#c4ced9",
+    500: "#7b8693",
+    700: "#526171",
+    900: "#243242",
+  },
   primary: {
-    50: "#eef3ff",
-    100: "#dae6ff",
+    100: "#dbe7ff",
     200: "#b7cfff",
-    300: "#95b8ff",
     400: "#7fa8ff",
     500: "#568af2",
-    600: "#4d78cc",
-    700: "#4269b9",
-    800: "#375698",
-    900: "#2e477b",
-    950: "#243963",
+    700: "#375698",
+    800: "#2e477b",
+    900: "#243963",
+    950: "#1b2c52",
   },
-
-  // Accent colors
+  info: {
+    bg: "#dcecf9",
+    border: "#aac7e6",
+    text: "#1f5e90",
+  },
+  success: {
+    bg: "#dceddf",
+    border: "#b7d1bc",
+    text: "#2f6a3d",
+  },
+  warning: {
+    bg: "#f7e9cc",
+    border: "#e2c88d",
+    text: "#8a5a00",
+  },
+  error: {
+    bg: "#f5d8de",
+    border: "#d8a5b1",
+    text: "#8f2536",
+  },
   accent: {
-    blue: "#75beff",
-    violet: "#8b5cf6",
-    coral: "#f48771",
-    green: "#89d185",
-    amber: "#d7ba7d",
+    teal: "#1d7d73",
+    violet: "#6a56c9",
+    coral: "#bf6a5a",
+    lime: "#6f8c2d",
+    slate: "#5f6d7b",
   },
 } as const;
 
-/* ============================================================================ */
-/* DARK MODE - Kolam Dark (Default)                                            */
-/* ============================================================================ */
-
-export const DARK_MODE = {
-  // Base
-  background: "#181818",
-  foreground: "#cccccc",
-
-  // Surfaces
-  surface: {
-    default: "#181818",
-    subtle: "#1f1f1f",
-    elevated: "#252526",
-    hover: "#2a2d2e",
-    dark: "#111111",
-    overlay: "#202020",
-  },
-
-  // Text
-  text: {
-    default: "#cccccc",
-    subtle: "#c5c5c5",
-    muted: "#8b949e",
-    inverse: "#ffffff",
-  },
-
-  // Borders
-  border: {
-    default: "#2b2b2b",
-    subtle: "#232323",
-    strong: "#3c3c3c",
-  },
-
-  // Actions
-  action: {
-    primary: {
-      bg: "#568af2",
-      hover: "#4d78cc",
-      text: "#ffffff",
-      disabled: "#4269b9",
-    },
-    secondary: {
-      bg: "#252526",
-      hover: "#2a2d2e",
-      text: "#cccccc",
-      border: "#3c3c3c",
-    },
-  },
-
-  // Status / Feedback
-  status: {
-    error: {
-      bg: "#5a1d1d",
-      border: "#7a2d2d",
-      text: "#f48771",
-    },
-    success: {
-      bg: "#19362b",
-      text: "#89d185",
-    },
-  },
-
-  // Git / Diff
-  diff: {
-    add: {
-      bg: "#1b3a2f",
-      subtle: "#224536",
-      text: "#89d185",
-      accent: "#73c991",
-    },
-    del: {
-      bg: "#4b1818",
-      subtle: "#5e2323",
-      text: "#f48771",
-      accent: "#f14c4c",
-    },
-  },
-
-  // Editor-specific
-  editor: {
-    background: "#1e1e1e",
-    text: "#d4d4d4",
-  },
+export const LIGHT_SURFACE_BASES = {
+  default: SHARED_PALETTE.neutral[0],
+  subtle: SHARED_PALETTE.neutral[50],
+  elevated: SHARED_PALETTE.neutral[100],
 } as const;
-
-/* ============================================================================ */
-/* LIGHT MODE - Coming Soon                                                    */
-/* ============================================================================ */
-
-export const LIGHT_MODE = {
-  // Base
-  background: "#ffffff",
-  foreground: "#2c3e50",
-
-  // Surfaces
-  surface: {
-    default: "#ffffff",
-    subtle: "#f8f9fb",
-    elevated: "#f0f2f7",
-    hover: "#e8ecf1",
-    dark: "#f0f2f7",
-    overlay: "#ffffff",
-  },
-
-  // Text
-  text: {
-    default: "#2c3e50",
-    subtle: "#5a6977",
-    muted: "#8b95a5",
-    inverse: "#ffffff",
-  },
-
-  // Borders
-  border: {
-    default: "#d4dce4",
-    subtle: "#e8ecf1",
-    strong: "#c0c8d4",
-  },
-
-  // Actions
-  action: {
-    primary: {
-      bg: "#568af2",
-      hover: "#4d78cc",
-      text: "#ffffff",
-      disabled: "#4269b9",
-    },
-    secondary: {
-      bg: "#e8ecf1",
-      hover: "#d4dce4",
-      text: "#2c3e50",
-      border: "#c0c8d4",
-    },
-  },
-
-  // Status / Feedback
-  status: {
-    error: {
-      bg: "#fce8eb",
-      border: "#f5c5d0",
-      text: "#c41e3a",
-    },
-    success: {
-      bg: "#e8f5e9",
-      text: "#2e7d32",
-    },
-  },
-
-  // Git / Diff
-  diff: {
-    add: {
-      bg: "#e8f5e9",
-      subtle: "#f1f8f6",
-      text: "#2e7d32",
-      accent: "#4caf50",
-    },
-    del: {
-      bg: "#ffebee",
-      subtle: "#fff5f7",
-      text: "#c41e3a",
-      accent: "#ef5350",
-    },
-  },
-
-  // Editor-specific
-  editor: {
-    background: "#f8f9fb",
-    text: "#2c3e50",
-  },
-} as const;
-
-/* ============================================================================ */
-/* THEME TYPE & HELPER FUNCTIONS                                               */
-/* ============================================================================ */
-
-export type ThemeMode = "dark" | "light";
-
-export const THEME_MODES = {
-  dark: DARK_MODE,
-  light: LIGHT_MODE,
-} as const;
-
-/**
- * Get current theme based on system preference or stored preference
- */
-export function getThemeMode(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
-  
-  const stored = localStorage.getItem("theme");
-  if (stored === "light" || stored === "dark") return stored;
-
-  return window.matchMedia("(prefers-color-scheme: light)").matches
-    ? "light"
-    : "dark";
-}
-
-/**
- * Get all colors for a specific theme
- */
-export function getThemeColors(mode: ThemeMode = "dark") {
-  return THEME_MODES[mode];
-}
-
-/* ============================================================================ */
-/* COLOR UTILITIES                                                              */
-/* ============================================================================ */
 
 /**
  * Normalize hex color to #RRGGBB format
@@ -264,18 +82,18 @@ export function normalizeHexColor(color?: string | null): string | undefined {
 }
 
 /**
- * Blend two hex colors with alpha blending
+ * Blend two colors into a fully opaque hex result.
  * @param foreground - Foreground color (hex)
  * @param background - Background color (hex)
  * @param alpha - Blend factor (0-1)
  */
 export function blendHexColors(
   foreground?: string | null,
-  background?: string | null | typeof DARK_MODE.surface.default,
+  background?: string | null,
   alpha = 1,
 ): string | undefined {
   const fg = normalizeHexColor(foreground);
-  const bg = normalizeHexColor(background ?? DARK_MODE.surface.default);
+  const bg = normalizeHexColor(background ?? LIGHT_SURFACE_BASES.default);
 
   if (!fg || !bg) return fg ?? bg;
 
@@ -298,52 +116,6 @@ export function blendHexColors(
   return `#${blended.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/**
- * Convert hex color with optional opacity suffix
- * @param color - Hex color or color with opacity suffix (e.g., #abc20 = 12.5% opacity)
- */
-export function parseHexColorWithOpacity(
-  color?: string | null,
-): {
-  hex?: string;
-  opacity?: number;
-} | null {
-  if (!color) return null;
-
-  const clean = color.replace("#", "");
-
-  // Check if it has opacity suffix (e.g., "abc20" where "20" is hex opacity)
-  if (clean.length === 8) {
-    const hex = `#${clean.slice(0, 6)}`;
-    const opacityHex = clean.slice(6, 8);
-    const opacity = Number.parseInt(opacityHex, 16) / 255;
-    return { hex: normalizeHexColor(hex), opacity };
-  }
-
-  // Standard 6-char hex
-  if (clean.length === 6) {
-    return { hex: normalizeHexColor(`#${clean}`), opacity: 1 };
-  }
-
-  return null;
-}
-
-/**
- * Apply opacity to a hex color using hex suffix notation
- * @param color - Hex color
- * @param opacity - Opacity (0-1)
- */
-export function applyHexOpacity(color: string, opacity: number): string {
-  const normalized = normalizeHexColor(color);
-  if (!normalized) return color;
-
-  const clampedOpacity = Math.max(0, Math.min(1, opacity));
-  const opacityByte = Math.round(clampedOpacity * 255);
-  const opacityHex = opacityByte.toString(16).padStart(2, "0");
-
-  return `${normalized}${opacityHex}`;
-}
-
 /* ============================================================================ */
 /* PRESET COLORS FOR UI SELECTORS                                              */
 /* ============================================================================ */
@@ -353,16 +125,16 @@ export function applyHexOpacity(color: string, opacity: number): string {
  * Keep this list unified across manual persona creation and imports.
  */
 export const PERSONA_SWATCHES = [
-  PRIMITIVES.accent.blue, // Blue
-  "#14b8a6", // Teal
-  PRIMITIVES.accent.green, // Green
-  PRIMITIVES.accent.amber, // Amber
-  "#f97316", // Orange
-  PRIMITIVES.accent.coral, // Coral
-  "#f43f5e", // Rose
-  "#ec4899", // Pink
-  "#8b5cf6", // Violet
-  "#64748b", // Slate
+  SHARED_PALETTE.primary[500],
+  SHARED_PALETTE.primary[700],
+  SHARED_PALETTE.info.text,
+  SHARED_PALETTE.success.text,
+  SHARED_PALETTE.warning.text,
+  SHARED_PALETTE.error.text,
+  SHARED_PALETTE.accent.violet,
+  SHARED_PALETTE.accent.teal,
+  SHARED_PALETTE.accent.coral,
+  SHARED_PALETTE.accent.slate,
 ] as const;
 
 /**
@@ -402,14 +174,14 @@ export const PERSONA_PRESET_ICONS = [
  * Branch colors for commit graph visualization
  */
 export const BRANCH_COLORS = [
-  PRIMITIVES.primary[500], // #568af2 - Primary blue
-  "#26b88f", // Teal
-  "#f59e0b", // Amber
-  "#db7093", // Pale Violet Red
-  "#8b7cf7", // Violet
-  "#06b6d4", // Cyan
-  "#84cc16", // Lime
-  "#ef5c5c", // Red
+  SHARED_PALETTE.primary[500],
+  SHARED_PALETTE.accent.teal,
+  SHARED_PALETTE.warning.text,
+  SHARED_PALETTE.accent.violet,
+  SHARED_PALETTE.accent.slate,
+  SHARED_PALETTE.success.text,
+  SHARED_PALETTE.accent.lime,
+  SHARED_PALETTE.error.text,
 ] as const;
 
 /**
@@ -420,9 +192,12 @@ export const WHATSAPP_PERSONA_COLORS = PERSONA_SWATCHES;
 /**
  * Default snapshot persona color
  */
-export const DEFAULT_SNAPSHOT_PERSONA_COLOR = "#9CA3AF"; // Gray
+export const DEFAULT_SNAPSHOT_PERSONA_COLOR = SHARED_PALETTE.neutral[500];
 
 /**
  * Default response color fallback
  */
-export const DEFAULT_RESPONSE_COLOR = "#7c3aed"; // Violet
+export const DEFAULT_RESPONSE_COLOR = SHARED_PALETTE.primary[700];
+
+export const CANVAS_SNAPSHOT_COLOR = SHARED_PALETTE.accent.violet;
+export const DEFAULT_BRANCH_COLOR = SHARED_PALETTE.primary[500];

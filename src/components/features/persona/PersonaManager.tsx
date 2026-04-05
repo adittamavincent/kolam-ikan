@@ -54,6 +54,7 @@ interface PersonaManagerProps {
 const PRESET_ICONS = Array.from(PERSONA_PRESET_ICONS);
 
 const PRESET_COLORS = Array.from(PERSONA_SWATCHES);
+const DEFAULT_PERSONA_COLOR = PRESET_COLORS[0];
 
 function PersonaIconTile({
   icon,
@@ -147,14 +148,14 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState(DEFAULT_PERSONA_TYPE);
   const [icon, setIcon] = useState("user");
-  const [color, setColor] = useState("#0ea5e9");
+  const [color, setColor] = useState(DEFAULT_PERSONA_COLOR);
   const [error, setError] = useState<string | null>(null);
 
   const resetForm = () => {
     setName("");
     setType(DEFAULT_PERSONA_TYPE);
     setIcon("user");
-    setColor("#0ea5e9");
+    setColor(DEFAULT_PERSONA_COLOR);
     setError(null);
   };
 
@@ -911,7 +912,7 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                               </span>
                             )}
                             {isLocalPersona(persona) && (
-                              <span className="border border-border-subtle bg-amber-950 px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-400">
+                              <span className="border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 text-[10px] text-status-warning-text">
                                 Local
                               </span>
                             )}

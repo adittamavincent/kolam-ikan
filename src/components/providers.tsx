@@ -5,7 +5,6 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState } from "react";
 import { useUiPreferencesSync } from "@/lib/hooks/useUiPreferencesSync";
 import { shouldRetrySupabaseQuery } from "@/lib/supabase/schema-compat";
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
 function UiPreferencesBootstrap() {
   useUiPreferencesSync();
@@ -38,17 +37,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
       }),
   );
   return (
-    <ThemeProvider defaultMode="dark">
-      <QueryClientProvider client={queryClient}>
-        <UiPreferencesBootstrap />
-        {children}
-        {process.env.NODE_ENV === "development" && (
-          <ReactQueryDevtools
-            initialIsOpen={false}
-            buttonPosition="bottom-right"
-          />
-        )}
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <UiPreferencesBootstrap />
+      {children}
+      {process.env.NODE_ENV === "development" && (
+        <ReactQueryDevtools
+          initialIsOpen={false}
+          buttonPosition="bottom-right"
+        />
+      )}
+    </QueryClientProvider>
   );
 }

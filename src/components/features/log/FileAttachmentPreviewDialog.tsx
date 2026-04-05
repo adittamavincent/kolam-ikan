@@ -63,7 +63,7 @@ export function FileAttachmentPreviewDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-surface-dark backdrop-blur-sm transition-opacity" />
+          <div className="fixed inset-0 bg-overlay-backdrop transition-opacity" />
         </TransitionChild>
         
         <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -90,7 +90,7 @@ export function FileAttachmentPreviewDialog({
                   }}
                   className={`px-2 py-1 transition-colors ${
                     activePreviewTab === "file"
-                      ? "bg-action-primary-bg text-white"
+                      ? "bg-action-primary-bg text-action-primary-text"
                       : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
                   }`}
                 >
@@ -112,7 +112,7 @@ export function FileAttachmentPreviewDialog({
                   }}
                   className={`px-2 py-1 transition-colors ${
                     activePreviewTab === "parsed"
-                      ? "bg-action-primary-bg text-white"
+                      ? "bg-action-primary-bg text-action-primary-text"
                       : "bg-surface-subtle text-text-muted hover:bg-surface-hover"
                   }`}
                 >
@@ -148,7 +148,7 @@ export function FileAttachmentPreviewDialog({
             {activePreviewTab === "parsed" && (
               <>
                 {!isParsedReadyStatus(attachmentPreview?.importStatus) && (
-                  <div className="border border-border-subtle bg-amber-950 px-3 py-2 text-amber-700 dark:text-amber-400">
+                  <div className="border border-status-warning-border bg-status-warning-bg px-3 py-2 text-status-warning-text">
                     Parsed Docling output is not ready yet. Wait until import status is completed.
                   </div>
                 )}
@@ -164,7 +164,7 @@ export function FileAttachmentPreviewDialog({
                 {isParsedReadyStatus(attachmentPreview?.importStatus) &&
                   !parsedPreviewLoading &&
                   parsedPreviewError && (
-                    <div className="border border-rose-800 bg-rose-950 px-3 py-2 text-rose-600">
+                    <div className="border border-status-error-border bg-status-error-bg px-3 py-2 text-status-error-text">
                       {parsedPreviewError}
                     </div>
                   )}

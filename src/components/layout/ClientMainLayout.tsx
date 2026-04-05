@@ -544,7 +544,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ---- Mobile Overlay ---- */}
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-surface-dark md:hidden"
+          className="fixed inset-0 z-40 bg-overlay-backdrop md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         />
       )}
@@ -585,7 +585,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           <div
             className={`absolute top-0 right-0 z-50 h-full w-1 cursor-col-resize transition-colors ${
               effectiveSidebarVisible
-                ? "hover:bg-primary-950 active:bg-action-primary-bg"
+                ? "hover:bg-accent-subtle active:bg-action-primary-bg"
                 : "pointer-events-none"
             } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
             onMouseDown={handleMouseDown}
@@ -611,12 +611,12 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         <main className="flex flex-1 overflow-hidden">{children}</main>
 
         {showLayoutControls && (
-          <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-0.5 border border-border-default bg-surface-default p-2 shadow-lg backdrop-blur-md z-30 transition-all">
+          <div className="absolute bottom-2 left-1/2 z-30 flex -translate-x-1/2 items-center gap-0.5 border border-border-default bg-surface-default p-2 transition-all">
             <button
               onClick={() => setMode("log-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isLogMaximized
-                  ? "bg-action-primary-bg text-white shadow-md"
+                  ? "bg-action-primary-bg text-action-primary-text"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
               }`}
               title="Maximize Log (⌘J)"
@@ -628,7 +628,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               onClick={() => setMode("balanced")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isBalanced
-                  ? "bg-action-primary-bg text-white shadow-md"
+                  ? "bg-action-primary-bg text-action-primary-text"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
               }`}
               title="Reset Layout (⌘K)"
@@ -640,7 +640,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
               onClick={() => setMode("canvas-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
                 isCanvasMaximized
-                  ? "bg-action-primary-bg text-white shadow-md"
+                  ? "bg-action-primary-bg text-action-primary-text"
                   : "text-text-muted hover:bg-surface-hover hover:text-text-default"
               }`}
               title="Maximize Canvas (⌘L)"
@@ -666,7 +666,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-surface-dark" />
+            <div className="fixed inset-0 bg-overlay-backdrop" />
           </TransitionChild>
           <div className="fixed inset-0 flex items-start justify-center p-4">
             <TransitionChild

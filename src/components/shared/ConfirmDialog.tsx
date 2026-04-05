@@ -86,7 +86,7 @@ export function ConfirmDialog({
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-surface-dark" />
+          <div className="fixed inset-0 bg-overlay-backdrop" />
         </Transition.Child>
 
         <div className="fixed inset-0 flex items-center justify-center p-4">

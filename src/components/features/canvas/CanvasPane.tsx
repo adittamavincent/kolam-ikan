@@ -506,6 +506,8 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   return (
     <div
       className={`canvas-pane bg-surface-default relative overflow-hidden z-20 ${
+        isVisible ? "border-l border-border-default" : ""
+      } ${
         isVisible ? "" : "pointer-events-none"
       }`}
       style={containerStyle}
@@ -575,7 +577,7 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       </div>
       {isPreviewing && isCompareOpen && (
         <div
-          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-surface-dark"
+          className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
           onClick={() => setIsCompareOpen(false)}
         >
           <div

@@ -306,7 +306,7 @@ export function MainHeader() {
             {domainId && !sidebarVisible && (
               <button
                 onClick={showSidebar}
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70"
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700"
                 title="Expand navigator"
               >
                 <PanelLeft className="h-4 w-4" />
@@ -362,11 +362,11 @@ export function MainHeader() {
                         <span
                           className={`${headerButtonClass} pointer-events-none ${
                             cloudStatus === "saving"
-                              ? "border-amber-800 text-amber-300"
+                              ? "border-status-warning-border text-status-warning-text"
                               : cloudStatus === "error"
-                                ? "border-red-800 text-red-300"
+                                ? "border-status-error-border text-status-error-text"
                                 : cloudStatus === "saved"
-                                  ? "border-emerald-800 text-emerald-300"
+                                  ? "border-status-success-border text-status-success-text"
                                   : ""
                           }`}
                           aria-label={cloudStatusLabel}
@@ -392,7 +392,7 @@ export function MainHeader() {
                           disabled={!hasEntries}
                           className={`${headerButtonClass} relative ${
                             collapseAllActive
-                              ? "border-primary-800 bg-primary-950 text-action-primary-bg"
+                              ? "border-accent-default bg-accent-subtle text-accent-strong"
                               : collapsedEntryCount > 0
                                 ? "text-text-default"
                                 : ""
@@ -422,7 +422,7 @@ export function MainHeader() {
                           }}
                           className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-border-default bg-surface-default transition-[width,border-color,background-color] duration-300 ease-out ${
                             isSearchOpen
-                              ? "w-[20rem] border-primary-800 bg-primary-950/40"
+                              ? "w-[20rem] border-accent-default bg-accent-subtle"
                               : "w-7"
                           }`}
                           style={{ willChange: "width" }}
@@ -514,7 +514,7 @@ export function MainHeader() {
 
                         <button
                           onClick={() => emit("kolam_header_log_toggle_stash")}
-                          className={`relative ${headerButtonClass} ${logState.showStash ? "border-amber-800 bg-amber-950 text-amber-500" : ""}`}
+                          className={`relative ${headerButtonClass} ${logState.showStash ? "border-status-warning-border bg-status-warning-bg text-status-warning-text" : ""}`}
                           title={
                             logState.showStash
                               ? "Close stash manager"
@@ -541,7 +541,7 @@ export function MainHeader() {
 
                         <button
                           onClick={() => emit("kolam_header_log_toggle_graph")}
-                          className={`${headerButtonClass} ${logState.graphView ? "border-primary-800 bg-primary-950 text-action-primary-bg" : ""}`}
+                          className={`${headerButtonClass} ${logState.graphView ? "border-accent-default bg-accent-subtle text-accent-strong" : ""}`}
                           title={
                             logState.graphView
                               ? "Back to commit list"
@@ -580,7 +580,7 @@ export function MainHeader() {
 
                     <div className={toolbarGroupClass}>
                       <Menu as="div" className="relative hidden md:block">
-                        <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-action-primary-bg/70">
+                        <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700">
                           <GitBranch className="h-3 w-3" />
                           {logState.currentBranch ?? "main"}
                           <ChevronDown className="h-3 w-3" />

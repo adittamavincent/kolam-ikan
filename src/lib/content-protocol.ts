@@ -162,7 +162,9 @@ export function cloneStoredContentFields(record: StoredContentRecord): {
 } {
   const blocks = storedContentToBlocks(record);
   return {
-    content_json: (isBlockArray(record.content_json) ? record.content_json : blocks) as unknown as Json,
+    content_json: (isBlockArray(record.content_json)
+      ? record.content_json
+      : blocks) as unknown as Json,
     raw_markdown: storedContentToMarkdown(record),
     content_format:
       record.content_format?.trim() || CONTENT_FORMAT_MARKDOWN_EDITOR,
@@ -180,7 +182,9 @@ export function storedContentToMarkdown(record: StoredContentRecord): string {
   return "";
 }
 
-export function storedContentToBlocks(record: StoredContentRecord): PartialBlock[] {
+export function storedContentToBlocks(
+  record: StoredContentRecord,
+): PartialBlock[] {
   if (isBlockArray(record.content_json) && record.content_json.length > 0) {
     return record.content_json;
   }

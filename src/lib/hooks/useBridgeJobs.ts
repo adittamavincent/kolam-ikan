@@ -3,7 +3,11 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { BridgeJob, BridgeJobProvider, BridgePayloadVariant } from "@/lib/types";
+import type {
+  BridgeJob,
+  BridgeJobProvider,
+  BridgePayloadVariant,
+} from "@/lib/types";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { deriveBridgeSessionPatchFromJob } from "@/lib/bridge/bridge-jobs";
 import { BRIDGE_JOB_PROVIDERS } from "@/lib/bridge/providers";
@@ -11,12 +15,7 @@ import { BRIDGE_JOB_PROVIDERS } from "@/lib/bridge/providers";
 export const latestBridgeJobQueryKey = (
   streamId: string,
   provider: BridgeJobProvider,
-) => [
-  "bridge-jobs",
-  "latest",
-  streamId,
-  provider,
-] as const;
+) => ["bridge-jobs", "latest", streamId, provider] as const;
 
 export function useLatestBridgeJob(
   streamId: string,
@@ -49,10 +48,7 @@ export function useLatestBridgeJob(
     enabled: !!streamId,
     refetchInterval: (query) => {
       const latestJob = query.state.data as BridgeJob | null | undefined;
-      if (
-        latestJob?.status === "queued" ||
-        latestJob?.status === "running"
-      ) {
+      if (latestJob?.status === "queued" || latestJob?.status === "running") {
         return Math.min(refetchInterval, 1_000);
       }
       return refetchInterval;
@@ -109,9 +105,11 @@ export function useCreateBridgeJob(streamId: string) {
         }),
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string; job?: BridgeJob; deduped?: boolean }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        job?: BridgeJob;
+        deduped?: boolean;
+      } | null;
 
       if (!response.ok || !payload?.job) {
         throw new Error(payload?.error ?? "Failed to queue bridge job");

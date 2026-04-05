@@ -23,7 +23,10 @@ export async function POST(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid bridge reset payload", details: parsed.error.flatten() },
+      {
+        error: "Invalid bridge reset payload",
+        details: parsed.error.flatten(),
+      },
       { status: 400 },
     );
   }

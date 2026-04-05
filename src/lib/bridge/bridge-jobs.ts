@@ -12,18 +12,20 @@ export function buildBridgeSessionKey(
   return `${provider}:${streamId}`;
 }
 
-export function mapBridgeJobToRunnerStatus(job: {
-  status: BridgeJobStatus;
-  error_code?: string | null;
-} | null | undefined): BridgeRunnerStatus {
+export function mapBridgeJobToRunnerStatus(
+  job:
+    | {
+        status: BridgeJobStatus;
+        error_code?: string | null;
+      }
+    | null
+    | undefined,
+): BridgeRunnerStatus {
   if (!job) return "idle";
   if (job.status === "queued") return "queued";
   if (job.status === "running") return "running";
   if (job.status === "succeeded") return "succeeded";
-  if (
-    job.status === "failed" &&
-    job.error_code === SIDE_CAR_LOGIN_ERROR_CODE
-  ) {
+  if (job.status === "failed" && job.error_code === SIDE_CAR_LOGIN_ERROR_CODE) {
     return "needs-login";
   }
   return job.status === "failed" ? "failed" : "idle";

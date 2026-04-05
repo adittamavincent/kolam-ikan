@@ -27,9 +27,7 @@ export function resolveServerHealthUrl() {
 
 export function resolveBrowserHealthCandidates() {
   return [
-    normalizeBaseUrl(
-      buildHealthUrlFromPort(DEFAULT_BRIDGE_RUNNER_HEALTH_PORT),
-    ),
+    normalizeBaseUrl(buildHealthUrlFromPort(DEFAULT_BRIDGE_RUNNER_HEALTH_PORT)),
   ];
 }
 

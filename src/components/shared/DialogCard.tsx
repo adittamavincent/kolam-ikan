@@ -14,14 +14,7 @@ type DialogCardProps = {
 
 export const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>(
   function DialogCard(
-    {
-      title,
-      description,
-      icon,
-      actions,
-      children,
-      panelClassName = "",
-    },
+    { title, description, icon, actions, children, panelClassName = "" },
     ref,
   ) {
     return (
@@ -49,7 +42,9 @@ export const DialogCard = forwardRef<HTMLDivElement, DialogCardProps>(
 
         {children ? <div className="mt-4">{children}</div> : null}
         {actions ? (
-          <div className="mt-6 flex items-center justify-end gap-2">{actions}</div>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            {actions}
+          </div>
         ) : null}
       </Dialog.Panel>
     );

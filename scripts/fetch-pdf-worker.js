@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-import fs from 'fs';
-import path from 'path';
-import https from 'https';
-import { fileURLToPath } from 'url';
+import fs from "fs";
+import path from "path";
+import https from "https";
+import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = path.join(__dirname, '..', 'public', 'js');
-const OUT_FILE = path.join(OUT_DIR, 'pdf.worker.min.mjs');
+const OUT_DIR = path.join(__dirname, "..", "public", "js");
+const OUT_FILE = path.join(OUT_DIR, "pdf.worker.min.mjs");
 
 function ensureOutDir() {
   if (!fs.existsSync(OUT_DIR)) fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -14,10 +14,17 @@ function ensureOutDir() {
 
 function tryCopyFromNodeModules() {
   try {
-    const nmPath = path.join(__dirname, '..', 'node_modules', 'pdfjs-dist', 'build', 'pdf.worker.min.mjs');
+    const nmPath = path.join(
+      __dirname,
+      "..",
+      "node_modules",
+      "pdfjs-dist",
+      "build",
+      "pdf.worker.min.mjs",
+    );
     if (fs.existsSync(nmPath)) {
       fs.copyFileSync(nmPath, OUT_FILE);
-      console.log('Copied pdf.worker.min.mjs from node_modules to', OUT_FILE);
+      console.log("Copied pdf.worker.min.mjs from node_modules to", OUT_FILE);
       return true;
     }
   } catch {
@@ -26,22 +33,24 @@ function tryCopyFromNodeModules() {
   return false;
 }
 
-function fetchFromUnpkg(version = '2.16.105') {
+function fetchFromUnpkg(version = "2.16.105") {
   const url = `https://unpkg.com/pdfjs-dist@${version}/build/pdf.worker.min.mjs`;
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        return reject(new Error(`Failed to fetch ${url}: ${res.statusCode}`));
-      }
-      ensureOutDir();
-      const fileStream = fs.createWriteStream(OUT_FILE);
-      res.pipe(fileStream);
-      fileStream.on('finish', () => {
-        fileStream.close();
-        console.log('Fetched pdf.worker.min.mjs from unpkg to', OUT_FILE);
-        resolve(true);
-      });
-    }).on('error', (err) => reject(err));
+    https
+      .get(url, (res) => {
+        if (res.statusCode !== 200) {
+          return reject(new Error(`Failed to fetch ${url}: ${res.statusCode}`));
+        }
+        ensureOutDir();
+        const fileStream = fs.createWriteStream(OUT_FILE);
+        res.pipe(fileStream);
+        fileStream.on("finish", () => {
+          fileStream.close();
+          console.log("Fetched pdf.worker.min.mjs from unpkg to", OUT_FILE);
+          resolve(true);
+        });
+      })
+      .on("error", (err) => reject(err));
   });
 }
 
@@ -52,7 +61,7 @@ async function main() {
   try {
     await fetchFromUnpkg();
   } catch (err) {
-    console.error('Failed to obtain pdf.worker.min.mjs:', err.message || err);
+    console.error("Failed to obtain pdf.worker.min.mjs:", err.message || err);
     process.exitCode = 1;
   }
 }

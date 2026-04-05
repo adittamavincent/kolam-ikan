@@ -16,11 +16,7 @@ export interface TimelineFeatureFlags {
   stasheable: boolean;
 }
 
-export type TimelineStyleVariant =
-  | "entry"
-  | "draft"
-  | "snapshot"
-  | "merge";
+export type TimelineStyleVariant = "entry" | "draft" | "snapshot" | "merge";
 
 export interface TimelineItemSpec {
   kind: TimelineItemKind;
@@ -33,7 +29,10 @@ export type TimelineItem =
   | { type: "entry"; data: EntryWithSections; created_at: string }
   | { type: "canvas_snapshot"; data: CanvasVersion; created_at: string };
 
-export type RenderableTimelineItemKind = Exclude<TimelineItemKind, "canvas_draft">;
+export type RenderableTimelineItemKind = Exclude<
+  TimelineItemKind,
+  "canvas_draft"
+>;
 
 export function resolveTimelineItemKind(
   item: TimelineItem,

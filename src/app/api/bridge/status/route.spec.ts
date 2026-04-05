@@ -29,7 +29,9 @@ describe("GET /api/bridge/status", () => {
   });
 
   it("returns offline when the health endpoint is unreachable", async () => {
-    global.fetch = vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED")) as typeof fetch;
+    global.fetch = vi
+      .fn()
+      .mockRejectedValue(new Error("connect ECONNREFUSED")) as typeof fetch;
 
     const { GET } = await import("./route");
     const response = await GET();

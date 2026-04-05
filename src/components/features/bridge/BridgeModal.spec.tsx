@@ -220,13 +220,7 @@ describe("BridgeModal", () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
 
-    render(
-      <BridgeModal
-        isOpen
-        onClose={onClose}
-        streamId="stream-1"
-      />,
-    );
+    render(<BridgeModal isOpen onClose={onClose} streamId="stream-1" />);
 
     await user.click(screen.getByRole("button", { name: "Apply" }));
 
@@ -242,7 +236,8 @@ describe("BridgeModal", () => {
     });
 
     expect(
-      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.externalSessionLoadedAt,
+      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]
+        ?.externalSessionLoadedAt,
     ).toBeTruthy();
 
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -275,7 +270,9 @@ describe("BridgeModal", () => {
     render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
 
     expect(screen.getByText("Manual Handoff In Progress")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Paste Response" }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("button", { name: "Paste Response" }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("passes followup payload settings to XMLGenerator for active external sessions", async () => {
@@ -302,6 +299,8 @@ describe("BridgeModal", () => {
 
     render(<BridgeModal isOpen onClose={vi.fn()} streamId="stream-1" />);
 
-    expect(screen.getByRole("button", { name: "Copy Prompt" }).parentElement).toHaveClass("pb-3");
+    expect(
+      screen.getByRole("button", { name: "Copy Prompt" }).parentElement,
+    ).toHaveClass("pb-3");
   });
 });

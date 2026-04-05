@@ -22,7 +22,10 @@ import {
 } from "./bridge-config";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
-import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
+import {
+  useCreateBridgeJob,
+  useLatestBridgeJob,
+} from "@/lib/hooks/useBridgeJobs";
 import { useBridgeRunnerStatus } from "@/lib/hooks/useBridgeRunnerStatus";
 import { XMLGenerator } from "./XMLGenerator";
 import { ResponseParser, type ResponseParserHandle } from "./ResponseParser";
@@ -49,9 +52,7 @@ const INITIAL_PARSER_STATUS = {
   hasParsed: false,
 };
 
-export function QuickBridgeControl({
-  streamId,
-}: QuickBridgeControlProps) {
+export function QuickBridgeControl({ streamId }: QuickBridgeControlProps) {
   const supabase = createClient();
   const bridgeDefaults = useUiPreferencesStore((state) => state.bridgeDefaults);
   const bridgeSession = useUiPreferencesStore(
@@ -162,16 +163,16 @@ export function QuickBridgeControl({
   const instruction = bridgeSession?.lastInstruction ?? "";
   const effectiveInstruction = composeBridgeInstruction(
     hasHydrated ? instruction : "",
-    hasHydrated ? bridgeSession?.sessionMemory ?? "" : "",
+    hasHydrated ? (bridgeSession?.sessionMemory ?? "") : "",
   );
   const providerId = hasHydrated
-    ? bridgeSession?.providerId ?? bridgeDefaults.providerId
+    ? (bridgeSession?.providerId ?? bridgeDefaults.providerId)
     : "gemini";
   const providerPreset = getBridgeProviderPreset(providerId);
   const latestBridgeJob = useLatestBridgeJob(streamId, providerId, 4_000);
   const payloadVariant = getQuickPayloadVariant(bridgeSession);
   const queueStatus = hasHydrated
-    ? bridgeSession?.automationStatus ?? "idle"
+    ? (bridgeSession?.automationStatus ?? "idle")
     : "idle";
   const latestJob = latestBridgeJob.data;
   const liveQueueStatus =
@@ -182,8 +183,7 @@ export function QuickBridgeControl({
         : latestJob?.status === "failed"
           ? "failed"
           : queueStatus;
-  const effectiveLaunchState =
-    bridgeSession ? launchState : "idle";
+  const effectiveLaunchState = bridgeSession ? launchState : "idle";
   const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
   const latestJobMatchesCurrentPayload =
     latestJob?.session_key === currentSessionKey &&
@@ -204,29 +204,33 @@ export function QuickBridgeControl({
     latestJob?.status === "succeeded" &&
     !!responseText &&
     latestJob?.id !== bridgeSession?.lastAppliedJobId;
-  const pendingResponseJobId = hasPendingResponse ? latestJob?.id ?? null : null;
+  const pendingResponseJobId = hasPendingResponse
+    ? (latestJob?.id ?? null)
+    : null;
   const responseToApply = hasPendingResponse ? responseText : manualPastedXML;
   const isContinuing =
     !!bridgeSession &&
-    ((hasHydrated ? bridgeSession?.isExternalSessionActive ?? false : false) ||
+    ((hasHydrated
+      ? (bridgeSession?.isExternalSessionActive ?? false)
+      : false) ||
       latestJob?.status === "succeeded");
 
   const phase: QuickPhase =
     isManualMode && !manualPastedXML.trim()
       ? "send"
       : !runnerStatus.online && !runnerStatus.isChecking && !hasPendingResponse
-      ? "send"
-      : hasPendingResponse
-      ? "apply"
-      : effectiveLaunchState === "queueing" ||
-          effectiveLaunchState === "queued" ||
-          liveQueueStatus === "queued" ||
-          liveQueueStatus === "running" ||
-          effectiveLaunchState === "launching" ||
-          effectiveLaunchState === "done" ||
-          effectiveLaunchState === "opened"
-        ? "waiting"
-        : "send";
+        ? "send"
+        : hasPendingResponse
+          ? "apply"
+          : effectiveLaunchState === "queueing" ||
+              effectiveLaunchState === "queued" ||
+              liveQueueStatus === "queued" ||
+              liveQueueStatus === "running" ||
+              effectiveLaunchState === "launching" ||
+              effectiveLaunchState === "done" ||
+              effectiveLaunchState === "opened"
+            ? "waiting"
+            : "send";
 
   useEffect(() => {
     const nextQuickUiPhase = isManualMode
@@ -234,7 +238,7 @@ export function QuickBridgeControl({
         ? "manual-continue"
         : isManualPastePhase
           ? "manual-paste"
-        : "manual-copy"
+          : "manual-copy"
       : phase === "waiting"
         ? "waiting"
         : phase === "apply"
@@ -271,8 +275,10 @@ export function QuickBridgeControl({
       (latestJob.id !== bridgeSession?.lastJobId ||
         latestJob.status !== bridgeSession?.automationStatus ||
         latestJob.status !== bridgeSession?.lastJobStatus ||
-        (latestJob.error_message ?? "") !== (bridgeSession?.lastJobError ?? "") ||
-        (latestJob.completed_at ?? null) !== (bridgeSession?.lastJobCompletedAt ?? null))
+        (latestJob.error_message ?? "") !==
+          (bridgeSession?.lastJobError ?? "") ||
+        (latestJob.completed_at ?? null) !==
+          (bridgeSession?.lastJobCompletedAt ?? null))
     ) {
       upsertBridgeSession(streamId, {
         automationStatus:
@@ -300,7 +306,6 @@ export function QuickBridgeControl({
     streamId,
     upsertBridgeSession,
   ]);
-
 
   const applyQuickBridgeResponse = async () => {
     if (!hasPendingResponse || !pendingResponseJobId) return;
@@ -414,7 +419,9 @@ export function QuickBridgeControl({
     setManualPastedXML(text);
   };
 
-  const handleManualPasteEvent = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+  const handleManualPasteEvent = (
+    event: ClipboardEvent<HTMLTextAreaElement>,
+  ) => {
     const target = event.currentTarget;
     requestAnimationFrame(() => {
       const text = target.value;
@@ -423,13 +430,18 @@ export function QuickBridgeControl({
     });
   };
 
-  const handleManualPasteInputChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleManualPasteInputChange = (
+    event: ChangeEvent<HTMLTextAreaElement>,
+  ) => {
     const text = event.target.value;
     setManualPasteDraft(text);
   };
 
   useEffect(() => {
-    if (!isPersistedManualMode && !(!runnerStatus.online && !runnerStatus.isChecking)) {
+    if (
+      !isPersistedManualMode &&
+      !(!runnerStatus.online && !runnerStatus.isChecking)
+    ) {
       const frame = requestAnimationFrame(() => {
         setManualPastedXML("");
         setManualPasteDraft("");
@@ -490,14 +502,13 @@ export function QuickBridgeControl({
     void queueQuickBridge();
   };
 
-  const label =
-    isManualMode
-      ? isManualContinuePhase
-        ? "Continue"
-        : isManualPastePhase
-          ? "Paste"
+  const label = isManualMode
+    ? isManualContinuePhase
+      ? "Continue"
+      : isManualPastePhase
+        ? "Paste"
         : "Copy"
-      : phase === "waiting"
+    : phase === "waiting"
       ? "Waiting"
       : phase === "apply"
         ? parserStatus.isApplying
@@ -507,53 +518,53 @@ export function QuickBridgeControl({
           ? "Continue"
           : "Quick";
 
-  const detail =
-    isManualMode
-      ? isManualContinuePhase
-        ? "Copy a follow-up payload for manual handoff"
-        : isManualPastePhase
-          ? "Paste the response and apply it"
+  const detail = isManualMode
+    ? isManualContinuePhase
+      ? "Copy a follow-up payload for manual handoff"
+      : isManualPastePhase
+        ? "Paste the response and apply it"
         : "Copy payload for manual handoff"
-      : phase === "apply"
+    : phase === "apply"
       ? "Apply response to current stream"
       : phase === "waiting"
         ? queueStatus === "needs-login"
           ? "Login needed"
           : liveQueueStatus === "needs-login"
-          ? "Login needed"
-          : liveQueueStatus === "failed"
-            ? "Failed"
-            : liveQueueStatus === "running"
-              ? "Waiting"
-              : "Queued"
+            ? "Login needed"
+            : liveQueueStatus === "failed"
+              ? "Failed"
+              : liveQueueStatus === "running"
+                ? "Waiting"
+                : "Queued"
         : isContinuing
           ? "Send follow-up payload"
           : "Send full payload";
 
   const icon =
     phase === "waiting" ||
-        effectiveLaunchState === "queueing" ||
-        effectiveLaunchState === "launching" ||
-        parserStatus.isApplying ? (
+    effectiveLaunchState === "queueing" ||
+    effectiveLaunchState === "launching" ||
+    parserStatus.isApplying ? (
       <Loader2 className="h-4 w-4 animate-spin" />
-    ) : (
-      isManualMode ? (
-        isManualContinuePhase ? (
-          <Copy className="h-4 w-4" />
-        ) : isManualPastePhase ? (
-          <ClipboardPaste className="h-4 w-4" />
-        ) : (
-          <Copy className="h-4 w-4" />
-        )
+    ) : isManualMode ? (
+      isManualContinuePhase ? (
+        <Copy className="h-4 w-4" />
+      ) : isManualPastePhase ? (
+        <ClipboardPaste className="h-4 w-4" />
       ) : (
-        <Wand2 className="h-4 w-4" />
+        <Copy className="h-4 w-4" />
       )
+    ) : (
+      <Wand2 className="h-4 w-4" />
     );
 
   const disabled =
     !hasHydrated ||
     phase === "waiting" ||
-    (isManualMode && !isManualPastePhase && !isManualContinuePhase && !generatedXML.trim()) ||
+    (isManualMode &&
+      !isManualPastePhase &&
+      !isManualContinuePhase &&
+      !generatedXML.trim()) ||
     (phase === "send" && !canRunQuick && runnerStatus.online) ||
     (phase === "apply" && !hasPendingResponse) ||
     createBridgeJob.isPending ||
@@ -581,7 +592,8 @@ export function QuickBridgeControl({
               Paste Response
             </div>
             <p className="mt-1 text-text-muted">
-              Click here and paste with Cmd/Ctrl+V if browser clipboard access is blocked.
+              Click here and paste with Cmd/Ctrl+V if browser clipboard access
+              is blocked.
             </p>
             <textarea
               ref={manualPasteInputRef}
@@ -629,7 +641,6 @@ export function QuickBridgeControl({
           onStatusChange={setParserStatus}
         />
       </div>
-
     </>
   );
 }

@@ -43,8 +43,10 @@ export type DocumentImportJobUpdate =
   Database["public"]["Tables"]["document_import_jobs"]["Update"];
 
 export type BridgeJob = Database["public"]["Tables"]["bridge_jobs"]["Row"];
-export type BridgeJobInsert = Database["public"]["Tables"]["bridge_jobs"]["Insert"];
-export type BridgeJobUpdate = Database["public"]["Tables"]["bridge_jobs"]["Update"];
+export type BridgeJobInsert =
+  Database["public"]["Tables"]["bridge_jobs"]["Insert"];
+export type BridgeJobUpdate =
+  Database["public"]["Tables"]["bridge_jobs"]["Update"];
 
 export type BridgeJobStatus =
   | "queued"
@@ -143,23 +145,23 @@ export interface StreamWithCanvas extends Stream {
 
 export interface StreamWithCabinetAndDomain extends Stream {
   domain?: Domain;
-  cabinet?: Cabinet & {
-  };
+  cabinet?: Cabinet & {};
 }
 
 export interface EntryWithSections extends Entry {
   sections: SectionWithPersona[];
 }
 
-export interface SectionWithPersona
-  extends Omit<Section, "section_type" | "file_display_mode"> {
+export interface SectionWithPersona extends Omit<
+  Section,
+  "section_type" | "file_display_mode"
+> {
   section_type?: Section["section_type"];
   file_display_mode?: Section["file_display_mode"];
   persona?: Persona;
   section_attachments?: SectionFileAttachmentWithDocument[];
 }
 
-export interface SectionFileAttachmentWithDocument
-  extends SectionFileAttachment {
+export interface SectionFileAttachmentWithDocument extends SectionFileAttachment {
   document?: DocumentWithLatestJob;
 }

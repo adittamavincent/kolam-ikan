@@ -146,7 +146,8 @@ describe("QuickBridgeDialog", () => {
     mockLatestBridgeJobData.current = {
       id: "job-1",
       status: "succeeded",
-      raw_response: "<response><log>delta</log><canvas>+ note</canvas></response>",
+      raw_response:
+        "<response><log>delta</log><canvas>+ note</canvas></response>",
     };
 
     useUiPreferencesStore.setState({
@@ -210,7 +211,8 @@ describe("QuickBridgeDialog", () => {
     expect(mockQuickApply).not.toHaveBeenCalled();
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(
-      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.lastAppliedJobId,
+      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]
+        ?.lastAppliedJobId,
     ).toBe("job-1");
   });
 });

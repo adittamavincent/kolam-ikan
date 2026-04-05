@@ -44,11 +44,8 @@ vi.mock("@/components/features/bridge/QuickBridgeControl", () => ({
 }));
 
 vi.mock("@/components/features/bridge/BridgeModal", () => ({
-  BridgeModal: ({
-    isOpen,
-  }: {
-    isOpen: boolean;
-  }) => (isOpen ? <div>BridgeModal</div> : null),
+  BridgeModal: ({ isOpen }: { isOpen: boolean }) =>
+    isOpen ? <div>BridgeModal</div> : null,
 }));
 
 describe("StreamView", () => {
@@ -106,15 +103,21 @@ describe("StreamView", () => {
     render(<StreamView streamId="stream-1" />);
 
     expect(screen.getByText("QuickBridgeControl")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Detailed" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Detailed" }),
+    ).toBeInTheDocument();
   });
 
   it("shows the bridge toolbar controls", () => {
     render(<StreamView streamId="stream-1" />);
 
-    expect(screen.getByRole("button", { name: "Preferred web LLM" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Preferred web LLM" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("QuickBridgeControl")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Detailed" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Detailed" }),
+    ).toBeInTheDocument();
   });
 
   it("opens the detailed bridge flow", () => {

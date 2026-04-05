@@ -135,9 +135,7 @@ export function InteractionSwitcher({
             .join("\n") ?? "",
       ) ?? [];
     const canvasText = includeCanvas
-      ? blocksToText(
-          (canvas?.content_json as unknown as MarkdownBlock[]) ?? [],
-        )
+      ? blocksToText((canvas?.content_json as unknown as MarkdownBlock[]) ?? [])
       : "";
     const globalEntryText =
       includeGlobalStream && additionalGlobalStreamIds.length > 0
@@ -196,10 +194,10 @@ export function InteractionSwitcher({
               key={mode}
               onClick={() => onChange(mode)}
               className={`relative flex-1 font-bold tracking-widest transition-all duration-200 ease-out ${
- value === mode
- ? "bg-surface-elevated text-action-primary-bg font-black z-10"
- : "text-text-muted hover:text-text-default hover:bg-surface-hover"
- }`}
+                value === mode
+                  ? "bg-surface-elevated text-action-primary-bg font-black z-10"
+                  : "text-text-muted hover:text-text-default hover:bg-surface-hover"
+              }`}
             >
               {mode}
             </button>
@@ -209,15 +207,15 @@ export function InteractionSwitcher({
         {/* Token Indicator */}
         <div
           className={`flex items-center px-2 border border-border-subtle transition-all cursor-default min-w-17.5 justify-center ${
- overLimit ? "bg-status-error-bg" : "bg-surface-default"
- }`}
+            overLimit ? "bg-status-error-bg" : "bg-surface-default"
+          }`}
           title={`${tokens.toLocaleString()} / ${tokenLimit.toLocaleString()} tokens`}
         >
           <div className="flex flex-col items-center">
             <span
               className={` font-bold tabular-nums leading-none ${
- overLimit ? "text-status-error-text" : "text-action-primary-bg"
- }`}
+                overLimit ? "text-status-error-text" : "text-action-primary-bg"
+              }`}
             >
               {tokens > 999 ? `${(tokens / 1000).toFixed(1)}k` : tokens}
             </span>

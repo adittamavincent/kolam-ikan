@@ -172,7 +172,8 @@ export function LogEntryTimelineItem({
                   <div>stashed: {isStashed ? "yes" : "no"}</div>
                   <div>latest: {isLatestEntry ? "HEAD" : "no"}</div>
                   <div className="truncate">
-                    branches: {entryBranches.length ? entryBranches.join(", ") : "-"}
+                    branches:{" "}
+                    {entryBranches.length ? entryBranches.join(", ") : "-"}
                   </div>
                 </div>
               </span>
@@ -277,13 +278,19 @@ export function LogEntryTimelineItem({
                   onPreviewAttachment={onPreviewAttachment}
                   editable={isAmending}
                   currentEditedContent={
-                    isAmending ? amendSections?.[section.id]?.content : undefined
+                    isAmending
+                      ? amendSections?.[section.id]?.content
+                      : undefined
                   }
                   currentEditedMarkdown={
-                    isAmending ? amendSections?.[section.id]?.markdown : undefined
+                    isAmending
+                      ? amendSections?.[section.id]?.markdown
+                      : undefined
                   }
                   attachmentOverrides={
-                    isAmending ? amendSections?.[section.id]?.attachments : undefined
+                    isAmending
+                      ? amendSections?.[section.id]?.attachments
+                      : undefined
                   }
                   onRemoveAttachment={
                     isAmending
@@ -310,7 +317,9 @@ export function LogEntryTimelineItem({
                           )
                       : undefined
                   }
-                  isUploadingAttachments={uploadingAmendSectionIds.has(section.id)}
+                  isUploadingAttachments={uploadingAmendSectionIds.has(
+                    section.id,
+                  )}
                   isSearchTarget={section.id === highlightSectionId}
                   onContentChange={(content, markdown) => {
                     if (!isAmending) return;

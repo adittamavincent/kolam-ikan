@@ -38,9 +38,24 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 const mockPersonas = [
-  { id: "persona-a", name: "Persona A", icon: "user", color: PERSONA_SWATCHES[0] },
-  { id: "persona-b", name: "Persona B", icon: "brain", color: PERSONA_SWATCHES[6] },
-  { id: "persona-c", name: "Persona C", icon: "heart", color: PERSONA_SWATCHES[8] },
+  {
+    id: "persona-a",
+    name: "Persona A",
+    icon: "user",
+    color: PERSONA_SWATCHES[0],
+  },
+  {
+    id: "persona-b",
+    name: "Persona B",
+    icon: "brain",
+    color: PERSONA_SWATCHES[6],
+  },
+  {
+    id: "persona-c",
+    name: "Persona C",
+    icon: "heart",
+    color: PERSONA_SWATCHES[8],
+  },
 ];
 
 vi.mock("@/lib/hooks/usePersonas", () => ({
@@ -503,7 +518,9 @@ describe("EntryCreator - Persona Selection Integration Tests", () => {
     fireEvent.click(xButtons[0]);
 
     expect(screen.getByText("Delete this section?")).toBeInTheDocument();
-    expect(screen.getByText(/removes the current section/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/removes the current section/i),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Delete section" }));
 

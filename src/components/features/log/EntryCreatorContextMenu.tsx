@@ -1,6 +1,13 @@
 "use client";
 
-import { Archive, ArchiveRestore, Copy, GitBranch, RotateCcw, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Copy,
+  GitBranch,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import {
   CONTEXT_MENU_ACTION_ICON_CLASS,
   CONTEXT_MENU_BASE_CONTAINER_CLASS,
@@ -60,7 +67,9 @@ export function EntryCreatorContextMenu({
         <div className="uppercase tracking-[0.16em] text-text-muted">
           working tree
         </div>
-        <div className={`${CONTEXT_MENU_HEADER_CLASS} mt-1 px-0 py-0 text-text-default`}>
+        <div
+          className={`${CONTEXT_MENU_HEADER_CLASS} mt-1 px-0 py-0 text-text-default`}
+        >
           <GitBranch className={CONTEXT_MENU_ACTION_ICON_CLASS} />
           <span className="truncate">{selectedBranch}</span>
           <span className="text-text-muted">·</span>

@@ -39,7 +39,9 @@ export function useBridgeRunnerStatus({
   pollIntervalMs,
 }: UseBridgeRunnerStatusOptions = {}) {
   const [status, setStatus] = useState<BridgeStatusResult>({ online: false });
-  const [mode, setMode] = useState<RunnerMode>(enabled ? "checking" : "offline");
+  const [mode, setMode] = useState<RunnerMode>(
+    enabled ? "checking" : "offline",
+  );
   const [isChecking, setIsChecking] = useState(enabled);
   const inFlightRef = useRef<Promise<BridgeStatusResult> | null>(null);
 

@@ -33,7 +33,10 @@ export function saveCanvasPreviewStash(
 ): void {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(canvasPreviewStashKey(streamId), JSON.stringify(record));
+    window.localStorage.setItem(
+      canvasPreviewStashKey(streamId),
+      JSON.stringify(record),
+    );
   } catch (error) {
     console.warn("Failed to save canvas preview stash", error);
   }
@@ -53,7 +56,9 @@ export function loadCanvasPreviewStash(
   }
 }
 
-export function blocksToPlainText(blocks: PartialBlock[] | null | undefined): string {
+export function blocksToPlainText(
+  blocks: PartialBlock[] | null | undefined,
+): string {
   const source = blocks ?? [];
   return source
     .map((block) => {
@@ -94,7 +99,10 @@ export type DiffLine = {
 
 type RawDiffLine = { type: "eq" | "add" | "del"; text: string };
 
-function buildSequenceDiff(oldItems: string[], newItems: string[]): RawDiffLine[] {
+function buildSequenceDiff(
+  oldItems: string[],
+  newItems: string[],
+): RawDiffLine[] {
   const m = oldItems.length;
   const n = newItems.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () =>

@@ -86,11 +86,14 @@ function formatEta(seconds: number | null | undefined) {
 }
 
 function getStatusTone(status: string) {
-  if (status === "queued") return "bg-status-warning-bg text-status-warning-text";
-  if (status === "completed") return "bg-status-success-bg text-status-success-text";
+  if (status === "queued")
+    return "bg-status-warning-bg text-status-warning-text";
+  if (status === "completed")
+    return "bg-status-success-bg text-status-success-text";
   if (status === "failed" || status === "canceled")
     return "bg-status-error-bg text-status-error-text";
-  if (status === "processing") return "bg-status-warning-bg text-status-warning-text";
+  if (status === "processing")
+    return "bg-status-warning-bg text-status-warning-text";
   return "bg-surface-subtle text-text-muted";
 }
 
@@ -908,10 +911,10 @@ export function DocumentImportModal({
                         }}
                         disabled={actionDisabled}
                         className={`absolute right-2 top-2 z-10 flex h-5 w-5 items-center justify-center bg-surface-default focus: disabled:text-text-muted ${
- isInUse && !isPending
- ? "cursor-not-allowed text-text-muted"
- : "text-text-muted hover:bg-surface-hover hover:text-status-error-text"
- }`}
+                          isInUse && !isPending
+                            ? "cursor-not-allowed text-text-muted"
+                            : "text-text-muted hover:bg-surface-hover hover:text-status-error-text"
+                        }`}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"

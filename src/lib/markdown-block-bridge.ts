@@ -72,7 +72,9 @@ function parseOrderedListLine(line: string): string | null {
   return match[1];
 }
 
-function parseHeadingLine(line: string): { level: number; text: string } | null {
+function parseHeadingLine(
+  line: string,
+): { level: number; text: string } | null {
   const { withoutIndent } = getLineIndent(line);
   const match = withoutIndent.trimEnd().match(/^(#{1,6})\s+(.*)$/);
   if (!match) return null;
@@ -110,11 +112,7 @@ export function blocksToBridgeMarkdown(
   const seen = new Set<MarkdownBlock>();
   const segments: { markdown: string; type: string }[] = [];
 
-  function renderBlock(
-    block: MarkdownBlock,
-    target: string[],
-    indent = 0,
-  ) {
+  function renderBlock(block: MarkdownBlock, target: string[], indent = 0) {
     guard();
 
     if (seen.has(block)) {
@@ -125,7 +123,8 @@ export function blocksToBridgeMarkdown(
 
     try {
       const indentStr = " ".repeat(indent);
-      const text = (block.content || []).map((content) => content.text).join("") || "";
+      const text =
+        (block.content || []).map((content) => content.text).join("") || "";
       const meta = ((block.props as Record<string, unknown> | undefined)?.md ??
         (block.props as Record<string, unknown> | undefined)?.bn ??
         null) as Record<string, unknown> | null;
@@ -133,19 +132,22 @@ export function blocksToBridgeMarkdown(
       if (block.type === "bulletListItem") {
         target.push(`${indentStr}- ${wrapWithMeta(text, meta)}`);
         if (Array.isArray(block.children) && block.children.length > 0) {
-          for (const child of block.children) renderBlock(child, target, indent + 2);
+          for (const child of block.children)
+            renderBlock(child, target, indent + 2);
         }
         return;
       }
 
       if (block.type === "checkListItem") {
-        const checked =
-          Boolean((block.props as Record<string, unknown> | undefined)?.checked);
+        const checked = Boolean(
+          (block.props as Record<string, unknown> | undefined)?.checked,
+        );
         target.push(
           `${indentStr}- [${checked ? "x" : " "}] ${wrapWithMeta(text, meta)}`,
         );
         if (Array.isArray(block.children) && block.children.length > 0) {
-          for (const child of block.children) renderBlock(child, target, indent + 2);
+          for (const child of block.children)
+            renderBlock(child, target, indent + 2);
         }
         return;
       }
@@ -153,7 +155,8 @@ export function blocksToBridgeMarkdown(
       if (block.type === "numberedListItem") {
         target.push(`${indentStr}1. ${wrapWithMeta(text, meta)}`);
         if (Array.isArray(block.children) && block.children.length > 0) {
-          for (const child of block.children) renderBlock(child, target, indent + 2);
+          for (const child of block.children)
+            renderBlock(child, target, indent + 2);
         }
         return;
       }
@@ -166,7 +169,8 @@ export function blocksToBridgeMarkdown(
 
       target.push(`${indentStr}${wrapWithMeta(text, meta)}`);
       if (Array.isArray(block.children) && block.children.length > 0) {
-        for (const child of block.children) renderBlock(child, target, indent + 2);
+        for (const child of block.children)
+          renderBlock(child, target, indent + 2);
       }
     } finally {
       seen.delete(block);
@@ -209,10 +213,13 @@ export function bridgeMarkdownToBlocks(
   const guard = createTimeoutGuard(options.timeoutMs);
   const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
 
-  function parseInline(text: string): { text: string; meta: Record<string, unknown> | null }[] {
+  function parseInline(
+    text: string,
+  ): { text: string; meta: Record<string, unknown> | null }[] {
     guard();
 
-    const results: { text: string; meta: Record<string, unknown> | null }[] = [];
+    const results: { text: string; meta: Record<string, unknown> | null }[] =
+      [];
     const spanRe = /<span\s+data-(?:md|bn)="([^"]+)">([\s\S]*?)<\/span>/g;
     let lastIndex = 0;
     let match: RegExpExecArray | null;
@@ -267,7 +274,11 @@ export function bridgeMarkdownToBlocks(
       const parts = parseInline(rawText);
       const content =
         parts.length > 0
-          ? parts.map((part) => ({ type: "text" as const, text: part.text, styles: {} }))
+          ? parts.map((part) => ({
+              type: "text" as const,
+              text: part.text,
+              styles: {},
+            }))
           : [];
       const bnMeta =
         parts.length === 1
@@ -281,38 +292,38 @@ export function bridgeMarkdownToBlocks(
             : bulletText !== null
               ? "bulletListItem"
               : "numberedListItem",
- props:
- taskItem !== null || bnMeta
- ? ({
- ...(taskItem !== null ? { checked: taskItem.checked } : {}),
- ...(bnMeta ? { md: bnMeta } : {}),
- } as unknown as Record<string, Json>)
- : undefined,
- content,
- };
+        props:
+          taskItem !== null || bnMeta
+            ? ({
+                ...(taskItem !== null ? { checked: taskItem.checked } : {}),
+                ...(bnMeta ? { md: bnMeta } : {}),
+              } as unknown as Record<string, Json>)
+            : undefined,
+        content,
+      };
 
- if (depth === 0) {
- root.push(node);
- } else {
- const parent = lastAtDepth[depth - 1];
- if (parent) {
- parent.children = parent.children || [];
- parent.children.push(node);
- } else {
- root.push(node);
- }
- }
+      if (depth === 0) {
+        root.push(node);
+      } else {
+        const parent = lastAtDepth[depth - 1];
+        if (parent) {
+          parent.children = parent.children || [];
+          parent.children.push(node);
+        } else {
+          root.push(node);
+        }
+      }
 
- lastAtDepth[depth] = node;
- lastAtDepth.length = depth + 1;
- continue;
- }
+      lastAtDepth[depth] = node;
+      lastAtDepth.length = depth + 1;
+      continue;
+    }
 
- const heading = parseHeadingLine(line);
- if (heading) {
- root.push({
- id: genId(),
- type: "heading",
+    const heading = parseHeadingLine(line);
+    if (heading) {
+      root.push({
+        id: genId(),
+        type: "heading",
         props: { level: heading.level },
         content: toTextContent(heading.text),
       });
@@ -335,15 +346,23 @@ export function bridgeMarkdownToBlocks(
     const parts = parseInline(paragraphLines.join("\n"));
     const content =
       parts.length > 0
-        ? parts.map((part) => ({ type: "text" as const, text: part.text, styles: {} }))
+        ? parts.map((part) => ({
+            type: "text" as const,
+            text: part.text,
+            styles: {},
+          }))
         : [];
     const bnMeta =
-      parts.length === 1 ? (parts[0].meta as Record<string, unknown> | null) : null;
+      parts.length === 1
+        ? (parts[0].meta as Record<string, unknown> | null)
+        : null;
 
     root.push({
       id: genId(),
       type: "paragraph",
-      props: bnMeta ? ({ md: bnMeta } as unknown as Record<string, Json>) : undefined,
+      props: bnMeta
+        ? ({ md: bnMeta } as unknown as Record<string, Json>)
+        : undefined,
       content,
     });
     lastAtDepth.length = 0;

@@ -30,9 +30,7 @@ export function MergeCommitCard({
             Merge Commit
           </span>
         </div>
-        <span className="text-text-subtle font-mono">
-          {createdAtText}
-        </span>
+        <span className="text-text-subtle font-mono">{createdAtText}</span>
       </div>
 
       <div className="px-2.5 py-2.5">
@@ -53,7 +51,8 @@ export function MergeCommitCard({
         <div className="mt-2 flex items-center justify-between gap-3">
           <div className="log-pane__info-text flex items-center gap-1.5">
             <Info className="h-4 w-4" />
-            This merge keeps merged content in history and tracks the source branch join.
+            This merge keeps merged content in history and tracks the source
+            branch join.
           </div>
           {onOpenInGraph ? (
             <button

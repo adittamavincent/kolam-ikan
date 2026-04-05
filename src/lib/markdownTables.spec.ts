@@ -42,7 +42,9 @@ describe("buildMarkdownTableModel", () => {
     ]);
 
     expect(model).not.toBeNull();
-    expect(model?.rows[2].cells.map((cell) => [cell.rawStart, cell.rawEnd])).toEqual([
+    expect(
+      model?.rows[2].cells.map((cell) => [cell.rawStart, cell.rawEnd]),
+    ).toEqual([
       [1, 22],
       [23, 31],
       [32, 44],
@@ -84,11 +86,7 @@ describe("buildMarkdownTableFromHeaderLine", () => {
     expect(buildMarkdownTableFromHeaderLine("| oke | okeeee |")).toEqual({
       cursorColumn: 1,
       cursorLineIndex: 2,
-      lines: [
-        "| oke | okeeee |",
-        "| --- | ------ |",
-        "|     |        |",
-      ],
+      lines: ["| oke | okeeee |", "| --- | ------ |", "|     |        |"],
     });
   });
 

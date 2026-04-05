@@ -27,12 +27,7 @@ import { StashDialog } from "./StashDialog";
 import { useStream } from "@/lib/hooks/useStream";
 import { useTimelineItems } from "@/lib/hooks/useTimelineItems";
 import { CommitGraph } from "./CommitGraph";
-import {
-  X,
-  ChevronsDown,
-  GitCompare,
-  Tag,
-} from "lucide-react";
+import { X, ChevronsDown, GitCompare, Tag } from "lucide-react";
 import { createPortal } from "react-dom";
 import {
   type GitAction,
@@ -77,9 +72,7 @@ import { isSupabaseSchemaMismatchError } from "@/lib/supabase/schema-compat";
 import { useCanvasDraft } from "@/lib/hooks/useCanvasDraft";
 import { CANVAS_PREVIEW_OPEN_EVENT } from "@/lib/utils/canvasPreview";
 import type { BridgeJob } from "@/lib/types";
-import {
-  type TimelineItem,
-} from "@/lib/types/timeline";
+import { type TimelineItem } from "@/lib/types/timeline";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -153,7 +146,10 @@ function parseDateMillis(value: string | null | undefined): number | null {
 
 function resolveSnapshotAiModelLabel(
   snapshot: CanvasVersion,
-  bridgeJobs: Pick<BridgeJob, "provider" | "created_at" | "completed_at" | "status">[],
+  bridgeJobs: Pick<
+    BridgeJob,
+    "provider" | "created_at" | "completed_at" | "status"
+  >[],
 ): string | null {
   if (!(snapshot.name?.startsWith("AI Bridge") ?? false)) return null;
 
@@ -165,8 +161,7 @@ function resolveSnapshotAiModelLabel(
     .map((job) => ({
       provider: job.provider,
       referenceTime:
-        parseDateMillis(job.completed_at) ??
-        parseDateMillis(job.created_at),
+        parseDateMillis(job.completed_at) ?? parseDateMillis(job.created_at),
     }))
     .filter(
       (
@@ -307,77 +302,76 @@ function DiffModal({ entry, prevEntry, onClose }: DiffModalProps) {
   return (
     <>
       <div
-      className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-2xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-overlay-backdrop"
+        onClick={onClose}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
-          <div className="flex items-center gap-2">
-            <GitCompare className="h-4 w-4 text-text-muted" />
-            <span className="text-text-default">
-              git diff
-            </span>
-            <code className="bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
-              {prevEntry ? shortHash(prevEntry.id) : "0000000"}..
-              {shortHash(entry.id)}
-            </code>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-diff-add-text">
-              +{additions}
-            </span>
-            <span className="font-mono text-diff-del-text">
-              -{deletions}
-            </span>
-            <button
-              onClick={onClose}
-              className="p-1 text-text-muted hover:bg-surface-subtle"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Diff body */}
-        <div className="overflow-y-auto flex-1 font-mono">
-          {!prevEntry && (
-            <div className="px-4 py-3 text-text-muted italic border-b border-border-default">
-              No parent commit found. Showing the full commit content as additions.
+        <div
+          className="relative w-full max-w-2xl max-h-[80vh] flex flex-col border border-border-default bg-surface-default"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border-default shrink-0">
+            <div className="flex items-center gap-2">
+              <GitCompare className="h-4 w-4 text-text-muted" />
+              <span className="text-text-default">git diff</span>
+              <code className="bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
+                {prevEntry ? shortHash(prevEntry.id) : "0000000"}..
+                {shortHash(entry.id)}
+              </code>
             </div>
-          )}
-          {diffs.length === 0 ? (
-            <div className="px-4 py-6 text-center text-text-muted">
-              No differences
-            </div>
-          ) : (
-            diffs.map((line, i) => (
-              <div
-                key={i}
-                className={`flex gap-3 px-4 py-0.5 leading-5 ${
- line.type === "add"
- ? "bg-diff-add-bg text-diff-add-text"
- : line.type === "del"
- ? "bg-diff-del-bg text-diff-del-text line-through opacity-70"
- : "text-text-subtle"
- }`}
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-diff-add-text">+{additions}</span>
+              <span className="font-mono text-diff-del-text">-{deletions}</span>
+              <button
+                onClick={onClose}
+                className="p-1 text-text-muted hover:bg-surface-subtle"
               >
-                <span className="select-none w-3 shrink-0 text-text-muted opacity-60">
-                  {line.type === "add" ? "+" : line.type === "del" ? "-" : " "}
-                </span>
-                <span className="whitespace-pre-wrap wrap-break-word">
-                  {line.text || " "}
-                </span>
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Diff body */}
+          <div className="overflow-y-auto flex-1 font-mono">
+            {!prevEntry && (
+              <div className="px-4 py-3 text-text-muted italic border-b border-border-default">
+                No parent commit found. Showing the full commit content as
+                additions.
               </div>
-            ))
-          )}
+            )}
+            {diffs.length === 0 ? (
+              <div className="px-4 py-6 text-center text-text-muted">
+                No differences
+              </div>
+            ) : (
+              diffs.map((line, i) => (
+                <div
+                  key={i}
+                  className={`flex gap-3 px-4 py-0.5 leading-5 ${
+                    line.type === "add"
+                      ? "bg-diff-add-bg text-diff-add-text"
+                      : line.type === "del"
+                        ? "bg-diff-del-bg text-diff-del-text line-through opacity-70"
+                        : "text-text-subtle"
+                  }`}
+                >
+                  <span className="select-none w-3 shrink-0 text-text-muted opacity-60">
+                    {line.type === "add"
+                      ? "+"
+                      : line.type === "del"
+                        ? "-"
+                        : " "}
+                  </span>
+                  <span className="whitespace-pre-wrap wrap-break-word">
+                    {line.text || " "}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  </>
+    </>
   );
 }
 
@@ -403,9 +397,7 @@ function TagModal({ entryId, currentTag, onSave, onClose }: TagModalProps) {
       >
         <div className="flex items-center gap-2 mb-3">
           <Tag className="h-4 w-4 text-text-muted" />
-          <span className="text-text-default">
-            git tag
-          </span>
+          <span className="text-text-default">git tag</span>
           <code className="bg-surface-subtle text-text-muted px-1.5 py-0.5 font-mono">
             {shortHash(entryId)}
           </code>
@@ -500,22 +492,30 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
   const [highlightTerm, setHighlightTerm] = useState<string | null>(null);
   const [highlightEntryId, setHighlightEntryId] = useState<string | null>(null);
-  const [highlightSectionId, setHighlightSectionId] = useState<string | null>(null);
+  const [highlightSectionId, setHighlightSectionId] = useState<string | null>(
+    null,
+  );
   const [revealItemKey, setRevealItemKey] = useState<string | null>(null);
   const [animatedItemKey, setAnimatedItemKey] = useState<string | null>(null);
-  const [activeOccurrenceIndex, setActiveOccurrenceIndex] = useState<number | null>(null);
+  const [activeOccurrenceIndex, setActiveOccurrenceIndex] = useState<
+    number | null
+  >(null);
   const [amendState, setAmendState] = useState<AmendState | null>(null);
   const [amendError, setAmendError] = useState<string | null>(null);
   const [uploadingAmendSectionIds, setUploadingAmendSectionIds] = useState<
     Set<string>
   >(new Set());
-  const [contextMenu, setContextMenu] = useState<LogContextMenuState | null>(null);
+  const [contextMenu, setContextMenu] = useState<LogContextMenuState | null>(
+    null,
+  );
   const [diffTarget, setDiffTarget] = useState<{
     entry: EntryWithSections;
     prevEntry: EntryWithSections | null;
   } | null>(null);
   const [tagTarget, setTagTarget] = useState<EntryWithSections | null>(null);
-  const [committedStashes, setCommittedStashes] = useState<CommittedEntryStashItem[]>([]);
+  const [committedStashes, setCommittedStashes] = useState<
+    CommittedEntryStashItem[]
+  >([]);
   const [draftStashes, setDraftStashes] = useState<EntryCreatorStashItem[]>([]);
   const [isStashDialogOpen, setIsStashDialogOpen] = useState(false);
   const [pendingDraftStashAction, setPendingDraftStashAction] = useState<{
@@ -554,9 +554,13 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const [parsedPreviewError, setParsedPreviewError] = useState<string | null>(
     null,
   );
-  const [branchDialog, setBranchDialog] = useState<BranchDialogState | null>(null);
+  const [branchDialog, setBranchDialog] = useState<BranchDialogState | null>(
+    null,
+  );
   const [branchDialogName, setBranchDialogName] = useState("");
-  const [branchDialogError, setBranchDialogError] = useState<string | null>(null);
+  const [branchDialogError, setBranchDialogError] = useState<string | null>(
+    null,
+  );
   const [branchDialogLoading, setBranchDialogLoading] = useState(false);
   const [mergeConfirm, setMergeConfirm] = useState<{
     sourceBranchName: string;
@@ -642,9 +646,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const onSearchHighlight = (
-      event: Event,
-    ) => {
+    const onSearchHighlight = (event: Event) => {
       const detail = (
         event as CustomEvent<{
           term: string;
@@ -694,7 +696,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   });
 
   const currentBranchForMutations =
-    branchRowsForMutations?.find((branch) => branch.name === currentBranch) ?? null;
+    branchRowsForMutations?.find((branch) => branch.name === currentBranch) ??
+    null;
 
   const {
     items: entryList,
@@ -728,21 +731,24 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     }
   };
 
-  const handleOpenSnapshotInCanvas = useCallback((snapshot: CanvasVersion) => {
-    if (typeof window === "undefined") return;
-    window.dispatchEvent(
-      new CustomEvent(CANVAS_PREVIEW_OPEN_EVENT, {
-        detail: {
-          streamId,
-          versionId: snapshot.id,
-          versionName: snapshot.name || "Untitled Snapshot",
-          versionCreatedAt: snapshot.created_at,
-          content: storedContentToBlocks(snapshot),
-          markdown: storedContentToMarkdown(snapshot),
-        },
-      }),
-    );
-  }, [streamId]);
+  const handleOpenSnapshotInCanvas = useCallback(
+    (snapshot: CanvasVersion) => {
+      if (typeof window === "undefined") return;
+      window.dispatchEvent(
+        new CustomEvent(CANVAS_PREVIEW_OPEN_EVENT, {
+          detail: {
+            streamId,
+            versionId: snapshot.id,
+            versionName: snapshot.name || "Untitled Snapshot",
+            versionCreatedAt: snapshot.created_at,
+            content: storedContentToBlocks(snapshot),
+            markdown: storedContentToMarkdown(snapshot),
+          },
+        }),
+      );
+    },
+    [streamId],
+  );
 
   const deleteCanvasSnapshot = useMutation({
     mutationFn: async (snapshot: CanvasVersion) => {
@@ -790,8 +796,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       };
     },
     onSuccess: ({ nextSnapshot, updatedCanvas }) => {
-      const nextBlocks = nextSnapshot ? storedContentToBlocks(nextSnapshot) : [];
-      const nextMarkdown = nextSnapshot ? storedContentToMarkdown(nextSnapshot) : "";
+      const nextBlocks = nextSnapshot
+        ? storedContentToBlocks(nextSnapshot)
+        : [];
+      const nextMarkdown = nextSnapshot
+        ? storedContentToMarkdown(nextSnapshot)
+        : "";
 
       queryClient.setQueryData(["canvas", streamId], updatedCanvas);
       setLiveContent(streamId, nextBlocks as PartialBlock[]);
@@ -801,7 +811,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       setLocalStatus(streamId, "saved");
 
       queryClient.invalidateQueries({ queryKey: ["canvas", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["canvas-versions", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas-versions", streamId],
+      });
       queryClient.invalidateQueries({
         queryKey: ["canvas-latest-version", streamId],
       });
@@ -851,7 +863,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     return mapping;
   }, [bridgeJobs, timelineItems]);
   const collapsedEntryIdList = useUiPreferencesStore((state) => {
-    return state.logCollapsedItemIdsByStream[streamId] ?? EMPTY_COLLAPSED_ITEM_IDS;
+    return (
+      state.logCollapsedItemIdsByStream[streamId] ?? EMPTY_COLLAPSED_ITEM_IDS
+    );
   });
   const collapsedEntryIds = useMemo(
     () => new Set(collapsedEntryIdList),
@@ -907,7 +921,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         return;
       }
 
-      if (!data?.extracted_markdown || !isParsedReadyStatus(data.import_status)) {
+      if (
+        !data?.extracted_markdown ||
+        !isParsedReadyStatus(data.import_status)
+      ) {
         setParsedPreviewLoading(false);
         setParsedPreviewError(
           "Parsed Docling content is not available yet for this document.",
@@ -1077,7 +1094,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             continue;
           }
 
-          const nextAttachment = await buildAmendAttachment(documentId, file.name);
+          const nextAttachment = await buildAmendAttachment(
+            documentId,
+            file.name,
+          );
           if (nextAttachment) {
             nextAttachments.push(nextAttachment);
           }
@@ -1145,15 +1165,17 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         if (fallback.error) throw fallback.error;
 
         return (
-          ((fallback.data ?? []) as unknown as Array<{
+          (fallback.data ?? []) as unknown as Array<{
             id: string;
             created_at: string | null;
-          }>)
-        ).map((entry): EntryLineageRow => ({
-          ...entry,
-          parent_commit_id: null,
-          merge_source_commit_id: null,
-        }));
+          }>
+        ).map(
+          (entry): EntryLineageRow => ({
+            ...entry,
+            parent_commit_id: null,
+            merge_source_commit_id: null,
+          }),
+        );
       }
 
       if (error) throw error;
@@ -1187,10 +1209,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const currentBranchHeadId =
     currentBranchRecord?.head_commit_id ??
-    (currentBranch === "main" ? latestEntryId ?? null : null);
+    (currentBranch === "main" ? (latestEntryId ?? null) : null);
 
   const currentBranchHeadEntry = currentBranchHeadId
-    ? entryLineageById.get(currentBranchHeadId) ?? null
+    ? (entryLineageById.get(currentBranchHeadId) ?? null)
     : null;
 
   const isCommitAncestorOf = useCallback(
@@ -1208,7 +1230,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         visited.add(cursor);
         const entry = entryLineageById.get(cursor);
         if (entry?.parent_commit_id) stack.push(entry.parent_commit_id);
-        if (entry?.merge_source_commit_id) stack.push(entry.merge_source_commit_id);
+        if (entry?.merge_source_commit_id)
+          stack.push(entry.merge_source_commit_id);
       }
 
       return false;
@@ -1220,7 +1243,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     await Promise.all([
       refetchBranches(),
       queryClient.invalidateQueries({ queryKey: ["graph-branches", streamId] }),
-      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["entries-lineage", streamId],
+      }),
     ]);
   }, [queryClient, refetchBranches, streamId]);
 
@@ -1257,19 +1282,22 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     [currentBranch, currentBranchHeadId],
   );
 
-  const openRenameBranchDialog = useCallback((branchId: string, branchName: string) => {
-    setBranchDialog({
-      mode: "rename",
-      title: "Rename branch",
-      description: "Update the branch name shown across the log and graph.",
-      confirmLabel: "Rename branch",
-      initialName: branchName,
-      branchId,
-      currentName: branchName,
-    });
-    setBranchDialogName(branchName);
-    setBranchDialogError(null);
-  }, []);
+  const openRenameBranchDialog = useCallback(
+    (branchId: string, branchName: string) => {
+      setBranchDialog({
+        mode: "rename",
+        title: "Rename branch",
+        description: "Update the branch name shown across the log and graph.",
+        confirmLabel: "Rename branch",
+        initialName: branchName,
+        branchId,
+        currentName: branchName,
+      });
+      setBranchDialogName(branchName);
+      setBranchDialogError(null);
+    },
+    [],
+  );
 
   const closeBranchDialog = useCallback(() => {
     if (branchDialogLoading) return;
@@ -1374,7 +1402,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const invalidateAfterMergeCommit = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["entries", streamId] }),
-      queryClient.invalidateQueries({ queryKey: ["latest-entry-id", streamId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      }),
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] }),
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] }),
       queryClient.invalidateQueries({
@@ -1383,7 +1413,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       queryClient.invalidateQueries({ queryKey: ["graph-entries", streamId] }),
       queryClient.invalidateQueries({ queryKey: ["branches", streamId] }),
       queryClient.invalidateQueries({ queryKey: ["graph-branches", streamId] }),
-      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] }),
+      queryClient.invalidateQueries({
+        queryKey: ["entries-lineage", streamId],
+      }),
       queryClient.invalidateQueries({ queryKey: ["home-domains"] }),
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] }),
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] }),
@@ -1453,17 +1485,20 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         throw entryError ?? new Error("Failed to create merge commit entry");
       }
 
-      const sectionsToInsert = (sourceEntry.sections ?? []).map((section, index) => ({
-        entry_id: newEntry.id,
-        ...cloneStoredContentFields(section),
-        persona_id: section.persona_id,
-        persona_name_snapshot: section.persona_name_snapshot,
-        section_type: section.section_type,
-        file_display_mode: section.file_display_mode,
-        sort_order: index,
-      }));
+      const sectionsToInsert = (sourceEntry.sections ?? []).map(
+        (section, index) => ({
+          entry_id: newEntry.id,
+          ...cloneStoredContentFields(section),
+          persona_id: section.persona_id,
+          persona_name_snapshot: section.persona_name_snapshot,
+          section_type: section.section_type,
+          file_display_mode: section.file_display_mode,
+          sort_order: index,
+        }),
+      );
 
-      let insertedSections: Array<{ id: string; sort_order: number | null }> = [];
+      let insertedSections: Array<{ id: string; sort_order: number | null }> =
+        [];
 
       if (sectionsToInsert.length > 0) {
         const { data, error: sectionsError } = await supabase
@@ -1510,7 +1545,13 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
       return newEntry.id;
     },
-    [currentBranch, currentBranchHeadId, currentBranchRecord, streamId, supabase],
+    [
+      currentBranch,
+      currentBranchHeadId,
+      currentBranchRecord,
+      streamId,
+      supabase,
+    ],
   );
 
   const handleConfirmMerge = useCallback(async () => {
@@ -1589,21 +1630,31 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
       const sourceHeadId = sourceBranch.head_commit_id;
       if (!sourceHeadId) {
-        window.alert(`Branch "${sourceBranchName}" does not have a head commit yet.`);
+        window.alert(
+          `Branch "${sourceBranchName}" does not have a head commit yet.`,
+        );
         return;
       }
 
       if (currentBranchHeadId === sourceHeadId) {
-        window.alert(`${currentBranch} is already up to date with ${sourceBranchName}.`);
+        window.alert(
+          `${currentBranch} is already up to date with ${sourceBranchName}.`,
+        );
         return;
       }
 
-      if (currentBranchHeadId && isCommitAncestorOf(sourceHeadId, currentBranchHeadId)) {
+      if (
+        currentBranchHeadId &&
+        isCommitAncestorOf(sourceHeadId, currentBranchHeadId)
+      ) {
         window.alert(`${currentBranch} already contains ${sourceBranchName}.`);
         return;
       }
 
-      if (currentBranchHeadId && !isCommitAncestorOf(currentBranchHeadId, sourceHeadId)) {
+      if (
+        currentBranchHeadId &&
+        !isCommitAncestorOf(currentBranchHeadId, sourceHeadId)
+      ) {
         setMergeConfirm({
           sourceBranchName,
           targetBranchName: currentBranch,
@@ -1619,12 +1670,7 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         mode: "fast-forward",
       });
     },
-    [
-      branches,
-      currentBranch,
-      currentBranchHeadId,
-      isCommitAncestorOf,
-    ],
+    [branches, currentBranch, currentBranchHeadId, isCommitAncestorOf],
   );
 
   const reachableCommitIds = useMemo(() => {
@@ -1638,7 +1684,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       ids.add(cursor);
       const entry = entryLineageById.get(cursor);
       if (entry?.parent_commit_id) stack.push(entry.parent_commit_id);
-      if (entry?.merge_source_commit_id) stack.push(entry.merge_source_commit_id);
+      if (entry?.merge_source_commit_id)
+        stack.push(entry.merge_source_commit_id);
     }
 
     return ids;
@@ -1812,7 +1859,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     };
   }, [contextMenu]);
 
-  const handleEntryContextMenu = (e: React.MouseEvent, entry: EntryWithSections) => {
+  const handleEntryContextMenu = (
+    e: React.MouseEvent,
+    entry: EntryWithSections,
+  ) => {
     e.preventDefault();
     // Use a close initial estimate so the menu starts near-final position before exact measurement.
     const estimated = clampContextMenuPosition(e.clientX, e.clientY, 224, 300);
@@ -1861,9 +1911,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         revertEntry.mutate(entry);
         break;
       case "diff": {
-        const parentEntryId = entryLineageById.get(entry.id)?.parent_commit_id ?? null;
+        const parentEntryId =
+          entryLineageById.get(entry.id)?.parent_commit_id ?? null;
         const prevEntry = parentEntryId
-          ? branchEntries.find((candidate) => candidate.id === parentEntryId) ?? null
+          ? (branchEntries.find(
+              (candidate) => candidate.id === parentEntryId,
+            ) ?? null)
           : null;
         setDiffTarget({ entry, prevEntry });
         break;
@@ -1932,26 +1985,31 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       );
       const updated = draftBlocks ? JSON.stringify(draftBlocks) : original;
       const nextMarkdown = draft.markdown ?? originalMarkdown;
-      const originalAttachments = serializeAttachments(section.section_attachments);
+      const originalAttachments = serializeAttachments(
+        section.section_attachments,
+      );
       const updatedAttachments = draft.attachments
         ? serializeAttachments(draft.attachments)
         : originalAttachments;
       const contentChanged =
-        !!draftBlocks && (original !== updated || nextMarkdown !== originalMarkdown);
+        !!draftBlocks &&
+        (original !== updated || nextMarkdown !== originalMarkdown);
       const attachmentsChanged = updatedAttachments !== originalAttachments;
 
       if (!contentChanged && !attachmentsChanged) return [];
 
-      return [{
-        sectionId: section.id,
-        ...(draftBlocks
-          ? {
-              content: draftBlocks,
-              rawMarkdown: nextMarkdown,
-            }
-          : {}),
-        ...(draft.attachments ? { attachments: draft.attachments } : {}),
-      }];
+      return [
+        {
+          sectionId: section.id,
+          ...(draftBlocks
+            ? {
+                content: draftBlocks,
+                rawMarkdown: nextMarkdown,
+              }
+            : {}),
+          ...(draft.attachments ? { attachments: draft.attachments } : {}),
+        },
+      ];
     });
     if (!changedSections.length) {
       handleCancelAmend();
@@ -2049,7 +2107,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
     return timelineItems.filter((item) => {
       if (item.type === "entry") {
-        return currentBranchHeadId ? reachableCommitIds.has(item.data.id) : false;
+        return currentBranchHeadId
+          ? reachableCommitIds.has(item.data.id)
+          : false;
       }
 
       const snapshot = item.data;
@@ -2121,7 +2181,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
   const toggleEntryCollapsed = useCallback(
     (entryId: string) => {
-      if (amendState?.entryId && `entry:${amendState.entryId}` === entryId) return;
+      if (amendState?.entryId && `entry:${amendState.entryId}` === entryId)
+        return;
 
       toggleCollapsedLogItem(streamId, entryId);
     },
@@ -2131,7 +2192,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
   const setVisibleEntriesCollapsed = useCallback(
     (collapsed: boolean) => {
       const targetIds = visibleCollapsibleItemIds.filter(
-        (id) => id !== (amendState?.entryId ? `entry:${amendState.entryId}` : null),
+        (id) =>
+          id !== (amendState?.entryId ? `entry:${amendState.entryId}` : null),
       );
       setEntriesCollapsed(targetIds, collapsed);
     },
@@ -2178,7 +2240,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     }
 
     const highlightedIndex = highlightSectionId
-      ? occurrenceTargets.findIndex((target) => target.sectionId === highlightSectionId)
+      ? occurrenceTargets.findIndex(
+          (target) => target.sectionId === highlightSectionId,
+        )
       : -1;
 
     setActiveOccurrenceIndex((current) => {
@@ -2237,7 +2301,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       setAnimatedItemKey((current) =>
         current === revealItemKey ? null : current,
       );
-      setRevealItemKey((current) => (current === revealItemKey ? null : current));
+      setRevealItemKey((current) =>
+        current === revealItemKey ? null : current,
+      );
     }, 2200);
 
     return () => {
@@ -2271,7 +2337,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       const sectionNode = sectionRefs.current[target.sectionId];
       if (!sectionNode) return;
 
-      const marks = sectionNode.querySelectorAll<HTMLElement>(".kolam-search-hit");
+      const marks =
+        sectionNode.querySelectorAll<HTMLElement>(".kolam-search-hit");
       const activeMark = marks[target.occurrenceIndexInSection] ?? null;
       if (!activeMark) return;
 
@@ -2317,7 +2384,11 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
       refs.sort(compareBranchNames);
     }
 
-    if (!currentBranchRecord?.head_commit_id && currentBranch === "main" && latestEntryId) {
+    if (
+      !currentBranchRecord?.head_commit_id &&
+      currentBranch === "main" &&
+      latestEntryId
+    ) {
       const existing = map.get(latestEntryId) ?? [];
       if (!existing.includes("main")) {
         existing.unshift("main");
@@ -2326,7 +2397,12 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     }
 
     return map;
-  }, [branches, currentBranch, currentBranchRecord?.head_commit_id, latestEntryId]);
+  }, [
+    branches,
+    currentBranch,
+    currentBranchRecord?.head_commit_id,
+    latestEntryId,
+  ]);
 
   const branchNames = useMemo(() => {
     const names = (branches ?? []).map((branch) => branch.name);
@@ -2383,7 +2459,9 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
     );
     if (!newSnapshotKeys.length) return;
 
-    newSnapshotKeys.forEach((key) => seenSnapshotCollapseKeysRef.current.add(key));
+    newSnapshotKeys.forEach((key) =>
+      seenSnapshotCollapseKeysRef.current.add(key),
+    );
     setCollapsedLogItemsForStream(streamId, [
       ...collapsedEntryIdList,
       ...newSnapshotKeys,
@@ -2435,7 +2513,10 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
 
     const onOpenCreateBranch = (event: Event) => {
       const detail = (
-        event as CustomEvent<{ defaultBranchName?: string; targetHeadCommitId?: string | null }>
+        event as CustomEvent<{
+          defaultBranchName?: string;
+          targetHeadCommitId?: string | null;
+        }>
       ).detail;
 
       openCreateBranchDialog({
@@ -2585,322 +2666,347 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
         className={`log-pane bg-surface-default relative overflow-hidden z-30 flex flex-col ${isVisible ? "" : "pointer-events-none"}`}
         style={containerStyle}
       >
-      <div className="flex h-full flex-col" style={contentStyle}>
-        {/* Content: Graph View OR Commit List */}
-        {graphView ? (
-          <div className="flex-1 overflow-hidden">
-            <CommitGraph
-              currentStreamId={streamId}
-              currentBranch={currentBranch}
-              tags={tags}
-              latestEntryId={latestEntryId ?? null}
-              committedStashEntryIds={Array.from(stashedEntryIds)}
-              onEntryClick={(_streamId, entryId) => {
-                setGraphView(false);
-                // After switching back to list, scroll to the entry
-                setTimeout(() => {
-                  const ref = entryRefs.current[entryId];
-                  if (ref)
-                    ref.scrollIntoView({ behavior: "smooth", block: "center" });
-                }, 150);
-              }}
-              onBranchCheckout={handleCheckoutBranch}
-              onBranchMergeIntoCurrent={handleMergeBranchIntoCurrent}
-              onBranchRename={handleRenameBranch}
-            />
-          </div>
-        ) : (
-          <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-20 pt-2">
-            <div className="flex flex-col gap-2">
-              {sortOrder === "newest" && (
-                <div className="flex flex-col gap-2">
-                  <EntryCreator
-                    key={streamId}
-                    streamId={streamId}
-                    currentBranch={currentBranch}
-                    onCurrentBranchChange={setCurrentBranch}
-                    externalStashAction={pendingDraftStashAction}
-                    onExternalStashActionHandled={(nonce) => {
-                      setPendingDraftStashAction((current) =>
-                        current?.nonce === nonce ? null : current,
-                      );
-                    }}
-                  />
-                  <TimelineItemRenderer
-                    kind="canvas_draft"
-                    itemId={`canvas-draft:${streamId}`}
-                    collapseKey={`canvas_draft:${streamId}`}
-                  >
-                    <CanvasDraftCard streamId={streamId} />
-                  </TimelineItemRenderer>
-                </div>
-              )}
-              {showLoadingState ? (
-                <div className="space-y-4 animate-pulse">
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="h-28 bg-surface-hover"
-                    />
-                  ))}
-                </div>
-              ) : (
-                <>
-                  <LogTimeline className="flex flex-col gap-2">
-                    {branchTimelineItems.map((item) => {
-                      if (item.type === "canvas_snapshot") {
-                        const itemCollapseKey = getTimelineItemCollapseKey(item);
-                        return (
-                          <LogCanvasSnapshotTimelineItem
-                            key={`snapshot-${item.data.id}`}
-                            snapshot={item.data}
-                            streamId={streamId}
-                            collapseKey={itemCollapseKey}
-                            isCollapsed={collapsedEntryIds.has(itemCollapseKey)}
-                            isHighlighted={animatedItemKey === itemCollapseKey}
-                            aiModelLabel={
-                              aiModelLabelBySnapshotId.get(item.data.id) ?? null
-                            }
-                            onBindRef={(node) => {
-                              entryRefs.current[itemCollapseKey] = node;
-                            }}
-                            onContextMenu={(event) =>
-                              handleSnapshotContextMenu(event, item.data)
-                            }
-                            onToggleCollapsed={() =>
-                              toggleEntryCollapsed(itemCollapseKey)
-                            }
-                          />
-                        );
-                      }
-
-                      const entry = item.data;
-
-                      if (stashedEntryIds.has(entry.id)) return null;
-
-                      const isLatestEntry = headEntryId === entry.id;
-                      const isAmending = amendState?.entryId === entry.id;
-                      const isStashed = stashedEntryIds.has(entry.id);
-                      const itemCollapseKey = getTimelineItemCollapseKey(item);
-                      const isCollapsed = collapsedEntryIds.has(itemCollapseKey);
-                      const tag = tags[entry.id];
-                      const hash = shortHash(entry.id);
-                      const entryBranches =
-                        branchesByEntryId.get(entry.id) ?? [];
-                      const sectionCount = entry.sections?.length ?? 0;
-                      const createdAtText = new Date(
-                        entry.created_at || "",
-                      ).toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
+        <div className="flex h-full flex-col" style={contentStyle}>
+          {/* Content: Graph View OR Commit List */}
+          {graphView ? (
+            <div className="flex-1 overflow-hidden">
+              <CommitGraph
+                currentStreamId={streamId}
+                currentBranch={currentBranch}
+                tags={tags}
+                latestEntryId={latestEntryId ?? null}
+                committedStashEntryIds={Array.from(stashedEntryIds)}
+                onEntryClick={(_streamId, entryId) => {
+                  setGraphView(false);
+                  // After switching back to list, scroll to the entry
+                  setTimeout(() => {
+                    const ref = entryRefs.current[entryId];
+                    if (ref)
+                      ref.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
                       });
+                  }, 150);
+                }}
+                onBranchCheckout={handleCheckoutBranch}
+                onBranchMergeIntoCurrent={handleMergeBranchIntoCurrent}
+                onBranchRename={handleRenameBranch}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto overscroll-contain px-2 pb-20 pt-2">
+              <div className="flex flex-col gap-2">
+                {sortOrder === "newest" && (
+                  <div className="flex flex-col gap-2">
+                    <EntryCreator
+                      key={streamId}
+                      streamId={streamId}
+                      currentBranch={currentBranch}
+                      onCurrentBranchChange={setCurrentBranch}
+                      externalStashAction={pendingDraftStashAction}
+                      onExternalStashActionHandled={(nonce) => {
+                        setPendingDraftStashAction((current) =>
+                          current?.nonce === nonce ? null : current,
+                        );
+                      }}
+                    />
+                    <TimelineItemRenderer
+                      kind="canvas_draft"
+                      itemId={`canvas-draft:${streamId}`}
+                      collapseKey={`canvas_draft:${streamId}`}
+                    >
+                      <CanvasDraftCard streamId={streamId} />
+                    </TimelineItemRenderer>
+                  </div>
+                )}
+                {showLoadingState ? (
+                  <div className="space-y-4 animate-pulse">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-28 bg-surface-hover" />
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <LogTimeline className="flex flex-col gap-2">
+                      {branchTimelineItems.map((item) => {
+                        if (item.type === "canvas_snapshot") {
+                          const itemCollapseKey =
+                            getTimelineItemCollapseKey(item);
+                          return (
+                            <LogCanvasSnapshotTimelineItem
+                              key={`snapshot-${item.data.id}`}
+                              snapshot={item.data}
+                              streamId={streamId}
+                              collapseKey={itemCollapseKey}
+                              isCollapsed={collapsedEntryIds.has(
+                                itemCollapseKey,
+                              )}
+                              isHighlighted={
+                                animatedItemKey === itemCollapseKey
+                              }
+                              aiModelLabel={
+                                aiModelLabelBySnapshotId.get(item.data.id) ??
+                                null
+                              }
+                              onBindRef={(node) => {
+                                entryRefs.current[itemCollapseKey] = node;
+                              }}
+                              onContextMenu={(event) =>
+                                handleSnapshotContextMenu(event, item.data)
+                              }
+                              onToggleCollapsed={() =>
+                                toggleEntryCollapsed(itemCollapseKey)
+                              }
+                            />
+                          );
+                        }
 
-                      if (entry.entry_kind === "merge") {
+                        const entry = item.data;
+
+                        if (stashedEntryIds.has(entry.id)) return null;
+
+                        const isLatestEntry = headEntryId === entry.id;
+                        const isAmending = amendState?.entryId === entry.id;
+                        const isStashed = stashedEntryIds.has(entry.id);
+                        const itemCollapseKey =
+                          getTimelineItemCollapseKey(item);
+                        const isCollapsed =
+                          collapsedEntryIds.has(itemCollapseKey);
+                        const tag = tags[entry.id];
+                        const hash = shortHash(entry.id);
+                        const entryBranches =
+                          branchesByEntryId.get(entry.id) ?? [];
+                        const sectionCount = entry.sections?.length ?? 0;
+                        const createdAtText = new Date(
+                          entry.created_at || "",
+                        ).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        });
+
+                        if (entry.entry_kind === "merge") {
+                          return (
+                            <LogMergeCommitTimelineItem
+                              key={entry.id}
+                              collapseKey={itemCollapseKey}
+                              entry={entry}
+                              createdAtText={createdAtText}
+                              sourceHash={shortHash(
+                                entry.merge_source_commit_id ?? entry.id,
+                              )}
+                              targetHash={shortHash(
+                                entry.parent_commit_id ?? entry.id,
+                              )}
+                              isDimmed={isStashed}
+                              onBindRef={(node) => {
+                                entryRefs.current[entry.id] = node;
+                                entryRefs.current[itemCollapseKey] = node;
+                              }}
+                              onContextMenu={(event) =>
+                                handleEntryContextMenu(event, entry)
+                              }
+                              onOpenInGraph={() => setGraphView(true)}
+                            />
+                          );
+                        }
+
+                        const amendSections = isAmending
+                          ? amendState?.sections
+                          : undefined;
+
                         return (
-                          <LogMergeCommitTimelineItem
+                          <LogEntryTimelineItem
                             key={entry.id}
-                            collapseKey={itemCollapseKey}
                             entry={entry}
+                            streamId={streamId}
+                            itemCollapseKey={itemCollapseKey}
+                            hash={hash}
+                            tag={tag}
+                            entryBranches={entryBranches}
+                            sectionCount={sectionCount}
                             createdAtText={createdAtText}
-                            sourceHash={shortHash(entry.merge_source_commit_id ?? entry.id)}
-                            targetHash={shortHash(entry.parent_commit_id ?? entry.id)}
-                            isDimmed={isStashed}
+                            isCollapsed={isCollapsed}
+                            isAmending={isAmending}
+                            isLatestEntry={isLatestEntry}
+                            isStashed={isStashed}
+                            isHighlighted={animatedItemKey === itemCollapseKey}
+                            amendError={amendError}
+                            amendSavePending={amendEntry.isPending}
+                            normalizedSearchTerm={normalizedSearchTerm}
+                            highlightTerm={highlightTerm}
+                            highlightEntryId={highlightEntryId}
+                            highlightSectionId={highlightSectionId}
+                            uploadingAmendSectionIds={uploadingAmendSectionIds}
+                            amendSections={amendSections}
                             onBindRef={(node) => {
                               entryRefs.current[entry.id] = node;
                               entryRefs.current[itemCollapseKey] = node;
                             }}
-                            onContextMenu={(event) =>
+                            onEntryContextMenu={(event) =>
                               handleEntryContextMenu(event, entry)
                             }
-                            onOpenInGraph={() => setGraphView(true)}
-                          />
-                        );
-                      }
-
-                      const amendSections = isAmending
-                        ? amendState?.sections
-                        : undefined;
-
-                      return (
-                        <LogEntryTimelineItem
-                          key={entry.id}
-                          entry={entry}
-                          streamId={streamId}
-                          itemCollapseKey={itemCollapseKey}
-                          hash={hash}
-                          tag={tag}
-                          entryBranches={entryBranches}
-                          sectionCount={sectionCount}
-                          createdAtText={createdAtText}
-                          isCollapsed={isCollapsed}
-                          isAmending={isAmending}
-                          isLatestEntry={isLatestEntry}
-                          isStashed={isStashed}
-                          isHighlighted={animatedItemKey === itemCollapseKey}
-                          amendError={amendError}
-                          amendSavePending={amendEntry.isPending}
-                          normalizedSearchTerm={normalizedSearchTerm}
-                          highlightTerm={highlightTerm}
-                          highlightEntryId={highlightEntryId}
-                          highlightSectionId={highlightSectionId}
-                          uploadingAmendSectionIds={uploadingAmendSectionIds}
-                          amendSections={amendSections}
-                          onBindRef={(node) => {
-                            entryRefs.current[entry.id] = node;
-                            entryRefs.current[itemCollapseKey] = node;
-                          }}
-                          onEntryContextMenu={(event) =>
-                            handleEntryContextMenu(event, entry)
-                          }
-                          onToggleCollapsed={() =>
-                            toggleEntryCollapsed(itemCollapseKey)
-                          }
-                          onSaveAmend={() => {
-                            void handleSaveAmend(entry);
-                          }}
-                          onCancelAmend={handleCancelAmend}
-                          onStartAmend={() => handleStartAmend(entry)}
-                          onPreviewAttachment={openAttachmentPreview}
-                          onRemoveAmendAttachment={handleRemoveAmendAttachment}
-                          onAddAmendAttachments={(sectionId, currentAttachments, files) => {
-                            void handleAddAmendAttachments(
+                            onToggleCollapsed={() =>
+                              toggleEntryCollapsed(itemCollapseKey)
+                            }
+                            onSaveAmend={() => {
+                              void handleSaveAmend(entry);
+                            }}
+                            onCancelAmend={handleCancelAmend}
+                            onStartAmend={() => handleStartAmend(entry)}
+                            onPreviewAttachment={openAttachmentPreview}
+                            onRemoveAmendAttachment={
+                              handleRemoveAmendAttachment
+                            }
+                            onAddAmendAttachments={(
                               sectionId,
                               currentAttachments,
                               files,
+                            ) => {
+                              void handleAddAmendAttachments(
+                                sectionId,
+                                currentAttachments,
+                                files,
+                              );
+                            }}
+                            onAmendSectionChange={(
+                              sectionId,
+                              content,
+                              markdown,
+                            ) => {
+                              setAmendState((prev) => {
+                                if (!prev || prev.entryId !== entry.id)
+                                  return prev;
+                                return {
+                                  ...prev,
+                                  sections: {
+                                    ...prev.sections,
+                                    [sectionId]: { content, markdown },
+                                  },
+                                };
+                              });
+                            }}
+                            onBindSectionRef={(sectionId, node) => {
+                              sectionRefs.current[sectionId] = node;
+                            }}
+                          />
+                        );
+                      })}
+                    </LogTimeline>
+
+                    {sortOrder === "oldest" && (
+                      <div>
+                        <TimelineItemRenderer
+                          kind="canvas_draft"
+                          itemId={`canvas-draft:${streamId}`}
+                          collapseKey={`canvas_draft:${streamId}`}
+                        >
+                          <CanvasDraftCard streamId={streamId} />
+                        </TimelineItemRenderer>
+                        <EntryCreator
+                          key={streamId}
+                          streamId={streamId}
+                          currentBranch={currentBranch}
+                          onCurrentBranchChange={setCurrentBranch}
+                          externalStashAction={pendingDraftStashAction}
+                          onExternalStashActionHandled={(nonce) => {
+                            setPendingDraftStashAction((current) =>
+                              current?.nonce === nonce ? null : current,
                             );
                           }}
-                          onAmendSectionChange={(sectionId, content, markdown) => {
-                            setAmendState((prev) => {
-                              if (!prev || prev.entryId !== entry.id) return prev;
-                              return {
-                                ...prev,
-                                sections: {
-                                  ...prev.sections,
-                                  [sectionId]: { content, markdown },
-                                },
-                              };
-                            });
-                          }}
-                          onBindSectionRef={(sectionId, node) => {
-                            sectionRefs.current[sectionId] = node;
-                          }}
                         />
-                      );
-                    })}
-                  </LogTimeline>
+                      </div>
+                    )}
 
-                  {sortOrder === "oldest" && (
-                    <div>
-                      <TimelineItemRenderer
-                        kind="canvas_draft"
-                        itemId={`canvas-draft:${streamId}`}
-                        collapseKey={`canvas_draft:${streamId}`}
-                      >
-                        <CanvasDraftCard streamId={streamId} />
-                      </TimelineItemRenderer>
-                      <EntryCreator
-                        key={streamId}
-                        streamId={streamId}
-                        currentBranch={currentBranch}
-                        onCurrentBranchChange={setCurrentBranch}
-                        externalStashAction={pendingDraftStashAction}
-                        onExternalStashActionHandled={(nonce) => {
-                          setPendingDraftStashAction((current) =>
-                            current?.nonce === nonce ? null : current,
-                          );
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {hasNextPage && (
-                    <div className="flex justify-center pt-2 pb-1">
-                      <button
-                        onClick={() => fetchNextPage()}
-                        disabled={isFetchingNextPage}
-                        className="flex items-center gap-1.5 px-4 py-2 text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-hover transition-colors disabled:opacity-50"
-                      >
-                        <ChevronsDown className="h-4 w-4" />
-                        {isFetchingNextPage
-                          ? "Loading..."
-                          : "Load more commits"}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
+                    {hasNextPage && (
+                      <div className="flex justify-center pt-2 pb-1">
+                        <button
+                          onClick={() => fetchNextPage()}
+                          disabled={isFetchingNextPage}
+                          className="flex items-center gap-1.5 px-4 py-2 text-text-muted hover:text-text-default bg-surface-subtle hover:bg-surface-hover transition-colors disabled:opacity-50"
+                        >
+                          <ChevronsDown className="h-4 w-4" />
+                          {isFetchingNextPage
+                            ? "Loading..."
+                            : "Load more commits"}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
+        <StashDialog
+          open={isStashDialogOpen}
+          committedStashes={committedStashes}
+          draftStashes={draftStashes}
+          onClose={() => setIsStashDialogOpen(false)}
+          onApplyDraftStash={(stashId) =>
+            queueDraftStashAction(stashId, "apply")
+          }
+          onPopDraftStash={(stashId) => queueDraftStashAction(stashId, "pop")}
+          onDropDraftStash={(stashId) => queueDraftStashAction(stashId, "drop")}
+          onUnstashCommittedEntry={unstashCommittedEntry}
+          onOpenCommittedStashInGraph={openCommittedStashInGraph}
+        />
+
+        <FileAttachmentPreviewDialog
+          open={isAttachmentPreviewOpen}
+          onClose={closeAttachmentPreview}
+          attachmentPreview={attachmentPreview}
+          activePreviewTab={activePreviewTab}
+          onActivePreviewTabChange={setActivePreviewTab}
+          parsedPreview={parsedPreview}
+          parsedPreviewLoading={parsedPreviewLoading}
+          parsedPreviewError={parsedPreviewError}
+          onAfterLeave={resetAttachmentPreview}
+          onRequestParsedPreview={(documentId, titleSnapshot) => {
+            void handleParsedPreview(documentId, titleSnapshot);
+          }}
+        />
+
+        <LogPaneContextMenu
+          contextMenu={contextMenu}
+          contextMenuRef={contextMenuRef}
+          contextMenuPosition={contextMenuPosition}
+          tags={tags}
+          stashedEntryIds={stashedEntryIds}
+          onEntryAction={(action) => {
+            void handleContextAction(action);
+          }}
+          onSnapshotAction={(action) => {
+            void handleSnapshotAction(action);
+          }}
+        />
+
+        {/* ─── Diff Modal ───────────────────────────────────────────────────────── */}
+        {diffTarget &&
+          createPortal(
+            <DiffModal
+              entry={diffTarget.entry}
+              prevEntry={diffTarget.prevEntry}
+              onClose={() => setDiffTarget(null)}
+            />,
+            document.body,
+          )}
+
+        {/* ─── Tag Modal ────────────────────────────────────────────────────────── */}
+        {tagTarget &&
+          createPortal(
+            <TagModal
+              entryId={tagTarget.id}
+              currentTag={tags[tagTarget.id] ?? null}
+              onSave={(tag) => saveTag(tagTarget.id, tag)}
+              onClose={() => setTagTarget(null)}
+            />,
+            document.body,
+          )}
       </div>
-
-      {/* ─── Context Menu Portal ─────────────────────────────────────────────── */}
-      <StashDialog
-        open={isStashDialogOpen}
-        committedStashes={committedStashes}
-        draftStashes={draftStashes}
-        onClose={() => setIsStashDialogOpen(false)}
-        onApplyDraftStash={(stashId) => queueDraftStashAction(stashId, "apply")}
-        onPopDraftStash={(stashId) => queueDraftStashAction(stashId, "pop")}
-        onDropDraftStash={(stashId) => queueDraftStashAction(stashId, "drop")}
-        onUnstashCommittedEntry={unstashCommittedEntry}
-        onOpenCommittedStashInGraph={openCommittedStashInGraph}
-      />
-
-      <FileAttachmentPreviewDialog
-        open={isAttachmentPreviewOpen}
-        onClose={closeAttachmentPreview}
-        attachmentPreview={attachmentPreview}
-        activePreviewTab={activePreviewTab}
-        onActivePreviewTabChange={setActivePreviewTab}
-        parsedPreview={parsedPreview}
-        parsedPreviewLoading={parsedPreviewLoading}
-        parsedPreviewError={parsedPreviewError}
-        onAfterLeave={resetAttachmentPreview}
-        onRequestParsedPreview={(documentId, titleSnapshot) => {
-          void handleParsedPreview(documentId, titleSnapshot);
-        }}
-      />
-
-      <LogPaneContextMenu
-        contextMenu={contextMenu}
-        contextMenuRef={contextMenuRef}
-        contextMenuPosition={contextMenuPosition}
-        tags={tags}
-        stashedEntryIds={stashedEntryIds}
-        onEntryAction={(action) => {
-          void handleContextAction(action);
-        }}
-        onSnapshotAction={(action) => {
-          void handleSnapshotAction(action);
-        }}
-      />
-
-      {/* ─── Diff Modal ───────────────────────────────────────────────────────── */}
-      {diffTarget &&
-        createPortal(
-          <DiffModal
-            entry={diffTarget.entry}
-            prevEntry={diffTarget.prevEntry}
-            onClose={() => setDiffTarget(null)}
-          />,
-          document.body,
-        )}
-
-      {/* ─── Tag Modal ────────────────────────────────────────────────────────── */}
-      {tagTarget &&
-        createPortal(
-          <TagModal
-            entryId={tagTarget.id}
-            currentTag={tags[tagTarget.id] ?? null}
-            onSave={(tag) => saveTag(tagTarget.id, tag)}
-            onClose={() => setTagTarget(null)}
-          />,
-          document.body,
-        )}
-    </div>
       <ConfirmDialog
         open={Boolean(mergeConfirm)}
         title={
@@ -2915,26 +3021,33 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
             mergeConfirm.mode === "fast-forward" ? (
               <div className="space-y-1">
                 <p className="font-mono text-text-default">
-                  {mergeConfirm.targetBranchName} {"->"} {shortHash(mergeConfirm.sourceHeadId)}
+                  {mergeConfirm.targetBranchName} {"->"}{" "}
+                  {shortHash(mergeConfirm.sourceHeadId)}
                 </p>
                 <p className="text-text-muted">
-                  This will move the current branch pointer forward without creating a new commit.
+                  This will move the current branch pointer forward without
+                  creating a new commit.
                 </p>
               </div>
             ) : (
               <div className="space-y-1">
                 <p className="font-mono text-text-default">
-                  merge {mergeConfirm.sourceBranchName} into {mergeConfirm.targetBranchName}
+                  merge {mergeConfirm.sourceBranchName} into{" "}
+                  {mergeConfirm.targetBranchName}
                 </p>
                 <p className="text-text-muted">
-                  This app will create a new commit on {mergeConfirm.targetBranchName} using the source branch head content.
+                  This app will create a new commit on{" "}
+                  {mergeConfirm.targetBranchName} using the source branch head
+                  content.
                 </p>
               </div>
             )
           ) : null
         }
         confirmLabel={
-          mergeConfirm?.mode === "fast-forward" ? "Fast-forward" : "Create merge commit"
+          mergeConfirm?.mode === "fast-forward"
+            ? "Fast-forward"
+            : "Create merge commit"
         }
         cancelLabel="Cancel"
         onCancel={() => setMergeConfirm(null)}
@@ -3017,7 +3130,8 @@ export function LogPane({ streamId, logWidth, forceWidth }: LogPaneProps) {
                 canvas snapshot {shortHash(snapshotConfirm.snapshot.id)}
               </p>
               <p className="text-text-muted">
-                The live canvas will rewind to the newest remaining snapshot. If none remain, the canvas becomes empty.
+                The live canvas will rewind to the newest remaining snapshot. If
+                none remain, the canvas becomes empty.
               </p>
             </div>
           ) : null

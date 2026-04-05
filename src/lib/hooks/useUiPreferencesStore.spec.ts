@@ -96,11 +96,13 @@ describe("useUiPreferencesStore", () => {
                 includeGlobalStream: false,
               },
               lastInstruction: "Summarize the latest discussion",
-              sessionMemory: "Recent both objective: Summarize the latest discussion",
+              sessionMemory:
+                "Recent both objective: Summarize the latest discussion",
               lastUsedAt: "2026-03-29T10:00:00.000Z",
               isExternalSessionActive: true,
               externalSessionLoadedAt: "2026-03-29T10:01:00.000Z",
-              externalSessionUrl: "https://gemini.google.com/app/conversation-1",
+              externalSessionUrl:
+                "https://gemini.google.com/app/conversation-1",
               automationSessionKey: "gemini:stream_1",
               automationStatus: "succeeded",
               lastJobId: "job-1",
@@ -181,79 +183,81 @@ describe("useUiPreferencesStore", () => {
       },
     });
 
-    expect(buildUiPreferencesPayload(useUiPreferencesStore.getState())).toEqual({
-      global: {
-        layout: { mode: "balanced" },
-        sidebar: { visible: true },
-      },
-      device: {
-        layoutWidths: {
-          mobile: {
-            log: 50,
-            canvas: 50,
-            previous: { log: 50, canvas: 50 },
-          },
-          tablet: {
-            log: 50,
-            canvas: 50,
-            previous: { log: 50, canvas: 50 },
-          },
-          desktop: {
-            log: 50,
-            canvas: 50,
-            previous: { log: 50, canvas: 50 },
-          },
+    expect(buildUiPreferencesPayload(useUiPreferencesStore.getState())).toEqual(
+      {
+        global: {
+          layout: { mode: "balanced" },
+          sidebar: { visible: true },
         },
-        sidebarWidths: {
-          mobile: 210,
-          tablet: 260,
-          desktop: 310,
-        },
-      },
-      navigator: {
-        expandedCabinetIdsByDomain: {
-          pond: ["a", "b"],
-        },
-      },
-      log: {
-        collapsedItemIdsByStream: {
-          stream_1: ["entry:a", "entry:b"],
-        },
-      },
-      bridge: {
-        defaults: {
-          providerId: "claude",
-          quickPreset: "recommended",
-        },
-        sessionsByStream: {
-          stream_1: {
-            providerId: "gemini",
-            lastMode: "BOTH",
-            lastContextRecipe: {
-              entrySelection: "all",
-              includeCanvas: true,
-              includeGlobalStream: true,
+        device: {
+          layoutWidths: {
+            mobile: {
+              log: 50,
+              canvas: 50,
+              previous: { log: 50, canvas: 50 },
             },
-            lastInstruction: "Draft the protocol",
-            sessionMemory: "Recent both objective: Draft the protocol",
-            lastUsedAt: "2026-03-29T12:00:00.000Z",
-            isExternalSessionActive: false,
-            externalSessionLoadedAt: null,
-            externalSessionUrl: null,
-            automationSessionKey: "gemini:stream_1",
-            automationStatus: "queued",
-            lastJobId: "job-2",
-            lastAppliedJobId: null,
-            lastJobStatus: "queued",
-            lastJobError: "",
-            lastJobCompletedAt: null,
-            sentEntryIds: [],
-            quickUiPhase: "send",
-            detailedUiPhase: "send",
+            tablet: {
+              log: 50,
+              canvas: 50,
+              previous: { log: 50, canvas: 50 },
+            },
+            desktop: {
+              log: 50,
+              canvas: 50,
+              previous: { log: 50, canvas: 50 },
+            },
+          },
+          sidebarWidths: {
+            mobile: 210,
+            tablet: 260,
+            desktop: 310,
+          },
+        },
+        navigator: {
+          expandedCabinetIdsByDomain: {
+            pond: ["a", "b"],
+          },
+        },
+        log: {
+          collapsedItemIdsByStream: {
+            stream_1: ["entry:a", "entry:b"],
+          },
+        },
+        bridge: {
+          defaults: {
+            providerId: "claude",
+            quickPreset: "recommended",
+          },
+          sessionsByStream: {
+            stream_1: {
+              providerId: "gemini",
+              lastMode: "BOTH",
+              lastContextRecipe: {
+                entrySelection: "all",
+                includeCanvas: true,
+                includeGlobalStream: true,
+              },
+              lastInstruction: "Draft the protocol",
+              sessionMemory: "Recent both objective: Draft the protocol",
+              lastUsedAt: "2026-03-29T12:00:00.000Z",
+              isExternalSessionActive: false,
+              externalSessionLoadedAt: null,
+              externalSessionUrl: null,
+              automationSessionKey: "gemini:stream_1",
+              automationStatus: "queued",
+              lastJobId: "job-2",
+              lastAppliedJobId: null,
+              lastJobStatus: "queued",
+              lastJobError: "",
+              lastJobCompletedAt: null,
+              sentEntryIds: [],
+              quickUiPhase: "send",
+              detailedUiPhase: "send",
+            },
           },
         },
       },
-    });
+    );
   });
 
   it("stores bridge defaults and sessions", () => {
@@ -304,11 +308,13 @@ describe("useUiPreferencesStore", () => {
 
     useUiPreferencesStore
       .getState()
-      .pruneCollapsedLogItemsForStream("stream_1", ["entry:b", "canvas_snapshot:c"]);
+      .pruneCollapsedLogItemsForStream("stream_1", [
+        "entry:b",
+        "canvas_snapshot:c",
+      ]);
 
-    expect(useUiPreferencesStore.getState().logCollapsedItemIdsByStream.stream_1).toEqual([
-      "entry:b",
-      "canvas_snapshot:c",
-    ]);
+    expect(
+      useUiPreferencesStore.getState().logCollapsedItemIdsByStream.stream_1,
+    ).toEqual(["entry:b", "canvas_snapshot:c"]);
   });
 });

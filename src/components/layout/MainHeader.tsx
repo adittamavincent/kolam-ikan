@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePathname } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSidebar } from "@/lib/hooks/useSidebar";
@@ -204,7 +211,7 @@ export function MainHeader() {
           ? "Cloud saved"
           : "Cloud idle";
   const workspaceTitle = streamId
-    ? stream?.name ?? "Untitled stream"
+    ? (stream?.name ?? "Untitled stream")
     : domainId
       ? "Domain workspace"
       : "Kolam Ikan";
@@ -303,369 +310,382 @@ export function MainHeader() {
     <header className="flex h-12 shrink-0 items-center border-b border-border-default bg-surface-default px-3">
       <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-            {domainId && !sidebarVisible && (
-              <button
-                onClick={showSidebar}
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700"
-                title="Expand navigator"
-              >
-                <PanelLeft className="h-4 w-4" />
-              </button>
-            )}
+          {domainId && !sidebarVisible && (
+            <button
+              onClick={showSidebar}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-border-default bg-surface-default text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700"
+              title="Expand navigator"
+            >
+              <PanelLeft className="h-4 w-4" />
+            </button>
+          )}
 
-            <div className="min-w-0 flex-1">
-              <div className="min-w-0">
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="truncate font-semibold text-text-default">
-                    {workspaceTitle}
-                  </span>
-                  {streamId && (
-                    <>
-                      {isEditingDescription ? (
-                        <input
-                          value={descriptionDraft}
-                          onChange={(event) => setDescriptionDraft(event.target.value)}
-                          onBlur={() => void saveDescription()}
-                          onKeyDown={(event) => void handleDescriptionKeyDown(event)}
-                          placeholder="Add a description"
-                          autoFocus
-                          className="w-full max-w-2xl border-0 bg-transparent px-0 py-0 leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDescriptionDraft(stream?.description ?? "");
-                            setIsEditingDescription(true);
-                          }}
-                          className={`block max-w-2xl text-left leading-5 transition-colors hover:text-text-default ${
- hasDescription ? "text-text-subtle" : "text-text-muted"
- }`}
-                        >
-                          {stream?.description?.trim() || "Add a description"}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>  
+          <div className="min-w-0 flex-1">
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="truncate font-semibold text-text-default">
+                  {workspaceTitle}
+                </span>
+                {streamId && (
+                  <>
+                    {isEditingDescription ? (
+                      <input
+                        value={descriptionDraft}
+                        onChange={(event) =>
+                          setDescriptionDraft(event.target.value)
+                        }
+                        onBlur={() => void saveDescription()}
+                        onKeyDown={(event) =>
+                          void handleDescriptionKeyDown(event)
+                        }
+                        placeholder="Add a description"
+                        autoFocus
+                        className="w-full max-w-2xl border-0 bg-transparent px-0 py-0 leading-5 text-text-subtle placeholder:text-text-muted focus:outline-none"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDescriptionDraft(stream?.description ?? "");
+                          setIsEditingDescription(true);
+                        }}
+                        className={`block max-w-2xl text-left leading-5 transition-colors hover:text-text-default ${
+                          hasDescription
+                            ? "text-text-subtle"
+                            : "text-text-muted"
+                        }`}
+                      >
+                        {stream?.description?.trim() || "Add a description"}
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           </div>
+        </div>
 
         {streamId && (
           <div className="flex shrink-0 items-center gap-2">
-              {logState && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5">
-                      <div className={toolbarLeadGroupClass}>
-                        <span
-                          className={`${headerButtonClass} pointer-events-none ${
- cloudStatus === "saving"
- ? "border-status-warning-border text-status-warning-text"
- : cloudStatus === "error"
- ? "border-status-error-border text-status-error-text"
- : cloudStatus === "saved"
- ? "border-status-success-border text-status-success-text"
- : ""
- }`}
-                          aria-label={cloudStatusLabel}
-                          title={cloudStatusLabel}
-                        >
-                          {cloudStatus === "saving" ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                          ) : cloudStatus === "error" ? (
-                            <CloudOff className="h-3.5 w-3.5" />
-                          ) : cloudStatus === "saved" ? (
-                            <Check className="h-3.5 w-3.5" />
-                          ) : (
-                            <div className="h-3 w-3 border border-current" />
-                          )}
-                        </span>
+            {logState && (
+              <>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <div className={toolbarLeadGroupClass}>
+                      <span
+                        className={`${headerButtonClass} pointer-events-none ${
+                          cloudStatus === "saving"
+                            ? "border-status-warning-border text-status-warning-text"
+                            : cloudStatus === "error"
+                              ? "border-status-error-border text-status-error-text"
+                              : cloudStatus === "saved"
+                                ? "border-status-success-border text-status-success-text"
+                                : ""
+                        }`}
+                        aria-label={cloudStatusLabel}
+                        title={cloudStatusLabel}
+                      >
+                        {cloudStatus === "saving" ? (
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        ) : cloudStatus === "error" ? (
+                          <CloudOff className="h-3.5 w-3.5" />
+                        ) : cloudStatus === "saved" ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <div className="h-3 w-3 border border-current" />
+                        )}
+                      </span>
 
+                      <button
+                        onClick={() =>
+                          emit("kolam_header_log_toggle_compact_all", {
+                            collapsed: !collapseAllActive,
+                          })
+                        }
+                        disabled={!hasEntries}
+                        className={`${headerButtonClass} relative ${
+                          collapseAllActive
+                            ? "border-accent-default bg-accent-subtle text-accent-strong"
+                            : collapsedEntryCount > 0
+                              ? "text-text-default"
+                              : ""
+                        }`}
+                        title={
+                          collapseAllActive
+                            ? "Expand all commits"
+                            : "Compact all commits"
+                        }
+                      >
+                        {collapseAllActive ? (
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
+                        {collapsedEntryCount > 0 && (
+                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
+                            {collapsedEntryCount}
+                          </span>
+                        )}
+                      </button>
+
+                      <div
+                        onContextMenu={(event) => {
+                          event.preventDefault();
+                          clearSearchKeepOpen();
+                        }}
+                        className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-border-default bg-surface-default transition-[width,border-color,background-color] duration-300 ease-out ${
+                          isSearchOpen
+                            ? "w-[20rem] border-accent-default bg-accent-subtle"
+                            : "w-7"
+                        }`}
+                        style={{ willChange: "width" }}
+                      >
                         <button
-                          onClick={() =>
-                            emit("kolam_header_log_toggle_compact_all", {
-                              collapsed: !collapseAllActive,
-                            })
-                          }
-                          disabled={!hasEntries}
-                          className={`${headerButtonClass} relative ${
- collapseAllActive
- ? "border-accent-default bg-accent-subtle text-accent-strong"
- : collapsedEntryCount > 0
- ? "text-text-default"
- : ""
- }`}
-                          title={
-                            collapseAllActive
-                              ? "Expand all commits"
-                              : "Compact all commits"
-                          }
+                          onClick={() => {
+                            setIsSearchOpenManual((prev) => {
+                              const next = !prev;
+                              if (next) {
+                                window.requestAnimationFrame(() => {
+                                  searchInputRef.current?.focus();
+                                });
+                              }
+                              return next;
+                            });
+                          }}
+                          className={`absolute inset-0 inline-flex items-center justify-center text-text-muted transition-all duration-200 ${
+                            isSearchOpen
+                              ? "pointer-events-none opacity-0 scale-90"
+                              : "opacity-100 scale-100 hover:text-text-default"
+                          }`}
+                          title="Show search"
                         >
-                          {collapseAllActive ? (
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          )}
-                          {collapsedEntryCount > 0 && (
-                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
-                              {collapsedEntryCount}
-                            </span>
-                          )}
+                          <Search className="h-4 w-4" />
                         </button>
 
                         <div
-                          onContextMenu={(event) => {
-                            event.preventDefault();
-                            clearSearchKeepOpen();
-                          }}
-                          className={`relative ml-1 h-7 shrink-0 overflow-hidden border border-border-default bg-surface-default transition-[width,border-color,background-color] duration-300 ease-out ${
- isSearchOpen
- ? "w-[20rem] border-accent-default bg-accent-subtle"
- : "w-7"
- }`}
-                          style={{ willChange: "width" }}
+                          className={`flex h-full items-center gap-1 px-1 transition-all duration-200 ${
+                            isSearchOpen
+                              ? "opacity-100 translate-x-0"
+                              : "pointer-events-none opacity-0 -translate-x-2"
+                          }`}
                         >
-                          <button
-                            onClick={() => {
-                              setIsSearchOpenManual((prev) => {
-                                const next = !prev;
-                                if (next) {
-                                  window.requestAnimationFrame(() => {
-                                    searchInputRef.current?.focus();
-                                  });
-                                }
-                                return next;
-                              });
+                          <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-action-primary-bg" />
+                          <input
+                            ref={searchInputRef}
+                            type="text"
+                            value={searchTerm}
+                            onFocus={() => setIsSearchFocused(true)}
+                            onBlur={() => {
+                              setIsSearchFocused(false);
+                              if (!searchTerm.trim()) {
+                                setIsSearchOpenManual(false);
+                              }
                             }}
-                            className={`absolute inset-0 inline-flex items-center justify-center text-text-muted transition-all duration-200 ${
- isSearchOpen
- ? "pointer-events-none opacity-0 scale-90"
- : "opacity-100 scale-100 hover:text-text-default"
- }`}
-                            title="Show search"
-                          >
-                            <Search className="h-4 w-4" />
-                          </button>
-
-                          <div
-                            className={`flex h-full items-center gap-1 px-1 transition-all duration-200 ${
- isSearchOpen
- ? "opacity-100 translate-x-0"
- : "pointer-events-none opacity-0 -translate-x-2"
- }`}
-                          >
-                            <Search className="ml-1 h-3.5 w-3.5 shrink-0 text-action-primary-bg" />
-                            <input
-                              ref={searchInputRef}
-                              type="text"
-                              value={searchTerm}
-                              onFocus={() => setIsSearchFocused(true)}
-                              onBlur={() => {
-                                setIsSearchFocused(false);
-                                if (!searchTerm.trim()) {
-                                  setIsSearchOpenManual(false);
-                                }
-                              }}
-                              onChange={(event) => {
-                                const term = event.target.value;
-                                setSearchTerm(term);
-                                emit("kolam_header_log_search_term", { term });
-                                emit("kolam_global_search_request", { term });
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" && event.shiftKey) {
-                                  event.preventDefault();
-                                  emit("kolam_header_log_prev_occurrence");
-                                } else if (event.key === "Enter") {
-                                  event.preventDefault();
-                                  emit("kolam_header_log_next_occurrence");
-                                } else if (event.key === "Escape" && !searchTerm.trim()) {
-                                  setIsSearchOpenManual(false);
-                                }
-                              }}
-                              placeholder="Find in log..."
-                              className="min-w-0 flex-1 bg-transparent py-1.5 text-text-default outline-none placeholder:text-text-muted"
-                            />
-                            <span className="inline-flex h-5 min-w-12 items-center justify-center border border-border-default bg-surface-default px-1.5 font-mono text-text-muted">
-                              {occurrenceCount > 0
-                                ? `${activeOccurrenceIndex}/${occurrenceCount}`
-                                : "0/0"}
-                            </span>
-                            <button
-                              onClick={() => emit("kolam_header_log_prev_occurrence")}
-                              disabled={occurrenceCount === 0}
-                              className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
-                              title="Previous occurrence"
-                            >
-                              <ChevronRight className="h-3.5 w-3.5 rotate-180" />
-                            </button>
-                            <button
-                              onClick={() => emit("kolam_header_log_next_occurrence")}
-                              disabled={occurrenceCount === 0}
-                              className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
-                              title="Next occurrence"
-                            >
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => emit("kolam_header_log_toggle_stash")}
-                          className={`relative ${headerButtonClass} ${logState.showStash ? "border-status-warning-border bg-status-warning-bg text-status-warning-text" : ""}`}
-                          title={
-                            logState.showStash
-                              ? "Close stash manager"
-                              : `Open stash (${logState.stashCount ?? 0})`
-                          }
-                        >
-                          <Archive className="h-4 w-4" />
-                          {(logState.stashCount ?? 0) > 0 && (
-                            <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
-                              {logState.stashCount}
-                            </span>
-                          )}
-                        </button>
-
-                        <button
-                          onClick={() => emit("kolam_header_log_toggle_sort")}
-                          className={headerButtonClass}
-                          title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
-                        >
-                          <ArrowUpDown
-                            className={`h-4 w-4 transition-transform ${logState.sortOrder === "oldest" ? "rotate-180" : ""}`}
+                            onChange={(event) => {
+                              const term = event.target.value;
+                              setSearchTerm(term);
+                              emit("kolam_header_log_search_term", { term });
+                              emit("kolam_global_search_request", { term });
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" && event.shiftKey) {
+                                event.preventDefault();
+                                emit("kolam_header_log_prev_occurrence");
+                              } else if (event.key === "Enter") {
+                                event.preventDefault();
+                                emit("kolam_header_log_next_occurrence");
+                              } else if (
+                                event.key === "Escape" &&
+                                !searchTerm.trim()
+                              ) {
+                                setIsSearchOpenManual(false);
+                              }
+                            }}
+                            placeholder="Find in log..."
+                            className="min-w-0 flex-1 bg-transparent py-1.5 text-text-default outline-none placeholder:text-text-muted"
                           />
-                        </button>
-
-                        <button
-                          onClick={() => emit("kolam_header_log_toggle_graph")}
-                          className={`${headerButtonClass} ${logState.graphView ? "border-accent-default bg-accent-subtle text-accent-strong" : ""}`}
-                          title={
-                            logState.graphView
-                              ? "Back to commit list"
-                              : "Show commit graph"
-                          }
-                        >
-                          <Network className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <div className={toolbarGroupClass}>
-                        <button
-                          onClick={() => emit("kolam_header_whatsapp_import")}
-                          className={headerButtonClass}
-                          title="Import WhatsApp Chat"
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </button>
-
-                        <button
-                          onClick={() => emit("kolam_header_documents_import")}
-                          className={headerButtonClass}
-                          title="Import File"
-                        >
-                          <FileUp className="h-4 w-4" />
-                        </button>
-
-                        <button
-                          onClick={() => emit("kolam_header_log_export")}
-                          className={headerButtonClass}
-                          title="Export to Markdown"
-                        >
-                          <Download className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className={toolbarGroupClass}>
-                      <Menu as="div" className="relative hidden md:block">
-                        <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700">
-                          <GitBranch className="h-3 w-3" />
-                          {logState.currentBranch ?? "main"}
-                          <ChevronDown className="h-3 w-3" />
-                        </MenuButton>
-                        <Transition
-                          as={Fragment}
-                          enter="transition ease-out duration-100"
-                          enterFrom="transform opacity-0 scale-95"
-                          enterTo="transform opacity-100 scale-100"
-                          leave="transition ease-in duration-75"
-                          leaveFrom="transform opacity-100 scale-100"
-                          leaveTo="transform opacity-0 scale-95"
-                        >
-                          <MenuItems
-                            anchor={{ to: "bottom end", gap: 6 }}
-                            portal
-                            className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+                          <span className="inline-flex h-5 min-w-12 items-center justify-center border border-border-default bg-surface-default px-1.5 font-mono text-text-muted">
+                            {occurrenceCount > 0
+                              ? `${activeOccurrenceIndex}/${occurrenceCount}`
+                              : "0/0"}
+                          </span>
+                          <button
+                            onClick={() =>
+                              emit("kolam_header_log_prev_occurrence")
+                            }
+                            disabled={occurrenceCount === 0}
+                            className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                            title="Previous occurrence"
                           >
-                            <div className="px-2 py-1 font-semibold uppercase tracking-wider text-text-muted">
-                              Checkout Branch
-                            </div>
-                            {logState.branchNames?.map((branchName) => (
-                              <MenuItem key={branchName}>
-                                {({ active }) => (
-                                  <button
-                                    onClick={() =>
-                                      emit("kolam_header_log_set_branch", {
-                                        branchName,
-                                      })
-                                    }
-                                    className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
-                                  >
-                                    <span className="flex items-center gap-1.5">
-                                      <GitBranch className="h-3 w-3" />
-                                      {branchName}
-                                    </span>
-                                    {logState.currentBranch === branchName && (
-                                      <Check className="h-3 w-3 text-action-primary-bg" />
-                                    )}
-                                  </button>
-                                )}
-                              </MenuItem>
-                            ))}
-                            <div className="my-1 h-px bg-border-subtle" />
-                            <button
-                              onClick={() => {
-                                emit("kolam_header_log_open_create_branch", {
-                                  defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
-                                });
-                              }}
-                              className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
-                            >
-                              <Plus className="h-3 w-3" />
-                              New branch
-                            </button>
-                          </MenuItems>
-                        </Transition>
-                      </Menu>
-                    </div>
+                            <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                          </button>
+                          <button
+                            onClick={() =>
+                              emit("kolam_header_log_next_occurrence")
+                            }
+                            disabled={occurrenceCount === 0}
+                            className="inline-flex h-5 w-5 items-center justify-center text-text-muted transition-colors hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40"
+                            title="Next occurrence"
+                          >
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
 
-                    <div className="flex items-center gap-1.5">
-                      <span className={summaryPillClass}>
-                        <GitCommitHorizontal className="h-3 w-3" />
-                        {totalCommitCount} commits
-                      </span>
+                      <button
+                        onClick={() => emit("kolam_header_log_toggle_stash")}
+                        className={`relative ${headerButtonClass} ${logState.showStash ? "border-status-warning-border bg-status-warning-bg text-status-warning-text" : ""}`}
+                        title={
+                          logState.showStash
+                            ? "Close stash manager"
+                            : `Open stash (${logState.stashCount ?? 0})`
+                        }
+                      >
+                        <Archive className="h-4 w-4" />
+                        {(logState.stashCount ?? 0) > 0 && (
+                          <span className="absolute -right-1 -top-1 inline-flex min-w-4 items-center justify-center border border-surface-default bg-surface-elevated px-1 font-bold leading-none text-text-muted">
+                            {logState.stashCount}
+                          </span>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => emit("kolam_header_log_toggle_sort")}
+                        className={headerButtonClass}
+                        title={`Sort: ${logState.sortOrder === "newest" ? "Newest First" : "Oldest First"}`}
+                      >
+                        <ArrowUpDown
+                          className={`h-4 w-4 transition-transform ${logState.sortOrder === "oldest" ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      <button
+                        onClick={() => emit("kolam_header_log_toggle_graph")}
+                        className={`${headerButtonClass} ${logState.graphView ? "border-accent-default bg-accent-subtle text-accent-strong" : ""}`}
+                        title={
+                          logState.graphView
+                            ? "Back to commit list"
+                            : "Show commit graph"
+                        }
+                      >
+                        <Network className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className={toolbarGroupClass}>
+                      <button
+                        onClick={() => emit("kolam_header_whatsapp_import")}
+                        className={headerButtonClass}
+                        title="Import WhatsApp Chat"
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        onClick={() => emit("kolam_header_documents_import")}
+                        className={headerButtonClass}
+                        title="Import File"
+                      >
+                        <FileUp className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        onClick={() => emit("kolam_header_log_export")}
+                        className={headerButtonClass}
+                        title="Export to Markdown"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-                </>
-              )}
 
-              {canvasState?.hasCanvas && !logState && (
-                <div className="flex items-center gap-2">
                   <div className={toolbarGroupClass}>
-                    <span
-                      className="inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted"
-                      title="Canvas active"
-                    >
-                      <Blocks className="h-4 w-4" />
-                    </span>
-                    <span className="inline-flex h-7 items-center border border-border-default bg-surface-default px-2 font-mono text-text-muted">
-                      Snapshot live
+                    <Menu as="div" className="relative hidden md:block">
+                      <MenuButton className="inline-flex h-7 items-center gap-1.5 border border-border-default bg-surface-default px-2 font-mono text-text-muted transition-all duration-150 hover:border-border-default hover:text-text-default focus:outline-none focus:ring-2 focus:ring-primary-700">
+                        <GitBranch className="h-3 w-3" />
+                        {logState.currentBranch ?? "main"}
+                        <ChevronDown className="h-3 w-3" />
+                      </MenuButton>
+                      <Transition
+                        as={Fragment}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                      >
+                        <MenuItems
+                          anchor={{ to: "bottom end", gap: 6 }}
+                          portal
+                          className="z-9999 w-44 overflow-hidden border border-border-default bg-surface-elevated p-1 focus:"
+                        >
+                          <div className="px-2 py-1 font-semibold uppercase tracking-wider text-text-muted">
+                            Checkout Branch
+                          </div>
+                          {logState.branchNames?.map((branchName) => (
+                            <MenuItem key={branchName}>
+                              {({ active }) => (
+                                <button
+                                  onClick={() =>
+                                    emit("kolam_header_log_set_branch", {
+                                      branchName,
+                                    })
+                                  }
+                                  className={`${active ? "bg-surface-subtle text-text-default" : "text-text-subtle"} flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
+                                >
+                                  <span className="flex items-center gap-1.5">
+                                    <GitBranch className="h-3 w-3" />
+                                    {branchName}
+                                  </span>
+                                  {logState.currentBranch === branchName && (
+                                    <Check className="h-3 w-3 text-action-primary-bg" />
+                                  )}
+                                </button>
+                              )}
+                            </MenuItem>
+                          ))}
+                          <div className="my-1 h-px bg-border-subtle" />
+                          <button
+                            onClick={() => {
+                              emit("kolam_header_log_open_create_branch", {
+                                defaultBranchName: `${logState.currentBranch ?? "main"}-new`,
+                              });
+                            }}
+                            className="flex w-full items-center gap-2 px-2 py-1.5 text-text-default hover:bg-surface-subtle"
+                          >
+                            <Plus className="h-3 w-3" />
+                            New branch
+                          </button>
+                        </MenuItems>
+                      </Transition>
+                    </Menu>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className={summaryPillClass}>
+                      <GitCommitHorizontal className="h-3 w-3" />
+                      {totalCommitCount} commits
                     </span>
                   </div>
                 </div>
-              )}
+              </>
+            )}
+
+            {canvasState?.hasCanvas && !logState && (
+              <div className="flex items-center gap-2">
+                <div className={toolbarGroupClass}>
+                  <span
+                    className="inline-flex h-7 w-7 items-center justify-center border border-border-default bg-surface-default text-text-muted"
+                    title="Canvas active"
+                  >
+                    <Blocks className="h-4 w-4" />
+                  </span>
+                  <span className="inline-flex h-7 items-center border border-border-default bg-surface-default px-2 font-mono text-text-muted">
+                    Snapshot live
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

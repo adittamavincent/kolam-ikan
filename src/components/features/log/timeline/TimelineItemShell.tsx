@@ -1,7 +1,10 @@
 "use client";
 
 import type { MouseEventHandler, ReactNode } from "react";
-import type { TimelineFeatureFlags, TimelineStyleVariant } from "@/lib/types/timeline";
+import type {
+  TimelineFeatureFlags,
+  TimelineStyleVariant,
+} from "@/lib/types/timeline";
 
 interface TimelineItemShellProps {
   itemId: string;

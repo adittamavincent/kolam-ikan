@@ -12,7 +12,10 @@ interface CanvasDraftState {
     { canvasId: string | null; content: PartialBlock[] | null }
   >;
   dbSyncStatusByStream: Record<string, "idle" | "syncing" | "synced" | "error">;
-  localSaveStatusByStream: Record<string, "idle" | "saving" | "saved" | "error">;
+  localSaveStatusByStream: Record<
+    string,
+    "idle" | "saving" | "saved" | "error"
+  >;
   markDirty: (streamId: string) => void;
   markClean: (streamId: string) => void;
   isDirty: (streamId: string) => boolean;
@@ -79,7 +82,7 @@ export const useCanvasDraft = create<CanvasDraftState>()(
               ...state.liveContentByStream,
               [streamId]: content,
             },
-            localSaveStatusByStream
+            localSaveStatusByStream,
           };
         });
       },
@@ -100,7 +103,12 @@ export const useCanvasDraft = create<CanvasDraftState>()(
           const hasLiveMarkdown = streamId in state.liveMarkdownByStream;
           const hasDirty = state.dirtyStreams.has(streamId);
           const hasBaseline = streamId in state.starterBaselineByStream;
-          if (!hasLiveContent && !hasLiveMarkdown && !hasDirty && !hasBaseline) {
+          if (
+            !hasLiveContent &&
+            !hasLiveMarkdown &&
+            !hasDirty &&
+            !hasBaseline
+          ) {
             return state;
           }
 
@@ -164,7 +172,10 @@ export const useCanvasDraft = create<CanvasDraftState>()(
           };
         });
       },
-      setSyncStatus: (streamId: string, status: "idle" | "syncing" | "synced" | "error") => {
+      setSyncStatus: (
+        streamId: string,
+        status: "idle" | "syncing" | "synced" | "error",
+      ) => {
         set((state) => {
           if (state.dbSyncStatusByStream[streamId] === status) return state;
           return {
@@ -175,7 +186,10 @@ export const useCanvasDraft = create<CanvasDraftState>()(
           };
         });
       },
-      setLocalStatus: (streamId: string, status: "idle" | "saving" | "saved" | "error") => {
+      setLocalStatus: (
+        streamId: string,
+        status: "idle" | "saving" | "saved" | "error",
+      ) => {
         set((state) => {
           if (state.localSaveStatusByStream[streamId] === status) return state;
           return {
@@ -199,7 +213,7 @@ export const useCanvasDraft = create<CanvasDraftState>()(
           ...currentState,
           ...persisted,
         };
-      }
-    }
-  )
+      },
+    },
+  ),
 );

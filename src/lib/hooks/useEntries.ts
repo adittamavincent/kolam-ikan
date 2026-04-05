@@ -52,7 +52,7 @@ const ENTRIES_SELECT_FULL = `
  )
 `;
 
-const ENTRIES_SELECT_LEGACY=`
+const ENTRIES_SELECT_LEGACY = `
  id, stream_id, is_draft, created_at, updated_at, deleted_at,
  entry_kind, merge_source_commit_id, merge_source_branch_name, merge_target_branch_name,
  sections!inner (
@@ -106,7 +106,9 @@ function orderBySortOrder<T extends { sort_order?: number | null }>(
     .map(({ item }) => item);
 }
 
-function normalizeEntryOrder(entries: EntryWithSections[]): EntryWithSections[] {
+function normalizeEntryOrder(
+  entries: EntryWithSections[],
+): EntryWithSections[] {
   return entries.map((entry) => ({
     ...entry,
     sections: orderBySortOrder(entry.sections).map((section) => ({
@@ -203,7 +205,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       }
 
       if (error) throw error;
-      return normalizeEntryOrder((data as unknown as EntryWithSections[]) ?? []);
+      return normalizeEntryOrder(
+        (data as unknown as EntryWithSections[]) ?? [],
+      );
     },
     initialPageParam: 0,
     initialData: cachedEntries
@@ -270,7 +274,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
       queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
       queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["entries-lineage", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["home-domains"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
@@ -357,8 +363,11 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       if (failed?.error) throw failed.error;
 
       const attachmentSections = sections.filter(
-        (section): section is typeof section & { attachments: SectionFileAttachmentWithDocument[] } =>
-          Array.isArray(section.attachments),
+        (
+          section,
+        ): section is typeof section & {
+          attachments: SectionFileAttachmentWithDocument[];
+        } => Array.isArray(section.attachments),
       );
 
       for (const section of attachmentSections) {
@@ -368,8 +377,8 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
           .eq("section_id", section.sectionId);
         if (deleteError) throw deleteError;
 
-        const attachmentInserts: SectionFileAttachmentInsert[] = section.attachments.map(
-          (attachment, index) => ({
+        const attachmentInserts: SectionFileAttachmentInsert[] =
+          section.attachments.map((attachment, index) => ({
             section_id: section.sectionId,
             document_id: attachment.document_id,
             sort_order: index,
@@ -377,8 +386,7 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
             annotation_text: attachment.annotation_text,
             referenced_persona_id: attachment.referenced_persona_id,
             referenced_page: attachment.referenced_page,
-          }),
-        );
+          }));
 
         if (attachmentInserts.length > 0) {
           const { error: insertError } = await supabase
@@ -465,9 +473,13 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["entries-lineage", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["home-domains"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
@@ -546,9 +558,13 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["entries-lineage", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["home-domains"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });
@@ -628,7 +644,9 @@ export function useEntries(streamId: string, options: UseEntriesOptions = {}) {
       });
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["bridge-token-entries", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["bridge-token-entries", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["home-domains"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-entries"] });
       queryClient.invalidateQueries({ queryKey: ["home-recent-streams"] });

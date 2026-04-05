@@ -69,11 +69,15 @@ export function getPersonaScopeDescription(
  * Normalize persona color to #RRGGBB format
  * @deprecated Use normalizeHexColor from @/lib/theme/colors instead
  */
-export function normalizePersonaColor(color?: string | null): string | undefined {
+export function normalizePersonaColor(
+  color?: string | null,
+): string | undefined {
   return normalizeHexColor(color);
 }
 
-function resolvePersonaColor(persona?: PersonaColorSource | null): string | undefined {
+function resolvePersonaColor(
+  persona?: PersonaColorSource | null,
+): string | undefined {
   if (!persona) return undefined;
   if (typeof persona === "string") return normalizeHexColor(persona);
 
@@ -98,7 +102,11 @@ export function getPersonaTintStyle(
   const baseSurface =
     (typeof options === "string" ? undefined : options?.backgroundBase) ??
     PERSONA_TINT_BASE_SURFACES[tone];
-  const backgroundColor = blendHexColors(persona.color, baseSurface, backgroundAlpha);
+  const backgroundColor = blendHexColors(
+    persona.color,
+    baseSurface,
+    backgroundAlpha,
+  );
   const borderColor = normalizeHexColor(persona.color);
 
   return {
@@ -115,8 +123,11 @@ export function getPersonaAccentStyle(
 
   return {
     backgroundColor:
-      blendHexColors(color, PERSONA_TINT_BASE_SURFACES[tone], PERSONA_TINT_ALPHA[tone]) ??
-      PERSONA_TINT_BASE_SURFACES[tone],
+      blendHexColors(
+        color,
+        PERSONA_TINT_BASE_SURFACES[tone],
+        PERSONA_TINT_ALPHA[tone],
+      ) ?? PERSONA_TINT_BASE_SURFACES[tone],
     borderColor: color ?? "var(--border-default)",
     color: color ?? "var(--text-default)",
   };

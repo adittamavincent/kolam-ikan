@@ -231,18 +231,14 @@ export function FileAttachmentThumbnail({
               <div className="bg-status-error-bg p-1 text-status-error-text">
                 <X className="h-4 w-4" />
               </div>
-              <div className="text-status-error-text">
-                Failed
-              </div>
+              <div className="text-status-error-text">Failed</div>
             </div>
           ) : showProcessing || showQueued ? (
             <div className="flex flex-col items-center gap-1">
               {typeof progressPercent === "number" ? (
                 <>
                   <Loader2 className="log-pane__accent-label h-4 w-4 animate-spin" />
-                  <div className="text-text-default">
-                    {progressPercent}%
-                  </div>
+                  <div className="text-text-default">{progressPercent}%</div>
                 </>
               ) : (
                 <div className="text-text-default">

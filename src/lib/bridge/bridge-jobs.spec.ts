@@ -53,9 +53,9 @@ describe("bridge job status mapping", () => {
     );
 
     expect(patch.automationStatus).toBe("succeeded");
-    expect("isExternalSessionActive" in patch && patch.isExternalSessionActive).toBe(
-      true,
-    );
+    expect(
+      "isExternalSessionActive" in patch && patch.isExternalSessionActive,
+    ).toBe(true);
     expect(
       "externalSessionLoadedAt" in patch && patch.externalSessionLoadedAt,
     ).toBe("2026-03-29T10:05:00.000Z");

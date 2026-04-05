@@ -53,7 +53,9 @@ const HORIZONTAL_RULE_PATTERN = /^\s*(?:---+|\*\*\*+|___+)\s*$/;
 
 const FENCE_PATTERN = /^(```|~~~)/;
 
-function mapAlignment(alignment: Alignment | undefined): MarkdownTableAlignment {
+function mapAlignment(
+  alignment: Alignment | undefined,
+): MarkdownTableAlignment {
   switch (alignment) {
     case Alignment.RIGHT:
       return "right";
@@ -66,8 +68,10 @@ function mapAlignment(alignment: Alignment | undefined): MarkdownTableAlignment 
 
 function computeFormattedWidths(tableLines: string[]) {
   const formatted = formatTable(
-    completeTable(readTable(tableLines, MARKDOWN_TABLE_OPTIONS), MARKDOWN_TABLE_OPTIONS)
-      .table,
+    completeTable(
+      readTable(tableLines, MARKDOWN_TABLE_OPTIONS),
+      MARKDOWN_TABLE_OPTIONS,
+    ).table,
     MARKDOWN_TABLE_OPTIONS,
   ).table;
   const formattedRows = formatted.getRows();
@@ -76,7 +80,9 @@ function computeFormattedWidths(tableLines: string[]) {
   return Array.from({ length: columnCount }, (_, columnIndex) =>
     Math.max(
       3,
-      ...formattedRows.map((row) => row.getCellAt(columnIndex)?.rawContent.length ?? 0),
+      ...formattedRows.map(
+        (row) => row.getCellAt(columnIndex)?.rawContent.length ?? 0,
+      ),
     ),
   );
 }
@@ -88,7 +94,11 @@ function findUnescapedPipes(line: string) {
     if (line[index] !== "|") continue;
 
     let backslashes = 0;
-    for (let cursor = index - 1; cursor >= 0 && line[cursor] === "\\"; cursor -= 1) {
+    for (
+      let cursor = index - 1;
+      cursor >= 0 && line[cursor] === "\\";
+      cursor -= 1
+    ) {
       backslashes += 1;
     }
 
@@ -141,7 +151,12 @@ function getCellRanges(line: string, expectedCellCount: number) {
   return ranges.slice(0, expectedCellCount);
 }
 
-function buildCellModel(cell: TableCell | undefined, line: string, rawStart: number, rawEnd: number) {
+function buildCellModel(
+  cell: TableCell | undefined,
+  line: string,
+  rawStart: number,
+  rawEnd: number,
+) {
   const fallbackRaw = line.slice(rawStart, rawEnd);
 
   return {

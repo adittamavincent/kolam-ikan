@@ -27,7 +27,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} ${firaCode.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrainsMono.variable} ${firaCode.variable}`}
+      suppressHydrationWarning
+    >
       <body className="font-sans antialiased">
         <DevelopmentLocatorOverlay />
         <Providers>

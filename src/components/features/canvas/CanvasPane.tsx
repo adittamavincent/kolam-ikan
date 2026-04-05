@@ -10,7 +10,14 @@ import {
   type MarkdownEditorHandle,
 } from "@/components/shared/MarkdownEditor";
 import { CanvasDiffLines } from "@/components/shared/CanvasDiffLines";
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import debounce from "lodash/debounce";
 import type { PartialBlock } from "@/lib/types/editor";
 import { createClient } from "@/lib/supabase/client";
@@ -56,19 +63,26 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
   const setSyncStatus = useCanvasDraft((s) => s.setSyncStatus);
   const markDirty = useCanvasDraft((s) => s.markDirty);
   const setLocalStatus = useCanvasDraft((s) => s.setLocalStatus);
-  const syncStatus = useCanvasDraft((s) => s.dbSyncStatusByStream[streamId]) || "idle";
-  const localStatus = useCanvasDraft((s) => s.localSaveStatusByStream[streamId]) || "idle";
-  const [previewSession, setPreviewSession] = useState<PreviewSession | null>(null);
+  const syncStatus =
+    useCanvasDraft((s) => s.dbSyncStatusByStream[streamId]) || "idle";
+  const localStatus =
+    useCanvasDraft((s) => s.localSaveStatusByStream[streamId]) || "idle";
+  const [previewSession, setPreviewSession] = useState<PreviewSession | null>(
+    null,
+  );
   const [editorSeed, setEditorSeed] = useState(0);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const { currentBranch, currentBranchHeadId } = useLogBranchContext(streamId);
   const supabase = createClient();
   const queryClient = useQueryClient();
-  const debouncedUpdateRef = useRef<
-    ReturnType<typeof debounce<(id: string, blocks: PartialBlock[], markdown: string) => void>> | null
-  >(null);
+  const debouncedUpdateRef = useRef<ReturnType<
+    typeof debounce<
+      (id: string, blocks: PartialBlock[], markdown: string) => void
+    >
+  > | null>(null);
   const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId]);
-  const liveMarkdown = useCanvasDraft((s) => s.liveMarkdownByStream[streamId]) || "";
+  const liveMarkdown =
+    useCanvasDraft((s) => s.liveMarkdownByStream[streamId]) || "";
   const canvasBlocks = useMemo(
     () => storedContentToBlocks(canvas ?? {}),
     [canvas],
@@ -90,8 +104,12 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     );
     return lineDiff(before, after);
   }, [previewSession, liveContent, liveMarkdown, canvasBlocks, canvasMarkdown]);
-  const previewAdditions = previewDiffs.filter((line) => line.type === "add").length;
-  const previewDeletions = previewDiffs.filter((line) => line.type === "del").length;
+  const previewAdditions = previewDiffs.filter(
+    (line) => line.type === "add",
+  ).length;
+  const previewDeletions = previewDiffs.filter(
+    (line) => line.type === "del",
+  ).length;
 
   const isVisible = canvasWidth > 0;
 
@@ -139,7 +157,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
           markClean(streamId);
           // After a short delay, move back to idle if no more changes
           setTimeout(() => {
-            if (useCanvasDraft.getState().dbSyncStatusByStream[streamId] === "synced") {
+            if (
+              useCanvasDraft.getState().dbSyncStatusByStream[streamId] ===
+              "synced"
+            ) {
               setSyncStatus(streamId, "idle");
             }
           }, 2000);
@@ -164,7 +185,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
     (nextContent: PartialBlock[] | null, nextMarkdown?: string) => {
       const markdownToCompare =
         typeof nextMarkdown === "string" ? nextMarkdown : liveMarkdown;
-      const matchesBlocks = areCanvasContentsEquivalent(nextContent, canvasBlocks);
+      const matchesBlocks = areCanvasContentsEquivalent(
+        nextContent,
+        canvasBlocks,
+      );
       const matchesMarkdown = markdownToCompare === canvasMarkdown;
 
       if (matchesBlocks && matchesMarkdown) {
@@ -173,7 +197,14 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         markDirty(streamId);
       }
     },
-    [canvasBlocks, canvasMarkdown, liveMarkdown, markClean, markDirty, streamId],
+    [
+      canvasBlocks,
+      canvasMarkdown,
+      liveMarkdown,
+      markClean,
+      markDirty,
+      streamId,
+    ],
   );
 
   const handleContentChange = useCallback(
@@ -223,15 +254,17 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       } else {
         // If we HAVE local content but it's different from DB, start background sync
         if (!areCanvasContentsEquivalent(canvasBlocks, liveContent)) {
-           syncDirtyAgainstDb(liveContent, liveMarkdown ?? canvasMarkdown);
-           console.log(`[CanvasPane] detecting local change on mount, starting sync for ${streamId}`);
-           debouncedUpdateRef.current?.(
-             canvas.id,
-             liveContent,
-             liveMarkdown ?? canvasMarkdown,
-           );
+          syncDirtyAgainstDb(liveContent, liveMarkdown ?? canvasMarkdown);
+          console.log(
+            `[CanvasPane] detecting local change on mount, starting sync for ${streamId}`,
+          );
+          debouncedUpdateRef.current?.(
+            canvas.id,
+            liveContent,
+            liveMarkdown ?? canvasMarkdown,
+          );
         } else {
-           syncDirtyAgainstDb(liveContent, liveMarkdown ?? canvasMarkdown);
+          syncDirtyAgainstDb(liveContent, liveMarkdown ?? canvasMarkdown);
         }
       }
     } else {
@@ -386,10 +419,11 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
 
   const applyPreviewToCanvas = useCallback(async () => {
     if (!canvas || !previewSession) return;
-    const nextContent =
-      (useCanvasDraft.getState().liveContentByStream[streamId] ??
-        canvasBlocks ??
-        []) as PartialBlock[] | null;
+    const nextContent = (useCanvasDraft.getState().liveContentByStream[
+      streamId
+    ] ??
+      canvasBlocks ??
+      []) as PartialBlock[] | null;
     try {
       setSyncStatus(streamId, "syncing");
       await updateCanvas.mutateAsync({
@@ -464,7 +498,10 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
       setEditorSeed((seed) => seed + 1);
     };
 
-    window.addEventListener(CANVAS_PREVIEW_OPEN_EVENT, onOpenPreview as EventListener);
+    window.addEventListener(
+      CANVAS_PREVIEW_OPEN_EVENT,
+      onOpenPreview as EventListener,
+    );
     return () => {
       window.removeEventListener(
         CANVAS_PREVIEW_OPEN_EVENT,
@@ -501,15 +538,21 @@ export function CanvasPane({ streamId }: CanvasPaneProps) {
         },
       }),
     );
-  }, [streamId, canvas, snapshotName, saveSnapshotMutation.isPending, syncStatus, isCanvasDirty, localStatus]);
+  }, [
+    streamId,
+    canvas,
+    snapshotName,
+    saveSnapshotMutation.isPending,
+    syncStatus,
+    isCanvasDirty,
+    localStatus,
+  ]);
 
   return (
     <div
       className={`canvas-pane bg-surface-default relative overflow-hidden z-20 ${
- isVisible ? "border-l border-border-default" : ""
- } ${
- isVisible ? "" : "pointer-events-none"
- }`}
+        isVisible ? "border-l border-border-default" : ""
+      } ${isVisible ? "" : "pointer-events-none"}`}
       style={containerStyle}
     >
       <div className="flex h-full flex-col" style={contentStyle}>

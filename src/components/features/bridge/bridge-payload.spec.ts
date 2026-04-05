@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildBridgePayload, selectIncrementalBridgeContext } from "./bridge-payload";
+import {
+  buildBridgePayload,
+  selectIncrementalBridgeContext,
+} from "./bridge-payload";
 import type { EntryWithSections, MarkdownBlock } from "@/lib/types";
 
 function makeEntry(id: string, createdAt: string): EntryWithSections {
@@ -87,7 +90,9 @@ describe("buildBridgePayload followup", () => {
     });
 
     expect(payload).toContain('<session_followup phase="continue">');
-    expect(payload).toContain("<continue_contract_ref>cold_boot.response_instructions</continue_contract_ref>");
+    expect(payload).toContain(
+      "<continue_contract_ref>cold_boot.response_instructions</continue_contract_ref>",
+    );
     expect(payload).toContain("<continue_delta_rules>");
     expect(payload).toContain("<incremental_context>");
     expect(payload).toContain("delta-only context");
@@ -156,7 +161,9 @@ describe("buildBridgePayload followup", () => {
     });
 
     expect(payload).toContain('<incremental_context state="empty">');
-    expect(payload).toContain("No new stream, canvas, or global-context changes were detected.");
+    expect(payload).toContain(
+      "No new stream, canvas, or global-context changes were detected.",
+    );
   });
 
   it("preserves structured canvas markdown in followup snapshots", () => {
@@ -234,12 +241,18 @@ describe("buildBridgePayload followup", () => {
     });
 
     expect(payload).toContain('<session_boot phase="cold_boot">');
-    expect(payload).toContain("structured XML is only an output transport layer");
+    expect(payload).toContain(
+      "structured XML is only an output transport layer",
+    );
     expect(payload).toContain("provider/company system prompt style");
     expect(payload).toContain("Later continuation prompts");
     expect(payload).toContain("<system_directive>");
-    expect(payload).toContain("Include <assistant_identity> when the assistant/product/provider/model can be stated confidently.");
-    expect(payload).toContain("model: <exact model if known, otherwise unknown>");
+    expect(payload).toContain(
+      "Include <assistant_identity> when the assistant/product/provider/model can be stated confidently.",
+    );
+    expect(payload).toContain(
+      "model: <exact model if known, otherwise unknown>",
+    );
     expect(payload).toContain("assistant: Example Assistant");
     expect(payload).not.toContain("assistant: ChatGPT");
   });
@@ -289,8 +302,12 @@ describe("buildBridgePayload followup", () => {
     });
 
     expect(payload).toContain('<instruction state="derived_from_log_context">');
-    expect(payload).toContain("No explicit instruction was provided for this cold-boot turn.");
-    expect(payload).toContain("Infer the user's request from the latest user-facing question and the immediately adjacent content");
+    expect(payload).toContain(
+      "No explicit instruction was provided for this cold-boot turn.",
+    );
+    expect(payload).toContain(
+      "Infer the user's request from the latest user-facing question and the immediately adjacent content",
+    );
     expect(payload).toContain("Do not mention unrelated prior chats");
     expect(payload).toContain("Latest relevant excerpt:");
     expect(payload).toContain("What song is this?");
@@ -346,12 +363,18 @@ describe("buildBridgePayload followup", () => {
       sessionLoadedAt: null,
     });
 
-    expect(payload).toContain("Canvas is a whiteboard/artifact surface, not the conversation surface.");
-    expect(payload).toContain("Do NOT use <canvas> for session acknowledgements");
+    expect(payload).toContain(
+      "Canvas is a whiteboard/artifact surface, not the conversation surface.",
+    );
+    expect(payload).toContain(
+      "Do NOT use <canvas> for session acknowledgements",
+    );
     expect(payload).toContain(
       "create a minimal durable note that captures the answer in revisit-friendly form",
     );
-    expect(payload).toContain('placeholder text like "awaiting further instructions"');
+    expect(payload).toContain(
+      'placeholder text like "awaiting further instructions"',
+    );
   });
 
   it("omits empty canvas and global context blocks in full payloads", () => {

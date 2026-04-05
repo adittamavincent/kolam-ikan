@@ -108,9 +108,7 @@ export function AttachmentsManager({
 
           <div className="max-h-64 overflow-y-auto border border-border-default p-2 bg-surface-default">
             {isLoading && (
-              <div className="text-text-muted">
-                Loading attachments…
-              </div>
+              <div className="text-text-muted">Loading attachments…</div>
             )}
             {!isLoading && attachments.length === 0 && (
               <div className="text-text-muted">No attachments yet.</div>
@@ -171,10 +169,10 @@ export function AttachmentsManager({
                               : "Only completed files can be attached"
                           }
                           className={`border border-border-default px-2 py-1 font-semibold transition-colors ${
- canAttach
- ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
- : "cursor-not-allowed bg-surface-subtle text-text-muted"
- }`}
+                            canAttach
+                              ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
+                              : "cursor-not-allowed bg-surface-subtle text-text-muted"
+                          }`}
                         >
                           Attach
                         </button>
@@ -198,10 +196,10 @@ export function AttachmentsManager({
                             : "Delete attachment"
                         }
                         className={`${
- isInUse
- ? "cursor-not-allowed text-text-muted"
- : "text-status-error-text hover:text-status-error-border"
- } disabled:text-text-muted`}
+                          isInUse
+                            ? "cursor-not-allowed text-text-muted"
+                            : "text-status-error-text hover:text-status-error-border"
+                        } disabled:text-text-muted`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -212,7 +210,6 @@ export function AttachmentsManager({
             </ul>
           </div>
         </div>
-
       </ModalShell>
       <DocumentImportModal
         isOpen={docImportOpen}

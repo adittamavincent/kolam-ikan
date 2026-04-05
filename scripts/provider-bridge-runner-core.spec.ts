@@ -34,7 +34,8 @@ function createFakePage(options: {
   let clipboardText =
     options.initialClipboardText ?? options.responses?.[0] ?? "";
   const copiedClipboardText =
-    options.copiedClipboardText ?? "<response>\nline one\n**bold**\n</response>";
+    options.copiedClipboardText ??
+    "<response>\nline one\n**bold**\n</response>";
   let copyHovered = false;
   let copyVisibilityChecks = 0;
   let pendingClipboardText: string | null = null;
@@ -187,7 +188,10 @@ function createFakePage(options: {
       };
     },
     getByRole(_role: string, { name }: { name: RegExp }) {
-      if (/copy/i.test(String(name)) && options.copyVisibleAsFirstResponseAction) {
+      if (
+        /copy/i.test(String(name)) &&
+        options.copyVisibleAsFirstResponseAction
+      ) {
         return {
           first() {
             return this;
@@ -242,7 +246,7 @@ function createFakePage(options: {
       }
 
       if (
-        selector === 'div[data-is-streaming]' ||
+        selector === "div[data-is-streaming]" ||
         selector === '[data-testid*="assistant"]' ||
         selector === '[data-testid*="message-content"]' ||
         selector === "article"
@@ -359,7 +363,11 @@ describe("provider bridge runner core", () => {
   it("inserts the whole prompt as text before sending", async () => {
     const page = createFakePage({});
 
-    await submitProviderPrompt(page, "gemini", "line one\nline two\nline three");
+    await submitProviderPrompt(
+      page,
+      "gemini",
+      "line one\nline two\nline three",
+    );
 
     expect(page.__getInsertedText()).toBe("line one\nline two\nline three");
   });
@@ -370,7 +378,9 @@ describe("provider bridge runner core", () => {
       stopVisible: [false, true, true],
     });
 
-    await expect(waitForProviderGenerationStart(page, "gemini", "")).resolves.toMatchObject({
+    await expect(
+      waitForProviderGenerationStart(page, "gemini", ""),
+    ).resolves.toMatchObject({
       sawGenerating: true,
     });
   });
@@ -381,7 +391,9 @@ describe("provider bridge runner core", () => {
       stopVisible: [true, true, false, false, false, false],
     });
 
-    await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe("Draft");
+    await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe(
+      "Draft",
+    );
   });
 
   it("aborts the provider run and clicks stop when reset cancels the job", async () => {
@@ -411,7 +423,9 @@ describe("provider bridge runner core", () => {
       stopVisible: [true, false, false, false],
     });
 
-    await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe("Draft");
+    await expect(waitForProviderResponse(page, "gemini", "")).resolves.toBe(
+      "Draft",
+    );
   });
 
   it("starts a fresh provider chat for every cold-boot full payload", async () => {
@@ -495,43 +509,41 @@ describe("provider bridge runner core", () => {
       copyVisible: false,
     });
 
-    await expect(waitForProviderResponse(page, "claude", "")).resolves.toContain("Draft");
+    await expect(
+      waitForProviderResponse(page, "claude", ""),
+    ).resolves.toContain("Draft");
   });
 
-  it(
-    "eventually returns Claude's last response even without a visible copy action",
-    async () => {
-      const page = createFakePage({
-        responses: [
-          "",
-          "Draft",
-          "Draft extended",
-          "Draft extended with more detail",
-          "Draft extended with more detail and ending",
-          "Draft extended with more detail and ending plus footer",
-        ],
-        stopVisible: [true, false, false, false, false, false],
-        copyVisible: false,
-      });
-
-      await expect(waitForProviderResponse(page, "claude", "")).resolves.toContain(
+  it("eventually returns Claude's last response even without a visible copy action", async () => {
+    const page = createFakePage({
+      responses: [
+        "",
+        "Draft",
+        "Draft extended",
+        "Draft extended with more detail",
         "Draft extended with more detail and ending",
-      );
-    },
-    8_000,
-  );
+        "Draft extended with more detail and ending plus footer",
+      ],
+      stopVisible: [true, false, false, false, false, false],
+      copyVisible: false,
+    });
+
+    await expect(
+      waitForProviderResponse(page, "claude", ""),
+    ).resolves.toContain("Draft extended with more detail and ending");
+  }, 8_000);
 
   it("prefers the provider's copied response when available", async () => {
     const page = createFakePage({
       responses: ["flat response"],
     });
 
-    await expect(extractLatestProviderResponseViaCopy(page, "gemini")).resolves.toBe(
-      "<response>\nline one\n**bold**\n</response>",
-    );
-    await expect(getFinalProviderResponse(page, "gemini", "flat response")).resolves.toBe(
-      "<response>\nline one\n**bold**\n</response>",
-    );
+    await expect(
+      extractLatestProviderResponseViaCopy(page, "gemini"),
+    ).resolves.toBe("<response>\nline one\n**bold**\n</response>");
+    await expect(
+      getFinalProviderResponse(page, "gemini", "flat response"),
+    ).resolves.toBe("<response>\nline one\n**bold**\n</response>");
   });
 
   it("reveals Claude's copy action by hovering the latest response", async () => {
@@ -541,9 +553,9 @@ describe("provider bridge runner core", () => {
       copyVisibleAfterHover: true,
     });
 
-    await expect(extractLatestProviderResponseViaCopy(page, "claude")).resolves.toBe(
-      "<response>\nline one\n**bold**\n</response>",
-    );
+    await expect(
+      extractLatestProviderResponseViaCopy(page, "claude"),
+    ).resolves.toBe("<response>\nline one\n**bold**\n</response>");
   });
 
   it("accepts Claude copied output when clipboard text is unchanged but matches the final response", async () => {
@@ -570,9 +582,9 @@ describe("provider bridge runner core", () => {
       clipboardSettlesAfterReads: 3,
     });
 
-    await expect(extractLatestProviderResponseViaCopy(page, "claude")).resolves.toBe(
-      "<response>\nsettled copy\n</response>",
-    );
+    await expect(
+      extractLatestProviderResponseViaCopy(page, "claude"),
+    ).resolves.toBe("<response>\nsettled copy\n</response>");
   });
 
   it("keeps retrying Claude copy when the action appears late after completion", async () => {
@@ -581,9 +593,9 @@ describe("provider bridge runner core", () => {
       copyVisibleAfterChecks: 5,
     });
 
-    await expect(getFinalProviderResponse(page, "claude", "Markdown final answer")).resolves.toBe(
-      "<response>\nline one\n**bold**\n</response>",
-    );
+    await expect(
+      getFinalProviderResponse(page, "claude", "Markdown final answer"),
+    ).resolves.toBe("<response>\nline one\n**bold**\n</response>");
   });
 
   it("falls back to Claude's first visible response action when the copy button is unlabeled", async () => {
@@ -592,9 +604,9 @@ describe("provider bridge runner core", () => {
       copyVisibleAsFirstResponseAction: true,
     });
 
-    await expect(extractLatestProviderResponseViaCopy(page, "claude")).resolves.toBe(
-      "<response>\nline one\n**bold**\n</response>",
-    );
+    await expect(
+      extractLatestProviderResponseViaCopy(page, "claude"),
+    ).resolves.toBe("<response>\nline one\n**bold**\n</response>");
   });
 
   it("finds Claude's copy button via the exact action-bar test id selector", async () => {
@@ -603,9 +615,9 @@ describe("provider bridge runner core", () => {
       copyVisibleViaClaudeActionBarSelector: true,
     });
 
-    await expect(extractLatestProviderResponseViaCopy(page, "claude")).resolves.toBe(
-      "<response>\nline one\n**bold**\n</response>",
-    );
+    await expect(
+      extractLatestProviderResponseViaCopy(page, "claude"),
+    ).resolves.toBe("<response>\nline one\n**bold**\n</response>");
   });
 
   it("fails follow-up jobs when the session key drifts", async () => {
@@ -627,44 +639,42 @@ describe("provider bridge runner core", () => {
     ).rejects.toMatchObject({ code: SESSION_RESET_REQUIRED_CODE });
   });
 
-  it(
-    "asks the provider to repair BOTH responses when log or canvas is missing",
-    async () => {
-      const page = createFakePage({
-        responseBatches: [
-          [""],
-          [
-            "",
-            "<response><log>Only log</log></response>",
-            "<response><log>Only log</log></response>",
-          ],
-          [
-            "<response><log>Fixed log</log><canvas>+ Fixed canvas</canvas></response>",
-            "<response><log>Fixed log</log><canvas>+ Fixed canvas</canvas></response>",
-          ],
+  it("asks the provider to repair BOTH responses when log or canvas is missing", async () => {
+    const page = createFakePage({
+      responseBatches: [
+        [""],
+        [
+          "",
+          "<response><log>Only log</log></response>",
+          "<response><log>Only log</log></response>",
         ],
-        stopVisible: [true, false, true, false, false, false],
-        copyVisible: false,
-      });
+        [
+          "<response><log>Fixed log</log><canvas>+ Fixed canvas</canvas></response>",
+          "<response><log>Fixed log</log><canvas>+ Fixed canvas</canvas></response>",
+        ],
+      ],
+      stopVisible: [true, false, true, false, false, false],
+      copyVisible: false,
+    });
 
-      const result = await runBridgeJob(
-        page,
-        {
-          provider: "gemini",
-          payload_variant: "full",
-          session_key: "gemini:stream-1",
-          payload: "Target: BOTH\n<instruction>test</instruction>",
-        },
-        { currentSessionKey: null, currentModel: null },
-      );
+    const result = await runBridgeJob(
+      page,
+      {
+        provider: "gemini",
+        payload_variant: "full",
+        session_key: "gemini:stream-1",
+        payload: "Target: BOTH\n<instruction>test</instruction>",
+      },
+      { currentSessionKey: null, currentModel: null },
+    );
 
-      expect(result).toContain("<log>Fixed log</log>");
-      expect(result).toContain("<canvas>+ Fixed canvas</canvas>");
-      expect(page.__getInsertedTexts()).toHaveLength(2);
-      expect(page.__getInsertedTexts()[1]).toContain("Rewrite your last answer only.");
-    },
-    10_000,
-  );
+    expect(result).toContain("<log>Fixed log</log>");
+    expect(result).toContain("<canvas>+ Fixed canvas</canvas>");
+    expect(page.__getInsertedTexts()).toHaveLength(2);
+    expect(page.__getInsertedTexts()[1]).toContain(
+      "Rewrite your last answer only.",
+    );
+  }, 10_000);
 
   it("surfaces login-required pages", async () => {
     const page = createFakePage({
@@ -672,7 +682,9 @@ describe("provider bridge runner core", () => {
       hasComposer: false,
     });
 
-    await expect(waitForProviderResponse(page, "gemini", "")).rejects.toMatchObject({
+    await expect(
+      waitForProviderResponse(page, "gemini", ""),
+    ).rejects.toMatchObject({
       code: LOGIN_REQUIRED_CODE,
     });
   });

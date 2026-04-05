@@ -28,7 +28,9 @@ describe("markdown block bridge", () => {
   });
 
   it("parses multi-digit ordered lists and nested children", () => {
-    const blocks = bridgeMarkdownToBlocks("10. Parent\n  11. Child\n  - Nested bullet\n12. Sibling");
+    const blocks = bridgeMarkdownToBlocks(
+      "10. Parent\n  11. Child\n  - Nested bullet\n12. Sibling",
+    );
 
     expect(blocks).toHaveLength(2);
     expect(blocks[0]?.type).toBe("numberedListItem");
@@ -102,7 +104,9 @@ describe("markdown block bridge", () => {
         id: "task-1",
         type: "checkListItem",
         props: { checked: false },
-        content: [{ type: "text", text: "Gather additional context", styles: {} }],
+        content: [
+          { type: "text", text: "Gather additional context", styles: {} },
+        ],
       },
       {
         id: "task-2",
@@ -112,7 +116,9 @@ describe("markdown block bridge", () => {
       },
     ] as MarkdownBlock[]);
 
-    expect(markdown).toBe("- [ ] Gather additional context\n- [x] Perform web search");
+    expect(markdown).toBe(
+      "- [ ] Gather additional context\n- [x] Perform web search",
+    );
 
     const blocks = bridgeMarkdownToBlocks(markdown);
     expect(blocks[0]?.type).toBe("checkListItem");

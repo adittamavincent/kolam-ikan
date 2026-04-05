@@ -22,7 +22,10 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as CancelPayload | null;
   if (!body) {
-    return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid request payload" },
+      { status: 400 },
+    );
   }
 
   if (!body.cancelAll && !body.documentId) {
@@ -122,10 +125,7 @@ export async function POST(request: Request) {
     .single();
 
   if (documentFetchError || !document) {
-    return NextResponse.json(
-      { error: "Document not found" },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
   if (!["queued", "processing"].includes(document.import_status)) {

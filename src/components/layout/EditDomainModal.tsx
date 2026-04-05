@@ -172,7 +172,9 @@ export function EditDomainModal({
           placement: "start",
         },
         {
-          label: duplicateDomain.isPending ? "Duplicating..." : "Duplicate Domain",
+          label: duplicateDomain.isPending
+            ? "Duplicating..."
+            : "Duplicate Domain",
           icon: duplicateDomain.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : undefined,
@@ -214,10 +216,10 @@ export function EditDomainModal({
           <input
             type="text"
             className={`block w-full border px-4 py-3 text-text-default placeholder-text-muted transition-all focus: focus: ${
- error
- ? "border-status-error-text focus:border-status-error-text focus:"
- : "border-border-default focus:border-border-default focus:"
- }`}
+              error
+                ? "border-status-error-text focus:border-status-error-text focus:"
+                : "border-border-default focus:border-border-default focus:"
+            }`}
             placeholder="e.g., My Knowledge Base"
             value={name}
             onChange={(event) => {
@@ -238,10 +240,10 @@ export function EditDomainModal({
                   type="button"
                   onClick={() => setIcon(option)}
                   className={`flex items-center justify-center border p-2 transition-colors ${
- icon === option
- ? "border-border-default bg-primary-950 text-action-primary-bg"
- : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
- }`}
+                    icon === option
+                      ? "border-border-default bg-primary-950 text-action-primary-bg"
+                      : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                  }`}
                   aria-label={`Select ${option} icon`}
                 >
                   <DynamicIcon name={option} className="h-4 w-4" />
@@ -257,7 +259,6 @@ export function EditDomainModal({
             </div>
           )}
         </div>
-
       </form>
     </ModalShell>
   );

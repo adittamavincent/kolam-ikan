@@ -98,12 +98,15 @@ export function LogPaneContextMenu({
             </code>
             <span className="text-text-muted truncate">
               {contextMenu.entry.created_at &&
-                new Date(contextMenu.entry.created_at).toLocaleString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+                new Date(contextMenu.entry.created_at).toLocaleString(
+                  undefined,
+                  {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  },
+                )}
             </span>
           </div>
           <div className={CONTEXT_MENU_SUBTITLE_DIVIDER_CLASS} />
@@ -113,7 +116,9 @@ export function LogPaneContextMenu({
             <Copy className={CONTEXT_MENU_ACTION_ICON_CLASS} />
             Copy commit SHA
           </ContextMenuActionButton>
-          <ContextMenuActionButton onClick={() => onEntryAction("copy-content")}>
+          <ContextMenuActionButton
+            onClick={() => onEntryAction("copy-content")}
+          >
             <Eye className={CONTEXT_MENU_ACTION_ICON_CLASS} />
             Copy commit content
           </ContextMenuActionButton>
@@ -147,9 +152,7 @@ export function LogPaneContextMenu({
             {stashedEntryIds.has(contextMenu.entry.id) ? (
               <>
                 <EyeOff className="h-4 w-4 text-status-warning-text" />
-                <span className="text-status-warning-text">
-                  Unstash commit
-                </span>
+                <span className="text-status-warning-text">Unstash commit</span>
               </>
             ) : (
               <>
@@ -166,7 +169,10 @@ export function LogPaneContextMenu({
             <RotateCcw className="h-4 w-4 text-status-warning-text" />
             Reset branch to this commit
           </ContextMenuActionButton>
-          <ContextMenuActionButton danger onClick={() => onEntryAction("delete")}>
+          <ContextMenuActionButton
+            danger
+            onClick={() => onEntryAction("delete")}
+          >
             <Trash2 className="h-4 w-4" />
             Delete commit
           </ContextMenuActionButton>
@@ -180,12 +186,15 @@ export function LogPaneContextMenu({
             </code>
             <span className="text-text-muted truncate">
               {contextMenu.snapshot.created_at &&
-                new Date(contextMenu.snapshot.created_at).toLocaleString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
+                new Date(contextMenu.snapshot.created_at).toLocaleString(
+                  undefined,
+                  {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  },
+                )}
             </span>
           </div>
           <div className={CONTEXT_MENU_SUBTITLE_DIVIDER_CLASS} />
@@ -195,7 +204,9 @@ export function LogPaneContextMenu({
             <RotateCcw className={CONTEXT_MENU_ACTION_ICON_CLASS} />
             Open in canvas preview
           </ContextMenuActionButton>
-          <ContextMenuActionButton onClick={() => onSnapshotAction("copy-content")}>
+          <ContextMenuActionButton
+            onClick={() => onSnapshotAction("copy-content")}
+          >
             <Copy className={CONTEXT_MENU_ACTION_ICON_CLASS} />
             Copy snapshot content
           </ContextMenuActionButton>
@@ -203,7 +214,10 @@ export function LogPaneContextMenu({
           <ContextMenuDivider />
 
           <ContextMenuSectionLabel>danger</ContextMenuSectionLabel>
-          <ContextMenuActionButton danger onClick={() => onSnapshotAction("delete")}>
+          <ContextMenuActionButton
+            danger
+            onClick={() => onSnapshotAction("delete")}
+          >
             <Trash2 className="h-4 w-4" />
             Delete canvas snapshot
           </ContextMenuActionButton>

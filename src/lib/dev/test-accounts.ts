@@ -1,4 +1,10 @@
-export const devTestAccounts: { label: string; email: string; pass: string; role: string; fullName?: string }[] = [
+export const devTestAccounts: {
+  label: string;
+  email: string;
+  pass: string;
+  role: string;
+  fullName?: string;
+}[] = [
   {
     label: "Default Test User",
     email: "test@kolamikan.local",

@@ -6,7 +6,12 @@ import BaseEditor from "@/components/shared/BaseEditor";
 import { findMarkdownTableBlocks } from "@/lib/markdownTables";
 import { EditorView } from "@codemirror/view";
 
-function createRect(left: number, top: number, width: number, height: number): DOMRect {
+function createRect(
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+): DOMRect {
   return {
     bottom: top + height,
     height,
@@ -28,12 +33,18 @@ function setRect(element: Element, rect: DOMRect) {
 }
 
 function mockRenderedTableGeometry(container: HTMLElement) {
-  const shell = container.querySelector(".cm-kolam-table-shell") as HTMLElement | null;
+  const shell = container.querySelector(
+    ".cm-kolam-table-shell",
+  ) as HTMLElement | null;
   const table = container.querySelector(
     ".cm-kolam-table-preview-block",
   ) as HTMLTableElement | null;
-  const topRail = container.querySelector(".cm-kolam-table-top-rail") as HTMLElement | null;
-  const leftRail = container.querySelector(".cm-kolam-table-left-rail") as HTMLElement | null;
+  const topRail = container.querySelector(
+    ".cm-kolam-table-top-rail",
+  ) as HTMLElement | null;
+  const leftRail = container.querySelector(
+    ".cm-kolam-table-left-rail",
+  ) as HTMLElement | null;
   const rightAddZone = container.querySelector(
     ".cm-kolam-table-add-zone.is-right",
   ) as HTMLButtonElement | null;
@@ -41,7 +52,14 @@ function mockRenderedTableGeometry(container: HTMLElement) {
     ".cm-kolam-table-add-zone.is-bottom",
   ) as HTMLButtonElement | null;
 
-  if (!shell || !table || !topRail || !leftRail || !rightAddZone || !bottomAddZone) {
+  if (
+    !shell ||
+    !table ||
+    !topRail ||
+    !leftRail ||
+    !rightAddZone ||
+    !bottomAddZone
+  ) {
     throw new Error("Expected a rendered table with live controls");
   }
 
@@ -60,7 +78,12 @@ function mockRenderedTableGeometry(container: HTMLElement) {
     setRect(row, rowRect);
 
     Array.from(row.children).forEach((cell, cellIndex) => {
-      const cellRect = createRect(24 + cellIndex * 150, 22 + rowIndex * 30, 150, 30);
+      const cellRect = createRect(
+        24 + cellIndex * 150,
+        22 + rowIndex * 30,
+        150,
+        30,
+      );
       setRect(cell, cellRect);
       cellRects.set(cell, cellRect);
     });
@@ -68,11 +91,12 @@ function mockRenderedTableGeometry(container: HTMLElement) {
 
   document.elementsFromPoint = vi.fn((clientX: number, clientY: number) => {
     const hits = Array.from(cellRects.entries())
-      .filter(([, rect]) =>
-        clientX >= rect.left &&
-        clientX <= rect.right &&
-        clientY >= rect.top &&
-        clientY <= rect.bottom,
+      .filter(
+        ([, rect]) =>
+          clientX >= rect.left &&
+          clientX <= rect.right &&
+          clientY >= rect.top &&
+          clientY <= rect.bottom,
       )
       .map(([element]) => element);
 
@@ -119,7 +143,9 @@ describe("BaseEditor live table interactions", () => {
   });
 
   it("reveals the raw markdown when clicking a rendered table cell", async () => {
-    const { container } = render(<BaseEditor initialMarkdown={initialMarkdown} />);
+    const { container } = render(
+      <BaseEditor initialMarkdown={initialMarkdown} />,
+    );
 
     const { table } = mockRenderedTableGeometry(container);
     const firstCell = table.querySelector("th") as HTMLElement | null;
@@ -145,10 +171,7 @@ describe("BaseEditor live table interactions", () => {
   it("adds columns from the right-side plus rail using the drag intent distance", async () => {
     const handleChange = vi.fn();
     const { container } = render(
-      <BaseEditor
-        initialMarkdown={initialMarkdown}
-        onChange={handleChange}
-      />,
+      <BaseEditor initialMarkdown={initialMarkdown} onChange={handleChange} />,
     );
 
     const { rightAddZone } = mockRenderedTableGeometry(container);
@@ -177,15 +200,21 @@ describe("BaseEditor live table interactions", () => {
       expect(handleChange).toHaveBeenCalled();
     });
 
-    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as string | undefined;
+    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as
+      | string
+      | undefined;
     expect(latestMarkdown).toBeTruthy();
 
-    const block = findMarkdownTableBlocks((latestMarkdown ?? "").split("\n"))[0];
+    const block = findMarkdownTableBlocks(
+      (latestMarkdown ?? "").split("\n"),
+    )[0];
     expect(block?.model.columnCount).toBe(4);
   });
 
   it("shows the dragged column highlight and live landing indicator while reordering", () => {
-    const { container } = render(<BaseEditor initialMarkdown={initialMarkdown} />);
+    const { container } = render(
+      <BaseEditor initialMarkdown={initialMarkdown} />,
+    );
     const { table } = mockRenderedTableGeometry(container);
     const firstHandle = container.querySelector(
       '.cm-kolam-table-handle.is-column[data-index="0"]',
@@ -209,7 +238,9 @@ describe("BaseEditor live table interactions", () => {
       pointerType: "mouse",
     });
 
-    const draggedCells = Array.from(table.querySelectorAll(".cm-kolam-table-drag-source-column"));
+    const draggedCells = Array.from(
+      table.querySelectorAll(".cm-kolam-table-drag-source-column"),
+    );
     expect(draggedCells).toHaveLength(2);
 
     const indicator = container.querySelector(
@@ -223,10 +254,7 @@ describe("BaseEditor live table interactions", () => {
     const scrollSnapshotSpy = vi.spyOn(EditorView.prototype, "scrollSnapshot");
     const handleChange = vi.fn();
     const { container } = render(
-      <BaseEditor
-        initialMarkdown={initialMarkdown}
-        onChange={handleChange}
-      />,
+      <BaseEditor initialMarkdown={initialMarkdown} onChange={handleChange} />,
     );
     const firstHandle = container.querySelector(
       '.cm-kolam-table-handle.is-column[data-index="0"]',
@@ -280,21 +308,27 @@ describe("BaseEditor live table interactions", () => {
     }
 
     editor.focus();
-    await user.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}");
+    await user.keyboard(
+      "{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}",
+    );
     await user.keyboard("{Meta>}{Backspace}{/Meta}");
 
     await waitFor(() => {
       expect(handleChange).toHaveBeenCalled();
     });
 
-    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as string | undefined;
+    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as
+      | string
+      | undefined;
     expect(latestMarkdown).toBe(" beta\nsecond line");
   });
 
   it("restores cursor and scroll position after remounting with the same view state key", async () => {
     const user = userEvent.setup();
-    const initialMarkdown = Array.from({ length: 30 }, (_, index) => `line ${index}`)
-      .join("\n");
+    const initialMarkdown = Array.from(
+      { length: 30 },
+      (_, index) => `line ${index}`,
+    ).join("\n");
     const handleChange = vi.fn();
     const firstRender = render(
       <BaseEditor
@@ -351,7 +385,9 @@ describe("BaseEditor live table interactions", () => {
       expect(handleChange).toHaveBeenCalled();
     });
 
-    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as string | undefined;
+    const latestMarkdown = handleChange.mock.calls.at(-1)?.[1] as
+      | string
+      | undefined;
     expect(latestMarkdown?.startsWith("liZne 0")).toBe(true);
   });
 });

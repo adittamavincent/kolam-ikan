@@ -9,7 +9,10 @@ import { useMemo, useState } from "react";
 import { SectionPreset } from "@/components/shared/SectionPreset";
 import { PersonaItem } from "../../shared/PersonaItem";
 import { FileAttachmentsSection } from "./FileAttachmentsSection";
-import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-protocol";
+import {
+  storedContentToBlocks,
+  storedContentToMarkdown,
+} from "@/lib/content-protocol";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -31,9 +34,7 @@ interface LogSectionProps {
   currentEditedMarkdown?: string;
   onContentChange?: (content: PartialBlock[], markdown: string) => void;
   onPreviewAttachment?: (
-    attachment: NonNullable<
-      SectionWithPersona["section_attachments"]
-    >[number],
+    attachment: NonNullable<SectionWithPersona["section_attachments"]>[number],
     tab: "file" | "parsed",
   ) => void;
   attachmentOverrides?: SectionFileAttachmentWithDocument[];
@@ -69,7 +70,8 @@ export function LogSection({
   // Prefer the resolved persona from global list; if missing, fall back to
   // the persona object returned on the section or the persona name snapshot
   // so that system / AI-created entries still display a sensible label.
-  const resolvedPersona = personas?.find((p) => p.id === section.persona?.id) || section.persona;
+  const resolvedPersona =
+    personas?.find((p) => p.id === section.persona?.id) || section.persona;
 
   const currentPersona =
     resolvedPersona ||
@@ -183,9 +185,13 @@ export function LogSection({
     section.section_type === "FILE_ATTACHMENT" &&
     (editable || editableContent.length > 0);
   const canAddAttachments =
-    editable && section.section_type === "FILE_ATTACHMENT" && !!onAddAttachments;
+    editable &&
+    section.section_type === "FILE_ATTACHMENT" &&
+    !!onAddAttachments;
   const showEmptyAttachmentsNotice =
-    section.section_type === "FILE_ATTACHMENT" && !hasAttachments && !canAddAttachments;
+    section.section_type === "FILE_ATTACHMENT" &&
+    !hasAttachments &&
+    !canAddAttachments;
   const isAttachmentSection = section.section_type === "FILE_ATTACHMENT";
   const sectionLabel = isAttachmentSection ? "Attachment" : "Message";
   const nestedConnector =
@@ -250,7 +256,11 @@ export function LogSection({
                   ? `editable-${section.id}`
                   : `readonly-${section.id}-${section.updated_at ?? "na"}`
               }
-              initialContent={editable ? (currentEditedContent ?? editableContent) : trimmedContent}
+              initialContent={
+                editable
+                  ? (currentEditedContent ?? editableContent)
+                  : trimmedContent
+              }
               initialMarkdown={
                 editable
                   ? currentEditedMarkdown
@@ -283,7 +293,8 @@ export function LogSection({
                   attachment.document?.title ||
                   "File Attachment",
                 annotationText: attachment.annotation_text,
-                documentId: attachment.document_id ?? attachment.document?.id ?? null,
+                documentId:
+                  attachment.document_id ?? attachment.document?.id ?? null,
                 storagePath: attachment.document?.storage_path,
                 thumbnailPath: attachment.document?.thumbnail_path,
                 thumbnailStatus: attachment.document?.thumbnail_status ?? null,
@@ -310,13 +321,19 @@ export function LogSection({
             emptyStateMessage="Drop or attach one or more files to add them to this section."
             onUploadFiles={onAddAttachments}
             onDragEnter={(event) => {
-              if (!canAddAttachments || !event.dataTransfer.types.includes("Files")) {
+              if (
+                !canAddAttachments ||
+                !event.dataTransfer.types.includes("Files")
+              ) {
                 return;
               }
               setIsDragOver(true);
             }}
             onDragOver={(event) => {
-              if (!canAddAttachments || !event.dataTransfer.types.includes("Files")) {
+              if (
+                !canAddAttachments ||
+                !event.dataTransfer.types.includes("Files")
+              ) {
                 return;
               }
               event.preventDefault();
@@ -334,7 +351,8 @@ export function LogSection({
               setIsDragOver(false);
             }}
             onDrop={async (event) => {
-              if (!canAddAttachments || !event.dataTransfer.files.length) return;
+              if (!canAddAttachments || !event.dataTransfer.files.length)
+                return;
               event.preventDefault();
               setIsDragOver(false);
               await onAddAttachments(event.dataTransfer.files);
@@ -363,10 +381,14 @@ export function LogSection({
                     : `readonly-${section.id}-${section.updated_at ?? "na"}`
                 }
                 initialContent={
-                  editable ? (currentEditedContent ?? editableContent) : trimmedContent
+                  editable
+                    ? (currentEditedContent ?? editableContent)
+                    : trimmedContent
                 }
                 initialMarkdown={
-                  editable ? currentEditedMarkdown : storedContentToMarkdown(section)
+                  editable
+                    ? currentEditedMarkdown
+                    : storedContentToMarkdown(section)
                 }
                 editable={editable}
                 persona={currentPersona}

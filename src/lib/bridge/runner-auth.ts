@@ -21,5 +21,8 @@ export function isBridgeRunnerAuthorized(request: Request) {
 }
 
 export function unauthorizedRunnerResponse() {
-  return NextResponse.json({ error: "Unauthorized bridge runner" }, { status: 401 });
+  return NextResponse.json(
+    { error: "Unauthorized bridge runner" },
+    { status: 401 },
+  );
 }

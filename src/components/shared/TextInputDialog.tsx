@@ -93,7 +93,12 @@ export function TextInputDialog({
             <DialogCard
               title={title}
               description={description}
-              icon={<GitBranch className="h-6 w-6 text-action-primary-bg" aria-hidden />}
+              icon={
+                <GitBranch
+                  className="h-6 w-6 text-action-primary-bg"
+                  aria-hidden
+                />
+              }
               actions={
                 <>
                   <button

@@ -6,7 +6,8 @@ type DeletePayload = {
   documentId?: string;
 };
 
-const DOCUMENT_IN_USE_ERROR = "Cannot delete a document while it is still attached to one or more sections";
+const DOCUMENT_IN_USE_ERROR =
+  "Cannot delete a document while it is still attached to one or more sections";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -35,10 +36,7 @@ export async function POST(request: Request) {
     .single();
 
   if (documentError || !document) {
-    return NextResponse.json(
-      { error: "Document not found" },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Document not found" }, { status: 404 });
   }
 
   if (document.deleted_at) {

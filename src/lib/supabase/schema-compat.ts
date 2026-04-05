@@ -5,7 +5,12 @@ type SupabaseErrorLike = {
   message?: string | null;
 };
 
-const SCHEMA_MISMATCH_CODES = new Set(["42P01", "42703", "PGRST204", "PGRST205"]);
+const SCHEMA_MISMATCH_CODES = new Set([
+  "42P01",
+  "42703",
+  "PGRST204",
+  "PGRST205",
+]);
 
 const SCHEMA_MISMATCH_PATTERNS = [
   "schema cache",
@@ -22,7 +27,9 @@ export function getSupabaseErrorText(error: unknown): string {
   const { code, details, hint, message } = error as SupabaseErrorLike;
 
   return [code, details, hint, message]
-    .filter((value): value is string => typeof value === "string" && value.length > 0)
+    .filter(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    )
     .join(" ")
     .toLowerCase();
 }
@@ -49,7 +56,9 @@ export function isSupabaseSchemaMismatchError(
     return true;
   }
 
-  return identifiers.some((identifier) => text.includes(identifier.toLowerCase()));
+  return identifiers.some((identifier) =>
+    text.includes(identifier.toLowerCase()),
+  );
 }
 
 export function shouldRetrySupabaseQuery(

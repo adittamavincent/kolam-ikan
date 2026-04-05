@@ -28,10 +28,7 @@ import {
   getPersonaTypeLabel,
   sanitizePersonaTypeInput,
 } from "@/lib/personas";
-import {
-  PERSONA_SWATCHES,
-  PERSONA_PRESET_ICONS,
-} from "@/lib/theme/colors";
+import { PERSONA_SWATCHES, PERSONA_PRESET_ICONS } from "@/lib/theme/colors";
 
 function isLocalPersona(persona: { is_shadow?: boolean | null }): boolean {
   return persona.is_shadow === true;
@@ -625,7 +622,6 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                 {error}
               </div>
             )}
-
           </div>
         ) : isCreating || editingPersona ? (
           <form
@@ -766,11 +762,15 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                         type="button"
                         onClick={() => setIcon(ic)}
                         className={`flex items-center justify-center border p-2 transition-colors ${
- icon === ic
- ? "text-text-default"
- : "border-border-default text-text-subtle hover:bg-surface-subtle"
- }`}
-                        style={icon === ic ? getPersonaAccentStyle(color, "interactive") : undefined}
+                          icon === ic
+                            ? "text-text-default"
+                            : "border-border-default text-text-subtle hover:bg-surface-subtle"
+                        }`}
+                        style={
+                          icon === ic
+                            ? getPersonaAccentStyle(color, "interactive")
+                            : undefined
+                        }
                       >
                         <DynamicIcon name={ic} className="h-[80%] w-[80%]" />
                       </button>
@@ -786,7 +786,6 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                 {error}
               </div>
             )}
-
           </form>
         ) : (
           <div className="px-6 py-5">
@@ -806,10 +805,10 @@ export function PersonaManager({ isOpen, onClose }: PersonaManagerProps) {
                     setSelectedPersonaIds([]);
                   }}
                   className={` px-2 py-1 font-medium transition-colors ${
- isBulkMode
- ? "bg-status-error-bg text-status-error-text"
- : "bg-surface-subtle text-text-muted hover:text-text-default"
- }`}
+                    isBulkMode
+                      ? "bg-status-error-bg text-status-error-text"
+                      : "bg-surface-subtle text-text-muted hover:text-text-default"
+                  }`}
                 >
                   {isBulkMode ? "Exit Bulk" : "Bulk Delete"}
                 </button>

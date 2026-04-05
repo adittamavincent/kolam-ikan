@@ -129,7 +129,8 @@ export function StashDialog({
                       {stash.originalCreatedAt && (
                         <span className="inline-flex items-center gap-1">
                           <GitCommitHorizontal className="h-4 w-4" />
-                          original commit {formatTimestamp(stash.originalCreatedAt)}
+                          original commit{" "}
+                          {formatTimestamp(stash.originalCreatedAt)}
                         </span>
                       )}
                     </div>

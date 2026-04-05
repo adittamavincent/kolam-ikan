@@ -69,7 +69,9 @@ function parseEntryCreatorStashItem(
     createdAt: candidate.createdAt,
     branchName: candidate.branchName,
     headCommitId:
-      typeof candidate.headCommitId === "string" ? candidate.headCommitId : null,
+      typeof candidate.headCommitId === "string"
+        ? candidate.headCommitId
+        : null,
     sections: candidate.sections.flatMap((section) => {
       if (!section || typeof section !== "object") return [];
 
@@ -79,14 +81,19 @@ function parseEntryCreatorStashItem(
       };
 
       if (typeof sectionCandidate.instanceId !== "string") return [];
-      if (!sectionCandidate.draft || typeof sectionCandidate.draft !== "object") {
+      if (
+        !sectionCandidate.draft ||
+        typeof sectionCandidate.draft !== "object"
+      ) {
         return [];
       }
 
-      return [{
-        instanceId: sectionCandidate.instanceId,
-        draft: sectionCandidate.draft,
-      }];
+      return [
+        {
+          instanceId: sectionCandidate.instanceId,
+          draft: sectionCandidate.draft,
+        },
+      ];
     }),
   };
 }
@@ -116,9 +123,13 @@ function parseCommittedEntryStashItem(
         : null,
     branchName: candidate.branchName,
     headCommitId:
-      typeof candidate.headCommitId === "string" ? candidate.headCommitId : null,
+      typeof candidate.headCommitId === "string"
+        ? candidate.headCommitId
+        : null,
     parentCommitId:
-      typeof candidate.parentCommitId === "string" ? candidate.parentCommitId : null,
+      typeof candidate.parentCommitId === "string"
+        ? candidate.parentCommitId
+        : null,
     mergeSourceCommitId:
       typeof candidate.mergeSourceCommitId === "string"
         ? candidate.mergeSourceCommitId
@@ -127,7 +138,8 @@ function parseCommittedEntryStashItem(
       typeof candidate.mergeSourceBranchName === "string"
         ? candidate.mergeSourceBranchName
         : null,
-    entryKind: typeof candidate.entryKind === "string" ? candidate.entryKind : null,
+    entryKind:
+      typeof candidate.entryKind === "string" ? candidate.entryKind : null,
     sectionCount:
       typeof candidate.sectionCount === "number" &&
       Number.isFinite(candidate.sectionCount)
@@ -136,10 +148,7 @@ function parseCommittedEntryStashItem(
   };
 }
 
-function readArray<T>(
-  key: string,
-  parser: (item: unknown) => T | null,
-): T[] {
+function readArray<T>(key: string, parser: (item: unknown) => T | null): T[] {
   if (typeof window === "undefined") return [];
 
   try {
@@ -174,7 +183,9 @@ function writeArray<T>(key: string, streamId: string, items: T[]): void {
   dispatchStashChanged(streamId);
 }
 
-export function readEntryCreatorStash(streamId: string): EntryCreatorStashItem[] {
+export function readEntryCreatorStash(
+  streamId: string,
+): EntryCreatorStashItem[] {
   return readArray(entryCreatorStashKey(streamId), parseEntryCreatorStashItem);
 }
 
@@ -188,7 +199,10 @@ export function writeEntryCreatorStash(
 export function readCommittedEntryStash(
   streamId: string,
 ): CommittedEntryStashItem[] {
-  return readArray(committedEntryStashKey(streamId), parseCommittedEntryStashItem);
+  return readArray(
+    committedEntryStashKey(streamId),
+    parseCommittedEntryStashItem,
+  );
 }
 
 export function writeCommittedEntryStash(

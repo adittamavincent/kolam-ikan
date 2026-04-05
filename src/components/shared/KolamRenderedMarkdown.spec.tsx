@@ -29,9 +29,7 @@ describe("KolamRenderedMarkdown", () => {
   });
 
   it("keeps normal markdown hyperlinks clickable", () => {
-    render(
-      <KolamRenderedMarkdown source="[OpenAI](https://openai.com)" />,
-    );
+    render(<KolamRenderedMarkdown source="[OpenAI](https://openai.com)" />);
 
     expect(screen.getByRole("link", { name: "OpenAI" })).toHaveAttribute(
       "href",

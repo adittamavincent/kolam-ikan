@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { areCanvasContentsEquivalent, normalizeCanvasContent } from "./canvasContent";
+import {
+  areCanvasContentsEquivalent,
+  normalizeCanvasContent,
+} from "./canvasContent";
 
 describe("canvasContent", () => {
   it("ignores markdown block ids, empty styles, and trailing empty paragraphs", () => {

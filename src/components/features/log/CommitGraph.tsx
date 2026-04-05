@@ -197,7 +197,9 @@ function readDraftSectionCount(streamId: string): number {
   try {
     const raw = window.localStorage.getItem(`kolam_draft_v2_${streamId}`);
     if (!raw) return 0;
-    const parsed = JSON.parse(raw) as { sections?: Record<string, unknown> } | null;
+    const parsed = JSON.parse(raw) as {
+      sections?: Record<string, unknown>;
+    } | null;
     if (!parsed?.sections || typeof parsed.sections !== "object") return 0;
     return Object.keys(parsed.sections).length;
   } catch {
@@ -328,13 +330,15 @@ export function CommitGraph({
         const fallback = await buildBranchQuery("id, name, created_at");
         if (fallback.error) throw fallback.error;
         return (
-          ((fallback.data ?? []) as unknown as Array<
+          (fallback.data ?? []) as unknown as Array<
             Omit<GraphBranchRow, "head_commit_id">
-          >)
-        ).map((branch): GraphBranchRow => ({
-          ...branch,
-          head_commit_id: null,
-        }));
+          >
+        ).map(
+          (branch): GraphBranchRow => ({
+            ...branch,
+            head_commit_id: null,
+          }),
+        );
       }
 
       if (error) throw error;
@@ -381,17 +385,19 @@ export function CommitGraph({
         const fallback = await buildEntriesQuery("id, created_at, entry_kind");
         if (fallback.error) throw fallback.error;
         return (
-          ((fallback.data ?? []) as unknown as Array<{
+          (fallback.data ?? []) as unknown as Array<{
             id: string;
             created_at: string | null;
             entry_kind: string | null;
-          }>)
-        ).map((entry): GraphEntryRow => ({
-          ...entry,
-          parent_commit_id: null,
-          merge_source_commit_id: null,
-          merge_source_branch_name: null,
-        }));
+          }>
+        ).map(
+          (entry): GraphEntryRow => ({
+            ...entry,
+            parent_commit_id: null,
+            merge_source_commit_id: null,
+            merge_source_branch_name: null,
+          }),
+        );
       }
 
       if (error) throw error;
@@ -420,16 +426,18 @@ export function CommitGraph({
         const fallback = await buildCanvasQuery("id, created_at, name");
         if (fallback.error) throw fallback.error;
         return (
-          ((fallback.data ?? []) as unknown as Array<{
+          (fallback.data ?? []) as unknown as Array<{
             id: string;
             created_at: string | null;
             name: string | null;
-          }>)
-        ).map((snapshot): GraphCanvasRow => ({
-          ...snapshot,
-          branch_name: null,
-          source_entry_id: null,
-        }));
+          }>
+        ).map(
+          (snapshot): GraphCanvasRow => ({
+            ...snapshot,
+            branch_name: null,
+            source_entry_id: null,
+          }),
+        );
       }
 
       if (error) throw error;
@@ -522,7 +530,10 @@ export function CommitGraph({
       refs.sort((a, b) => compareBranchNames(a.name, b.name));
     }
 
-    if (!orderedBranches.some((branch) => branch.name === "main") && latestEntryId) {
+    if (
+      !orderedBranches.some((branch) => branch.name === "main") &&
+      latestEntryId
+    ) {
       const existing = map.get(latestEntryId) ?? [];
       if (!existing.some((ref) => ref.name === "main")) {
         existing.unshift({
@@ -540,19 +551,25 @@ export function CommitGraph({
 
   const currentBranchHeadCommitId = useMemo(() => {
     if (currentBranch === "main") {
-      const mainBranch = orderedBranches.find((branch) => branch.name === "main");
+      const mainBranch = orderedBranches.find(
+        (branch) => branch.name === "main",
+      );
       return mainBranch?.head_commit_id ?? latestEntryId ?? null;
     }
 
     return (
-      orderedBranches.find((branch) => branch.name === currentBranch)?.head_commit_id ??
-      null
+      orderedBranches.find((branch) => branch.name === currentBranch)
+        ?.head_commit_id ?? null
     );
   }, [currentBranch, latestEntryId, orderedBranches]);
 
   const { nodes, edges, laneCount } = useMemo(() => {
     if (!rawEntries) {
-      return { nodes: [] as GraphNode[], edges: [] as GraphEdge[], laneCount: 1 };
+      return {
+        nodes: [] as GraphNode[],
+        edges: [] as GraphEdge[],
+        laneCount: 1,
+      };
     }
 
     const committedStashEntryIdSet = new Set(committedStashEntryIds);
@@ -561,7 +578,10 @@ export function CommitGraph({
     );
 
     const branchHeadByName = new Map(
-      orderedBranches.map((branch) => [branch.name, branch.head_commit_id ?? null]),
+      orderedBranches.map((branch) => [
+        branch.name,
+        branch.head_commit_id ?? null,
+      ]),
     );
     if (!branchHeadByName.has("main")) {
       branchHeadByName.set("main", latestEntryId ?? null);
@@ -569,15 +589,17 @@ export function CommitGraph({
 
     const graphRows: GraphRow[] = [
       ...(workspaceSnapshot.draftSectionCount > 0
-        ? [{
-            nodeType: "draft" as const,
-            graphId: `draft:${currentBranch}`,
-            rawId: currentBranch,
-            createdAt: new Date().toISOString(),
-            workspaceBranchName: currentBranch,
-            workspaceSectionCount: workspaceSnapshot.draftSectionCount,
-            workspaceHeadCommitId: currentBranchHeadCommitId,
-          }]
+        ? [
+            {
+              nodeType: "draft" as const,
+              graphId: `draft:${currentBranch}`,
+              rawId: currentBranch,
+              createdAt: new Date().toISOString(),
+              workspaceBranchName: currentBranch,
+              workspaceSectionCount: workspaceSnapshot.draftSectionCount,
+              workspaceHeadCommitId: currentBranchHeadCommitId,
+            },
+          ]
         : []),
       ...workspaceSnapshot.draftStashItems.map((stash) => ({
         nodeType: "stash" as const,
@@ -644,11 +666,16 @@ export function CommitGraph({
     const snapshotById = new Map(
       (rawCanvasVersions ?? []).map((snapshot) => [snapshot.id, snapshot]),
     );
-    const rowById = new Map(graphRows.map((row, index) => [row.graphId, index]));
+    const rowById = new Map(
+      graphRows.map((row, index) => [row.graphId, index]),
+    );
     const colorByCommitId = new Map<string, string>();
 
     const effectiveBranches = [...orderedBranches];
-    if (!effectiveBranches.some((branch) => branch.name === "main") && latestEntryId) {
+    if (
+      !effectiveBranches.some((branch) => branch.name === "main") &&
+      latestEntryId
+    ) {
       effectiveBranches.unshift({
         id: "__main__",
         name: "main",
@@ -678,11 +705,11 @@ export function CommitGraph({
     graphRows.forEach((graphRow, row) => {
       const entry =
         graphRow.nodeType === "entry"
-          ? entryById.get(graphRow.rawId) ?? null
+          ? (entryById.get(graphRow.rawId) ?? null)
           : null;
       const snapshot =
         graphRow.nodeType === "canvas_snapshot"
-          ? snapshotById.get(graphRow.rawId) ?? null
+          ? (snapshotById.get(graphRow.rawId) ?? null)
           : null;
 
       let desiredCommitId: string | null = null;
@@ -707,10 +734,11 @@ export function CommitGraph({
           : null;
       }
 
-      let lane =
-        desiredCommitId
-          ? activeCommitByLane.findIndex((commitId) => commitId === desiredCommitId)
-          : -1;
+      let lane = desiredCommitId
+        ? activeCommitByLane.findIndex(
+            (commitId) => commitId === desiredCommitId,
+          )
+        : -1;
       if (lane === -1) {
         lane = activeCommitByLane.findIndex((commitId) => commitId === null);
       }
@@ -723,12 +751,17 @@ export function CommitGraph({
 
       const refCommitId =
         entry?.id ??
-        (graphRow.nodeType === "stash" ? graphRow.sourceEntryId ?? null : null);
-      const refs = refCommitId ? branchRefsByCommitId.get(refCommitId) ?? [] : [];
-      const workspaceBranchColor =
-        graphRow.workspaceBranchName
-          ? orderedBranches.find((branch) => branch.name === graphRow.workspaceBranchName)?.color
-          : undefined;
+        (graphRow.nodeType === "stash"
+          ? (graphRow.sourceEntryId ?? null)
+          : null);
+      const refs = refCommitId
+        ? (branchRefsByCommitId.get(refCommitId) ?? [])
+        : [];
+      const workspaceBranchColor = graphRow.workspaceBranchName
+        ? orderedBranches.find(
+            (branch) => branch.name === graphRow.workspaceBranchName,
+          )?.color
+        : undefined;
       const color =
         refs[0]?.color ??
         (refCommitId ? colorByCommitId.get(refCommitId) : undefined) ??
@@ -752,12 +785,15 @@ export function CommitGraph({
             : graphRow.rawId,
         ),
         nodeType: graphRow.nodeType,
-        stashSource: graphRow.nodeType === "stash" ? graphRow.stashSource ?? "draft" : null,
+        stashSource:
+          graphRow.nodeType === "stash"
+            ? (graphRow.stashSource ?? "draft")
+            : null,
         commitId: entry?.id ?? null,
         sourceEntryId:
           graphRow.nodeType === "stash"
-            ? graphRow.sourceEntryId ?? null
-            : snapshot?.source_entry_id ?? null,
+            ? (graphRow.sourceEntryId ?? null)
+            : (snapshot?.source_entry_id ?? null),
         snapshotName: snapshot?.name ?? null,
         snapshotBranchName: snapshot?.branch_name ?? null,
         workspaceBranchName: graphRow.workspaceBranchName ?? null,
@@ -771,22 +807,22 @@ export function CommitGraph({
         tag: refCommitId ? tags[refCommitId] : undefined,
         entryKind:
           graphRow.nodeType === "entry"
-            ? entry?.entry_kind ?? "commit"
+            ? (entry?.entry_kind ?? "commit")
             : graphRow.nodeType === "canvas_snapshot"
               ? "canvas_snapshot"
-              : graphRow.entryKind ?? graphRow.nodeType,
+              : (graphRow.entryKind ?? graphRow.nodeType),
         mergeSourceCommitId:
           graphRow.nodeType === "stash"
-            ? graphRow.mergeSourceCommitId ?? null
-            : entry?.merge_source_commit_id ?? null,
+            ? (graphRow.mergeSourceCommitId ?? null)
+            : (entry?.merge_source_commit_id ?? null),
         mergeSourceBranchName:
           graphRow.nodeType === "stash"
-            ? graphRow.mergeSourceBranchName ?? null
-            : entry?.merge_source_branch_name ?? null,
+            ? (graphRow.mergeSourceBranchName ?? null)
+            : (entry?.merge_source_branch_name ?? null),
         parentCommitId:
           graphRow.nodeType === "stash"
-            ? graphRow.parentCommitId ?? null
-            : entry?.parent_commit_id ?? null,
+            ? (graphRow.parentCommitId ?? null)
+            : (entry?.parent_commit_id ?? null),
         lane,
         color,
       });
@@ -796,37 +832,39 @@ export function CommitGraph({
           ? (entry?.parent_commit_id ?? null)
           : graphRow.nodeType === "draft"
             ? (graphRow.workspaceHeadCommitId ?? null)
-          : graphRow.nodeType === "stash" && graphRow.stashSource === "draft"
-            ? (graphRow.workspaceHeadCommitId ?? null)
-          : graphRow.nodeType === "stash"
-            ? (graphRow.parentCommitId ?? null)
-          : (snapshot?.source_entry_id ?? null);
+            : graphRow.nodeType === "stash" && graphRow.stashSource === "draft"
+              ? (graphRow.workspaceHeadCommitId ?? null)
+              : graphRow.nodeType === "stash"
+                ? (graphRow.parentCommitId ?? null)
+                : (snapshot?.source_entry_id ?? null);
       if (primaryParentId) {
         const parentGraphId = resolveGraphCommitId(primaryParentId);
         const parentRow = rowById.get(parentGraphId);
         if (parentRow === undefined) {
           activeCommitByLane[lane] = null;
         } else {
-        const existingParentLane = activeCommitByLane.findIndex(
-          (commitId, laneIndex) => laneIndex !== lane && commitId === parentGraphId,
-        );
-        const parentLane = existingParentLane >= 0 ? existingParentLane : lane;
+          const existingParentLane = activeCommitByLane.findIndex(
+            (commitId, laneIndex) =>
+              laneIndex !== lane && commitId === parentGraphId,
+          );
+          const parentLane =
+            existingParentLane >= 0 ? existingParentLane : lane;
 
-        nextEdges.push({
-          key: `parent-${graphRow.graphId}`,
-          kind: "parent",
-          fromLane: lane,
-          toLane: parentLane,
-          fromRow: row,
-          toRow: parentRow,
-          color,
-        });
+          nextEdges.push({
+            key: `parent-${graphRow.graphId}`,
+            kind: "parent",
+            fromLane: lane,
+            toLane: parentLane,
+            fromRow: row,
+            toRow: parentRow,
+            color,
+          });
 
-        if (existingParentLane >= 0) {
-          activeCommitByLane[lane] = null;
-        } else {
-          activeCommitByLane[lane] = parentGraphId;
-        }
+          if (existingParentLane >= 0) {
+            activeCommitByLane[lane] = null;
+          } else {
+            activeCommitByLane[lane] = parentGraphId;
+          }
         }
       } else {
         activeCommitByLane[lane] = null;
@@ -834,8 +872,8 @@ export function CommitGraph({
 
       const mergeSourceCommitId =
         graphRow.nodeType === "stash"
-          ? graphRow.mergeSourceCommitId ?? null
-          : entry?.merge_source_commit_id ?? null;
+          ? (graphRow.mergeSourceCommitId ?? null)
+          : (entry?.merge_source_commit_id ?? null);
 
       if (mergeSourceCommitId) {
         const mergeSourceGraphId = resolveGraphCommitId(mergeSourceCommitId);
@@ -843,41 +881,44 @@ export function CommitGraph({
         if (mergeSourceRow === undefined) {
           // Merge source outside loaded set; skip edge for this viewport.
         } else {
-        const existingMergeLane = activeCommitByLane.findIndex(
-          (commitId) => commitId === mergeSourceGraphId,
-        );
-
-        let mergeSourceLane = existingMergeLane;
-        if (mergeSourceLane === -1) {
-          mergeSourceLane = activeCommitByLane.findIndex(
-            (commitId, laneIndex) => commitId === null && laneIndex > lane,
+          const existingMergeLane = activeCommitByLane.findIndex(
+            (commitId) => commitId === mergeSourceGraphId,
           );
-        }
-        if (mergeSourceLane === -1) {
-          mergeSourceLane = activeCommitByLane.findIndex((commitId) => commitId === null);
-        }
-        if (mergeSourceLane === -1) {
-          mergeSourceLane = activeCommitByLane.length;
-          activeCommitByLane.push(mergeSourceGraphId);
-        } else if (activeCommitByLane[mergeSourceLane] === null) {
-          activeCommitByLane[mergeSourceLane] = mergeSourceGraphId;
-        }
 
-        const mergeSourceRefs = branchRefsByCommitId.get(mergeSourceCommitId) ?? [];
-        const mergeSourceColor =
-          mergeSourceRefs[0]?.color ??
-          colorByCommitId.get(mergeSourceCommitId) ??
-          BRANCH_COLORS[mergeSourceLane % BRANCH_COLORS.length];
+          let mergeSourceLane = existingMergeLane;
+          if (mergeSourceLane === -1) {
+            mergeSourceLane = activeCommitByLane.findIndex(
+              (commitId, laneIndex) => commitId === null && laneIndex > lane,
+            );
+          }
+          if (mergeSourceLane === -1) {
+            mergeSourceLane = activeCommitByLane.findIndex(
+              (commitId) => commitId === null,
+            );
+          }
+          if (mergeSourceLane === -1) {
+            mergeSourceLane = activeCommitByLane.length;
+            activeCommitByLane.push(mergeSourceGraphId);
+          } else if (activeCommitByLane[mergeSourceLane] === null) {
+            activeCommitByLane[mergeSourceLane] = mergeSourceGraphId;
+          }
 
-        nextEdges.push({
-          key: `merge-${graphRow.graphId}-${mergeSourceCommitId}`,
-          kind: "merge",
-          fromLane: lane,
-          toLane: mergeSourceLane,
-          fromRow: row,
-          toRow: mergeSourceRow,
-          color: mergeSourceColor,
-        });
+          const mergeSourceRefs =
+            branchRefsByCommitId.get(mergeSourceCommitId) ?? [];
+          const mergeSourceColor =
+            mergeSourceRefs[0]?.color ??
+            colorByCommitId.get(mergeSourceCommitId) ??
+            BRANCH_COLORS[mergeSourceLane % BRANCH_COLORS.length];
+
+          nextEdges.push({
+            key: `merge-${graphRow.graphId}-${mergeSourceCommitId}`,
+            kind: "merge",
+            fromLane: lane,
+            toLane: mergeSourceLane,
+            fromRow: row,
+            toRow: mergeSourceRow,
+            color: mergeSourceColor,
+          });
         }
       }
 
@@ -888,7 +929,11 @@ export function CommitGraph({
         activeCommitByLane.pop();
       }
 
-      maxLaneCount = Math.max(maxLaneCount, activeCommitByLane.length, lane + 1);
+      maxLaneCount = Math.max(
+        maxLaneCount,
+        activeCommitByLane.length,
+        lane + 1,
+      );
     });
 
     return {
@@ -932,7 +977,10 @@ export function CommitGraph({
         name: "main",
         color: mainBranch?.color ?? BRANCH_COLORS[0],
         headCommitId:
-          latestNode.commitId ?? latestNode.sourceEntryId ?? latestEntryId ?? "",
+          latestNode.commitId ??
+          latestNode.sourceEntryId ??
+          latestEntryId ??
+          "",
       },
     ]);
 
@@ -944,7 +992,7 @@ export function CommitGraph({
       const refCommitId =
         node.commitId ?? node.sourceEntryId ?? node.workspaceHeadCommitId;
       const commitRefs = refCommitId
-        ? branchRefsByCommitId.get(refCommitId) ?? []
+        ? (branchRefsByCommitId.get(refCommitId) ?? [])
         : [];
       const filteredCommitRefs = useVirtualMainRef
         ? commitRefs.filter((ref) => ref.name !== "main")
@@ -993,7 +1041,11 @@ export function CommitGraph({
   );
 
   const recalculateBranchMenuPosition = useCallback(() => {
-    if (!branchMenu || typeof window === "undefined" || !branchMenuRef.current) {
+    if (
+      !branchMenu ||
+      typeof window === "undefined" ||
+      !branchMenuRef.current
+    ) {
       return;
     }
 
@@ -1051,7 +1103,12 @@ export function CommitGraph({
 
   const openBranchMenu = useCallback(
     (event: Pick<MouseEvent, "clientX" | "clientY">, branch: BranchRef) => {
-      const estimated = clampMenuPosition(event.clientX, event.clientY, 220, 190);
+      const estimated = clampMenuPosition(
+        event.clientX,
+        event.clientY,
+        220,
+        190,
+      );
       setBranchMenuPosition(estimated);
       setBranchMenu({ branch, x: event.clientX, y: event.clientY });
     },
@@ -1139,10 +1196,10 @@ export function CommitGraph({
                     });
                   }}
                   className={`grid min-w-31 grid-cols-[1fr_auto] items-center gap-x-1.5 gap-y-0.5 border px-2 py-1 text-left transition-colors ${
- currentBranch === branch.name
- ? "log-pane__accent-badge"
- : "border-border-default bg-surface-default hover:bg-surface-hover"
- }`}
+                    currentBranch === branch.name
+                      ? "log-pane__accent-badge"
+                      : "border-border-default bg-surface-default hover:bg-surface-hover"
+                  }`}
                   style={{ boxShadow: `inset 3px 0 0 ${branch.color}` }}
                   onClick={() => {
                     if (branch.name !== currentBranch) {
@@ -1415,11 +1472,11 @@ export function CommitGraph({
                     ? `Open commit ${node.shortHash}`
                     : node.nodeType === "draft"
                       ? "Working tree draft"
-                    : node.nodeType === "stash"
-                      ? node.stashSource === "entry"
-                        ? "Stashed commit"
-                        : "Stashed draft"
-                      : "Open linked commit in commit list"
+                      : node.nodeType === "stash"
+                        ? node.stashSource === "entry"
+                          ? "Stashed commit"
+                          : "Stashed draft"
+                        : "Open linked commit in commit list"
                 }
               >
                 <div />
@@ -1477,7 +1534,9 @@ export function CommitGraph({
                         {node.nodeType === "stash" && (
                           <span className="inline-flex items-center gap-1 border border-status-warning-border bg-status-warning-bg px-1.5 py-0.5 uppercase tracking-[0.14em] text-status-warning-text">
                             <Archive className="h-4 w-4" />
-                            {node.stashSource === "entry" ? "commit stash" : "draft stash"}
+                            {node.stashSource === "entry"
+                              ? "commit stash"
+                              : "draft stash"}
                           </span>
                         )}
 
@@ -1531,13 +1590,13 @@ export function CommitGraph({
                             ? node.snapshotName || "Canvas snapshot"
                             : node.nodeType === "draft"
                               ? `${node.workspaceSectionCount} draft section${node.workspaceSectionCount === 1 ? "" : "s"} ready to commit`
-                            : node.nodeType === "stash"
-                              ? node.stashSource === "entry"
-                                ? `${node.workspaceSectionCount} stashed section${node.workspaceSectionCount === 1 ? "" : "s"} hidden from the log list`
-                                : `${node.workspaceSectionCount} stashed section${node.workspaceSectionCount === 1 ? "" : "s"}`
-                              : refs.length > 0
-                                ? `${refs.length} branch ref${refs.length === 1 ? "" : "s"} point here`
-                                : "Stream history commit"}
+                              : node.nodeType === "stash"
+                                ? node.stashSource === "entry"
+                                  ? `${node.workspaceSectionCount} stashed section${node.workspaceSectionCount === 1 ? "" : "s"} hidden from the log list`
+                                  : `${node.workspaceSectionCount} stashed section${node.workspaceSectionCount === 1 ? "" : "s"}`
+                                : refs.length > 0
+                                  ? `${refs.length} branch ref${refs.length === 1 ? "" : "s"} point here`
+                                  : "Stream history commit"}
                         </span>
                         {isWorkspaceNode && branchLabel && (
                           <span className="inline-flex items-center gap-1">
@@ -1545,18 +1604,20 @@ export function CommitGraph({
                             on {branchLabel}
                           </span>
                         )}
-                        {node.nodeType === "canvas_snapshot" && node.snapshotBranchName && (
-                          <span className="inline-flex items-center gap-1">
-                            <GitBranch className="h-4 w-4" />
-                            on {node.snapshotBranchName}
-                          </span>
-                        )}
-                        {node.entryKind === "merge" && node.mergeSourceBranchName && (
-                          <span className="inline-flex items-center gap-1">
-                            <GitMerge className="h-4 w-4" />
-                            merged from {node.mergeSourceBranchName}
-                          </span>
-                        )}
+                        {node.nodeType === "canvas_snapshot" &&
+                          node.snapshotBranchName && (
+                            <span className="inline-flex items-center gap-1">
+                              <GitBranch className="h-4 w-4" />
+                              on {node.snapshotBranchName}
+                            </span>
+                          )}
+                        {node.entryKind === "merge" &&
+                          node.mergeSourceBranchName && (
+                            <span className="inline-flex items-center gap-1">
+                              <GitMerge className="h-4 w-4" />
+                              merged from {node.mergeSourceBranchName}
+                            </span>
+                          )}
                         <span className="inline-flex items-center gap-1">
                           <Clock3 className="h-4 w-4" />
                           {node.nodeType === "stash" && node.stashStoredAt
@@ -1575,12 +1636,14 @@ export function CommitGraph({
                           ? "Open linked commit in commit list"
                           : node.nodeType === "draft"
                             ? "Current draft workspace"
-                          : node.nodeType === "stash"
-                            ? node.stashSource === "entry"
-                              ? "Hidden from the log list"
-                              : "Stored stash snapshot"
-                            : "Open in commit list"}
-                        {!isWorkspaceNode && <ArrowUpRight className="h-4 w-4" />}
+                            : node.nodeType === "stash"
+                              ? node.stashSource === "entry"
+                                ? "Hidden from the log list"
+                                : "Stored stash snapshot"
+                              : "Open in commit list"}
+                        {!isWorkspaceNode && (
+                          <ArrowUpRight className="h-4 w-4" />
+                        )}
                       </div>
                     </div>
                   </div>

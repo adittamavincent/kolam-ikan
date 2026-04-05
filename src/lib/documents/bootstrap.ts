@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
-const DOCUMENT_SCHEMA_BOOTSTRAP_SQL=`
+const DOCUMENT_SCHEMA_BOOTSTRAP_SQL = `
 create or replace function public.user_can_access_stream(p_stream_id uuid)
 returns boolean
 language sql

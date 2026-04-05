@@ -25,7 +25,10 @@ export async function POST(
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid bridge failure payload", details: parsed.error.flatten() },
+      {
+        error: "Invalid bridge failure payload",
+        details: parsed.error.flatten(),
+      },
       { status: 400 },
     );
   }
@@ -39,7 +42,10 @@ export async function POST(
     .single();
 
   if (fetchError || !current) {
-    return NextResponse.json({ error: "Bridge job not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Bridge job not found" },
+      { status: 404 },
+    );
   }
 
   const job = await updateBridgeJobResult(jobId, {

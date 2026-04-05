@@ -11,7 +11,12 @@ import { useLogBranchContext } from "@/lib/hooks/useLogBranchContext";
 import type { CanvasVersion } from "@/lib/types";
 import { normalizeCanvasContent } from "@/lib/utils/canvasContent";
 import { CanvasCompareModal } from "@/components/shared/CanvasCompareModal";
-import { CircleDot, GitCommitHorizontal, GitCompare, Loader2 } from "lucide-react";
+import {
+  CircleDot,
+  GitCommitHorizontal,
+  GitCompare,
+  Loader2,
+} from "lucide-react";
 import {
   buildStoredContentPayload,
   storedContentToMarkdown,
@@ -32,8 +37,12 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { canvas } = useCanvas(streamId);
-  const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId] ?? null);
-  const liveMarkdown = useCanvasDraft((s) => s.liveMarkdownByStream[streamId] ?? "");
+  const liveContent = useCanvasDraft(
+    (s) => s.liveContentByStream[streamId] ?? null,
+  );
+  const liveMarkdown = useCanvasDraft(
+    (s) => s.liveMarkdownByStream[streamId] ?? "",
+  );
   const markClean = useCanvasDraft((s) => s.markClean);
   const [snapshotName, setSnapshotName] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
@@ -76,10 +85,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
           "id, content_json, raw_markdown, created_at",
         );
 
-        if (
-          error &&
-          isSupabaseSchemaMismatchError(error, ["raw_markdown"])
-        ) {
+        if (error && isSupabaseSchemaMismatchError(error, ["raw_markdown"])) {
           const fallback = await buildCanvasVersionQuery(
             "id, content_json, created_at",
           );
@@ -97,15 +103,17 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     committedBaseline !== undefined
       ? committedBaseline.blocks
       : latestCanvasVersion
-      ? storedContentToBlocks(latestCanvasVersion)
-      : null;
+        ? storedContentToBlocks(latestCanvasVersion)
+        : null;
   const baselineMarkdown =
     committedBaseline !== undefined
       ? committedBaseline.markdown
       : latestCanvasVersion
         ? storedContentToMarkdown(latestCanvasVersion)
         : "";
-  const currentContent = (liveContent ?? canvasBlocks ?? null) as PartialBlock[] | null;
+  const currentContent = (liveContent ?? canvasBlocks ?? null) as
+    | PartialBlock[]
+    | null;
   const currentMarkdown = liveMarkdown || canvasMarkdown;
   const compareLabel = latestCanvasVersion ? "Latest Snapshot" : "Start Fresh";
 
@@ -113,10 +121,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     const baselineNormalized = normalizeCanvasContent(baselineContent);
     const currentNormalized = normalizeCanvasContent(currentContent);
     return baselineNormalized !== currentNormalized;
-  }, [
-    baselineContent,
-    currentContent,
-  ]);
+  }, [baselineContent, currentContent]);
 
   const { diffs, additions, deletions } = useCanvasDiff({
     oldContent: baselineContent,
@@ -132,7 +137,9 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
     const latestNormalized = normalizeCanvasContent(
       storedContentToBlocks(latestCanvasVersion ?? {}),
     );
-    const committedNormalized = normalizeCanvasContent(committedBaseline.blocks);
+    const committedNormalized = normalizeCanvasContent(
+      committedBaseline.blocks,
+    );
     if (latestNormalized !== null && latestNormalized === committedNormalized) {
       // Defer clearing to avoid synchronous setState inside the effect body.
       // This prevents the lint rule complaining about cascading renders.
@@ -191,7 +198,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
       {/* Header */}
       <div className="flex items-center bg-surface-elevated">
         <div className="flex h-6 w-full items-center gap-2">
-          <div className="h-4 w-4"/>
+          <div className="h-4 w-4" />
           <div className="flex items-center gap-2">
             <CircleDot className="log-pane__accent-label h-4 w-4 animate-pulse" />
             <span className="log-pane__accent-label uppercase">
@@ -247,7 +254,7 @@ export function CanvasDraftCard({ streamId }: CanvasDraftCardProps) {
           </div>
         ) : (
           <div className="flex h-full items-stretch gap-2">
-            <div className="h-4 w-4"/>
+            <div className="h-4 w-4" />
             <button
               onClick={() => setIsCompareOpen(true)}
               className="log-pane__action-button inline-flex h-full items-center transition-colors gap-2"

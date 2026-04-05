@@ -11,7 +11,6 @@ import {
   FolderOpen,
   FileText,
   Layers,
-  
   Clock,
   AlertCircle,
   RefreshCw,
@@ -105,8 +104,6 @@ function ActivityItemSkeleton() {
   );
 }
 
-
-
 // --- Sub-components ---
 
 function StatCard({
@@ -131,7 +128,9 @@ function StatCard({
   return (
     <div className="group border border-border-default bg-surface-default p-4 flex flex-col justify-between">
       <div className="flex items-center justify-between mb-2">
-        <p className="uppercase tracking-wider text-text-subtle font-medium">{label}</p>
+        <p className="uppercase tracking-wider text-text-subtle font-medium">
+          {label}
+        </p>
         <Icon className={`h-4 w-4 ${accentClass}`} />
       </div>
       <p className="font-bold text-text-default">{value}</p>
@@ -170,9 +169,9 @@ function DomainCard({
     }
 
     try {
-      await duplicateDomain.mutateAsync({ 
+      await duplicateDomain.mutateAsync({
         id: domain.id,
-        newName
+        newName,
       });
       refetchDomains(); // Trigger stats update after duplication
     } catch (error) {
@@ -200,9 +199,7 @@ function DomainCard({
             {domain.name}
           </h3>
           {domain.description && (
-            <p className="truncate text-text-subtle">
-              {domain.description}
-            </p>
+            <p className="truncate text-text-subtle">{domain.description}</p>
           )}
         </div>
         <div className="ml-2 flex items-start">
@@ -252,9 +249,7 @@ function RecentActivityItem({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="truncate font-medium text-text-default">
-            {title}
-          </p>
+          <p className="truncate font-medium text-text-default">{title}</p>
         </div>
         <p className="truncate text-text-subtle">{subtitle}</p>
       </div>
@@ -262,8 +257,6 @@ function RecentActivityItem({
     </button>
   );
 }
-
-
 
 function ErrorBanner({
   message,
@@ -465,9 +458,7 @@ export default function HomePage() {
               {greeting},{" "}
               <span className="text-action-primary-bg">{displayName}</span>
             </h1>
-            <p className="mt-1 text-text-subtle">
-              Pick up where you left off.
-            </p>
+            <p className="mt-1 text-text-subtle">Pick up where you left off.</p>
           </div>
         </div>
 
@@ -528,8 +519,6 @@ export default function HomePage() {
             )}
           </div>
         </section>
-
-
 
         <div className="grid gap-8 lg:grid-cols-5">
           {/* ---- Domains Overview (left 3 cols) ---- */}

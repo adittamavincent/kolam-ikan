@@ -2,13 +2,16 @@ import React from "react";
 import { Persona } from "@/lib/types";
 import { DynamicIcon } from "./DynamicIcon";
 import { Fragment } from "react";
-import { Menu, MenuButton, MenuItems, MenuItem, Transition } from "@headlessui/react";
+import {
+  Menu,
+  MenuButton,
+  MenuItems,
+  MenuItem,
+  Transition,
+} from "@headlessui/react";
 import { ChevronDown, FileText } from "lucide-react";
 // PersonaIcon removed from this file (unused import)
-import {
-  getPersonaAccentStyle,
-  getPersonaTypeLabel,
-} from "@/lib/personas";
+import { getPersonaAccentStyle, getPersonaTypeLabel } from "@/lib/personas";
 
 interface PersonaButtonDisplayProps {
   persona: Persona | null;
@@ -29,7 +32,8 @@ function PersonaButtonDisplay({
   showMeta = false,
   showTypeBadge = true,
 }: PersonaButtonDisplayProps) {
-  const personaTypeLabel = getPersonaTypeLabel(persona?.type ?? "") || "Unknown";
+  const personaTypeLabel =
+    getPersonaTypeLabel(persona?.type ?? "") || "Unknown";
 
   if (!persona) {
     return (
@@ -117,7 +121,7 @@ export function PersonaItem({
   onClick,
   compact = false,
   showMeta,
-  className="",
+  className = "",
   style,
   title,
   showTypeBadge = true,
@@ -127,12 +131,21 @@ export function PersonaItem({
     ? `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-1 leading-4 transition-colors`
     : `${focus ? "bg-surface-subtle text-text-default" : "text-text-subtle"} group flex items-center gap-2 leading-4 transition-colors`;
   const containerClass = `${sharedClass} ${compact ? "border" : "w-full justify-between"} text-left ${className}`;
-  const nameClass = role === "local" ? "persona-button-display__name--local" : "";
+  const nameClass =
+    role === "local" ? "persona-button-display__name--local" : "";
   const resolvedShowMeta = showMeta ?? !compact;
 
   // If menuProps provided, render as a selector control (Menu + MenuButton + MenuItems)
   if (menuProps) {
-    const { currentPersona, isAttachment, filePersonaName, globalPersonas, localPersonas, onSelect, readOnly = false } = menuProps;
+    const {
+      currentPersona,
+      isAttachment,
+      filePersonaName,
+      globalPersonas,
+      localPersonas,
+      onSelect,
+      readOnly = false,
+    } = menuProps;
     // If readOnly is true, render a simple, non-interactive persona display
     // instead of the interactive Menu. This ensures committed entries cannot
     // change persona unless the UI is in amend/edit mode.
@@ -182,9 +195,7 @@ export function PersonaItem({
                 Switch to...
               </div>
               {globalPersonas.length > 0 && (
-                <div className="text-text-muted">
-                  Available Everywhere
-                </div>
+                <div className="text-text-muted">Available Everywhere</div>
               )}
               {globalPersonas.map((p) => (
                 <MenuItem key={p.id}>

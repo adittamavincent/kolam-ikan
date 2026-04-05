@@ -127,16 +127,20 @@ export function CreateDomainModal({
         onClose={onClose}
       />
 
-      <form id="create-domain-form" onSubmit={handleSubmit} className="px-6 py-5">
+      <form
+        id="create-domain-form"
+        onSubmit={handleSubmit}
+        className="px-6 py-5"
+      >
         <div className="mt-2">
           <div className="relative">
             <input
               type="text"
               className={`block w-full border px-4 py-3 text-text-default placeholder-text-muted focus: focus: transition-all ${
- error
- ? "border-status-error-text focus:border-status-error-text focus:"
- : "border-border-default focus:border-border-default focus:"
- }`}
+                error
+                  ? "border-status-error-text focus:border-status-error-text focus:"
+                  : "border-border-default focus:border-border-default focus:"
+              }`}
               placeholder="e.g., My Knowledge Base"
               value={name}
               onChange={(e) => {
@@ -158,10 +162,10 @@ export function CreateDomainModal({
                   type="button"
                   onClick={() => setIcon(option)}
                   className={`flex items-center justify-center border p-2 transition-colors ${
- icon === option
- ? "border-border-default bg-primary-950 text-action-primary-bg"
- : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
- }`}
+                    icon === option
+                      ? "border-border-default bg-primary-950 text-action-primary-bg"
+                      : "border-border-default text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                  }`}
                   aria-label={`Select ${option} icon`}
                 >
                   <DynamicIcon name={option} className="h-4 w-4" />
@@ -177,7 +181,6 @@ export function CreateDomainModal({
             </div>
           )}
         </div>
-
       </form>
     </ModalShell>
   );

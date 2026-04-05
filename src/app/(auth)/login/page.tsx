@@ -450,15 +450,21 @@ function LoginForm() {
           authError.message.includes("already registered") ||
           authError.message.includes("already exists")
         ) {
-          setError("An account with this email already exists. Please sign in instead.");
+          setError(
+            "An account with this email already exists. Please sign in instead.",
+          );
         } else if (authError.message.includes("Password should be")) {
-          setError("Password does not meet security requirements. Please use a stronger password.");
+          setError(
+            "Password does not meet security requirements. Please use a stronger password.",
+          );
         } else {
           setError(authError.message);
         }
       } else {
         setLoading(false);
-        setSuccessMessage("Account created successfully! Please check your email to verify your account.");
+        setSuccessMessage(
+          "Account created successfully! Please check your email to verify your account.",
+        );
         setPassword("");
         setConfirmPassword("");
         setShowPassword(false);
@@ -467,7 +473,9 @@ function LoginForm() {
     } catch (err: unknown) {
       setLoading(false);
       if (err instanceof Error && err.name === "AbortError") return;
-      setError("A network error occurred. Please check your connection and try again.");
+      setError(
+        "A network error occurred. Please check your connection and try again.",
+      );
     }
   };
 
@@ -499,10 +507,10 @@ function LoginForm() {
               type="button"
               onClick={() => mode === "signup" && toggleMode()}
               className={`flex-1 px-4 py-2 font-semibold transition-all ${
- mode === "signin"
- ? "bg-surface-default text-text-default"
- : "text-text-subtle hover:text-text-default"
- }`}
+                mode === "signin"
+                  ? "bg-surface-default text-text-default"
+                  : "text-text-subtle hover:text-text-default"
+              }`}
             >
               Sign In
             </button>
@@ -510,10 +518,10 @@ function LoginForm() {
               type="button"
               onClick={() => mode === "signin" && toggleMode()}
               className={`flex-1 px-4 py-2 font-semibold transition-all ${
- mode === "signup"
- ? "bg-surface-default text-text-default"
- : "text-text-subtle hover:text-text-default"
- }`}
+                mode === "signup"
+                  ? "bg-surface-default text-text-default"
+                  : "text-text-subtle hover:text-text-default"
+              }`}
             >
               Sign Up
             </button>
@@ -563,10 +571,10 @@ function LoginForm() {
                         handleFieldBlur("fullName", e.target.value)
                       }
                       className={`block w-full border ${
- fieldErrors.fullName && touchedFields.has("fullName")
- ? "border-border-default focus:border-status-error-text focus:"
- : "border-border-default focus:border-border-default focus:"
- } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                        fieldErrors.fullName && touchedFields.has("fullName")
+                          ? "border-border-default focus:border-status-error-text focus:"
+                          : "border-border-default focus:border-border-default focus:"
+                      } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                       placeholder="John Doe"
                     />
                   </div>
@@ -600,10 +608,10 @@ function LoginForm() {
                     }}
                     onBlur={(e) => handleFieldBlur("email", e.target.value)}
                     className={`block w-full border ${
- fieldErrors.email && touchedFields.has("email")
- ? "border-border-default focus:border-status-error-text focus:"
- : "border-border-default focus:border-border-default focus:"
- } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                      fieldErrors.email && touchedFields.has("email")
+                        ? "border-border-default focus:border-status-error-text focus:"
+                        : "border-border-default focus:border-border-default focus:"
+                    } bg-surface-subtle py-2.5 pl-10 pr-3 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                     placeholder="name@example.com"
                   />
                 </div>
@@ -654,10 +662,10 @@ function LoginForm() {
                     }}
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
                     className={`block w-full border ${
- fieldErrors.password && touchedFields.has("password")
- ? "border-border-default focus:border-status-error-text focus:"
- : "border-border-default focus:border-border-default focus:"
- } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                      fieldErrors.password && touchedFields.has("password")
+                        ? "border-border-default focus:border-status-error-text focus:"
+                        : "border-border-default focus:border-border-default focus:"
+                    } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                     placeholder="••••••••"
                   />
                   <button
@@ -715,11 +723,11 @@ function LoginForm() {
                         handleFieldBlur("confirmPassword", e.target.value)
                       }
                       className={`block w-full border ${
- fieldErrors.confirmPassword &&
- touchedFields.has("confirmPassword")
- ? "border-border-default focus:border-status-error-text focus:"
- : "border-border-default focus:border-border-default focus:"
- } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
+                        fieldErrors.confirmPassword &&
+                        touchedFields.has("confirmPassword")
+                          ? "border-border-default focus:border-status-error-text focus:"
+                          : "border-border-default focus:border-border-default focus:"
+                      } bg-surface-subtle py-2.5 pl-10 pr-10 text-text-default placeholder-text-muted focus:bg-surface-default focus: focus: transition-all `}
                       placeholder="••••••••"
                     />
                     <button

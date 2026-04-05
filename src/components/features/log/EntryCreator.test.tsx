@@ -29,12 +29,14 @@ const mockPersonas = [
 ];
 const mockGetDraftContent = (instanceId: string) =>
   mockDraftContents[instanceId] ??
-  ((mockInitialDrafts[instanceId] as { content?: unknown[] } | undefined)
-    ?.content ?? []);
+  (mockInitialDrafts[instanceId] as { content?: unknown[] } | undefined)
+    ?.content ??
+  [];
 const mockGetDraftMarkdown = (instanceId: string) =>
   mockDraftMarkdown[instanceId] ??
-  ((mockInitialDrafts[instanceId] as { rawMarkdown?: string } | undefined)
-    ?.rawMarkdown ?? "");
+  (mockInitialDrafts[instanceId] as { rawMarkdown?: string } | undefined)
+    ?.rawMarkdown ??
+  "";
 const mockGetFileAttachmentDraft = () => undefined;
 
 vi.mock("@tanstack/react-query", async () => {
@@ -202,10 +204,7 @@ vi.mock("@/components/shared/MarkdownEditor", () => ({
           onFocusChange?.(false);
         }}
         onChange={(e) =>
-          onChange(
-            [{ content: [{ text: e.target.value }] }],
-            e.target.value,
-          )
+          onChange([{ content: [{ text: e.target.value }] }], e.target.value)
         }
       />
     );
@@ -232,8 +231,7 @@ describe("EntryCreator", () => {
     metaKey?: boolean;
     shiftKey?: boolean;
   }) => {
-    const registeredShortcuts =
-      mockUseKeyboard.mock.calls.at(-1)?.[0] ?? [];
+    const registeredShortcuts = mockUseKeyboard.mock.calls.at(-1)?.[0] ?? [];
     const shortcut = registeredShortcuts.find(
       (candidate: {
         key: string;
@@ -259,9 +257,15 @@ describe("EntryCreator", () => {
     queryClient = new QueryClient();
     vi.clearAllMocks();
     window.localStorage.clear();
-    Object.keys(mockDraftContents).forEach((key) => delete mockDraftContents[key]);
-    Object.keys(mockDraftMarkdown).forEach((key) => delete mockDraftMarkdown[key]);
-    Object.keys(mockInitialDrafts).forEach((key) => delete mockInitialDrafts[key]);
+    Object.keys(mockDraftContents).forEach(
+      (key) => delete mockDraftContents[key],
+    );
+    Object.keys(mockDraftMarkdown).forEach(
+      (key) => delete mockDraftMarkdown[key],
+    );
+    Object.keys(mockInitialDrafts).forEach(
+      (key) => delete mockInitialDrafts[key],
+    );
     mockSaveDraft.mockImplementation(
       (
         instanceId: string,
@@ -407,7 +411,9 @@ describe("EntryCreator", () => {
 
     triggerShortcut({ key: "Enter", metaKey: true, shiftKey: true });
 
-    expect(screen.queryByTitle("Exit fullscreen editor")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTitle("Exit fullscreen editor"),
+    ).not.toBeInTheDocument();
   });
 
   it("renders shared attachment notes from the attachment section draft", async () => {
@@ -432,9 +438,7 @@ describe("EntryCreator", () => {
       </QueryClientProvider>,
     );
 
-    expect(
-      await screen.findByDisplayValue("Shared note"),
-    ).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Shared note")).toBeInTheDocument();
     expect(screen.getByText("Attachment Notes")).toBeInTheDocument();
   });
 
@@ -492,7 +496,11 @@ describe("EntryCreator", () => {
       expect(screen.queryByTestId("mock-editor")).not.toBeInTheDocument();
     });
 
-    expect(screen.getByText("Add a persona or attach a file to start building this entry.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Add a persona or attach a file to start building this entry.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("can pop the latest stash back into the composer", async () => {
@@ -513,12 +521,18 @@ describe("EntryCreator", () => {
     }
 
     fireEvent.contextMenu(entryCreator, { clientX: 120, clientY: 80 });
-    fireEvent.click(await screen.findByRole("button", { name: /stash changes/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /stash changes/i }),
+    );
 
     fireEvent.contextMenu(entryCreator, { clientX: 120, clientY: 80 });
-    fireEvent.click(await screen.findByRole("button", { name: /pop latest stash/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /pop latest stash/i }),
+    );
 
-    expect(await screen.findByDisplayValue("Bring me back")).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue("Bring me back"),
+    ).toBeInTheDocument();
   });
 
   it("can restore a stash through an external stash action", async () => {
@@ -546,7 +560,10 @@ describe("EntryCreator", () => {
     const onHandled = vi.fn();
     const { container, rerender } = render(
       <QueryClientProvider client={queryClient}>
-        <EntryCreator streamId="stream-1" onExternalStashActionHandled={onHandled} />
+        <EntryCreator
+          streamId="stream-1"
+          onExternalStashActionHandled={onHandled}
+        />
       </QueryClientProvider>,
     );
 
@@ -561,9 +578,13 @@ describe("EntryCreator", () => {
     }
 
     fireEvent.contextMenu(entryCreator, { clientX: 120, clientY: 80 });
-    fireEvent.click(await screen.findByRole("button", { name: /stash changes/i }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /stash changes/i }),
+    );
 
-    const stashRaw = window.localStorage.getItem("kolam_entry_creator_stash_v1_stream-1");
+    const stashRaw = window.localStorage.getItem(
+      "kolam_entry_creator_stash_v1_stream-1",
+    );
     if (!stashRaw) {
       throw new Error("Expected draft stash to be written");
     }
@@ -584,7 +605,9 @@ describe("EntryCreator", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByDisplayValue("Restore from dialog")).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue("Restore from dialog"),
+    ).toBeInTheDocument();
     expect(onHandled).toHaveBeenCalledWith("action-1");
     vi.restoreAllMocks();
   });

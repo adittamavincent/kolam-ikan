@@ -94,8 +94,7 @@ describe("stash utils", () => {
       listener.mock.calls.some((call) => {
         const event = call[0];
         return (
-          event instanceof CustomEvent &&
-          event.detail?.streamId === "stream-1"
+          event instanceof CustomEvent && event.detail?.streamId === "stream-1"
         );
       }),
     ).toBe(true);

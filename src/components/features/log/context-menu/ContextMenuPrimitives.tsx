@@ -12,9 +12,11 @@ export const CONTEXT_MENU_BASE_CONTAINER_CLASS =
   "fixed z-50 border border-border-default bg-surface-elevated p-1.5";
 export const CONTEXT_MENU_SCROLL_CONTAINER_CLASS =
   "max-h-[calc(100vh-16px)] overflow-y-auto";
-export const CONTEXT_MENU_HEADER_CLASS = "px-2 py-1 mb-0.5 flex items-center gap-1.5";
+export const CONTEXT_MENU_HEADER_CLASS =
+  "px-2 py-1 mb-0.5 flex items-center gap-1.5";
 export const CONTEXT_MENU_DIVIDER_CLASS = "my-1 h-px bg-border-subtle";
-export const CONTEXT_MENU_SUBTITLE_DIVIDER_CLASS = "h-px bg-border-subtle mb-0.5";
+export const CONTEXT_MENU_SUBTITLE_DIVIDER_CLASS =
+  "h-px bg-border-subtle mb-0.5";
 export const CONTEXT_MENU_SECTION_LABEL_CLASS =
   "mb-0.5 px-1.5 pt-0.5 pb-0.5 uppercase tracking-widest text-text-muted";
 export const CONTEXT_MENU_ACTION_CLASS =
@@ -79,8 +81,7 @@ export function ContextMenuDivider() {
   return <div className={CONTEXT_MENU_DIVIDER_CLASS} />;
 }
 
-interface ContextMenuActionButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ContextMenuActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   danger?: boolean;
 }
 

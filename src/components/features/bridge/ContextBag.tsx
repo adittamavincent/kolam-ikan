@@ -125,10 +125,10 @@ export function ContextBag({
         <div className="space-y-1">
           <label
             className={`flex items-center gap-2 select-none ${
- isGlobalToggleDisabled
- ? "cursor-not-allowed opacity-60"
- : "cursor-pointer"
- }`}
+              isGlobalToggleDisabled
+                ? "cursor-not-allowed opacity-60"
+                : "cursor-pointer"
+            }`}
           >
             <input
               type="checkbox"
@@ -140,10 +140,10 @@ export function ContextBag({
             <span className="flex items-center gap-1.5 text-text-default">
               <Globe
                 className={`h-3.5 w-3.5 ${
- includeGlobalStream && !isGlobalToggleDisabled
- ? "text-action-primary-bg"
- : "text-text-muted"
- }`}
+                  includeGlobalStream && !isGlobalToggleDisabled
+                    ? "text-action-primary-bg"
+                    : "text-text-muted"
+                }`}
               />
               Include Domain Global Stream
             </span>
@@ -151,9 +151,11 @@ export function ContextBag({
               <span className="ml-1 inline-block h-3 w-3 animate-spin border-2 border-border-default border-t-action-primary-bg" />
             )}
           </label>
-          {!globalStreamLoading && globalStreamName && !globalStreamDisabled && (
-            <p className="ml-7 text-text-muted">{globalStreamName}</p>
-          )}
+          {!globalStreamLoading &&
+            globalStreamName &&
+            !globalStreamDisabled && (
+              <p className="ml-7 text-text-muted">{globalStreamName}</p>
+            )}
           <p className="ml-7 text-text-muted leading-relaxed">
             {globalStreamLoading
               ? "Checking global stream..."
@@ -188,7 +190,9 @@ export function ContextBag({
         </div>
         <div className="space-y-3 border border-border-default bg-surface-default p-3">
           {isLoadingEntries ? (
-            <div className="text-text-muted animate-pulse">Loading entries...</div>
+            <div className="text-text-muted animate-pulse">
+              Loading entries...
+            </div>
           ) : groupedEntries.length === 0 ? (
             <div className="text-text-muted">No entries yet.</div>
           ) : (
@@ -202,19 +206,23 @@ export function ContextBag({
                     entry.sections?.[0]?.search_text ||
                     entry.sections?.[0]?.persona_name_snapshot ||
                     "Empty entry";
-                  
+
                   const isAlreadySent = sentEntryIds?.includes(entry.id);
-                  const hasModifications = !!entry.updated_at && !!lastUsedAt && new Date(entry.updated_at).getTime() > new Date(lastUsedAt).getTime();
+                  const hasModifications =
+                    !!entry.updated_at &&
+                    !!lastUsedAt &&
+                    new Date(entry.updated_at).getTime() >
+                      new Date(lastUsedAt).getTime();
                   const isDisabled = isAlreadySent && !hasModifications;
 
                   return (
                     <label
                       key={entry.id}
                       className={`flex items-start gap-3 p-1.5 transition-colors select-none ${
- isDisabled 
- ? "opacity-50 cursor-default" 
- : "hover:bg-surface-subtle cursor-pointer"
- }`}
+                        isDisabled
+                          ? "opacity-50 cursor-default"
+                          : "hover:bg-surface-subtle cursor-pointer"
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -234,7 +242,9 @@ export function ContextBag({
                               : "Unknown time"}
                           </span>
                           {isAlreadySent && (
-                            <span className={`font-bold ml-2 ${hasModifications ? "text-action-primary-bg" : "text-text-muted"}`}>
+                            <span
+                              className={`font-bold ml-2 ${hasModifications ? "text-action-primary-bg" : "text-text-muted"}`}
+                            >
                               {hasModifications ? "AMENDED" : "SENT"}
                             </span>
                           )}

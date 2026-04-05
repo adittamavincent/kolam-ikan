@@ -22,4 +22,3 @@ export function getDocumentThumbnailUrl(document: Document): string | null {
 
   return data.publicUrl;
 }
-

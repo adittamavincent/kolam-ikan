@@ -116,11 +116,17 @@ interface UiPreferencesStoreState {
   setLayoutMode: (mode: LayoutMode) => void;
   setCustomLayoutWidths: (logWidth: number, canvasWidth: number) => void;
   toggleLogCollapse: () => void;
-  setExpandedCabinetsForDomain: (domainId: string, ids: Iterable<string>) => void;
+  setExpandedCabinetsForDomain: (
+    domainId: string,
+    ids: Iterable<string>,
+  ) => void;
   addExpandedCabinet: (domainId: string, cabinetId: string) => void;
   removeExpandedCabinet: (domainId: string, cabinetId: string) => void;
   toggleExpandedCabinet: (domainId: string, cabinetId: string) => void;
-  setCollapsedLogItemsForStream: (streamId: string, ids: Iterable<string>) => void;
+  setCollapsedLogItemsForStream: (
+    streamId: string,
+    ids: Iterable<string>,
+  ) => void;
   addCollapsedLogItem: (streamId: string, itemId: string) => void;
   removeCollapsedLogItem: (streamId: string, itemId: string) => void;
   toggleCollapsedLogItem: (streamId: string, itemId: string) => void;
@@ -128,7 +134,9 @@ interface UiPreferencesStoreState {
     streamId: string,
     validIds: Iterable<string>,
   ) => void;
-  setBridgeDefaults: (defaults: Partial<BridgePreferencesPayload["defaults"]>) => void;
+  setBridgeDefaults: (
+    defaults: Partial<BridgePreferencesPayload["defaults"]>,
+  ) => void;
   upsertBridgeSession: (
     streamId: string,
     session: Partial<BridgeStreamSession>,
@@ -215,8 +223,7 @@ function normalizeBridgeSession(
       session?.isExternalSessionActive ?? base.isExternalSessionActive,
     externalSessionLoadedAt:
       session?.externalSessionLoadedAt ?? base.externalSessionLoadedAt,
-    externalSessionUrl:
-      session?.externalSessionUrl ?? base.externalSessionUrl,
+    externalSessionUrl: session?.externalSessionUrl ?? base.externalSessionUrl,
     automationSessionKey:
       session?.automationSessionKey ?? base.automationSessionKey,
     automationStatus: session?.automationStatus ?? base.automationStatus,
@@ -224,8 +231,7 @@ function normalizeBridgeSession(
     lastAppliedJobId: session?.lastAppliedJobId ?? base.lastAppliedJobId,
     lastJobStatus: session?.lastJobStatus ?? base.lastJobStatus,
     lastJobError: (session?.lastJobError ?? base.lastJobError).trim(),
-    lastJobCompletedAt:
-      session?.lastJobCompletedAt ?? base.lastJobCompletedAt,
+    lastJobCompletedAt: session?.lastJobCompletedAt ?? base.lastJobCompletedAt,
     sentEntryIds: session?.sentEntryIds ?? base.sentEntryIds,
     quickUiPhase: session?.quickUiPhase ?? base.quickUiPhase,
     detailedUiPhase: session?.detailedUiPhase ?? base.detailedUiPhase,
@@ -325,16 +331,18 @@ export function buildUiPreferencesPayload(
     },
     navigator: {
       expandedCabinetIdsByDomain: Object.fromEntries(
-        Object.entries(state.navigatorExpandedByDomain).map(([domainId, ids]) => [
-          domainId,
-          toSortedUniqueIds(ids),
-        ]),
+        Object.entries(state.navigatorExpandedByDomain).map(
+          ([domainId, ids]) => [domainId, toSortedUniqueIds(ids)],
+        ),
       ),
     },
     log: {
       collapsedItemIdsByStream: Object.fromEntries(
         Object.entries(state.logCollapsedItemIdsByStream).map(
-          ([streamId, ids]: [string, string[]]) => [streamId, toSortedUniqueIds(ids)],
+          ([streamId, ids]: [string, string[]]) => [
+            streamId,
+            toSortedUniqueIds(ids),
+          ],
         ),
       ),
     },
@@ -344,10 +352,9 @@ export function buildUiPreferencesPayload(
         quickPreset: state.bridgeDefaults.quickPreset,
       },
       sessionsByStream: Object.fromEntries(
-        Object.entries(state.bridgeSessionsByStream).map(([streamId, session]) => [
-          streamId,
-          normalizeBridgeSession(session),
-        ]),
+        Object.entries(state.bridgeSessionsByStream).map(
+          ([streamId, session]) => [streamId, normalizeBridgeSession(session)],
+        ),
       ),
     },
   };
@@ -362,7 +369,8 @@ function mergePayloadIntoState(
 
   for (const device of ["mobile", "tablet", "desktop"] as UiDeviceClass[]) {
     nextLayoutWidths[device] = cloneLayoutWidths(
-      payload.device.layoutWidths[device] ?? current.layoutWidthsByDevice[device],
+      payload.device.layoutWidths[device] ??
+        current.layoutWidthsByDevice[device],
     );
     nextSidebarWidths[device] =
       payload.device.sidebarWidths[device] ?? current.sidebarWidths[device];
@@ -375,19 +383,27 @@ function mergePayloadIntoState(
     sidebarWidths: nextSidebarWidths,
     navigatorExpandedByDomain: Object.fromEntries(
       Object.entries(payload.navigator.expandedCabinetIdsByDomain ?? {}).map(
-        ([domainId, ids]: [string, string[]]) => [domainId, toSortedUniqueIds(ids)],
+        ([domainId, ids]: [string, string[]]) => [
+          domainId,
+          toSortedUniqueIds(ids),
+        ],
       ),
     ),
     logCollapsedItemIdsByStream: Object.fromEntries(
       Object.entries(payload.log?.collapsedItemIdsByStream ?? {}).map(
-        ([streamId, ids]: [string, string[]]) => [streamId, toSortedUniqueIds(ids)],
+        ([streamId, ids]: [string, string[]]) => [
+          streamId,
+          toSortedUniqueIds(ids),
+        ],
       ),
     ),
     bridgeDefaults: {
       providerId:
-        payload.bridge?.defaults?.providerId ?? current.bridgeDefaults.providerId,
+        payload.bridge?.defaults?.providerId ??
+        current.bridgeDefaults.providerId,
       quickPreset:
-        payload.bridge?.defaults?.quickPreset ?? current.bridgeDefaults.quickPreset,
+        payload.bridge?.defaults?.quickPreset ??
+        current.bridgeDefaults.quickPreset,
     },
     bridgeSessionsByStream: Object.fromEntries(
       Object.entries(payload.bridge?.sessionsByStream ?? {}).map(
@@ -420,16 +436,22 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
       activeUserId: null,
       syncStatus: "idle",
       setDeviceClass: (deviceClass) => {
-        set((state) => (state.deviceClass === deviceClass ? state : { deviceClass }));
+        set((state) =>
+          state.deviceClass === deviceClass ? state : { deviceClass },
+        );
       },
       showSidebar: () => {
         set((state) =>
-          state.sidebarVisible ? state : touchLocalState({ sidebarVisible: true }),
+          state.sidebarVisible
+            ? state
+            : touchLocalState({ sidebarVisible: true }),
         );
       },
       hideSidebar: () => {
         set((state) =>
-          !state.sidebarVisible ? state : touchLocalState({ sidebarVisible: false }),
+          !state.sidebarVisible
+            ? state
+            : touchLocalState({ sidebarVisible: false }),
         );
       },
       setSidebarVisible: (visible) => {
@@ -589,7 +611,9 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
       },
       toggleExpandedCabinet: (domainId, cabinetId) => {
         const state = get();
-        if ((state.navigatorExpandedByDomain[domainId] ?? []).includes(cabinetId)) {
+        if (
+          (state.navigatorExpandedByDomain[domainId] ?? []).includes(cabinetId)
+        ) {
           get().removeExpandedCabinet(domainId, cabinetId);
           return;
         }
@@ -636,7 +660,9 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
       },
       toggleCollapsedLogItem: (streamId, itemId) => {
         const state = get();
-        if ((state.logCollapsedItemIdsByStream[streamId] ?? []).includes(itemId)) {
+        if (
+          (state.logCollapsedItemIdsByStream[streamId] ?? []).includes(itemId)
+        ) {
           get().removeCollapsedLogItem(streamId, itemId);
           return;
         }
@@ -665,7 +691,10 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
             ...state.bridgeDefaults,
             ...defaults,
           };
-          if (JSON.stringify(nextDefaults) === JSON.stringify(state.bridgeDefaults)) {
+          if (
+            JSON.stringify(nextDefaults) ===
+            JSON.stringify(state.bridgeDefaults)
+          ) {
             return state;
           }
           return touchLocalState({ bridgeDefaults: nextDefaults });
@@ -678,14 +707,17 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
             ...current,
             ...session,
             lastContextRecipe: {
-              ...(current?.lastContextRecipe ?? createDefaultBridgeContextRecipe()),
+              ...(current?.lastContextRecipe ??
+                createDefaultBridgeContextRecipe()),
               ...(session.lastContextRecipe ?? {}),
             },
             sessionMemory:
               session.sessionMemory ??
               buildSessionMemory(
                 session.lastInstruction ?? current?.lastInstruction ?? "",
-                (session.lastMode ?? current?.lastMode ?? "BOTH") as BridgeInteractionMode,
+                (session.lastMode ??
+                  current?.lastMode ??
+                  "BOTH") as BridgeInteractionMode,
               ),
           });
           if (JSON.stringify(current) === JSON.stringify(merged)) return state;
@@ -713,11 +745,9 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
           const nextSession = normalizeBridgeSession({
             ...current,
             isExternalSessionActive: active,
-            externalSessionLoadedAt: active
-              ? new Date().toISOString()
-              : null,
+            externalSessionLoadedAt: active ? new Date().toISOString() : null,
             externalSessionUrl: active
-              ? current?.externalSessionUrl ?? null
+              ? (current?.externalSessionUrl ?? null)
               : null,
           });
 
@@ -748,11 +778,15 @@ export const useUiPreferencesStore = create<UiPreferencesStoreState>()(
       },
       setCloudHydrated: (userId) => {
         set((state) =>
-          state.cloudHydratedUserId === userId ? state : { cloudHydratedUserId: userId },
+          state.cloudHydratedUserId === userId
+            ? state
+            : { cloudHydratedUserId: userId },
         );
       },
       setSyncStatus: (status) => {
-        set((state) => (state.syncStatus === status ? state : { syncStatus: status }));
+        set((state) =>
+          state.syncStatus === status ? state : { syncStatus: status },
+        );
       },
       markSynced: (timestampMs, userId) => {
         set({

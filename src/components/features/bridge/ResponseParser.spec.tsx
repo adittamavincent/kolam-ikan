@@ -195,8 +195,7 @@ hello
 + # Title
 \ + ### 1\. Track
 \ </canvas>
-\ </response>`
-      .replace(/\\ /g, "\\");
+\ </response>`.replace(/\\ /g, "\\");
 
     const normalized = normalizeBridgeResponseText(raw);
 
@@ -207,7 +206,8 @@ hello
   });
 
   it("reads preferred and legacy tags through aliases", () => {
-    const preferred = "<response><log>hello</log><canvas>+ test</canvas></response>";
+    const preferred =
+      "<response><log>hello</log><canvas>+ test</canvas></response>";
     const legacy =
       "<response><thought_log>hello</thought_log><canvas_update>+ test</canvas_update></response>";
     const relaxed =
@@ -216,20 +216,35 @@ hello
     expect(extractTagContentByAliases(preferred, ["log", "thought_log"])).toBe(
       "hello",
     );
-    expect(
-      extractTagContentByAliases(legacy, ["log", "thought_log"]),
-    ).toBe("hello");
+    expect(extractTagContentByAliases(legacy, ["log", "thought_log"])).toBe(
+      "hello",
+    );
     expect(
       extractTagContentByAliases(legacy, ["canvas", "canvas_update"]),
     ).toBe("+ test");
     expect(
-      extractTagContentByAliases(relaxed, ["log", "thought_log", "answer", "final", "reply"]),
+      extractTagContentByAliases(relaxed, [
+        "log",
+        "thought_log",
+        "answer",
+        "final",
+        "reply",
+      ]),
     ).toBe("hello");
     expect(
-      extractTagContentByAliases(relaxed, ["canvas", "canvas_update", "artifact"]),
+      extractTagContentByAliases(relaxed, [
+        "canvas",
+        "canvas_update",
+        "artifact",
+      ]),
     ).toBe("+ test");
     expect(
-      extractTagContentByAliases(relaxed, ["citations", "sources", "references", "citation_list"]),
+      extractTagContentByAliases(relaxed, [
+        "citations",
+        "sources",
+        "references",
+        "citation_list",
+      ]),
     ).toBe("1. [A](https://example.com)");
   });
 
@@ -419,9 +434,15 @@ model: GPT-4.1
     expect(patched).not.toContain("<!-- end list -->");
     expect(patched.match(/# Song Information: "En Casita"/g)?.length).toBe(1);
     expect(patched).toContain("## Track Details");
-    expect(patched).toContain("**Artist:** Bad Bunny (feat. Gabriela Berlingeri)");
-    expect(patched).not.toContain("- **Artist:** Bad Bunny (feat. Gabriela Berlingeri)");
-    expect(patched).not.toContain("- **Theme:** Appreciation for the simple beauty of home during isolation.");
+    expect(patched).toContain(
+      "**Artist:** Bad Bunny (feat. Gabriela Berlingeri)",
+    );
+    expect(patched).not.toContain(
+      "- **Artist:** Bad Bunny (feat. Gabriela Berlingeri)",
+    );
+    expect(patched).not.toContain(
+      "- **Theme:** Appreciation for the simple beauty of home during isolation.",
+    );
   });
 
   it("normalizes malformed inline list markers in canvas diff output", () => {
@@ -436,7 +457,9 @@ model: GPT-4.1
 
     const patched = applyCanvasMarkdownDiff("", diff);
 
-    expect(patched).toContain('**Key Themes:**\n- Quarantine and social distancing');
+    expect(patched).toContain(
+      "**Key Themes:**\n- Quarantine and social distancing",
+    );
     expect(patched).toContain("- Nostalgia for Puerto Rico (San Juan)");
     expect(patched).toContain("- Appreciation for simple moments/sunsets");
     expect(patched).not.toContain("+ *");
@@ -498,8 +521,12 @@ model: GPT-4.1
     const patched = applyCanvasMarkdownDiff(currentMarkdown, diff);
 
     expect(patched.match(/^## Track Details$/gm)?.length).toBe(1);
-    expect(patched).toContain('# Song Identification: "DtMF" (Debí Tirar Más Fotos)');
-    expect(patched).toContain("- **Genre:** Melodic Trap / Latin Pop / Bolero-inspired");
+    expect(patched).toContain(
+      '# Song Identification: "DtMF" (Debí Tirar Más Fotos)',
+    );
+    expect(patched).toContain(
+      "- **Genre:** Melodic Trap / Latin Pop / Bolero-inspired",
+    );
   });
 
   it("normalizes ChatGPT contentReference citations before canvas parsing", () => {
@@ -624,10 +651,13 @@ AI summary paragraph.
     );
     expect(mockCanvasUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
-        raw_markdown: expect.stringContaining("# Song Project: Vincent's World"),
+        raw_markdown: expect.stringContaining(
+          "# Song Project: Vincent's World",
+        ),
       }),
     );
-    const updatedCanvasMarkdown = mockCanvasUpdate.mock.calls[0]?.[0]?.raw_markdown;
+    const updatedCanvasMarkdown =
+      mockCanvasUpdate.mock.calls[0]?.[0]?.raw_markdown;
     expect(updatedCanvasMarkdown).not.toContain("<!-- end list -->");
     expect(updatedCanvasMarkdown).not.toContain("- kuberitahu");
     expect(mockCanvasUpdateEq).toHaveBeenCalledWith("id", "canvas-1");
@@ -715,7 +745,9 @@ AI summary paragraph.
     expect(mockSectionsInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         persona_name_snapshot: "AI",
-        raw_markdown: expect.stringContaining("Updated the canvas for this turn."),
+        raw_markdown: expect.stringContaining(
+          "Updated the canvas for this turn.",
+        ),
       }),
     );
   });

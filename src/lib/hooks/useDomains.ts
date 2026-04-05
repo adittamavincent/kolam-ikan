@@ -249,8 +249,7 @@ export function useDomains(userId: string) {
         mappedNewId =
           duplicatedStreams.find(
             (stream) => stream.stream_kind === STREAM_KIND.GLOBAL,
-          )?.id ??
-          null;
+          )?.id ?? null;
       }
       if (mappedNewId) {
         map.set(oldStream.id, mappedNewId);
@@ -442,11 +441,14 @@ export function useDomains(userId: string) {
     mutationFn: async ({ id, newName }: { id: string; newName: string }) => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase as any).rpc("duplicate_domain", {
-          p_orig_domain_id: id,
-          p_new_name: newName,
-          p_new_user_id: userId,
-        });
+        const { data, error } = await (supabase as any).rpc(
+          "duplicate_domain",
+          {
+            p_orig_domain_id: id,
+            p_new_name: newName,
+            p_new_user_id: userId,
+          },
+        );
 
         if (error) throw error;
         const newDomainId = data as unknown as string;
@@ -633,7 +635,9 @@ export function useDomains(userId: string) {
           const origEntryIds = Array.from(entryMap.keys());
           const { data: sections } = await supabase
             .from("sections")
-            .select("id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format, sort_order, section_type, file_display_mode")
+            .select(
+              "id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format, sort_order, section_type, file_display_mode",
+            )
             .in("entry_id", origEntryIds);
 
           if (sections && sections.length) {

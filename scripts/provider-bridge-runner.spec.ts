@@ -35,23 +35,34 @@ describe("provider bridge runner", () => {
       fs.writeFile(path.join(profileDir, "Preferences"), "{}"),
     ]);
 
-    const { removeStaleChromeSingletons } = await import("./provider-bridge-runner.mjs");
+    const { removeStaleChromeSingletons } =
+      await import("./provider-bridge-runner.mjs");
     await removeStaleChromeSingletons(profileDir);
 
-    await expect(fs.stat(path.join(profileDir, "Preferences"))).resolves.toBeTruthy();
-    await expect(fs.stat(path.join(profileDir, "SingletonLock"))).rejects.toBeTruthy();
-    await expect(fs.stat(path.join(profileDir, "SingletonSocket"))).rejects.toBeTruthy();
-    await expect(fs.stat(path.join(profileDir, "SingletonCookie"))).rejects.toBeTruthy();
+    await expect(
+      fs.stat(path.join(profileDir, "Preferences")),
+    ).resolves.toBeTruthy();
+    await expect(
+      fs.stat(path.join(profileDir, "SingletonLock")),
+    ).rejects.toBeTruthy();
+    await expect(
+      fs.stat(path.join(profileDir, "SingletonSocket")),
+    ).rejects.toBeTruthy();
+    await expect(
+      fs.stat(path.join(profileDir, "SingletonCookie")),
+    ).rejects.toBeTruthy();
   });
 
   it("falls back to localhost when the runner app URL is not set", async () => {
-    const { resolveRunnerAppUrl } = await import("./provider-bridge-runner.mjs");
+    const { resolveRunnerAppUrl } =
+      await import("./provider-bridge-runner.mjs");
 
     expect(resolveRunnerAppUrl({})).toBe("http://localhost:3000");
   });
 
   it("prefers an explicit bridge runner app URL override", async () => {
-    const { resolveRunnerAppUrl } = await import("./provider-bridge-runner.mjs");
+    const { resolveRunnerAppUrl } =
+      await import("./provider-bridge-runner.mjs");
 
     expect(
       resolveRunnerAppUrl({
@@ -71,9 +82,12 @@ describe("provider bridge runner", () => {
       "browserType.launchPersistentContext: Target page, context or browser has been closed",
     );
     const fakeContext = { close: vi.fn() };
-    launchPersistentContext.mockRejectedValueOnce(launchError).mockResolvedValueOnce(fakeContext);
+    launchPersistentContext
+      .mockRejectedValueOnce(launchError)
+      .mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
+    const { launchRunnerContext } =
+      await import("./provider-bridge-runner.mjs");
     const context = await launchRunnerContext(profileDir);
 
     expect(context).toBe(fakeContext);
@@ -91,9 +105,13 @@ describe("provider bridge runner", () => {
     await expect(fs.stat(profileDir)).rejects.toBeTruthy();
 
     const entries = await fs.readdir(tempDir);
-    const backupDirName = entries.find((entry) => entry.startsWith("profile.broken-"));
+    const backupDirName = entries.find((entry) =>
+      entry.startsWith("profile.broken-"),
+    );
     expect(backupDirName).toBeTruthy();
-    await expect(fs.stat(path.join(tempDir, backupDirName ?? "", "Preferences"))).resolves.toBeTruthy();
+    await expect(
+      fs.stat(path.join(tempDir, backupDirName ?? "", "Preferences")),
+    ).resolves.toBeTruthy();
   });
 
   it("uses the built-in Chrome channel for headed login", async () => {
@@ -102,7 +120,8 @@ describe("provider bridge runner", () => {
     const fakeContext = { close: vi.fn() };
     launchPersistentContext.mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
+    const { launchRunnerContext } =
+      await import("./provider-bridge-runner.mjs");
     const context = await launchRunnerContext(profileDir);
 
     expect(context).toBe(fakeContext);
@@ -123,7 +142,8 @@ describe("provider bridge runner", () => {
     const fakeContext = { close: vi.fn() };
     launchPersistentContext.mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
+    const { launchRunnerContext } =
+      await import("./provider-bridge-runner.mjs");
     await launchRunnerContext(profileDir);
 
     expect(launchPersistentContext).toHaveBeenCalledWith(
@@ -137,11 +157,16 @@ describe("provider bridge runner", () => {
   it("falls back to the default browser engine when Chrome is unavailable", async () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "bridge-runner-"));
     const profileDir = path.join(tempDir, "profile");
-    const missingChromeError = new Error("Chromium distribution 'chrome' is not found");
+    const missingChromeError = new Error(
+      "Chromium distribution 'chrome' is not found",
+    );
     const fakeContext = { close: vi.fn() };
-    launchPersistentContext.mockRejectedValueOnce(missingChromeError).mockResolvedValueOnce(fakeContext);
+    launchPersistentContext
+      .mockRejectedValueOnce(missingChromeError)
+      .mockResolvedValueOnce(fakeContext);
 
-    const { launchRunnerContext } = await import("./provider-bridge-runner.mjs");
+    const { launchRunnerContext } =
+      await import("./provider-bridge-runner.mjs");
     const context = await launchRunnerContext(profileDir);
 
     expect(context).toBe(fakeContext);
@@ -172,7 +197,8 @@ describe("provider bridge runner", () => {
         return process;
       }) as typeof process.once);
 
-      const { installShutdownHandlers } = await import("./provider-bridge-runner.mjs");
+      const { installShutdownHandlers } =
+        await import("./provider-bridge-runner.mjs");
       installShutdownHandlers(context);
 
       handlers.get("SIGINT")?.();
@@ -187,10 +213,8 @@ describe("provider bridge runner", () => {
   });
 
   it("serves runner health payload for GET /health", async () => {
-    const {
-      createHealthResponsePayload,
-      handleRunnerHealthRequest,
-    } = await import("./provider-bridge-runner.mjs");
+    const { createHealthResponsePayload, handleRunnerHealthRequest } =
+      await import("./provider-bridge-runner.mjs");
 
     const writeHead = vi.fn();
     const end = vi.fn();
@@ -213,10 +237,8 @@ describe("provider bridge runner", () => {
   });
 
   it("keeps the health server payload available on the root path too", async () => {
-    const {
-      createHealthResponsePayload,
-      handleRunnerHealthRequest,
-    } = await import("./provider-bridge-runner.mjs");
+    const { createHealthResponsePayload, handleRunnerHealthRequest } =
+      await import("./provider-bridge-runner.mjs");
 
     const end = vi.fn();
     handleRunnerHealthRequest(

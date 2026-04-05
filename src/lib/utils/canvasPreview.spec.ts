@@ -25,7 +25,10 @@ describe("canvasPreview lineDiff", () => {
   });
 
   it("preserves markdown headings and blank lines when diffing raw markdown", () => {
-    const before = contentToDiffText([], "debi tirar mas fotos\n# de cuando\n\nde tube");
+    const before = contentToDiffText(
+      [],
+      "debi tirar mas fotos\n# de cuando\n\nde tube",
+    );
     const after = contentToDiffText(
       [],
       "debi tirar mas fotos\n# de cuando\n\nde tube\n1. non",

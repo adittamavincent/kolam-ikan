@@ -50,6 +50,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  loginUrl.searchParams.set("error", "Missing authentication confirmation token.");
+  loginUrl.searchParams.set(
+    "error",
+    "Missing authentication confirmation token.",
+  );
   return NextResponse.redirect(loginUrl);
 }

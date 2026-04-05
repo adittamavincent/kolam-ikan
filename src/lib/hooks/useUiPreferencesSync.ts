@@ -67,7 +67,10 @@ function isMissingUiPreferencesStorage(error: unknown) {
   }
 
   const { code, details, hint, message } = error as SupabaseUiPreferenceError;
-  const text = [code, details, hint, message].filter(Boolean).join(" ").toLowerCase();
+  const text = [code, details, hint, message]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 
   return (
     code === "42P01" ||
@@ -128,7 +131,10 @@ export function useUiPreferencesSync() {
       }
 
       const currentState = useUiPreferencesStore.getState();
-      if (currentState.cloudHydratedUserId === user.id && initializedRef.current) {
+      if (
+        currentState.cloudHydratedUserId === user.id &&
+        initializedRef.current
+      ) {
         return;
       }
 
@@ -144,7 +150,10 @@ export function useUiPreferencesSync() {
         if (isMissingUiPreferencesStorage(error)) {
           cloudSyncDisabledRef.current = true;
         } else {
-          console.error("[UI Preferences] Failed to fetch cloud preferences", error);
+          console.error(
+            "[UI Preferences] Failed to fetch cloud preferences",
+            error,
+          );
         }
         useUiPreferencesStore.getState().setCloudHydrated(user.id);
         initializedRef.current = true;
@@ -201,7 +210,10 @@ export function useUiPreferencesSync() {
     if (loading || status !== "signed_in" || !user?.id) return;
     if (cloudSyncDisabledRef.current) return;
 
-    const persistPreferences = async (payload: UiPreferencesPayload, userId: string) => {
+    const persistPreferences = async (
+      payload: UiPreferencesPayload,
+      userId: string,
+    ) => {
       useUiPreferencesStore.getState().setSyncStatus("syncing");
 
       const { data, error } = await supabase
@@ -224,7 +236,10 @@ export function useUiPreferencesSync() {
           return;
         }
 
-        console.error("[UI Preferences] Failed to save cloud preferences", error);
+        console.error(
+          "[UI Preferences] Failed to save cloud preferences",
+          error,
+        );
         useUiPreferencesStore.getState().setSyncStatus("error");
         return;
       }
@@ -241,30 +256,29 @@ export function useUiPreferencesSync() {
       }, 2000);
     };
 
-    const savePreferences = debounce(
-      persistPreferences,
-      900,
+    const savePreferences = debounce(persistPreferences, 900);
+
+    const unsubscribe = useUiPreferencesStore.subscribe(
+      (state, previousState) => {
+        if (state.cloudHydratedUserId !== user.id) return;
+        if (state.localUpdatedAt === previousState.localUpdatedAt) return;
+        if (state.localUpdatedAt === null) return;
+
+        const payload = buildUiPreferencesPayload(state);
+        if (
+          didBridgePhaseChange(
+            state.bridgeSessionsByStream,
+            previousState.bridgeSessionsByStream,
+          )
+        ) {
+          savePreferences.cancel();
+          void persistPreferences(payload, user.id);
+          return;
+        }
+
+        void savePreferences(payload, user.id);
+      },
     );
-
-    const unsubscribe = useUiPreferencesStore.subscribe((state, previousState) => {
-      if (state.cloudHydratedUserId !== user.id) return;
-      if (state.localUpdatedAt === previousState.localUpdatedAt) return;
-      if (state.localUpdatedAt === null) return;
-
-      const payload = buildUiPreferencesPayload(state);
-      if (
-        didBridgePhaseChange(
-          state.bridgeSessionsByStream,
-          previousState.bridgeSessionsByStream,
-        )
-      ) {
-        savePreferences.cancel();
-        void persistPreferences(payload, user.id);
-        return;
-      }
-
-      void savePreferences(payload, user.id);
-    });
 
     const flushPendingSave = () => {
       savePreferences.flush();

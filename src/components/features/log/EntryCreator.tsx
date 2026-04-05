@@ -272,7 +272,9 @@ const hasMeaningfulBlockPayload = (value: unknown): boolean => {
   return false;
 };
 
-const hasMeaningfulDraftContent = (content: PartialBlock[] | undefined): boolean => {
+const hasMeaningfulDraftContent = (
+  content: PartialBlock[] | undefined,
+): boolean => {
   if (!Array.isArray(content) || content.length === 0) return false;
   return content.some((block) => hasMeaningfulBlockPayload(block));
 };
@@ -310,13 +312,11 @@ interface EntryCreatorProps {
   streamId: string;
   currentBranch?: string;
   onCurrentBranchChange?: (branchName: string) => void;
-  externalStashAction?:
-    | {
-        nonce: string;
-        stashId: string;
-        kind: "apply" | "pop" | "drop";
-      }
-    | null;
+  externalStashAction?: {
+    nonce: string;
+    stashId: string;
+    kind: "apply" | "pop" | "drop";
+  } | null;
   onExternalStashActionHandled?: (nonce: string) => void;
 }
 
@@ -392,8 +392,10 @@ export function EntryCreator({
   const [filePickerTargetInstanceId, setFilePickerTargetInstanceId] = useState<
     string | null
   >(null);
-  const [attachmentManagerTargetInstanceId, setAttachmentManagerTargetInstanceId] =
-    useState<string | null>(null);
+  const [
+    attachmentManagerTargetInstanceId,
+    setAttachmentManagerTargetInstanceId,
+  ] = useState<string | null>(null);
   const [importModalFiles, setImportModalFiles] = useState<
     Array<{ file: File; hash?: string }>
   >([]);
@@ -709,9 +711,11 @@ export function EntryCreator({
 
     const availableWidth = strip.clientWidth;
     const gapWidth = 6;
-    const overflowWidth = quickPersonaOverflowMeasureRef.current?.offsetWidth ?? 0;
+    const overflowWidth =
+      quickPersonaOverflowMeasureRef.current?.offsetWidth ?? 0;
     const itemWidths = quickPersonas.map(
-      (persona) => quickPersonaMeasureRefs.current[persona.id]?.offsetWidth ?? 0,
+      (persona) =>
+        quickPersonaMeasureRefs.current[persona.id]?.offsetWidth ?? 0,
     );
 
     if (availableWidth <= 0 || itemWidths.some((width) => width <= 0)) {
@@ -769,7 +773,9 @@ export function EntryCreator({
   }, [streamId]);
 
   const persistStashItems = useCallback(
-    (updater: (current: EntryCreatorStashItem[]) => EntryCreatorStashItem[]) => {
+    (
+      updater: (current: EntryCreatorStashItem[]) => EntryCreatorStashItem[],
+    ) => {
       setStashItems((current) => {
         const next = updater(current);
         writeEntryCreatorStash(streamId, next);
@@ -961,7 +967,10 @@ export function EntryCreator({
           nextSections[i] = { ...section, attachments: nextAttachments };
           persistFileAttachmentSection(
             section.instanceId,
-            nextSections[i] as Extract<SectionState, { kind: "FILE_ATTACHMENT" }>,
+            nextSections[i] as Extract<
+              SectionState,
+              { kind: "FILE_ATTACHMENT" }
+            >,
           );
         }
       }
@@ -982,10 +991,13 @@ export function EntryCreator({
   useEffect(() => {
     if (isLoading) return;
     const ids = sections.map((section) => section.instanceId);
-    console.log(`[EntryCreator] syncing active instances for ${streamId}:`, ids);
+    console.log(
+      `[EntryCreator] syncing active instances for ${streamId}:`,
+      ids,
+    );
     setActiveInstances(ids);
     const syncStatus = status === "error" ? "error" : headerCloudStatus;
-    
+
     dispatchKolamLogState({
       streamId,
       status,
@@ -1022,7 +1034,10 @@ export function EntryCreator({
           const blocks: PartialBlock[] = turn.messages.flatMap((msg, i) => {
             const parsed = parseMarkdownishMessageToBlocks(msg);
             if (i === 0) return parsed;
-            return [{ type: "paragraph", content: [] } as PartialBlock, ...parsed];
+            return [
+              { type: "paragraph", content: [] } as PartialBlock,
+              ...parsed,
+            ];
           });
           saveDraft(
             instanceId,
@@ -1107,13 +1122,18 @@ export function EntryCreator({
   }, []);
 
   const closeFullscreenEditor = useCallback(() => {
-    const targetInstanceId = fullscreenSectionId ?? lastFocusedPersonaInstanceId;
+    const targetInstanceId =
+      fullscreenSectionId ?? lastFocusedPersonaInstanceId;
     setFullscreenSectionId(null);
     if (!targetInstanceId) return;
     window.setTimeout(() => {
       focusEditorForInstance(targetInstanceId);
     }, 0);
-  }, [focusEditorForInstance, fullscreenSectionId, lastFocusedPersonaInstanceId]);
+  }, [
+    focusEditorForInstance,
+    fullscreenSectionId,
+    lastFocusedPersonaInstanceId,
+  ]);
 
   const handlePersonaEditorFocusChange = useCallback(
     (instanceId: string, isFocused: boolean) => {
@@ -1321,9 +1341,7 @@ export function EntryCreator({
               Add Author Section
             </div>
             {globalPersonas.length > 0 && (
-              <div className="text-text-muted">
-                Available Everywhere
-              </div>
+              <div className="text-text-muted">Available Everywhere</div>
             )}
             {globalPersonas.map((persona) => (
               <MenuItem key={persona.id}>
@@ -1364,10 +1382,10 @@ export function EntryCreator({
                 <button
                   onClick={() => setPersonaManagerOpen(true)}
                   className={`${
- active
- ? "bg-surface-subtle text-text-default"
- : "text-text-subtle"
- } group flex w-full items-center transition-colors`}
+                    active
+                      ? "bg-surface-subtle text-text-default"
+                      : "text-text-subtle"
+                  } group flex w-full items-center transition-colors`}
                 >
                   <Settings className="mr-2 h-4 w-4" />
                   Manage Personas
@@ -1477,9 +1495,13 @@ export function EntryCreator({
 
       await refetchBranches();
       queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["entries-lineage", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["entries", streamId] });
-      queryClient.invalidateQueries({ queryKey: ["latest-entry-id", streamId] });
+      queryClient.invalidateQueries({
+        queryKey: ["latest-entry-id", streamId],
+      });
       queryClient.invalidateQueries({ queryKey: ["entries-xml", streamId] });
       queryClient.invalidateQueries({ queryKey: ["bridge-entries", streamId] });
       queryClient.invalidateQueries({
@@ -1515,84 +1537,86 @@ export function EntryCreator({
     editorReadyAtRef.current = {};
   }, []);
 
-  const buildCurrentDraftSnapshot = useCallback((): EntryCreatorStashItem | null => {
-    const snapshotSections: EntryCreatorStashItem["sections"] = [];
+  const buildCurrentDraftSnapshot =
+    useCallback((): EntryCreatorStashItem | null => {
+      const snapshotSections: EntryCreatorStashItem["sections"] = [];
 
-    for (const section of sections) {
-      if (section.kind === "PERSONA") {
+      for (const section of sections) {
+        if (section.kind === "PERSONA") {
+          const content = getDraftContent(section.instanceId);
+          const rawMarkdown = getDraftMarkdown(section.instanceId);
+          const personaName = personas?.find(
+            (persona) => persona.id === section.personaId,
+          )?.name;
+
+          if (!section.personaId && !hasMeaningfulDraftContent(content)) {
+            continue;
+          }
+
+          snapshotSections.push({
+            instanceId: section.instanceId,
+            draft: {
+              sectionType: "PERSONA" as const,
+              personaId: section.personaId,
+              personaName,
+              content,
+              rawMarkdown,
+            },
+          });
+          continue;
+        }
+
         const content = getDraftContent(section.instanceId);
         const rawMarkdown = getDraftMarkdown(section.instanceId);
-        const personaName =
-          personas?.find((persona) => persona.id === section.personaId)?.name;
 
-        if (!section.personaId && !hasMeaningfulDraftContent(content)) {
+        if (
+          section.attachments.length === 0 &&
+          !hasMeaningfulDraftContent(content)
+        ) {
           continue;
         }
 
         snapshotSections.push({
           instanceId: section.instanceId,
           draft: {
-            sectionType: "PERSONA" as const,
-            personaId: section.personaId,
-            personaName,
+            sectionType: "FILE_ATTACHMENT" as const,
+            personaId: section.personaId ?? null,
+            personaName: section.personaName ?? undefined,
             content,
             rawMarkdown,
+            fileDisplayMode: section.displayMode,
+            fileAttachments: section.attachments.map((attachment) => ({
+              documentId: attachment.documentId,
+              storagePath: attachment.storagePath,
+              thumbnailPath: attachment.thumbnailPath ?? null,
+              previewUrl: attachment.previewUrl ?? null,
+              titleSnapshot: attachment.titleSnapshot,
+              annotationText: attachment.annotationText ?? null,
+              referencedPersonaId: attachment.referencedPersonaId ?? null,
+              referencedPage: attachment.referencedPage ?? null,
+              fileHash: attachment.fileHash,
+            })),
           },
         });
-        continue;
       }
 
-      const content = getDraftContent(section.instanceId);
-      const rawMarkdown = getDraftMarkdown(section.instanceId);
+      if (snapshotSections.length === 0) return null;
 
-      if (
-        section.attachments.length === 0 &&
-        !hasMeaningfulDraftContent(content)
-      ) {
-        continue;
-      }
-
-      snapshotSections.push({
-        instanceId: section.instanceId,
-        draft: {
-          sectionType: "FILE_ATTACHMENT" as const,
-          personaId: section.personaId ?? null,
-          personaName: section.personaName ?? undefined,
-          content,
-          rawMarkdown,
-          fileDisplayMode: section.displayMode,
-          fileAttachments: section.attachments.map((attachment) => ({
-            documentId: attachment.documentId,
-            storagePath: attachment.storagePath,
-            thumbnailPath: attachment.thumbnailPath ?? null,
-            previewUrl: attachment.previewUrl ?? null,
-            titleSnapshot: attachment.titleSnapshot,
-            annotationText: attachment.annotationText ?? null,
-            referencedPersonaId: attachment.referencedPersonaId ?? null,
-            referencedPage: attachment.referencedPage ?? null,
-            fileHash: attachment.fileHash,
-          })),
-        },
-      });
-    }
-
-    if (snapshotSections.length === 0) return null;
-
-    return {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      branchName: selectedBranch,
-      headCommitId: currentBranchHeadId,
-      sections: snapshotSections,
-    };
-  }, [
-    currentBranchHeadId,
-    getDraftContent,
-    getDraftMarkdown,
-    personas,
-    sections,
-    selectedBranch,
-  ]);
+      return {
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        branchName: selectedBranch,
+        headCommitId: currentBranchHeadId,
+        sections: snapshotSections,
+      };
+    }, [
+      currentBranchHeadId,
+      getDraftContent,
+      getDraftMarkdown,
+      personas,
+      sections,
+      selectedBranch,
+    ]);
 
   const restoreStashIntoComposer = useCallback(
     (stashItem: EntryCreatorStashItem) => {
@@ -1602,20 +1626,22 @@ export function EntryCreator({
       const restoredSections: SectionState[] = stashItem.sections.map(
         ({ instanceId, draft }) => {
           if (draft.sectionType === "FILE_ATTACHMENT") {
-            const attachments = (draft.fileAttachments ?? []).map((attachment) => ({
-              documentId: attachment.documentId ?? "",
-              titleSnapshot: attachment.titleSnapshot,
-              pageCount: 0,
-              author: null,
-              creationDate: null,
-              storagePath: attachment.storagePath,
-              thumbnailPath: attachment.thumbnailPath ?? null,
-              previewUrl: attachment.previewUrl ?? null,
-              annotationText: attachment.annotationText ?? null,
-              referencedPersonaId: attachment.referencedPersonaId ?? null,
-              referencedPage: attachment.referencedPage ?? null,
-              fileHash: attachment.fileHash,
-            }));
+            const attachments = (draft.fileAttachments ?? []).map(
+              (attachment) => ({
+                documentId: attachment.documentId ?? "",
+                titleSnapshot: attachment.titleSnapshot,
+                pageCount: 0,
+                author: null,
+                creationDate: null,
+                storagePath: attachment.storagePath,
+                thumbnailPath: attachment.thumbnailPath ?? null,
+                previewUrl: attachment.previewUrl ?? null,
+                annotationText: attachment.annotationText ?? null,
+                referencedPersonaId: attachment.referencedPersonaId ?? null,
+                referencedPage: attachment.referencedPage ?? null,
+                fileHash: attachment.fileHash,
+              }),
+            );
 
             attachmentSectionMemoryRef.current[instanceId] = {
               displayMode: draft.fileDisplayMode ?? "inline",
@@ -1675,7 +1701,12 @@ export function EntryCreator({
     );
     resetComposerState();
     void clearDraft();
-  }, [buildCurrentDraftSnapshot, clearDraft, persistStashItems, resetComposerState]);
+  }, [
+    buildCurrentDraftSnapshot,
+    clearDraft,
+    persistStashItems,
+    resetComposerState,
+  ]);
 
   const applyLatestStash = useCallback(
     (removeFromStack: boolean) => {
@@ -1718,11 +1749,15 @@ export function EntryCreator({
     } else if (externalStashAction.kind === "pop") {
       restoreStashIntoComposer(targetStash);
       persistStashItems((current) =>
-        current.filter((stashItem) => stashItem.id !== externalStashAction.stashId),
+        current.filter(
+          (stashItem) => stashItem.id !== externalStashAction.stashId,
+        ),
       );
     } else if (externalStashAction.kind === "drop") {
       persistStashItems((current) =>
-        current.filter((stashItem) => stashItem.id !== externalStashAction.stashId),
+        current.filter(
+          (stashItem) => stashItem.id !== externalStashAction.stashId,
+        ),
       );
     }
 
@@ -1825,23 +1860,23 @@ export function EntryCreator({
         displayMode: "inline" as const,
         attachments: [],
       };
-      const restoredAttachments =
-        rememberedAttachmentSection?.attachments.length
-          ? rememberedAttachmentSection.attachments
-          : (persistedAttachmentDraft.attachments ?? []).map((attachment) => ({
-              documentId: attachment.documentId ?? "",
-              storagePath: attachment.storagePath ?? "",
-              titleSnapshot: attachment.titleSnapshot,
-              pageCount: 0,
-              author: null,
-              creationDate: null,
-              thumbnailPath: attachment.thumbnailPath ?? null,
-              previewUrl: attachment.previewUrl ?? null,
-              annotationText: attachment.annotationText ?? null,
-              referencedPersonaId: attachment.referencedPersonaId ?? null,
-              referencedPage: attachment.referencedPage ?? null,
-              fileHash: attachment.fileHash,
-            }));
+      const restoredAttachments = rememberedAttachmentSection?.attachments
+        .length
+        ? rememberedAttachmentSection.attachments
+        : (persistedAttachmentDraft.attachments ?? []).map((attachment) => ({
+            documentId: attachment.documentId ?? "",
+            storagePath: attachment.storagePath ?? "",
+            titleSnapshot: attachment.titleSnapshot,
+            pageCount: 0,
+            author: null,
+            creationDate: null,
+            thumbnailPath: attachment.thumbnailPath ?? null,
+            previewUrl: attachment.previewUrl ?? null,
+            annotationText: attachment.annotationText ?? null,
+            referencedPersonaId: attachment.referencedPersonaId ?? null,
+            referencedPage: attachment.referencedPage ?? null,
+            fileHash: attachment.fileHash,
+          }));
       const restoredDisplayMode =
         rememberedAttachmentSection?.displayMode ??
         persistedAttachmentDraft.displayMode ??
@@ -1887,7 +1922,9 @@ export function EntryCreator({
       const personaId = section.personaId || "";
       attachmentSectionMemoryRef.current[instanceId] = {
         displayMode: section.displayMode,
-        attachments: section.attachments.map((attachment) => ({ ...attachment })),
+        attachments: section.attachments.map((attachment) => ({
+          ...attachment,
+        })),
         personaId: section.personaId ?? null,
         personaName: section.personaName ?? null,
       };
@@ -1991,8 +2028,7 @@ export function EntryCreator({
 
     const existing = sections.find(
       (section) =>
-        section.instanceId === instanceId &&
-        section.kind === "FILE_ATTACHMENT",
+        section.instanceId === instanceId && section.kind === "FILE_ATTACHMENT",
     ) as Extract<SectionState, { kind: "FILE_ATTACHMENT" }> | undefined;
     if (
       existing?.attachments.some(
@@ -2180,7 +2216,9 @@ export function EntryCreator({
               referencedPage: attachment.referencedPage ?? null,
               fileHash: attachment.fileHash,
             }))
-          : (section?.attachments ?? []).filter((_, index) => index !== attachmentIndex),
+          : (section?.attachments ?? []).filter(
+              (_, index) => index !== attachmentIndex,
+            ),
     };
 
     setSections((prev) =>
@@ -2307,8 +2345,14 @@ export function EntryCreator({
       const estimatedWidth = 248;
       const estimatedHeight = 220;
       const padding = 8;
-      const maxLeft = Math.max(window.innerWidth - estimatedWidth - padding, padding);
-      const maxTop = Math.max(window.innerHeight - estimatedHeight - padding, padding);
+      const maxLeft = Math.max(
+        window.innerWidth - estimatedWidth - padding,
+        padding,
+      );
+      const maxTop = Math.max(
+        window.innerHeight - estimatedHeight - padding,
+        padding,
+      );
 
       setContextMenuPosition({
         left: Math.min(event.clientX, maxLeft),
@@ -2353,461 +2397,500 @@ export function EntryCreator({
           bodyClassName="bg-surface-default"
         >
           <div className="flex flex-col">
-          {/* Persona picker */}
-          <div className="entry-creator__topbar flex h-6 items-stretch">
-            <div
-              ref={quickPersonaStripRef}
-              className="relative flex min-w-0 flex-1 items-stretch overflow-hidden"
-            >
-              <div className="flex min-w-0 items-stretch overflow-hidden gap-2">
-                {visibleQuickPersonas.map((persona) => (
-                  <PersonaItem
-                    key={`quick-persona-${persona.id}`}
-                    persona={persona}
-                    compact
-                    showTypeBadge={false}
-                    title={`Quick add ${persona.name}`}
-                    className="h-full px-2 shrink-0 border-0 text-text-default"
-                    style={getPersonaTintStyle(persona, "interactive")}
-                    onClick={() => addPersona(persona.id)}
-                  />
-                ))}
-                {hiddenQuickPersonaCount > 0 && (
-                  <div className="flex h-full shrink-0 items-center bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted">
-                    +{hiddenQuickPersonaCount}
-                  </div>
-                )}
-              </div>
-
-              <div className="pointer-events-none absolute left-0 top-0 -z-10 flex items-center opacity-0">
-                {quickPersonas.map((persona) => (
-                  <div
-                    key={`quick-persona-measure-${persona.id}`}
-                    ref={(node) => {
-                      quickPersonaMeasureRefs.current[persona.id] = node;
-                    }}
-                    className="shrink-0"
-                  >
+            {/* Persona picker */}
+            <div className="entry-creator__topbar flex h-6 items-stretch">
+              <div
+                ref={quickPersonaStripRef}
+                className="relative flex min-w-0 flex-1 items-stretch overflow-hidden"
+              >
+                <div className="flex min-w-0 items-stretch overflow-hidden gap-2">
+                  {visibleQuickPersonas.map((persona) => (
                     <PersonaItem
+                      key={`quick-persona-${persona.id}`}
                       persona={persona}
                       compact
                       showTypeBadge={false}
-                      className="h-full border-0 text-text-default"
+                      title={`Quick add ${persona.name}`}
+                      className="h-full px-2 shrink-0 border-0 text-text-default"
                       style={getPersonaTintStyle(persona, "interactive")}
+                      onClick={() => addPersona(persona.id)}
                     />
-                  </div>
-                ))}
-                <div
-                  ref={quickPersonaOverflowMeasureRef}
-                  className="shrink-0 bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted"
-                >
-                  +{quickPersonas.length}
+                  ))}
+                  {hiddenQuickPersonaCount > 0 && (
+                    <div className="flex h-full shrink-0 items-center bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted">
+                      +{hiddenQuickPersonaCount}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
 
-            {renderAddPersonaMenu({
-              wrapperClassName: "relative z-30 shrink-0",
-              buttonClassName:
-                "entry-creator__topbar-button flex h-6 w-40 items-center justify-center leading-4 transition-colors gap-2",
-              buttonTitle: "Add Persona",
-            })}
-
-            {sections.length > 0 && (
-              <button
-                onClick={requestClearSections}
-                className="entry-creator__topbar-button entry-creator__topbar-button--icon entry-creator__icon-button--danger ml-auto flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
-                title="Delete all sections"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Editor sections */}
-          {!fullscreenSectionId && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={sections.map((s) => s.instanceId)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="flex flex-col">
-                  {sections.map((section, sectionIndex) => {
-                    const { instanceId } = section;
-                    const isAttachment = section.kind === "FILE_ATTACHMENT";
-                    const isPersona = section.kind === "PERSONA";
-                    const persona = section.personaId
-                      ? personas?.find((p) => p.id === section.personaId)
-                      : null;
-
-                  let attachmentDraft:
-                    | ReturnType<typeof getFileAttachmentDraft>
-                    | undefined;
-                  let effectiveAttachments: FileAttachmentState[] = [];
-                  let attachmentsSource: "section" | "draft" = "section";
-                  let attachmentSection:
-                    | Extract<SectionState, { kind: "FILE_ATTACHMENT" }>
-                    | undefined;
-
-                  if (isAttachment) {
-                    attachmentSection = section;
-                    attachmentDraft = getFileAttachmentDraft(instanceId);
-                    attachmentsSource =
-                      attachmentSection.attachments.length > 0
-                        ? "section"
-                        : "draft";
-                    effectiveAttachments =
-                      attachmentsSource === "section"
-                        ? attachmentSection.attachments
-                        : (attachmentDraft?.attachments ?? []).map(
-                            (attachment) => ({
-                              documentId: attachment.documentId ?? "",
-                              storagePath: attachment.storagePath ?? "",
-                              titleSnapshot: attachment.titleSnapshot,
-                              pageCount: 0,
-                              author: null,
-                              creationDate: null,
-                              thumbnailPath: null,
-                              previewUrl: null,
-                              annotationText: attachment.annotationText ?? null,
-                              referencedPersonaId:
-                                attachment.referencedPersonaId ?? null,
-                              referencedPage: attachment.referencedPage ?? null,
-                              fileHash: attachment.fileHash,
-                            }),
-                          );
-                  }
-
-                  // Allow persona-less PERSONA sections to render so recovered
-                  // drafts without an assigned persona are visible to the user.
-
-                    return (
-                      <SortableSection key={instanceId} id={instanceId}>
-                        {(dragHandleProps) => (
-                          <SectionPreset
-                            persona={persona || null}
-                            isAttachment={isAttachment}
-                            nestedConnector={
-                              sections.length === 1
-                                ? "single"
-                                : sectionIndex === 0
-                                  ? "first"
-                                  : sectionIndex === sections.length - 1
-                                    ? "last"
-                                    : "middle"
-                            }
-                            className="flex flex-col"
-                            headerClassName="entry-creator__section-header"
-                            bodyClassName="bg-surface-default"
-                            leftHeader={
-                              <div className="flex items-center">
-                                <button
-                                  className={`entry-creator__icon-button flex h-6 w-6 items-center justify-center cursor-grab p-0 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
-                                  aria-label="Drag to reorder"
-                                  {...dragHandleProps}
-                                >
-                                  <GripVertical className="h-4 w-4" />
-                                </button>
-                                <div className="inline-flex h-6 items-center leading-none uppercase">
-                                  <span className="entry-creator__section-label-index">
-                                    S{sectionIndex + 1}
-                                  </span>
-                                  <span>{isAttachment ? "Attachment" : "Message"}</span>
-                                </div>
-                              </div>
-                            }
-                            centerHeader={
-                              <PersonaItem
-                                persona={persona ?? null}
-                                menuProps={{
-                                  currentPersona: persona || null,
-                                  isAttachment: isAttachment,
-                                  filePersonaName: attachmentSection?.personaName ?? undefined,
-                                  globalPersonas: globalPersonas,
-                                  localPersonas: localPersonas,
-                                  onSelect: (pId: string) => changePersona(instanceId, pId),
-                                }}
-                              />
-                            }
-                            rightHeader={
-                              <>
-                                {isPersona && (
-                                  <button
-                                    onClick={() => openFullscreenEditor(instanceId)}
-                                    className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
-                                    title="Open fullscreen editor"
-                                  >
-                                    <Expand className="h-4 w-4" />
-                                  </button>
-                                )}
-
-                                {persona && !isLocalPersona(persona) && (
-                                  <button
-                                    onClick={() => toggleSectionKind(instanceId)}
-                                    className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
-                                    title={
-                                      isAttachment
-                                        ? "Switch to Text Editor"
-                                        : "Switch to Attachments"
-                                    }
-                                  >
-                                    {isAttachment ? (
-                                      <Type className="h-4 w-4" />
-                                    ) : (
-                                      <Paperclip className="h-4 w-4" />
-                                    )}
-                                  </button>
-                                )}
-
-                                <button
-                                  onClick={() => requestRemoveSection(instanceId)}
-                                  className="entry-creator__icon-button entry-creator__icon-button--danger flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
-                                  title="Remove this section"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </>
-                            }
-                            contentClassName="space-y-1"
-                          >
-                            {/* BODY CONTENT */}
-                            {isPersona ? (
-                              renderPersonaEditor(
-                                instanceId,
-                                section.personaId,
-                                persona?.name ?? null,
-                                persona ?? null,
-                              )
-                            ) : (
-                              /* FILE ATTACHMENTS BLOCK */
-                              <div>
-                                <FileAttachmentsSection
-                                  items={effectiveAttachments.map(
-                                    (attachment, attachmentIndex) => {
-                                      const docDetail = attachment.documentId
-                                        ? attachedDocDetails.get(
-                                            attachment.documentId,
-                                          )
-                                        : null;
-                                      const latestJob = docDetail?.latestJob;
-                                      const importStatus =
-                                        docDetail?.import_status ??
-                                        latestJob?.status;
-                                      const thumbnailStatus =
-                                        docDetail?.thumbnail_status ?? null;
-                                      const canOpenParsed =
-                                        importStatus === "completed" &&
-                                        !!attachment.documentId;
-                                      const progressPercent =
-                                        latestJob?.progress_percent ?? 0;
-
-                                      return {
-                                        keyId:
-                                          attachment.documentId ||
-                                          attachment.fileHash ||
-                                          attachment.titleSnapshot,
-                                        variant: "log" as const,
-                                        title: attachment.titleSnapshot,
-                                        subtitle: `${
-                                          attachment.pageCount > 0
-                                            ? `${attachment.pageCount} pages`
-                                            : "File"
-                                        }${attachment.author ? ` • ${attachment.author}` : ""}`,
-                                        documentId:
-                                          attachment.documentId ??
-                                          docDetail?.id ??
-                                          null,
-                                        storagePath: attachment.storagePath,
-                                        thumbnailPath:
-                                          attachment.thumbnailPath ??
-                                          docDetail?.thumbnail_path ??
-                                          null,
-                                        thumbnailStatus,
-                                        importStatus: importStatus ?? null,
-                                        progressPercent,
-                                        progressMessage:
-                                          latestJob?.progress_message,
-                                        previewUrl: attachment.previewUrl,
-                                        canOpenParsed,
-                                          persona: persona ?? null,
-                                        displayMode:
-                                          attachmentSection?.displayMode,
-                                        onPreviewFile: () =>
-                                          openAttachmentPreview(
-                                            attachment,
-                                            importStatus,
-                                            "file",
-                                          ),
-                                        onPreviewParsed: () =>
-                                          openAttachmentPreview(
-                                            attachment,
-                                            importStatus,
-                                            "parsed",
-                                          ),
-                                        onRemove: () =>
-                                          removeFileAttachment(
-                                            instanceId,
-                                            attachment,
-                                            attachmentIndex,
-                                            attachmentsSource,
-                                          ),
-                                      };
-                                    },
-                                  )}
-                                  canUpload
-                                  isUploading={section.isUploading}
-                                  isDragOver={
-                                    dragOverAttachmentInstanceId === instanceId
-                                  }
-                                  emptyStateMessage="Drop or attach one or more files to start building this section."
-                                  onUploadFiles={(files) =>
-                                    queueFilesForAttachmentSection(
-                                      instanceId,
-                                      files,
-                                    )
-                                  }
-                                  onOpenLibrary={() => {
-                                    setAttachmentManagerTargetInstanceId(
-                                      instanceId,
-                                    );
-                                  }}
-                                  onDragEnter={(event) => {
-                                    if (event.dataTransfer.types.includes("Files")) {
-                                      setDragOverAttachmentInstanceId(instanceId);
-                                    }
-                                  }}
-                                  onDragOver={(event) => {
-                                    if (!event.dataTransfer.types.includes("Files")) {
-                                      return;
-                                    }
-                                    event.preventDefault();
-                                    event.dataTransfer.dropEffect = "copy";
-                                    if (dragOverAttachmentInstanceId !== instanceId) {
-                                      setDragOverAttachmentInstanceId(instanceId);
-                                    }
-                                  }}
-                                  onDragLeave={(event) => {
-                                    if (
-                                      event.currentTarget.contains(
-                                        event.relatedTarget as Node | null,
-                                      )
-                                    ) {
-                                      return;
-                                    }
-                                    setDragOverAttachmentInstanceId((current) =>
-                                      current === instanceId ? null : current,
-                                    );
-                                  }}
-                                  onDrop={async (event) => {
-                                    if (!event.dataTransfer.files.length) return;
-                                    event.preventDefault();
-                                    setDragOverAttachmentInstanceId((current) =>
-                                      current === instanceId ? null : current,
-                                    );
-                                    await queueFilesForAttachmentSection(
-                                      instanceId,
-                                      event.dataTransfer.files,
-                                    );
-                                  }}
-                                  notes={
-                                    <div>
-                                      <div className="uppercase tracking-[0.14em] text-text-muted">
-                                        Attachment Notes
-                                      </div>
-                                      <div className="section-editor-surface">
-                                        <MarkdownEditor
-                                          initialContent={getDraftContent(instanceId)}
-                                          initialMarkdown={getDraftMarkdown(instanceId)}
-                                          persona={persona ?? null}
-                                          onChange={(content, markdown) => {
-                                            handleAttachmentNotesChange(
-                                              instanceId,
-                                              content,
-                                              markdown,
-                                            );
-                                          }}
-                                          placeholder="Add one note for all attached files..."
-                                        />
-                                      </div>
-                                    </div>
-                                  }
-                                />
-                              </div>
-                            )}
-                          </SectionPreset>
-                        )}
-                      </SortableSection>
-                    );
-                  })}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
-
-          {/* Footer — commit action */}
-          {sections.length > 0 && !fullscreenSectionId && (
-            <div className="entry-creator__footer flex h-6 items-center justify-between">
-              <div className="flex min-w-0 items-center leading-4 text-text-muted">
-                <kbd className="flex h-6 items-center font-mono">
-                  ⌘+Enter
-                </kbd>
-                <ChevronRight className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
-                <span className="entry-creator__branch-pill inline-flex h-6 min-w-0 items-center">
-                  <GitBranch className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
-                    {selectedBranch || "main"}
-                  </span>
-                </span>
-                <span className="hidden items-center text-text-muted sm:inline-flex">
-                  <GitCommitHorizontal className="h-4 w-4 shrink-0" />
-                  {currentBranchHeadId
-                    ? `${shortHash(currentBranchHeadId)}`
-                    : currentBranchRecord
-                      ? "no commits yet"
-                      : "creates branch on commit"}
-                </span>
-              </div>
-              {commitBlockedByFileAttachmentStatus && (
-                <div className="entry-creator__warning inline-flex h-full items-center leading-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3 w-3 shrink-0"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                <div className="pointer-events-none absolute left-0 top-0 -z-10 flex items-center opacity-0">
+                  {quickPersonas.map((persona) => (
+                    <div
+                      key={`quick-persona-measure-${persona.id}`}
+                      ref={(node) => {
+                        quickPersonaMeasureRefs.current[persona.id] = node;
+                      }}
+                      className="shrink-0"
+                    >
+                      <PersonaItem
+                        persona={persona}
+                        compact
+                        showTypeBadge={false}
+                        className="h-full border-0 text-text-default"
+                        style={getPersonaTintStyle(persona, "interactive")}
+                      />
+                    </div>
+                  ))}
+                  <div
+                    ref={quickPersonaOverflowMeasureRef}
+                    className="shrink-0 bg-surface-subtle px-1.5 py-0.5 leading-4 text-text-muted"
                   >
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                    <path d="M12 9v4" />
-                    <path d="M12 17h.01" />
-                  </svg>
-                  <span>
-                    {isDocumentsLoading
-                      ? "Checking Attachments"
-                      : `${unparsedAttachedCount} attachment${unparsedAttachedCount === 1 ? "" : "s"} not ready`}
+                    +{quickPersonas.length}
+                  </div>
+                </div>
+              </div>
+
+              {renderAddPersonaMenu({
+                wrapperClassName: "relative z-30 shrink-0",
+                buttonClassName:
+                  "entry-creator__topbar-button flex h-6 w-40 items-center justify-center leading-4 transition-colors gap-2",
+                buttonTitle: "Add Persona",
+              })}
+
+              {sections.length > 0 && (
+                <button
+                  onClick={requestClearSections}
+                  className="entry-creator__topbar-button entry-creator__topbar-button--icon entry-creator__icon-button--danger ml-auto flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                  title="Delete all sections"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Editor sections */}
+            {!fullscreenSectionId && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sections.map((s) => s.instanceId)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="flex flex-col">
+                    {sections.map((section, sectionIndex) => {
+                      const { instanceId } = section;
+                      const isAttachment = section.kind === "FILE_ATTACHMENT";
+                      const isPersona = section.kind === "PERSONA";
+                      const persona = section.personaId
+                        ? personas?.find((p) => p.id === section.personaId)
+                        : null;
+
+                      let attachmentDraft:
+                        | ReturnType<typeof getFileAttachmentDraft>
+                        | undefined;
+                      let effectiveAttachments: FileAttachmentState[] = [];
+                      let attachmentsSource: "section" | "draft" = "section";
+                      let attachmentSection:
+                        | Extract<SectionState, { kind: "FILE_ATTACHMENT" }>
+                        | undefined;
+
+                      if (isAttachment) {
+                        attachmentSection = section;
+                        attachmentDraft = getFileAttachmentDraft(instanceId);
+                        attachmentsSource =
+                          attachmentSection.attachments.length > 0
+                            ? "section"
+                            : "draft";
+                        effectiveAttachments =
+                          attachmentsSource === "section"
+                            ? attachmentSection.attachments
+                            : (attachmentDraft?.attachments ?? []).map(
+                                (attachment) => ({
+                                  documentId: attachment.documentId ?? "",
+                                  storagePath: attachment.storagePath ?? "",
+                                  titleSnapshot: attachment.titleSnapshot,
+                                  pageCount: 0,
+                                  author: null,
+                                  creationDate: null,
+                                  thumbnailPath: null,
+                                  previewUrl: null,
+                                  annotationText:
+                                    attachment.annotationText ?? null,
+                                  referencedPersonaId:
+                                    attachment.referencedPersonaId ?? null,
+                                  referencedPage:
+                                    attachment.referencedPage ?? null,
+                                  fileHash: attachment.fileHash,
+                                }),
+                              );
+                      }
+
+                      // Allow persona-less PERSONA sections to render so recovered
+                      // drafts without an assigned persona are visible to the user.
+
+                      return (
+                        <SortableSection key={instanceId} id={instanceId}>
+                          {(dragHandleProps) => (
+                            <SectionPreset
+                              persona={persona || null}
+                              isAttachment={isAttachment}
+                              nestedConnector={
+                                sections.length === 1
+                                  ? "single"
+                                  : sectionIndex === 0
+                                    ? "first"
+                                    : sectionIndex === sections.length - 1
+                                      ? "last"
+                                      : "middle"
+                              }
+                              className="flex flex-col"
+                              headerClassName="entry-creator__section-header"
+                              bodyClassName="bg-surface-default"
+                              leftHeader={
+                                <div className="flex items-center">
+                                  <button
+                                    className={`entry-creator__icon-button flex h-6 w-6 items-center justify-center cursor-grab p-0 text-text-muted transition-colors ${getPersonaHoverClass(persona || null, isAttachment)} active:cursor-grabbing`}
+                                    aria-label="Drag to reorder"
+                                    {...dragHandleProps}
+                                  >
+                                    <GripVertical className="h-4 w-4" />
+                                  </button>
+                                  <div className="inline-flex h-6 items-center leading-none uppercase">
+                                    <span className="entry-creator__section-label-index">
+                                      S{sectionIndex + 1}
+                                    </span>
+                                    <span>
+                                      {isAttachment ? "Attachment" : "Message"}
+                                    </span>
+                                  </div>
+                                </div>
+                              }
+                              centerHeader={
+                                <PersonaItem
+                                  persona={persona ?? null}
+                                  menuProps={{
+                                    currentPersona: persona || null,
+                                    isAttachment: isAttachment,
+                                    filePersonaName:
+                                      attachmentSection?.personaName ??
+                                      undefined,
+                                    globalPersonas: globalPersonas,
+                                    localPersonas: localPersonas,
+                                    onSelect: (pId: string) =>
+                                      changePersona(instanceId, pId),
+                                  }}
+                                />
+                              }
+                              rightHeader={
+                                <>
+                                  {isPersona && (
+                                    <button
+                                      onClick={() =>
+                                        openFullscreenEditor(instanceId)
+                                      }
+                                      className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                                      title="Open fullscreen editor"
+                                    >
+                                      <Expand className="h-4 w-4" />
+                                    </button>
+                                  )}
+
+                                  {persona && !isLocalPersona(persona) && (
+                                    <button
+                                      onClick={() =>
+                                        toggleSectionKind(instanceId)
+                                      }
+                                      className="entry-creator__icon-button flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                                      title={
+                                        isAttachment
+                                          ? "Switch to Text Editor"
+                                          : "Switch to Attachments"
+                                      }
+                                    >
+                                      {isAttachment ? (
+                                        <Type className="h-4 w-4" />
+                                      ) : (
+                                        <Paperclip className="h-4 w-4" />
+                                      )}
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() =>
+                                      requestRemoveSection(instanceId)
+                                    }
+                                    className="entry-creator__icon-button entry-creator__icon-button--danger flex h-6 w-6 items-center justify-center p-0 text-text-muted transition-colors"
+                                    title="Remove this section"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </>
+                              }
+                              contentClassName="space-y-1"
+                            >
+                              {/* BODY CONTENT */}
+                              {isPersona ? (
+                                renderPersonaEditor(
+                                  instanceId,
+                                  section.personaId,
+                                  persona?.name ?? null,
+                                  persona ?? null,
+                                )
+                              ) : (
+                                /* FILE ATTACHMENTS BLOCK */
+                                <div>
+                                  <FileAttachmentsSection
+                                    items={effectiveAttachments.map(
+                                      (attachment, attachmentIndex) => {
+                                        const docDetail = attachment.documentId
+                                          ? attachedDocDetails.get(
+                                              attachment.documentId,
+                                            )
+                                          : null;
+                                        const latestJob = docDetail?.latestJob;
+                                        const importStatus =
+                                          docDetail?.import_status ??
+                                          latestJob?.status;
+                                        const thumbnailStatus =
+                                          docDetail?.thumbnail_status ?? null;
+                                        const canOpenParsed =
+                                          importStatus === "completed" &&
+                                          !!attachment.documentId;
+                                        const progressPercent =
+                                          latestJob?.progress_percent ?? 0;
+
+                                        return {
+                                          keyId:
+                                            attachment.documentId ||
+                                            attachment.fileHash ||
+                                            attachment.titleSnapshot,
+                                          variant: "log" as const,
+                                          title: attachment.titleSnapshot,
+                                          subtitle: `${
+                                            attachment.pageCount > 0
+                                              ? `${attachment.pageCount} pages`
+                                              : "File"
+                                          }${attachment.author ? ` • ${attachment.author}` : ""}`,
+                                          documentId:
+                                            attachment.documentId ??
+                                            docDetail?.id ??
+                                            null,
+                                          storagePath: attachment.storagePath,
+                                          thumbnailPath:
+                                            attachment.thumbnailPath ??
+                                            docDetail?.thumbnail_path ??
+                                            null,
+                                          thumbnailStatus,
+                                          importStatus: importStatus ?? null,
+                                          progressPercent,
+                                          progressMessage:
+                                            latestJob?.progress_message,
+                                          previewUrl: attachment.previewUrl,
+                                          canOpenParsed,
+                                          persona: persona ?? null,
+                                          displayMode:
+                                            attachmentSection?.displayMode,
+                                          onPreviewFile: () =>
+                                            openAttachmentPreview(
+                                              attachment,
+                                              importStatus,
+                                              "file",
+                                            ),
+                                          onPreviewParsed: () =>
+                                            openAttachmentPreview(
+                                              attachment,
+                                              importStatus,
+                                              "parsed",
+                                            ),
+                                          onRemove: () =>
+                                            removeFileAttachment(
+                                              instanceId,
+                                              attachment,
+                                              attachmentIndex,
+                                              attachmentsSource,
+                                            ),
+                                        };
+                                      },
+                                    )}
+                                    canUpload
+                                    isUploading={section.isUploading}
+                                    isDragOver={
+                                      dragOverAttachmentInstanceId ===
+                                      instanceId
+                                    }
+                                    emptyStateMessage="Drop or attach one or more files to start building this section."
+                                    onUploadFiles={(files) =>
+                                      queueFilesForAttachmentSection(
+                                        instanceId,
+                                        files,
+                                      )
+                                    }
+                                    onOpenLibrary={() => {
+                                      setAttachmentManagerTargetInstanceId(
+                                        instanceId,
+                                      );
+                                    }}
+                                    onDragEnter={(event) => {
+                                      if (
+                                        event.dataTransfer.types.includes(
+                                          "Files",
+                                        )
+                                      ) {
+                                        setDragOverAttachmentInstanceId(
+                                          instanceId,
+                                        );
+                                      }
+                                    }}
+                                    onDragOver={(event) => {
+                                      if (
+                                        !event.dataTransfer.types.includes(
+                                          "Files",
+                                        )
+                                      ) {
+                                        return;
+                                      }
+                                      event.preventDefault();
+                                      event.dataTransfer.dropEffect = "copy";
+                                      if (
+                                        dragOverAttachmentInstanceId !==
+                                        instanceId
+                                      ) {
+                                        setDragOverAttachmentInstanceId(
+                                          instanceId,
+                                        );
+                                      }
+                                    }}
+                                    onDragLeave={(event) => {
+                                      if (
+                                        event.currentTarget.contains(
+                                          event.relatedTarget as Node | null,
+                                        )
+                                      ) {
+                                        return;
+                                      }
+                                      setDragOverAttachmentInstanceId(
+                                        (current) =>
+                                          current === instanceId
+                                            ? null
+                                            : current,
+                                      );
+                                    }}
+                                    onDrop={async (event) => {
+                                      if (!event.dataTransfer.files.length)
+                                        return;
+                                      event.preventDefault();
+                                      setDragOverAttachmentInstanceId(
+                                        (current) =>
+                                          current === instanceId
+                                            ? null
+                                            : current,
+                                      );
+                                      await queueFilesForAttachmentSection(
+                                        instanceId,
+                                        event.dataTransfer.files,
+                                      );
+                                    }}
+                                    notes={
+                                      <div>
+                                        <div className="uppercase tracking-[0.14em] text-text-muted">
+                                          Attachment Notes
+                                        </div>
+                                        <div className="section-editor-surface">
+                                          <MarkdownEditor
+                                            initialContent={getDraftContent(
+                                              instanceId,
+                                            )}
+                                            initialMarkdown={getDraftMarkdown(
+                                              instanceId,
+                                            )}
+                                            persona={persona ?? null}
+                                            onChange={(content, markdown) => {
+                                              handleAttachmentNotesChange(
+                                                instanceId,
+                                                content,
+                                                markdown,
+                                              );
+                                            }}
+                                            placeholder="Add one note for all attached files..."
+                                          />
+                                        </div>
+                                      </div>
+                                    }
+                                  />
+                                </div>
+                              )}
+                            </SectionPreset>
+                          )}
+                        </SortableSection>
+                      );
+                    })}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+
+            {/* Footer — commit action */}
+            {sections.length > 0 && !fullscreenSectionId && (
+              <div className="entry-creator__footer flex h-6 items-center justify-between">
+                <div className="flex min-w-0 items-center leading-4 text-text-muted">
+                  <kbd className="flex h-6 items-center font-mono">⌘+Enter</kbd>
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0 text-text-muted"
+                    aria-hidden="true"
+                  />
+                  <span className="entry-creator__branch-pill inline-flex h-6 min-w-0 items-center">
+                    <GitBranch className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{selectedBranch || "main"}</span>
+                  </span>
+                  <span className="hidden items-center text-text-muted sm:inline-flex">
+                    <GitCommitHorizontal className="h-4 w-4 shrink-0" />
+                    {currentBranchHeadId
+                      ? `${shortHash(currentBranchHeadId)}`
+                      : currentBranchRecord
+                        ? "no commits yet"
+                        : "creates branch on commit"}
                   </span>
                 </div>
-              )}
-              <button
-                onClick={handleCommit}
-                disabled={isCommitDisabled}
-                className={`inline-flex h-full w-32 items-center justify-center leading-4 transition-colors ${
- !isCommitDisabled
- ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
- : "bg-surface-subtle text-text-muted cursor-not-allowed"
- }`}
-              >
-                <Send className="h-4 w-4" />
-                Commit Entry
-              </button>
-            </div>
-          )}
+                {commitBlockedByFileAttachmentStatus && (
+                  <div className="entry-creator__warning inline-flex h-full items-center leading-4">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 shrink-0"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <path d="M12 9v4" />
+                      <path d="M12 17h.01" />
+                    </svg>
+                    <span>
+                      {isDocumentsLoading
+                        ? "Checking Attachments"
+                        : `${unparsedAttachedCount} attachment${unparsedAttachedCount === 1 ? "" : "s"} not ready`}
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={handleCommit}
+                  disabled={isCommitDisabled}
+                  className={`inline-flex h-full w-32 items-center justify-center leading-4 transition-colors ${
+                    !isCommitDisabled
+                      ? "bg-action-primary-bg text-action-primary-text hover:bg-action-primary-hover"
+                      : "bg-surface-subtle text-text-muted cursor-not-allowed"
+                  }`}
+                >
+                  <Send className="h-4 w-4" />
+                  Commit Entry
+                </button>
+              </div>
+            )}
           </div>
         </ThreadFrame>
 
@@ -2822,17 +2905,21 @@ export function EntryCreator({
               <div className="entry-creator-fullscreen__chrome flex items-center px-3 pt-2">
                 <div className="entry-creator-fullscreen__tabs scrollbar-hide flex min-w-0 flex-1 items-end overflow-x-auto">
                   {fullscreenPersonaSections.map((section) => {
-                    const isActive = section.instanceId === activeFullscreenSection?.instanceId;
+                    const isActive =
+                      section.instanceId ===
+                      activeFullscreenSection?.instanceId;
                     return (
                       <button
                         key={section.instanceId}
                         type="button"
-                        onClick={() => setFullscreenSectionId(section.instanceId)}
+                        onClick={() =>
+                          setFullscreenSectionId(section.instanceId)
+                        }
                         className={`entry-creator-fullscreen__tab group min-w-36 border border-b-0 px-3 py-2 text-left transition-colors ${
- isActive
- ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
- : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
- }`}
+                          isActive
+                            ? "entry-creator-fullscreen__tab--active border-border-default bg-surface-default text-text-default"
+                            : "border-transparent bg-surface-hover text-text-muted hover:bg-surface-subtle hover:text-text-default"
+                        }`}
                       >
                         <div className="uppercase tracking-[0.18em] text-text-muted">
                           Section {section.sectionIndex + 1}
@@ -2947,7 +3034,9 @@ export function EntryCreator({
           onCopyLatestStashPayload={async () => {
             const latest = stashItems[0];
             if (!latest) return;
-            await navigator.clipboard.writeText(JSON.stringify(latest, null, 2));
+            await navigator.clipboard.writeText(
+              JSON.stringify(latest, null, 2),
+            );
           }}
         />
       </div>

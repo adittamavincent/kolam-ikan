@@ -5,14 +5,14 @@ const PROVIDER_RUNNER_CONFIGS = {
     appUrl: "https://chatgpt.com/",
     origin: "https://chatgpt.com",
     composerSelectors: [
-      'textarea',
+      "textarea",
       '[contenteditable="true"][data-lexical-editor="true"]',
       '[contenteditable="true"][role="textbox"]',
       '[contenteditable="plaintext-only"]',
     ],
     responseSelectors: [
       '[data-message-author-role="assistant"]',
-      'article',
+      "article",
       '[data-testid*="conversation-turn"]',
     ],
     newChatButtonNames: [/new chat/i],
@@ -28,7 +28,7 @@ const PROVIDER_RUNNER_CONFIGS = {
     appUrl: "https://gemini.google.com/app",
     origin: "https://gemini.google.com",
     composerSelectors: [
-      'textarea',
+      "textarea",
       '[contenteditable="true"][role="textbox"]',
       '[contenteditable="true"][aria-label]',
       '[contenteditable="plaintext-only"]',
@@ -36,9 +36,9 @@ const PROVIDER_RUNNER_CONFIGS = {
     responseSelectors: [
       '[data-message-author-role="assistant"]',
       '[data-message-author-role="model"]',
-      'model-response',
-      '[data-response-id]',
-      'article',
+      "model-response",
+      "[data-response-id]",
+      "article",
     ],
     newChatButtonNames: [/new chat/i],
     stopButtonNames: [/stop/i],
@@ -53,16 +53,16 @@ const PROVIDER_RUNNER_CONFIGS = {
     appUrl: "https://claude.ai/chats",
     origin: "https://claude.ai",
     composerSelectors: [
-      'textarea',
+      "textarea",
       '[contenteditable="true"][role="textbox"]',
       '[contenteditable="true"][data-is-streaming]',
       '[contenteditable="plaintext-only"]',
     ],
     responseSelectors: [
-      'div[data-is-streaming]',
+      "div[data-is-streaming]",
       '[data-testid*="assistant"]',
       '[data-testid*="message-content"]',
-      'article',
+      "article",
     ],
     newChatButtonNames: [/new chat/i, /start new/i],
     stopButtonNames: [/stop/i],
@@ -85,7 +85,10 @@ function escapeRegExp(value) {
 }
 
 function normalizeText(value) {
-  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 }
 
 export function normalizeBridgeResponseText(value) {
@@ -104,19 +107,28 @@ export function normalizeBridgeResponseText(value) {
 
 function buildResponseStabilityKey(value) {
   return normalizeText(normalizeBridgeResponseText(value))
-    .replace(/\b(copy( response)?|retry|edit|share|like|dislike|good response|bad response)\b/g, "")
+    .replace(
+      /\b(copy( response)?|retry|edit|share|like|dislike|good response|bad response)\b/g,
+      "",
+    )
     .replace(/\s+/g, " ")
     .trim();
 }
 
 function responsesRoughlyMatch(candidate, expected) {
-  const candidateNormalized = normalizeText(normalizeBridgeResponseText(candidate));
-  const expectedNormalized = normalizeText(normalizeBridgeResponseText(expected));
+  const candidateNormalized = normalizeText(
+    normalizeBridgeResponseText(candidate),
+  );
+  const expectedNormalized = normalizeText(
+    normalizeBridgeResponseText(expected),
+  );
   if (!candidateNormalized || !expectedNormalized) return false;
 
-  return candidateNormalized === expectedNormalized ||
+  return (
+    candidateNormalized === expectedNormalized ||
     candidateNormalized.includes(expectedNormalized) ||
-    expectedNormalized.includes(candidateNormalized);
+    expectedNormalized.includes(candidateNormalized)
+  );
 }
 
 function extractBridgeInteractionMode(payload) {
@@ -125,9 +137,10 @@ function extractBridgeInteractionMode(payload) {
 }
 
 function hasXmlTagContent(text, tagName) {
-  const match = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i").exec(
-    String(text || ""),
-  );
+  const match = new RegExp(
+    `<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`,
+    "i",
+  ).exec(String(text || ""));
   return !!match && match[1].trim().length > 0;
 }
 
@@ -136,8 +149,8 @@ function bridgeResponseNeedsRepair(payload, responseText) {
   const response = normalizeBridgeResponseText(responseText);
   const hasResponseWrapper =
     /<response[\s>]/i.test(response) && /<\/response>/i.test(response);
-  const hasLog = ["log", "thought_log", "answer", "final", "reply"].some((tag) =>
-    hasXmlTagContent(response, tag),
+  const hasLog = ["log", "thought_log", "answer", "final", "reply"].some(
+    (tag) => hasXmlTagContent(response, tag),
   );
   const hasCanvas = [
     "canvas",
@@ -267,10 +280,16 @@ async function findVisibleLocatorInScope(scope, locators) {
 
 export async function isProviderLoginRequired(page, provider) {
   const { loginPatterns } = getProviderConfig(provider);
-  const bodyText = (await page.locator("body").innerText().catch(() => "")) || "";
+  const bodyText =
+    (await page
+      .locator("body")
+      .innerText()
+      .catch(() => "")) || "";
   if (!bodyText) return false;
 
-  const looksLoggedOut = loginPatterns.some((pattern) => pattern.test(bodyText));
+  const looksLoggedOut = loginPatterns.some((pattern) =>
+    pattern.test(bodyText),
+  );
   if (!looksLoggedOut) return false;
 
   const composer = await findProviderComposer(page, provider);
@@ -311,7 +330,11 @@ export async function findProviderStopButton(page, provider) {
 
 export async function findProviderCopyButton(page, provider) {
   const config = getProviderConfig(provider);
-  let byRole = await findVisibleLocatorByRoleNames(page, "button", config.copyButtonNames);
+  let byRole = await findVisibleLocatorByRoleNames(
+    page,
+    "button",
+    config.copyButtonNames,
+  );
   if (byRole) return byRole;
 
   let fallback = await findVisibleLocator(page, [
@@ -350,12 +373,14 @@ export async function findProviderCopyButton(page, provider) {
 
     const hoverTargets = [
       () => page.locator("article").last(),
-      ...config.responseSelectors.map((selector) => () => page.locator(selector).last()),
+      ...config.responseSelectors.map(
+        (selector) => () => page.locator(selector).last(),
+      ),
     ];
 
     for (const getTarget of hoverTargets) {
       const target = getTarget();
-      if (!await target.isVisible().catch(() => false)) {
+      if (!(await target.isVisible().catch(() => false))) {
         continue;
       }
 
@@ -388,13 +413,15 @@ export async function findProviderCopyButton(page, provider) {
 
       const scopedByRole = await findVisibleLocatorInScope(
         target,
-        config.copyButtonNames.map((name) => (scope) =>
-          scope.getByRole("button", { name }).last()),
+        config.copyButtonNames.map(
+          (name) => (scope) => scope.getByRole("button", { name }).last(),
+        ),
       );
       if (scopedByRole) return scopedByRole;
 
       const scopedFallback = await findVisibleLocatorInScope(target, [
-        (scope) => scope.locator('button[aria-label*="copy response" i]').last(),
+        (scope) =>
+          scope.locator('button[aria-label*="copy response" i]').last(),
         (scope) => scope.locator('button[aria-label*="copy" i]').last(),
         (scope) => scope.locator('button[title*="copy" i]').last(),
         (scope) => scope.locator('[data-testid*="copy"]').last(),
@@ -421,8 +448,9 @@ async function findModelPicker(page, provider) {
       page
         .getByRole("button", { name: config.modelPickerNames[0] ?? /model/i })
         .first(),
-    ...config.modelPickerNames.map((name) => () =>
-      page.getByRole("button", { name }).first()),
+    ...config.modelPickerNames.map(
+      (name) => () => page.getByRole("button", { name }).first(),
+    ),
   ]);
 }
 
@@ -538,7 +566,9 @@ export async function extractLatestProviderResponse(page, provider) {
       const nodes = Array.from(document.querySelectorAll(selector));
       for (const node of nodes) {
         const candidate =
-          node instanceof HTMLElement ? node.cloneNode(true) : node?.cloneNode?.(true);
+          node instanceof HTMLElement
+            ? node.cloneNode(true)
+            : node?.cloneNode?.(true);
         if (candidate instanceof HTMLElement) {
           candidate
             .querySelectorAll(
@@ -655,7 +685,7 @@ export async function isProviderGenerating(page, provider) {
 }
 
 async function abortBridgeJobIfRequested(page, provider, shouldAbort) {
-  if (!shouldAbort || !await shouldAbort()) {
+  if (!shouldAbort || !(await shouldAbort())) {
     return false;
   }
 
@@ -664,7 +694,9 @@ async function abortBridgeJobIfRequested(page, provider, shouldAbort) {
     await stopButton.click().catch(() => undefined);
   }
 
-  const error = new Error(`${getProviderConfig(provider).label} bridge job aborted`);
+  const error = new Error(
+    `${getProviderConfig(provider).label} bridge job aborted`,
+  );
   error.code = JOB_ABORTED_CODE;
   throw error;
 }
@@ -688,13 +720,17 @@ export async function waitForProviderGenerationStart(
     await abortBridgeJobIfRequested(page, provider, shouldAbort);
 
     if (await isProviderLoginRequired(page, provider)) {
-      const error = new Error(`${getProviderConfig(provider).label} login required`);
+      const error = new Error(
+        `${getProviderConfig(provider).label} login required`,
+      );
       error.code = LOGIN_REQUIRED_CODE;
       throw error;
     }
 
     const generating = await isProviderGenerating(page, provider);
-    const response = (await extractLatestProviderResponse(page, provider)).trim();
+    const response = (
+      await extractLatestProviderResponse(page, provider)
+    ).trim();
 
     if (generating) {
       return { sawGenerating: true, baselineResponse: response || initial };
@@ -743,13 +779,17 @@ export async function waitForProviderResponse(
     await abortBridgeJobIfRequested(page, provider, shouldAbort);
 
     if (await isProviderLoginRequired(page, provider)) {
-      const error = new Error(`${getProviderConfig(provider).label} login required`);
+      const error = new Error(
+        `${getProviderConfig(provider).label} login required`,
+      );
       error.code = LOGIN_REQUIRED_CODE;
       throw error;
     }
 
     const stopButtonVisible = await isProviderGenerating(page, provider);
-    const response = (await extractLatestProviderResponse(page, provider)).trim();
+    const response = (
+      await extractLatestProviderResponse(page, provider)
+    ).trim();
     const hasNewResponse = !!response && response !== initialResponse.trim();
     const responseStableKey = buildResponseStabilityKey(response);
 
@@ -843,7 +883,9 @@ export async function getFinalProviderResponse(
     }
 
     if (attempt < attempts - 1) {
-      await sleep(provider === "claude" ? 300 + attempt * 200 : 250 + attempt * 150);
+      await sleep(
+        provider === "claude" ? 300 + attempt * 200 : 250 + attempt * 150,
+      );
     }
   }
 
@@ -881,9 +923,14 @@ export async function runBridgeJob(page, job, sessionState, options = {}) {
   await abortBridgeJobIfRequested(page, provider, shouldAbort);
   const initialResponse = await extractLatestProviderResponse(page, provider);
   await submitProviderPrompt(page, provider, job.payload, requestedModel);
-  const response = await waitForProviderResponse(page, provider, initialResponse, {
-    shouldAbort,
-  });
+  const response = await waitForProviderResponse(
+    page,
+    provider,
+    initialResponse,
+    {
+      shouldAbort,
+    },
+  );
   let finalResponse = normalizeBridgeResponseText(
     await getFinalProviderResponse(page, provider, response),
   );
@@ -910,7 +957,8 @@ export async function runBridgeJob(page, job, sessionState, options = {}) {
   }
 
   sessionState.currentSessionKey = job.session_key;
-  sessionState.currentModel = requestedModel || sessionState.currentModel || null;
+  sessionState.currentModel =
+    requestedModel || sessionState.currentModel || null;
 
   return finalResponse;
 }

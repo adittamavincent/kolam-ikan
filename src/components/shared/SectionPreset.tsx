@@ -27,7 +27,7 @@ export function ThreadFrame({
   hideBody = false,
   nested = false,
   nestedConnector = "single",
-  className="",
+  className = "",
   frameClassName = "",
   headerClassName = "",
   bodyClassName = "",
@@ -88,10 +88,7 @@ export function ThreadFrame({
         style={frameStyle}
       >
         {header && (
-          <div
-            className={`px-0 ${headerClassName}`.trim()}
-            style={headerStyle}
-          >
+          <div className={`px-0 ${headerClassName}`.trim()} style={headerStyle}>
             {header}
           </div>
         )}
@@ -103,10 +100,7 @@ export function ThreadFrame({
         )}
 
         {footer && (
-          <div
-            className={`p-1 ${footerClassName}`.trim()}
-            style={footerStyle}
-          >
+          <div className={`p-1 ${footerClassName}`.trim()} style={footerStyle}>
             {footer}
           </div>
         )}
@@ -139,13 +133,17 @@ export function SectionPreset({
   rightHeader,
   children,
   contentClassName = "",
-  className="",
+  className = "",
   headerClassName = "",
   bodyClassName = "",
   frameClassName = "border-transparent",
 }: SectionPresetProps) {
-  const frameStyle = persona ? getPersonaTintStyle(persona, "muted") : undefined;
-  const headerStyle = persona ? getPersonaTintStyle(persona, "header") : undefined;
+  const frameStyle = persona
+    ? getPersonaTintStyle(persona, "muted")
+    : undefined;
+  const headerStyle = persona
+    ? getPersonaTintStyle(persona, "header")
+    : undefined;
   const bodyStyle = persona ? getPersonaTintStyle(persona, "body") : undefined;
 
   return (
@@ -161,7 +159,9 @@ export function SectionPreset({
       bodyStyle={bodyStyle}
       header={
         <div className="flex min-w-0 items-center">
-          {leftHeader && <div className="flex shrink-0 items-center">{leftHeader}</div>}
+          {leftHeader && (
+            <div className="flex shrink-0 items-center">{leftHeader}</div>
+          )}
           <div className="min-w-0 flex flex-1 items-center">{centerHeader}</div>
           {rightHeader && (
             <div className="ml-auto flex shrink-0 items-center">

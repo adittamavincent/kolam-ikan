@@ -32,7 +32,10 @@ import {
 } from "./bridge-config";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { buildBridgeSessionKey } from "@/lib/bridge/bridge-jobs";
-import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
+import {
+  useCreateBridgeJob,
+  useLatestBridgeJob,
+} from "@/lib/hooks/useBridgeJobs";
 import { BridgeResponsePreviewModal } from "./BridgeResponsePreviewModal";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 import { useBridgeRunnerStatus } from "@/lib/hooks/useBridgeRunnerStatus";
@@ -98,7 +101,6 @@ export function QuickBridgeDialog({
     enabled: isOpen,
     pollIntervalMs: isOpen ? 10_000 : undefined,
   });
-
 
   const { data: streamMeta } = useQuery({
     queryKey: ["bridge-stream-meta", streamId],
@@ -195,7 +197,8 @@ export function QuickBridgeDialog({
   const latestJob = latestBridgeJob.data;
   const currentSessionKey = buildBridgeSessionKey(streamId, providerId);
   const latestJobMatchesCurrentPayload =
-    latestJob?.session_key === currentSessionKey && latestJob?.payload === generatedXML;
+    latestJob?.session_key === currentSessionKey &&
+    latestJob?.payload === generatedXML;
   const responseText = latestJob?.raw_response?.trim() ?? "";
   const hasPendingAutomatedResponse =
     latestJob?.status === "succeeded" &&
@@ -224,7 +227,6 @@ export function QuickBridgeDialog({
       onClose();
     }
   };
-
 
   const queueQuickBridge = async () => {
     if (!payloadReady || !generatedXML.trim()) return;
@@ -294,7 +296,6 @@ export function QuickBridgeDialog({
     parserRef.current?.reset();
   };
 
-
   const confirmReset = async () => {
     setIsResetDialogOpen(false);
     await resetBridgeSession.mutateAsync();
@@ -345,7 +346,9 @@ export function QuickBridgeDialog({
     ...(phase === "compose" && !runnerStatus.online
       ? [
           {
-            label: runnerStatus.isChecking ? "Checking runner..." : "Retry connection",
+            label: runnerStatus.isChecking
+              ? "Checking runner..."
+              : "Retry connection",
             icon: runnerStatus.isChecking ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -372,7 +375,6 @@ export function QuickBridgeDialog({
           },
         ]
       : []),
-
   ];
 
   return (
@@ -388,7 +390,7 @@ export function QuickBridgeDialog({
           title="Quick Bridge"
           description={
             phase === "compose"
-                ? "Fast lane for repeat AI runs with a remembered destination and a recommended context bundle."
+              ? "Fast lane for repeat AI runs with a remembered destination and a recommended context bundle."
               : phase === "waiting"
                 ? "Your prompt is out of your hands now. Quick keeps the status focused while the runner or provider works."
                 : "The response is back. Review it here without jumping into Detailed."
@@ -422,26 +424,31 @@ export function QuickBridgeDialog({
                         Local runner is offline - Manual mode
                       </div>
                       <p className="mt-1">
-                        Copy the prompt below, run it in {providerPreset.label} yourself, then continue in Detailed to paste and submit the response.
+                        Copy the prompt below, run it in {providerPreset.label}{" "}
+                        yourself, then continue in Detailed to paste and submit
+                        the response.
                       </p>
                     </div>
                   )}
 
                   {launchState === "error" && (
                     <div className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
-                      Quick could not open or queue the provider handoff. You can still use the fallback copy/open controls below.
+                      Quick could not open or queue the provider handoff. You
+                      can still use the fallback copy/open controls below.
                     </div>
                   )}
 
                   {queueStatus === "needs-login" && (
                     <div className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
-                      {providerPreset.label} needs you to log in again in the runner browser profile before Quick can continue.
+                      {providerPreset.label} needs you to log in again in the
+                      runner browser profile before Quick can continue.
                     </div>
                   )}
 
                   {queueStatus === "failed" && bridgeSession?.lastJobError && (
                     <div className="border border-status-error-border bg-status-error-bg p-4 text-status-error-text">
-                      Last {providerPreset.label} bridge job failed: {bridgeSession.lastJobError}
+                      Last {providerPreset.label} bridge job failed:{" "}
+                      {bridgeSession.lastJobError}
                     </div>
                   )}
 
@@ -496,7 +503,9 @@ export function QuickBridgeDialog({
                       </div>
                       <div>{selectedEntries.length || 0} recent entries</div>
                       <div>
-                        {includeCanvas ? "Current canvas included" : "Canvas skipped"}
+                        {includeCanvas
+                          ? "Current canvas included"
+                          : "Canvas skipped"}
                       </div>
                       <div>
                         {includeGlobalStream
@@ -537,7 +546,9 @@ export function QuickBridgeDialog({
                     {!runnerStatus.online && (
                       <button
                         type="button"
-                        onClick={() => void navigator.clipboard.writeText(generatedXML)}
+                        onClick={() =>
+                          void navigator.clipboard.writeText(generatedXML)
+                        }
                         className="inline-flex items-center gap-2 border border-border-default px-3 py-2 font-semibold text-text-default hover:bg-surface-hover"
                       >
                         <ClipboardPaste className="h-3.5 w-3.5" />
@@ -587,13 +598,9 @@ export function QuickBridgeDialog({
                     <div className="font-semibold text-text-default">
                       {waitingHeadline}
                     </div>
-                    <p className="text-text-muted">
-                      {waitingDescription}
-                    </p>
+                    <p className="text-text-muted">{waitingDescription}</p>
                     {latestJob?.id && (
-                      <div className="text-text-muted">
-                        Job: {latestJob.id}
-                      </div>
+                      <div className="text-text-muted">Job: {latestJob.id}</div>
                     )}
                   </div>
                 </div>
@@ -630,7 +637,8 @@ export function QuickBridgeDialog({
                     Review
                   </div>
                   <p className="mt-1 text-text-muted">
-                    Once the reply lands, Quick switches to a clean response view.
+                    Once the reply lands, Quick switches to a clean response
+                    view.
                   </p>
                 </div>
               </section>
@@ -677,7 +685,9 @@ export function QuickBridgeDialog({
                       Response captured successfully
                     </div>
                     <p className="text-text-default">
-                      Quick has the raw provider response now. Review and apply changes below, or switch to Detailed for fine-grained control.
+                      Quick has the raw provider response now. Review and apply
+                      changes below, or switch to Detailed for fine-grained
+                      control.
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-2">
@@ -718,9 +728,7 @@ export function QuickBridgeDialog({
               </div>
             </div>
           )}
-
         </div>
-
       </ModalShell>
 
       <BridgeResponsePreviewModal
@@ -732,7 +740,11 @@ export function QuickBridgeDialog({
       />
       <ConfirmDialog
         open={isResetDialogOpen}
-        title={phase === "waiting" ? "Abort and reset this Quick Bridge run?" : "Reset this Quick Bridge session?"}
+        title={
+          phase === "waiting"
+            ? "Abort and reset this Quick Bridge run?"
+            : "Reset this Quick Bridge session?"
+        }
         description={
           phase === "waiting"
             ? "This clears the current bridge session and removes queued or running jobs for this stream."

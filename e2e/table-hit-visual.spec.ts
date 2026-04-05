@@ -119,12 +119,19 @@ const MARKUP = `
 
 test.describe("table hit testing visual alignment", () => {
   for (const viewportCase of VIEWPORT_CASES) {
-    test(`overlay aligns to clicked cell within +/-1px (${viewportCase.name})`, async ({ page }, testInfo) => {
-      await page.setViewportSize({ width: viewportCase.width, height: viewportCase.height });
+    test(`overlay aligns to clicked cell within +/-1px (${viewportCase.name})`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({
+        width: viewportCase.width,
+        height: viewportCase.height,
+      });
       await page.setContent(MARKUP);
 
       const samplePoints = await page.evaluate(() => {
-        const table = document.getElementById("target-table") as HTMLTableElement | null;
+        const table = document.getElementById(
+          "target-table",
+        ) as HTMLTableElement | null;
         if (!table) {
           return [];
         }
@@ -132,7 +139,11 @@ test.describe("table hit testing visual alignment", () => {
         const cells = Array.from(
           table.querySelectorAll<HTMLTableCellElement>("th, td"),
         );
-        const picks = [cells[0], cells[Math.floor(cells.length / 2)], cells[cells.length - 1]];
+        const picks = [
+          cells[0],
+          cells[Math.floor(cells.length / 2)],
+          cells[cells.length - 1],
+        ];
 
         return picks.filter(Boolean).map((cell) => {
           const rect = cell.getBoundingClientRect();
@@ -142,13 +153,16 @@ test.describe("table hit testing visual alignment", () => {
             x: rect.left + rect.width * 0.5,
             y: rect.top + rect.height * 0.5,
             expectedCol: cell.cellIndex,
-            expectedRow: sectionTag === "THEAD" ? 0 : (row?.sectionRowIndex ?? -1),
+            expectedRow:
+              sectionTag === "THEAD" ? 0 : (row?.sectionRowIndex ?? -1),
           };
         });
       });
 
       const requiredPoints = await page.evaluate(() => {
-        const table = document.getElementById("target-table") as HTMLTableElement | null;
+        const table = document.getElementById(
+          "target-table",
+        ) as HTMLTableElement | null;
         if (!table) {
           return [];
         }
@@ -177,13 +191,15 @@ test.describe("table hit testing visual alignment", () => {
             x: marketRect.left + marketRect.width * 0.5,
             y: marketRect.top + marketRect.height * 0.5,
             expectedCol: marketCell.cellIndex,
-            expectedRow: (marketCell.parentElement as HTMLTableRowElement).sectionRowIndex,
+            expectedRow: (marketCell.parentElement as HTMLTableRowElement)
+              .sectionRowIndex,
           },
           {
             x: alexRect.left + alexRect.width * 0.5,
             y: alexRect.top + alexRect.height * 0.5,
             expectedCol: alexCell.cellIndex,
-            expectedRow: (alexCell.parentElement as HTMLTableRowElement).sectionRowIndex,
+            expectedRow: (alexCell.parentElement as HTMLTableRowElement)
+              .sectionRowIndex,
           },
           {
             x: ownerRect.left + ownerInset,

@@ -39,7 +39,10 @@ import {
   buildBridgeSessionKey,
   type BridgeRunnerStatus,
 } from "@/lib/bridge/bridge-jobs";
-import { useCreateBridgeJob, useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
+import {
+  useCreateBridgeJob,
+  useLatestBridgeJob,
+} from "@/lib/hooks/useBridgeJobs";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 import { BridgeResponsePreviewModal } from "./BridgeResponsePreviewModal";
 import { useBridgeRunnerStatus } from "@/lib/hooks/useBridgeRunnerStatus";
@@ -356,9 +359,7 @@ export function BridgeModal({
     !!responseText &&
     latestBridgeJob.data?.id !== bridgeSession?.lastAppliedJobId;
   const isApplyingLatestAutomatedResponse =
-    hasPendingResponse &&
-    !pastedXML.trim() &&
-    !!latestBridgeJob.data?.id;
+    hasPendingResponse && !pastedXML.trim() && !!latestBridgeJob.data?.id;
 
   const isContinuing =
     !!bridgeSession &&
@@ -380,7 +381,7 @@ export function BridgeModal({
       : hasPendingResponse
         ? "apply"
         : bridgeSession?.automationStatus === "queued" ||
-          bridgeSession?.automationStatus === "running"
+            bridgeSession?.automationStatus === "running"
           ? "waiting"
           : "send";
 
@@ -436,33 +437,29 @@ export function BridgeModal({
     upsertBridgeSession,
   ]);
 
-
-
-  const label =
-    isManualDetailedFlow
-      ? "Manual"
-      : phase === "waiting"
-        ? "Waiting"
-        : phase === "apply"
-          ? parserStatus.isApplying
-            ? "Applying"
-            : "Apply"
-          : isContinuing
-            ? "Continue"
-            : "Quick";
-
-  const detail =
-    isManualDetailedFlow
-      ? "Runner offline"
+  const label = isManualDetailedFlow
+    ? "Manual"
+    : phase === "waiting"
+      ? "Waiting"
       : phase === "apply"
-        ? "Apply latest response"
-        : phase === "waiting"
-          ? queueStatus === "running"
-            ? "Executing"
-            : "Queued"
-          : isContinuing
-            ? "Continue current session"
-            : "Send full detailed payload";
+        ? parserStatus.isApplying
+          ? "Applying"
+          : "Apply"
+        : isContinuing
+          ? "Continue"
+          : "Quick";
+
+  const detail = isManualDetailedFlow
+    ? "Runner offline"
+    : phase === "apply"
+      ? "Apply latest response"
+      : phase === "waiting"
+        ? queueStatus === "running"
+          ? "Executing"
+          : "Queued"
+        : isContinuing
+          ? "Continue current session"
+          : "Send full detailed payload";
 
   const icon =
     phase === "waiting" || parserStatus.isApplying ? (
@@ -499,17 +496,17 @@ export function BridgeModal({
   const footerActions: ModalFooterAction[] = [
     ...(shouldShowReset
       ? [
-        {
-          label: resetBridgeSession.isPending
-            ? "Stopping..."
-            : isAutomationActive
-              ? "Stop & Reset"
-              : "Reset",
-          onClick: handleReset,
-          disabled: resetBridgeSession.isPending,
-          tone: "secondary" as const,
-        },
-      ]
+          {
+            label: resetBridgeSession.isPending
+              ? "Stopping..."
+              : isAutomationActive
+                ? "Stop & Reset"
+                : "Reset",
+            onClick: handleReset,
+            disabled: resetBridgeSession.isPending,
+            tone: "secondary" as const,
+          },
+        ]
       : []),
     {
       label: "Done",
@@ -665,7 +662,8 @@ export function BridgeModal({
                           : "Runner Offline — Manual Handoff"}
                       </div>
                       <p className="mt-1 leading-relaxed opacity-90">
-                        Copy the payload, run it in {currentProvider.label}, then paste the response below.
+                        Copy the payload, run it in {currentProvider.label},
+                        then paste the response below.
                       </p>
                     </div>
                     <button
@@ -714,8 +712,8 @@ export function BridgeModal({
                           {isManualDetailedFlow
                             ? "Copy the generated prompt and send it to the provider manually."
                             : runnerStatus.online
-                            ? "Process this through the local runner or use the manual handoff tags below."
-                            : "Copy the generated prompt and send it to the provider manually."}
+                              ? "Process this through the local runner or use the manual handoff tags below."
+                              : "Copy the generated prompt and send it to the provider manually."}
                         </p>
                       </div>
                       {isManualDetailedFlow && (
@@ -791,12 +789,12 @@ export function BridgeModal({
                         3. Apply Response
                       </div>
                       <p className="text-text-muted max-w-sm">
-                        {(isManualDetailedFlow || !!pastedXML)
+                        {isManualDetailedFlow || !!pastedXML
                           ? "Review changes and apply them back to your workspace."
                           : "Once a response is received, it will be parsed and displayed here for review."}
                       </p>
                     </div>
-                    {(isManualDetailedFlow && !pastedXML) && (
+                    {isManualDetailedFlow && !pastedXML && (
                       <div className="flex flex-wrap gap-2">
                         <button
                           onClick={handlePasteResult}
@@ -813,35 +811,46 @@ export function BridgeModal({
                     ref={parserRef}
                     streamId={streamId}
                     interactionMode={effectiveInteractionMode}
-                    aiPersonaLabel={getBridgeProviderPreset(effectiveProviderId).label}
+                    aiPersonaLabel={
+                      getBridgeProviderPreset(effectiveProviderId).label
+                    }
                     pastedXML={effectivePastedXML}
                     onPastedXMLChange={setPastedXML}
                     onStatusChange={setParserStatus}
                     onApplySuccess={() => {
-                      const manualSessionActivation = buildManualSessionActivationPatch(
-                        effectiveProviderId,
-                        bridgeSession,
-                      );
+                      const manualSessionActivation =
+                        buildManualSessionActivationPatch(
+                          effectiveProviderId,
+                          bridgeSession,
+                        );
 
-                      if (isApplyingLatestAutomatedResponse && latestBridgeJob.data?.id) {
+                      if (
+                        isApplyingLatestAutomatedResponse &&
+                        latestBridgeJob.data?.id
+                      ) {
                         upsertBridgeSession(streamId, {
                           ...manualSessionActivation,
                           lastAppliedJobId: latestBridgeJob.data.id,
                           automationStatus: "succeeded",
                           lastJobId: latestBridgeJob.data.id,
-                          lastJobStatus: latestBridgeJob.data.status as BridgeJobStatus,
-                          lastJobError: latestBridgeJob.data.error_message ?? "",
-                          lastJobCompletedAt: latestBridgeJob.data.completed_at ?? null,
+                          lastJobStatus: latestBridgeJob.data
+                            .status as BridgeJobStatus,
+                          lastJobError:
+                            latestBridgeJob.data.error_message ?? "",
+                          lastJobCompletedAt:
+                            latestBridgeJob.data.completed_at ?? null,
                         });
                       } else {
                         upsertBridgeSession(streamId, manualSessionActivation);
                       }
-                      setParserStatus((prev) => ({ ...prev, isApplying: false }));
+                      setParserStatus((prev) => ({
+                        ...prev,
+                        isApplying: false,
+                      }));
                       setUserInput("");
                       handleCloseModal();
                     }}
                   />
-
                 </section>
               )}
             </div>

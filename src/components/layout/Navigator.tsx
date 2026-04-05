@@ -116,8 +116,7 @@ const getPositionGroupCenterRem = (groupIndex: number) =>
   POSITION_GROUP_CENTER_REM[groupIndex - 1] ??
   (groupIndex - 0.5) * ALIGNMENT_COLUMN_REM;
 const getCabinetPaddingRem = (depth: number) => depth * ALIGNMENT_COLUMN_REM;
-const getStreamPaddingRem = (depth: number) =>
-  depth * ALIGNMENT_COLUMN_REM;
+const getStreamPaddingRem = (depth: number) => depth * ALIGNMENT_COLUMN_REM;
 const getBorderCenterRem = (depth: number) =>
   getPositionGroupCenterRem(depth + 1);
 const LEGACY_GLOBAL_STREAM_SORT_ORDER = -100;
@@ -246,7 +245,11 @@ function copyLocalCanvasDraftState(oldStreamId: string, newStreamId: string) {
         liveContentByStream: {
           ...current.liveContentByStream,
           ...(newStreamId in nextLive
-            ? { [newStreamId]: nextLive[newStreamId] as typeof current.liveContentByStream[string] }
+            ? {
+                [newStreamId]: nextLive[
+                  newStreamId
+                ] as (typeof current.liveContentByStream)[string],
+              }
             : {}),
         },
         liveMarkdownByStream: {
@@ -259,8 +262,9 @@ function copyLocalCanvasDraftState(oldStreamId: string, newStreamId: string) {
           ...current.dbSyncStatusByStream,
           ...(newStreamId in nextDbSync
             ? {
-                [newStreamId]:
-                  nextDbSync[newStreamId] as typeof current.dbSyncStatusByStream[string],
+                [newStreamId]: nextDbSync[
+                  newStreamId
+                ] as (typeof current.dbSyncStatusByStream)[string],
               }
             : {}),
         },
@@ -268,10 +272,9 @@ function copyLocalCanvasDraftState(oldStreamId: string, newStreamId: string) {
           ...current.localSaveStatusByStream,
           ...(newStreamId in nextLocalSave
             ? {
-                [newStreamId]:
-                  nextLocalSave[
-                    newStreamId
-                  ] as typeof current.localSaveStatusByStream[string],
+                [newStreamId]: nextLocalSave[
+                  newStreamId
+                ] as (typeof current.localSaveStatusByStream)[string],
               }
             : {}),
         },
@@ -538,9 +541,9 @@ const StreamNode = ({
       <div
         className={`flex h-6 min-w-0 flex-1 items-center gap-2 pr-2 cursor-pointer
  ${
- isStreamActive
- ? "navigator-row--active text-action-primary-bg font-semibold"
- : "text-text-subtle hover:text-text-default"
+   isStreamActive
+     ? "navigator-row--active text-action-primary-bg font-semibold"
+     : "text-text-subtle hover:text-text-default"
  } ${!isStreamActive && isNewlyCreated ? " " : ""}
  ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
  ${isDragOver ? " " : ""}`}
@@ -688,9 +691,9 @@ const CabinetNode = ({
       <div
         className={`flex h-6 items-center gap-2 pr-2 group cursor-pointer
  ${
- isActive
- ? "navigator-row--active text-action-primary-bg font-medium"
- : "text-text-subtle"
+   isActive
+     ? "navigator-row--active text-action-primary-bg font-medium"
+     : "text-text-subtle"
  } ${stripeIndex !== undefined && stripeIndex % 2 === 1 ? "bg-surface-subtle" : "bg-transparent"}
  ${isDragOver ? " " : ""}`}
         style={{
@@ -891,11 +894,8 @@ export function Navigator({}: NavigatorProps) {
   const { hide: hideSidebar } = useSidebar();
   const { user } = useAuth();
   const userId = user?.id;
-  const {
-    expandedCabinetIds,
-    addExpandedCabinet,
-    toggleExpandedCabinet,
-  } = useNavigatorPreferences(domainId);
+  const { expandedCabinetIds, addExpandedCabinet, toggleExpandedCabinet } =
+    useNavigatorPreferences(domainId);
 
   const [draggedItem, setDraggedItem] = useState<{
     id: string;
@@ -1324,8 +1324,10 @@ export function Navigator({}: NavigatorProps) {
       queryClient.setQueryData<Stream[]>(["streams", domainId], (old) =>
         old?.map((s) => (s.id === id ? { ...s, ...updates } : s)),
       );
-      queryClient.setQueryData(["stream", id], (old: Record<string, unknown> | undefined) =>
-        old ? { ...old, ...updates } : old,
+      queryClient.setQueryData(
+        ["stream", id],
+        (old: Record<string, unknown> | undefined) =>
+          old ? { ...old, ...updates } : old,
       );
 
       return { previousStreams, previousStream };
@@ -1337,7 +1339,10 @@ export function Navigator({}: NavigatorProps) {
           context.previousStreams,
         );
       }
-      queryClient.setQueryData(["stream", variables.id], context?.previousStream);
+      queryClient.setQueryData(
+        ["stream", variables.id],
+        context?.previousStream,
+      );
     },
     onSettled: (_, __, variables) => {
       if (domainId) {
@@ -1567,8 +1572,9 @@ export function Navigator({}: NavigatorProps) {
   const duplicateStreamMutation = useMutation({
     mutationFn: async (stream: Stream) => {
       const siblingStreams =
-        streams?.filter((candidate) => candidate.cabinet_id === stream.cabinet_id) ??
-        [];
+        streams?.filter(
+          (candidate) => candidate.cabinet_id === stream.cabinet_id,
+        ) ?? [];
       const sortOrder = getNextSortOrder(siblingStreams);
 
       const { data: newStream, error: newStreamError } = await supabase
@@ -1593,14 +1599,15 @@ export function Navigator({}: NavigatorProps) {
       const sectionMap = new Map<string, string>();
       const documentMap = new Map<string, string>();
 
-      const { data: sourceDocuments, error: sourceDocumentsError } = await supabase
-        .from("documents")
-        .select(
-          "id, title, original_filename, content_type, storage_path, storage_bucket, import_status, file_size_bytes, extracted_markdown, extraction_metadata, source_metadata, created_at, created_by, updated_at, thumbnail_path, thumbnail_status, thumbnail_updated_at, thumbnail_error",
-        )
-        .eq("stream_id", stream.id)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: true });
+      const { data: sourceDocuments, error: sourceDocumentsError } =
+        await supabase
+          .from("documents")
+          .select(
+            "id, title, original_filename, content_type, storage_path, storage_bucket, import_status, file_size_bytes, extracted_markdown, extraction_metadata, source_metadata, created_at, created_by, updated_at, thumbnail_path, thumbnail_status, thumbnail_updated_at, thumbnail_error",
+          )
+          .eq("stream_id", stream.id)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: true });
 
       if (sourceDocumentsError) throw sourceDocumentsError;
 
@@ -1670,7 +1677,9 @@ export function Navigator({}: NavigatorProps) {
               created_at: chunk.created_at,
             };
           })
-          .filter((chunk): chunk is NonNullable<typeof chunk> => chunk !== null);
+          .filter(
+            (chunk): chunk is NonNullable<typeof chunk> => chunk !== null,
+          );
 
         if (chunkInserts.length > 0) {
           const { error: insertChunksError } = await supabase
@@ -1693,21 +1702,22 @@ export function Navigator({}: NavigatorProps) {
       if (sourceEntriesError) throw sourceEntriesError;
 
       for (const sourceEntry of sourceEntries ?? []) {
-        const { data: insertedEntry, error: insertedEntryError } = await supabase
-          .from("entries")
-          .insert({
-            stream_id: duplicatedStream.id,
-            created_at: sourceEntry.created_at,
-            updated_at: sourceEntry.updated_at,
-            is_draft: sourceEntry.is_draft,
-            entry_kind: sourceEntry.entry_kind,
-            parent_commit_id: null,
-            merge_source_commit_id: null,
-            merge_source_branch_name: sourceEntry.merge_source_branch_name,
-            merge_target_branch_name: sourceEntry.merge_target_branch_name,
-          } as EntryInsert)
-          .select()
-          .single();
+        const { data: insertedEntry, error: insertedEntryError } =
+          await supabase
+            .from("entries")
+            .insert({
+              stream_id: duplicatedStream.id,
+              created_at: sourceEntry.created_at,
+              updated_at: sourceEntry.updated_at,
+              is_draft: sourceEntry.is_draft,
+              entry_kind: sourceEntry.entry_kind,
+              parent_commit_id: null,
+              merge_source_commit_id: null,
+              merge_source_branch_name: sourceEntry.merge_source_branch_name,
+              merge_target_branch_name: sourceEntry.merge_target_branch_name,
+            } as EntryInsert)
+            .select()
+            .single();
 
         if (insertedEntryError || !insertedEntry) {
           throw insertedEntryError ?? new Error("Failed to duplicate entries");
@@ -1742,13 +1752,14 @@ export function Navigator({}: NavigatorProps) {
 
       const sourceEntryIds = Array.from(entryMap.keys());
       if (sourceEntryIds.length > 0) {
-        const { data: sourceSections, error: sourceSectionsError } = await supabase
-          .from("sections")
-          .select(
-            "id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format, sort_order, section_type, file_display_mode, created_at, updated_at",
-          )
-          .in("entry_id", sourceEntryIds)
-          .order("sort_order", { ascending: true });
+        const { data: sourceSections, error: sourceSectionsError } =
+          await supabase
+            .from("sections")
+            .select(
+              "id, entry_id, persona_id, persona_name_snapshot, content_json, raw_markdown, content_format, sort_order, section_type, file_display_mode, created_at, updated_at",
+            )
+            .in("entry_id", sourceEntryIds)
+            .order("sort_order", { ascending: true });
 
         if (sourceSectionsError) throw sourceSectionsError;
 
@@ -1774,7 +1785,9 @@ export function Navigator({}: NavigatorProps) {
               .single();
 
           if (insertedSectionError || !insertedSection) {
-            throw insertedSectionError ?? new Error("Failed to duplicate sections");
+            throw (
+              insertedSectionError ?? new Error("Failed to duplicate sections")
+            );
           }
 
           sectionMap.set(sourceSection.id, (insertedSection as Section).id);
@@ -1795,7 +1808,9 @@ export function Navigator({}: NavigatorProps) {
           const attachmentInserts = (sourceAttachments ?? [])
             .map((attachment) => {
               const duplicatedSectionId = sectionMap.get(attachment.section_id);
-              const duplicatedDocumentId = documentMap.get(attachment.document_id);
+              const duplicatedDocumentId = documentMap.get(
+                attachment.document_id,
+              );
               if (!duplicatedSectionId || !duplicatedDocumentId) return null;
               return {
                 section_id: duplicatedSectionId,
@@ -1821,11 +1836,13 @@ export function Navigator({}: NavigatorProps) {
           }
         }
 
-        const { data: sourceDocumentEntryLinks, error: sourceDocumentEntryLinksError } =
-          await supabase
-            .from("document_entry_links")
-            .select("document_id, entry_id, relationship_type")
-            .in("entry_id", sourceEntryIds);
+        const {
+          data: sourceDocumentEntryLinks,
+          error: sourceDocumentEntryLinksError,
+        } = await supabase
+          .from("document_entry_links")
+          .select("document_id, entry_id, relationship_type")
+          .in("entry_id", sourceEntryIds);
 
         if (sourceDocumentEntryLinksError) throw sourceDocumentEntryLinksError;
 
@@ -1847,13 +1864,16 @@ export function Navigator({}: NavigatorProps) {
             .from("document_entry_links")
             .insert(documentEntryLinkInserts as DocumentEntryLinkInsert[]);
 
-          if (insertDocumentEntryLinksError) throw insertDocumentEntryLinksError;
+          if (insertDocumentEntryLinksError)
+            throw insertDocumentEntryLinksError;
         }
       }
 
       const { data: sourceCanvas, error: sourceCanvasError } = await supabase
         .from("canvases")
-        .select("id, content_json, raw_markdown, content_format, created_at, updated_at")
+        .select(
+          "id, content_json, raw_markdown, content_format, created_at, updated_at",
+        )
         .eq("stream_id", stream.id)
         .maybeSingle();
 
@@ -1875,23 +1895,25 @@ export function Navigator({}: NavigatorProps) {
         if (upsertCanvasError) throw upsertCanvasError;
       }
 
-      const { data: duplicatedCanvas, error: duplicatedCanvasError } = await supabase
-        .from("canvases")
-        .select("id, stream_id")
-        .eq("stream_id", duplicatedStream.id)
-        .maybeSingle();
+      const { data: duplicatedCanvas, error: duplicatedCanvasError } =
+        await supabase
+          .from("canvases")
+          .select("id, stream_id")
+          .eq("stream_id", duplicatedStream.id)
+          .maybeSingle();
 
       if (duplicatedCanvasError) throw duplicatedCanvasError;
 
       if (duplicatedCanvas) {
-        const { data: sourceVersions, error: sourceVersionsError } = await supabase
-          .from("canvas_versions")
-          .select(
-            "content_json, raw_markdown, content_format, name, summary, created_by, created_at, branch_name, source_entry_id",
-          )
-          .eq("stream_id", stream.id)
-          .is("deleted_at", null)
-          .order("created_at", { ascending: true });
+        const { data: sourceVersions, error: sourceVersionsError } =
+          await supabase
+            .from("canvas_versions")
+            .select(
+              "content_json, raw_markdown, content_format, name, summary, created_by, created_at, branch_name, source_entry_id",
+            )
+            .eq("stream_id", stream.id)
+            .is("deleted_at", null)
+            .order("created_at", { ascending: true });
 
         if (sourceVersionsError) throw sourceVersionsError;
 
@@ -1916,24 +1938,27 @@ export function Navigator({}: NavigatorProps) {
         }
       }
 
-      const { data: sourceBranches, error: sourceBranchesError } = await supabase
-        .from("branches")
-        .select("name, created_at, updated_at, head_commit_id")
-        .eq("stream_id", stream.id)
-        .order("created_at", { ascending: true });
+      const { data: sourceBranches, error: sourceBranchesError } =
+        await supabase
+          .from("branches")
+          .select("name, created_at, updated_at, head_commit_id")
+          .eq("stream_id", stream.id)
+          .order("created_at", { ascending: true });
 
       if (sourceBranchesError) throw sourceBranchesError;
 
       for (const sourceBranch of sourceBranches ?? []) {
-        const { error: insertBranchError } = await supabase.from("branches").insert({
-          stream_id: duplicatedStream.id,
-          name: sourceBranch.name,
-          created_at: sourceBranch.created_at,
-          updated_at: sourceBranch.updated_at,
-          head_commit_id: sourceBranch.head_commit_id
-            ? (entryMap.get(sourceBranch.head_commit_id) ?? null)
-            : null,
-        });
+        const { error: insertBranchError } = await supabase
+          .from("branches")
+          .insert({
+            stream_id: duplicatedStream.id,
+            name: sourceBranch.name,
+            created_at: sourceBranch.created_at,
+            updated_at: sourceBranch.updated_at,
+            head_commit_id: sourceBranch.head_commit_id
+              ? (entryMap.get(sourceBranch.head_commit_id) ?? null)
+              : null,
+          });
 
         if (insertBranchError) throw insertBranchError;
       }
@@ -1951,21 +1976,27 @@ export function Navigator({}: NavigatorProps) {
         addExpandedCabinet(domainId, duplicatedStream.cabinet_id);
       }
       queryClient.invalidateQueries({ queryKey: ["streams", domainId] });
-      queryClient.invalidateQueries({ queryKey: ["entries", duplicatedStream.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["entries", duplicatedStream.id],
+      });
       queryClient.invalidateQueries({
         queryKey: ["entries-xml", duplicatedStream.id],
       });
       if (userId) {
         queryClient.invalidateQueries({ queryKey: ["documents", userId] });
       }
-      queryClient.invalidateQueries({ queryKey: ["canvas", duplicatedStream.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["canvas", duplicatedStream.id],
+      });
       queryClient.invalidateQueries({
         queryKey: ["canvas-versions", duplicatedStream.id],
       });
       queryClient.invalidateQueries({
         queryKey: ["canvas-latest-version", duplicatedStream.id],
       });
-      queryClient.invalidateQueries({ queryKey: ["branches", duplicatedStream.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["branches", duplicatedStream.id],
+      });
       queryClient.invalidateQueries({
         queryKey: ["entries-lineage", duplicatedStream.id],
       });
@@ -2216,7 +2247,8 @@ export function Navigator({}: NavigatorProps) {
   ) => {
     const now = Date.now();
     const lastClick = lastClickRef.current;
-    const isDoubleClick = lastClick && lastClick.id === id && now - lastClick.time < 300;
+    const isDoubleClick =
+      lastClick && lastClick.id === id && now - lastClick.time < 300;
 
     // Block interaction if a navigation is already pending
     // Allow double clicks to punch through and trigger rename

@@ -153,9 +153,7 @@ const KNOWN_ASSISTANT_HINTS: Array<{
   {
     provider: "Mistral",
     assistant: "Mistral",
-    modelPatterns: [
-      /\b(mistral(?:[-\s]?(?:small|medium|large|next|nemo)))\b/i,
-    ],
+    modelPatterns: [/\b(mistral(?:[-\s]?(?:small|medium|large|next|nemo)))\b/i],
     assistantPatterns: [/\bmistral\b/i],
   },
   {
@@ -452,7 +450,9 @@ function sanitizeCanvasMarkdown(markdown: string): string {
       continue;
     }
 
-    const inlineBulletMatch = trimmed.match(/^(.+?:\*\*|.+?:)\s+\+\s+\\?\*\s+(.+)$/);
+    const inlineBulletMatch = trimmed.match(
+      /^(.+?:\*\*|.+?:)\s+\+\s+\\?\*\s+(.+)$/,
+    );
     if (inlineBulletMatch) {
       result.push(inlineBulletMatch[1]);
       result.push(`- ${inlineBulletMatch[2]}`);
@@ -542,7 +542,11 @@ export function applyCanvasMarkdownDiff(
     }
 
     if (parsed.type === "remove") {
-      const matchIndex = findMatchingCanvasLine(currentLines, cursor, parsed.content);
+      const matchIndex = findMatchingCanvasLine(
+        currentLines,
+        cursor,
+        parsed.content,
+      );
       if (matchIndex !== -1) {
         flushUntil(matchIndex);
         cursor = matchIndex + 1;
@@ -551,7 +555,11 @@ export function applyCanvasMarkdownDiff(
     }
 
     if (parsed.type === "context") {
-      const matchIndex = findMatchingCanvasLine(currentLines, cursor, parsed.content);
+      const matchIndex = findMatchingCanvasLine(
+        currentLines,
+        cursor,
+        parsed.content,
+      );
       if (matchIndex !== -1) {
         flushUntil(matchIndex);
         result.push(currentLines[matchIndex]);
@@ -720,7 +728,8 @@ export function resolveCanvasBlocks(
       trimmedLine.startsWith("- ")
     );
   });
-  const hasDiffMarkers = hasAdditionMarkers || (hasRemovalMarkers && hasContextMarkers);
+  const hasDiffMarkers =
+    hasAdditionMarkers || (hasRemovalMarkers && hasContextMarkers);
 
   if (hasDiffMarkers) {
     return {
@@ -800,7 +809,11 @@ function canonicalizeProvider(value: string | null | undefined) {
   if (normalized.includes("google") || normalized.includes("gemini")) {
     return "Google";
   }
-  if (normalized.includes("xai") || normalized.includes("x.ai") || normalized.includes("grok")) {
+  if (
+    normalized.includes("xai") ||
+    normalized.includes("x.ai") ||
+    normalized.includes("grok")
+  ) {
     return "xAI";
   }
   if (normalized.includes("perplexity") || normalized.includes("sonar")) {
@@ -882,9 +895,7 @@ function canonicalizeAssistant(value: string | null | undefined) {
   return cleaned;
 }
 
-function pickFirstValue(
-  candidates: Array<string | null | undefined>,
-) {
+function pickFirstValue(candidates: Array<string | null | undefined>) {
   for (const candidate of candidates) {
     const cleaned = cleanIdentityValue(candidate);
     if (cleaned) return cleaned;
@@ -920,10 +931,7 @@ function buildAssistantDisplayLabel(
   return assistant ?? provider ?? fallbackLabel;
 }
 
-function extractTagAttributes(
-  text: string,
-  tagNames: string[],
-) {
+function extractTagAttributes(text: string, tagNames: string[]) {
   for (const tagName of tagNames) {
     const pattern = new RegExp(`<${tagName}\\b([^>]*)>`, "i");
     const match = pattern.exec(text);
@@ -934,10 +942,7 @@ function extractTagAttributes(
   return null;
 }
 
-function extractAttributeValue(
-  attributes: string | null,
-  keys: string[],
-) {
+function extractAttributeValue(attributes: string | null, keys: string[]) {
   if (!attributes) return null;
   for (const key of keys) {
     const pattern = new RegExp(`${key}\\s*=\\s*["']([^"']+)["']`, "i");
@@ -953,7 +958,9 @@ function extractIdentityFieldsFromText(text: string) {
   const source = text.replace(/\r\n/g, "\n");
   return {
     assistant: pickFirstValue([
-      source.match(/\bassistant(?:\s+name|\s+identity|\s+product)?\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
+      source.match(
+        /\bassistant(?:\s+name|\s+identity|\s+product)?\s*[:=-]\s*([^\n;|<]+)/i,
+      )?.[1],
       source.match(/\bname\s*[:=-]\s*([^\n;|<]+)/i)?.[1],
       source.match(/\bwho\s+are\s+you\s*[:?-]?\s*([^\n<]+)/i)?.[1],
     ]),
@@ -972,13 +979,17 @@ function extractIdentityFieldsFromText(text: string) {
 function extractIdentityFieldsFromJson(text: string) {
   return {
     assistant: pickFirstValue([
-      text.match(/"(?:assistant|assistant_name|name|product)"\s*:\s*"([^"]+)"/i)?.[1],
+      text.match(
+        /"(?:assistant|assistant_name|name|product)"\s*:\s*"([^"]+)"/i,
+      )?.[1],
     ]),
     provider: pickFirstValue([
       text.match(/"(?:provider|vendor|company)"\s*:\s*"([^"]+)"/i)?.[1],
     ]),
     model: pickFirstValue([
-      text.match(/"(?:model|model_name|model_id|engine)"\s*:\s*"([^"]+)"/i)?.[1],
+      text.match(
+        /"(?:model|model_name|model_id|engine)"\s*:\s*"([^"]+)"/i,
+      )?.[1],
     ]),
   };
 }
@@ -1025,7 +1036,10 @@ export function detectBridgeAssistantIdentity(
     "assistant_metadata",
     "metadata",
   ];
-  const identityBlock = extractTagContentByAliases(normalized, identityTagNames);
+  const identityBlock = extractTagContentByAliases(
+    normalized,
+    identityTagNames,
+  );
   const identityAttributes = extractTagAttributes(normalized, identityTagNames);
 
   const fromIdentityBlock = identityBlock
@@ -1037,17 +1051,39 @@ export function detectBridgeAssistantIdentity(
             "name",
             "product",
           ]),
-          extractAttributeValue(identityAttributes, ["assistant", "assistant_name", "name"]),
+          extractAttributeValue(identityAttributes, [
+            "assistant",
+            "assistant_name",
+            "name",
+          ]),
           extractIdentityFieldsFromText(identityBlock).assistant,
         ]),
         provider: pickFirstValue([
-          extractTagContentByAliases(identityBlock, ["provider", "vendor", "company"]),
-          extractAttributeValue(identityAttributes, ["provider", "vendor", "company"]),
+          extractTagContentByAliases(identityBlock, [
+            "provider",
+            "vendor",
+            "company",
+          ]),
+          extractAttributeValue(identityAttributes, [
+            "provider",
+            "vendor",
+            "company",
+          ]),
           extractIdentityFieldsFromText(identityBlock).provider,
         ]),
         model: pickFirstValue([
-          extractTagContentByAliases(identityBlock, ["model", "model_name", "model_id", "engine"]),
-          extractAttributeValue(identityAttributes, ["model", "model_name", "model_id", "engine"]),
+          extractTagContentByAliases(identityBlock, [
+            "model",
+            "model_name",
+            "model_id",
+            "engine",
+          ]),
+          extractAttributeValue(identityAttributes, [
+            "model",
+            "model_name",
+            "model_id",
+            "engine",
+          ]),
           extractIdentityFieldsFromText(identityBlock).model,
         ]),
       }
@@ -1061,12 +1097,23 @@ export function detectBridgeAssistantIdentity(
       extractTagContentByAliases(normalized, ["provider", "vendor", "company"]),
     ]),
     model: pickFirstValue([
-      extractTagContentByAliases(normalized, ["model", "model_name", "model_id", "engine"]),
+      extractTagContentByAliases(normalized, [
+        "model",
+        "model_name",
+        "model_id",
+        "engine",
+      ]),
     ]),
   };
-  const fromInlineFields = extractIdentityFieldsFromText(identityBlock ?? normalized);
-  const fromJsonFields = extractIdentityFieldsFromJson(identityBlock ?? normalized);
-  const fromHeuristics = detectKnownAssistantIdentity(identityBlock ?? normalized);
+  const fromInlineFields = extractIdentityFieldsFromText(
+    identityBlock ?? normalized,
+  );
+  const fromJsonFields = extractIdentityFieldsFromJson(
+    identityBlock ?? normalized,
+  );
+  const fromHeuristics = detectKnownAssistantIdentity(
+    identityBlock ?? normalized,
+  );
 
   const sources: Array<{
     source: BridgeAssistantIdentitySource;
@@ -1200,12 +1247,8 @@ export const ResponseParser = forwardRef<
     const [applyError, setApplyError] = useState<string | null>(null);
     const [isApplying, setIsApplying] = useState(false);
     const [, setParseWarnings] = useState<string[]>([]);
-    const [, setCanvasParseError] = useState<string | null>(
-      null,
-    );
-    const [previewMode] = useState<
-      "current" | "incoming" | "merged"
-    >("merged");
+    const [, setCanvasParseError] = useState<string | null>(null);
+    const [previewMode] = useState<"current" | "incoming" | "merged">("merged");
     const [, setUsePlainText] = useState(false);
     const [canvasApplyMode, setCanvasApplyMode] = useState<"merge" | "replace">(
       "merge",
@@ -1216,9 +1259,10 @@ export const ResponseParser = forwardRef<
     const [assistantIdentity, setAssistantIdentity] =
       useState<BridgeAssistantIdentity | null>(null);
 
-
     const supabase = createClient();
-    const { currentBranch, currentBranchHeadId } = useLogBranchContext(streamId ?? "");
+    const { currentBranch, currentBranchHeadId } = useLogBranchContext(
+      streamId ?? "",
+    );
     const queryClient = useQueryClient();
     const setLiveContent = useCanvasDraft((state) => state.setLiveContent);
     const setLiveMarkdown = useCanvasDraft((state) => state.setLiveMarkdown);
@@ -1244,7 +1288,6 @@ export const ResponseParser = forwardRef<
       onPastedXMLChange("");
       setLastParsedContent(null);
     };
-
 
     useImperativeHandle(ref, () => ({
       parse: parseResponse,
@@ -1283,7 +1326,9 @@ export const ResponseParser = forwardRef<
       streamId,
     ]);
 
-    const canApply = !isApplying && ((!!thoughtLog && canProcessLog) || (!!mergedBlocks && canProcessCanvas));
+    const canApply =
+      !isApplying &&
+      ((!!thoughtLog && canProcessLog) || (!!mergedBlocks && canProcessCanvas));
     const canParse = !!pastedXML.trim();
     const hasParsed = !!thoughtLog || !!incomingBlocks || !!mergedBlocks;
 
@@ -1304,8 +1349,6 @@ export const ResponseParser = forwardRef<
       // It closes over the latest state and is only triggered by parse guard inputs.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [canParse, pastedXML, lastParsedContent, parseError]);
-
-
 
     const parseCurrentResponse = async (): Promise<ParsedBridgeResponse> => {
       if (!streamId) {
@@ -1385,25 +1428,29 @@ export const ResponseParser = forwardRef<
         nextThoughtLog = normalizeOaiCitationsInMarkdown(
           appendCitationSection(
             thoughtContent,
-            citationsContent ? normalizeOaiCitationsInMarkdown(citationsContent) : null,
+            citationsContent
+              ? normalizeOaiCitationsInMarkdown(citationsContent)
+              : null,
           ),
         );
       }
 
       let resolvedBlocks: MarkdownBlock[] | null = null;
       if (canvasContent) {
-        const normalizedCanvasContent =
-          normalizeOaiCitationsInMarkdown(
-            appendCitationSection(
-              canvasContent,
-              citationsContent ? normalizeOaiCitationsInMarkdown(citationsContent) : null,
-            ),
-          );
-        const { data: fetchedCanvas, error: currentCanvasError } = await supabase
-          .from("canvases")
-          .select("id, content_json, raw_markdown, updated_at")
-          .eq("stream_id", streamId)
-          .maybeSingle();
+        const normalizedCanvasContent = normalizeOaiCitationsInMarkdown(
+          appendCitationSection(
+            canvasContent,
+            citationsContent
+              ? normalizeOaiCitationsInMarkdown(citationsContent)
+              : null,
+          ),
+        );
+        const { data: fetchedCanvas, error: currentCanvasError } =
+          await supabase
+            .from("canvases")
+            .select("id, content_json, raw_markdown, updated_at")
+            .eq("stream_id", streamId)
+            .maybeSingle();
         if (currentCanvasError) throw currentCanvasError;
         currentCanvasRecord = fetchedCanvas;
         if (fetchedCanvas) {
@@ -1411,7 +1458,9 @@ export const ResponseParser = forwardRef<
         }
         const currentBlocks =
           (fetchedCanvas?.content_json as unknown as MarkdownBlock[]) || [];
-        const currentCanvasMarkdown = storedContentToMarkdown(fetchedCanvas ?? {});
+        const currentCanvasMarkdown = storedContentToMarkdown(
+          fetchedCanvas ?? {},
+        );
 
         const result = (() => {
           if (canvasJsonContent) {
@@ -1422,8 +1471,8 @@ export const ResponseParser = forwardRef<
               format: "json" as const,
             };
           }
-            return resolveCanvasBlocks(normalizedCanvasContent, currentBlocks);
-          })();
+          return resolveCanvasBlocks(normalizedCanvasContent, currentBlocks);
+        })();
 
         if (result.error) {
           nextCanvasParseError = result.error;
@@ -1471,11 +1520,12 @@ export const ResponseParser = forwardRef<
 
       if (baseUpdatedAt) {
         if (currentCanvasRecord === undefined) {
-          const { data: fetchedCanvas, error: currentCanvasError } = await supabase
-            .from("canvases")
-            .select("id, content_json, raw_markdown, updated_at")
-            .eq("stream_id", streamId)
-            .maybeSingle();
+          const { data: fetchedCanvas, error: currentCanvasError } =
+            await supabase
+              .from("canvases")
+              .select("id, content_json, raw_markdown, updated_at")
+              .eq("stream_id", streamId)
+              .maybeSingle();
           if (currentCanvasError) throw currentCanvasError;
           currentCanvasRecord = fetchedCanvas;
           if (fetchedCanvas) {
@@ -1495,11 +1545,12 @@ export const ResponseParser = forwardRef<
       let merged: MarkdownBlock[] | null = null;
       if (canProcessCanvas && resolvedBlocks) {
         if (currentCanvasRecord === undefined) {
-          const { data: fetchedCanvas, error: currentCanvasError } = await supabase
-            .from("canvases")
-            .select("id, content_json, raw_markdown, updated_at")
-            .eq("stream_id", streamId)
-            .maybeSingle();
+          const { data: fetchedCanvas, error: currentCanvasError } =
+            await supabase
+              .from("canvases")
+              .select("id, content_json, raw_markdown, updated_at")
+              .eq("stream_id", streamId)
+              .maybeSingle();
           if (currentCanvasError) throw currentCanvasError;
           currentCanvasRecord = fetchedCanvas;
           if (fetchedCanvas) {
@@ -1507,7 +1558,8 @@ export const ResponseParser = forwardRef<
           }
         }
         const currentBlocks =
-          (currentCanvasRecord?.content_json as unknown as MarkdownBlock[]) || [];
+          (currentCanvasRecord?.content_json as unknown as MarkdownBlock[]) ||
+          [];
         const currentMap = new Map(
           currentBlocks.map((block) => [block.id, block]),
         );
@@ -1590,7 +1642,6 @@ export const ResponseParser = forwardRef<
       }
     };
 
-
     const handleApply = async (parsedOverride?: ParsedBridgeResponse) => {
       if (!streamId) return false;
       const parsed = parsedOverride ?? latestParsedRef.current;
@@ -1611,54 +1662,62 @@ export const ResponseParser = forwardRef<
         if (nextThoughtLog && canProcessLog) {
           const blocks = toParagraphBlocks(nextThoughtLog);
 
-          const { data: existingBranch, error: existingBranchError } = await supabase
-            .from("branches")
-            .select("id, head_commit_id")
-            .eq("stream_id", streamId)
-            .eq("name", currentBranch)
-            .maybeSingle();
+          const { data: existingBranch, error: existingBranchError } =
+            await supabase
+              .from("branches")
+              .select("id, head_commit_id")
+              .eq("stream_id", streamId)
+              .eq("name", currentBranch)
+              .maybeSingle();
           if (existingBranchError) throw existingBranchError;
 
           let branchId = existingBranch?.id ?? null;
           let branchHeadId =
-            (existingBranch as { head_commit_id?: string | null } | null)?.head_commit_id ??
-            currentBranchHeadId;
+            (existingBranch as { head_commit_id?: string | null } | null)
+              ?.head_commit_id ?? currentBranchHeadId;
           if (!branchHeadId) {
             const cachedLatestEntryId = queryClient.getQueryData<string>([
               "latest-entry-id",
               streamId,
             ]);
-            if (typeof cachedLatestEntryId === "string" && cachedLatestEntryId.trim()) {
+            if (
+              typeof cachedLatestEntryId === "string" &&
+              cachedLatestEntryId.trim()
+            ) {
               branchHeadId = cachedLatestEntryId;
             } else {
-              const { data: latestEntry, error: latestEntryError } = await supabase
-                .from("entries")
-                .select("id")
-                .eq("stream_id", streamId)
-                .eq("is_draft", false)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
+              const { data: latestEntry, error: latestEntryError } =
+                await supabase
+                  .from("entries")
+                  .select("id")
+                  .eq("stream_id", streamId)
+                  .eq("is_draft", false)
+                  .order("created_at", { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
               if (latestEntryError) throw latestEntryError;
               branchHeadId =
-                latestEntry && typeof (latestEntry as { id?: unknown }).id === "string"
+                latestEntry &&
+                typeof (latestEntry as { id?: unknown }).id === "string"
                   ? ((latestEntry as { id?: string }).id ?? null)
                   : null;
             }
           }
           if (!branchId) {
-            const { data: createdBranch, error: branchInsertError } = await supabase
-              .from("branches")
-              .insert({
-                stream_id: streamId,
-                name: currentBranch,
-              })
-              .select("id, head_commit_id")
-              .single();
+            const { data: createdBranch, error: branchInsertError } =
+              await supabase
+                .from("branches")
+                .insert({
+                  stream_id: streamId,
+                  name: currentBranch,
+                })
+                .select("id, head_commit_id")
+                .single();
             if (branchInsertError || !createdBranch) throw branchInsertError;
             branchId = createdBranch.id;
             branchHeadId =
-              (createdBranch as { head_commit_id?: string | null }).head_commit_id ?? branchHeadId;
+              (createdBranch as { head_commit_id?: string | null })
+                .head_commit_id ?? branchHeadId;
           }
           appliedBranchHeadId = branchHeadId ?? null;
 
@@ -1674,7 +1733,10 @@ export const ResponseParser = forwardRef<
               .limit(1)
               .maybeSingle();
 
-            if (existing && typeof (existing as { id?: unknown }).id === "string") {
+            if (
+              existing &&
+              typeof (existing as { id?: unknown }).id === "string"
+            ) {
               aiPersonaId = (existing as { id?: string }).id;
             } else {
               const defaultIcon = "Robot";
@@ -1692,8 +1754,14 @@ export const ResponseParser = forwardRef<
                 .maybeSingle();
 
               if (createErr) {
-                console.warn("Failed to create AI persona, falling back to snapshot name:", createErr);
-              } else if (created && typeof (created as { id?: unknown }).id === "string") {
+                console.warn(
+                  "Failed to create AI persona, falling back to snapshot name:",
+                  createErr,
+                );
+              } else if (
+                created &&
+                typeof (created as { id?: unknown }).id === "string"
+              ) {
                 aiPersonaId = (created as { id?: string }).id;
               }
             }
@@ -1754,7 +1822,9 @@ export const ResponseParser = forwardRef<
             queryKey: ["bridge-quick-entries", streamId],
           });
           queryClient.invalidateQueries({ queryKey: ["branches", streamId] });
-          queryClient.invalidateQueries({ queryKey: ["entries-lineage", streamId] });
+          queryClient.invalidateQueries({
+            queryKey: ["entries-lineage", streamId],
+          });
           queryClient.invalidateQueries({ queryKey: ["graph-entries"] });
           queryClient.invalidateQueries({
             queryKey: ["graph-branches", streamId],
@@ -1804,16 +1874,19 @@ export const ResponseParser = forwardRef<
             canvasId = createdCanvas.id;
           }
 
-          queryClient.setQueryData(["canvas", streamId], (previous: Record<
-            string,
-            unknown
-          > | undefined) => ({
-            ...(previous ?? {}),
-            id: canvasId,
-            stream_id: streamId,
-            ...nextStoredPayload,
-          }));
-          setLiveContent(streamId, nextMergedBlocks as unknown as PartialBlock[]);
+          queryClient.setQueryData(
+            ["canvas", streamId],
+            (previous: Record<string, unknown> | undefined) => ({
+              ...(previous ?? {}),
+              id: canvasId,
+              stream_id: streamId,
+              ...nextStoredPayload,
+            }),
+          );
+          setLiveContent(
+            streamId,
+            nextMergedBlocks as unknown as PartialBlock[],
+          );
           setLiveMarkdown(streamId, nextRawMarkdown);
           markClean(streamId);
           setSyncStatus(streamId, "idle");
@@ -1903,7 +1976,7 @@ export const ResponseParser = forwardRef<
 
     return (
       <div className="bridge-response-parser flex flex-col gap-4 flex-1 min-h-0">
-        {(!hasParsed && !isApplying) && (
+        {!hasParsed && !isApplying && (
           <div className="border border-border-default bg-surface-subtle p-8 text-center">
             <p className="text-text-muted">
               Waiting for response or import to review the execution plan.
@@ -1926,7 +1999,8 @@ export const ResponseParser = forwardRef<
                   {assistantIdentity.displayLabel}
                 </span>
                 {assistantIdentity.provider &&
-                assistantIdentity.provider !== assistantIdentity.displayLabel ? (
+                assistantIdentity.provider !==
+                  assistantIdentity.displayLabel ? (
                   <span> · {assistantIdentity.provider}</span>
                 ) : null}
               </div>

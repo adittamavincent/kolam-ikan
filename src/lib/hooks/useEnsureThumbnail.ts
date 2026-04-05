@@ -15,7 +15,9 @@ export function useEnsureThumbnail({
   thumbnailStatus,
 }: UseEnsureThumbnailArgs) {
   const [localPath, setLocalPath] = useState<string | null>(null);
-  const [localStatus, setLocalStatus] = useState<string | null>(thumbnailStatus ?? null);
+  const [localStatus, setLocalStatus] = useState<string | null>(
+    thumbnailStatus ?? null,
+  );
   const [retryTick, setRetryTick] = useState(0);
   const requestedRef = useRef(false);
   const forceAttemptedRef = useRef(false);
@@ -52,9 +54,10 @@ export function useEnsureThumbnail({
           signal: controller.signal,
         });
 
-        const payload = (await resp.json().catch(() => null)) as
-          | { status?: string; thumbnailPath?: string | null }
-          | null;
+        const payload = (await resp.json().catch(() => null)) as {
+          status?: string;
+          thumbnailPath?: string | null;
+        } | null;
 
         if (payload?.thumbnailPath) {
           setLocalPath(payload.thumbnailPath);

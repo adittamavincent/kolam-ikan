@@ -1,9 +1,9 @@
-import type {
-  TimelineItemKind,
-  TimelineItemSpec,
-} from "@/lib/types/timeline";
+import type { TimelineItemKind, TimelineItemSpec } from "@/lib/types/timeline";
 
-export const TIMELINE_ITEM_REGISTRY: Record<TimelineItemKind, TimelineItemSpec> = {
+export const TIMELINE_ITEM_REGISTRY: Record<
+  TimelineItemKind,
+  TimelineItemSpec
+> = {
   entry: {
     kind: "entry",
     label: "Entry",

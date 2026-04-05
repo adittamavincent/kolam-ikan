@@ -39,7 +39,8 @@ function blocksToMarkdown(blocks: MarkdownBlock[]): string {
       const items: string[] = [];
       while (i < blocks.length && blocks[i].type === "bulletListItem") {
         const itemText =
-          blocks[i].content?.map((c: { text: string }) => c.text).join("") || "";
+          blocks[i].content?.map((c: { text: string }) => c.text).join("") ||
+          "";
         items.push(`- ${itemText}`);
         i++;
       }
@@ -52,7 +53,8 @@ function blocksToMarkdown(blocks: MarkdownBlock[]): string {
       let num = 1;
       while (i < blocks.length && blocks[i].type === "numberedListItem") {
         const itemText =
-          blocks[i].content?.map((c: { text: string }) => c.text).join("") || "";
+          blocks[i].content?.map((c: { text: string }) => c.text).join("") ||
+          "";
         items.push(`${num}. ${itemText}`);
         num++;
         i++;

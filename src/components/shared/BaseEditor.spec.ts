@@ -16,7 +16,9 @@ import { EditorSelection, EditorState } from "@codemirror/state";
 
 describe("computeMarkdownListContinuation", () => {
   it("continues ordered lists with incremented numbering", () => {
-    expect(computeMarkdownListContinuation("1. First", "1. First".length)).toEqual({
+    expect(
+      computeMarkdownListContinuation("1. First", "1. First".length),
+    ).toEqual({
       from: "1. First".length,
       nextMarker: "2. ",
       replacement: "\n2. ",
@@ -113,7 +115,9 @@ describe("computeMarkdownListContinuation", () => {
       replacement: "",
     });
 
-    expect(computeMarkdownListContinuation("    5) ", "    5) ".length)).toEqual({
+    expect(
+      computeMarkdownListContinuation("    5) ", "    5) ".length),
+    ).toEqual({
       exitList: true,
       from: 0,
       nextMarker: "",
@@ -155,7 +159,9 @@ describe("continueMarkdownListCommand", () => {
   it("collapses a preceding blank line when exiting an empty ordered list item", () => {
     const state = EditorState.create({
       doc: ["1. one", "", "2. "].join("\n"),
-      selection: EditorSelection.cursor(["1. one", "", "2. "].join("\n").length),
+      selection: EditorSelection.cursor(
+        ["1. one", "", "2. "].join("\n").length,
+      ),
     });
 
     let nextState: EditorState | null = null;
@@ -249,7 +255,9 @@ describe("continueMarkdownListCommand", () => {
     }
 
     const finalState: EditorState = nextState;
-    expect(finalState.doc.toString()).toBe(["- parent", "  - child", ""].join("\n"));
+    expect(finalState.doc.toString()).toBe(
+      ["- parent", "  - child", ""].join("\n"),
+    );
     expect(finalState.selection.main.from).toBe(finalState.doc.length);
   });
 
@@ -275,8 +283,12 @@ describe("continueMarkdownListCommand", () => {
     }
 
     const dottedFinalState: EditorState = dottedNextState;
-    expect(dottedFinalState.doc.toString()).toBe(["1. root", "  2. child", ""].join("\n"));
-    expect(dottedFinalState.selection.main.from).toBe(dottedFinalState.doc.length);
+    expect(dottedFinalState.doc.toString()).toBe(
+      ["1. root", "  2. child", ""].join("\n"),
+    );
+    expect(dottedFinalState.selection.main.from).toBe(
+      dottedFinalState.doc.length,
+    );
 
     const parenDoc = ["1) root", "  2) child", "  3) "].join("\n");
     const parenState = EditorState.create({
@@ -295,12 +307,18 @@ describe("continueMarkdownListCommand", () => {
     expect(parenHandled).toBe(true);
     expect(parenNextState).not.toBeNull();
     if (!parenNextState) {
-      throw new Error("Expected ordered paren list continuation command to dispatch");
+      throw new Error(
+        "Expected ordered paren list continuation command to dispatch",
+      );
     }
 
     const parenFinalState: EditorState = parenNextState;
-    expect(parenFinalState.doc.toString()).toBe(["1) root", "  2) child", ""].join("\n"));
-    expect(parenFinalState.selection.main.from).toBe(parenFinalState.doc.length);
+    expect(parenFinalState.doc.toString()).toBe(
+      ["1) root", "  2) child", ""].join("\n"),
+    );
+    expect(parenFinalState.selection.main.from).toBe(
+      parenFinalState.doc.length,
+    );
   });
 
   it("collapses whitespace-only blank lines before an empty list item when exiting", () => {
@@ -350,7 +368,9 @@ describe("continueMarkdownListCommand", () => {
       throw new Error("Expected bullet list continuation command to dispatch");
     }
     const bulletFinalState: EditorState = bulletNextState;
-    expect(bulletFinalState.doc.toString()).toBe(["1. numbered", "- bullet", ""].join("\n"));
+    expect(bulletFinalState.doc.toString()).toBe(
+      ["1. numbered", "- bullet", ""].join("\n"),
+    );
 
     const orderedDoc = ["- bullet", "* bullet 2", "3. "].join("\n");
     const orderedState = EditorState.create({
@@ -372,7 +392,9 @@ describe("continueMarkdownListCommand", () => {
       throw new Error("Expected ordered list continuation command to dispatch");
     }
     const orderedFinalState: EditorState = orderedNextState;
-    expect(orderedFinalState.doc.toString()).toBe(["- bullet", "* bullet 2", ""].join("\n"));
+    expect(orderedFinalState.doc.toString()).toBe(
+      ["- bullet", "* bullet 2", ""].join("\n"),
+    );
   });
 
   it("exits an empty bullet item even when the caret is at the line start", () => {
@@ -478,7 +500,9 @@ describe("continueMarkdownListCommand", () => {
 
     const orderedFinalState: EditorState = orderedNextState;
     expect(orderedFinalState.doc.toString()).toBe("1) body\n");
-    expect(orderedFinalState.selection.main.from).toBe(orderedFinalState.doc.length);
+    expect(orderedFinalState.selection.main.from).toBe(
+      orderedFinalState.doc.length,
+    );
 
     const taskDoc = ["- [ ] body", "- [ ] "].join("\n");
     const taskState = EditorState.create({
@@ -516,9 +540,9 @@ describe("shouldAutoInsertOrderedListSpace", () => {
   });
 
   it("does not trigger in the middle of normal text", () => {
-    expect(shouldAutoInsertOrderedListSpace("version 2", "version 2".length)).toBe(
-      false,
-    );
+    expect(
+      shouldAutoInsertOrderedListSpace("version 2", "version 2".length),
+    ).toBe(false);
   });
 });
 
@@ -528,7 +552,9 @@ describe("shouldIgnoreOrderedListExtraSpace", () => {
   });
 
   it("supports indented ordered markers", () => {
-    expect(shouldIgnoreOrderedListExtraSpace("  3. ", "  3. ".length)).toBe(true);
+    expect(shouldIgnoreOrderedListExtraSpace("  3. ", "  3. ".length)).toBe(
+      true,
+    );
   });
 
   it("does not block spaces once list content has started", () => {
@@ -591,10 +617,38 @@ describe("resolveVisibleOffsetFromMeasuredCharacters", () => {
     expect(
       resolveVisibleOffsetFromMeasuredCharacters(
         [
-          { startOffset: 0, endOffset: 1, left: 0, right: 5, top: 0, bottom: 10 },
-          { startOffset: 1, endOffset: 2, left: 5, right: 10, top: 0, bottom: 10 },
-          { startOffset: 2, endOffset: 3, left: 10, right: 15, top: 0, bottom: 10 },
-          { startOffset: 3, endOffset: 4, left: 15, right: 20, top: 0, bottom: 10 },
+          {
+            startOffset: 0,
+            endOffset: 1,
+            left: 0,
+            right: 5,
+            top: 0,
+            bottom: 10,
+          },
+          {
+            startOffset: 1,
+            endOffset: 2,
+            left: 5,
+            right: 10,
+            top: 0,
+            bottom: 10,
+          },
+          {
+            startOffset: 2,
+            endOffset: 3,
+            left: 10,
+            right: 15,
+            top: 0,
+            bottom: 10,
+          },
+          {
+            startOffset: 3,
+            endOffset: 4,
+            left: 15,
+            right: 20,
+            top: 0,
+            bottom: 10,
+          },
         ],
         80,
         5,
@@ -606,8 +660,22 @@ describe("resolveVisibleOffsetFromMeasuredCharacters", () => {
     expect(
       resolveVisibleOffsetFromMeasuredCharacters(
         [
-          { startOffset: 0, endOffset: 1, left: 20, right: 25, top: 0, bottom: 10 },
-          { startOffset: 1, endOffset: 2, left: 25, right: 30, top: 0, bottom: 10 },
+          {
+            startOffset: 0,
+            endOffset: 1,
+            left: 20,
+            right: 25,
+            top: 0,
+            bottom: 10,
+          },
+          {
+            startOffset: 1,
+            endOffset: 2,
+            left: 25,
+            right: 30,
+            top: 0,
+            bottom: 10,
+          },
         ],
         2,
         5,
@@ -619,10 +687,38 @@ describe("resolveVisibleOffsetFromMeasuredCharacters", () => {
     expect(
       resolveVisibleOffsetFromMeasuredCharacters(
         [
-          { startOffset: 0, endOffset: 1, left: 0, right: 5, top: 0, bottom: 10 },
-          { startOffset: 1, endOffset: 2, left: 5, right: 10, top: 0, bottom: 10 },
-          { startOffset: 2, endOffset: 3, left: 0, right: 5, top: 14, bottom: 24 },
-          { startOffset: 3, endOffset: 4, left: 5, right: 10, top: 14, bottom: 24 },
+          {
+            startOffset: 0,
+            endOffset: 1,
+            left: 0,
+            right: 5,
+            top: 0,
+            bottom: 10,
+          },
+          {
+            startOffset: 1,
+            endOffset: 2,
+            left: 5,
+            right: 10,
+            top: 0,
+            bottom: 10,
+          },
+          {
+            startOffset: 2,
+            endOffset: 3,
+            left: 0,
+            right: 5,
+            top: 14,
+            bottom: 24,
+          },
+          {
+            startOffset: 3,
+            endOffset: 4,
+            left: 5,
+            right: 10,
+            top: 14,
+            bottom: 24,
+          },
         ],
         50,
         18,
@@ -666,8 +762,22 @@ describe("resolveMeasuredTextPositionFromMeasuredCharacters", () => {
     expect(
       resolveMeasuredTextPositionFromMeasuredCharacters(
         [
-          { startOffset: 0, endOffset: 1, left: 0, right: 5, top: 0, bottom: 10 },
-          { startOffset: 1, endOffset: 2, left: 5, right: 10, top: 0, bottom: 10 },
+          {
+            startOffset: 0,
+            endOffset: 1,
+            left: 0,
+            right: 5,
+            top: 0,
+            bottom: 10,
+          },
+          {
+            startOffset: 1,
+            endOffset: 2,
+            left: 5,
+            right: 10,
+            top: 0,
+            bottom: 10,
+          },
         ],
         80,
         5,
@@ -720,11 +830,7 @@ describe("pickRectIndexFromAxis", () => {
 });
 
 describe("shouldTriggerTableEnterForPosition", () => {
-  const tableLines = [
-    "| cl1 | cl2 |",
-    "| --- | --- |",
-    "| x | y |",
-  ];
+  const tableLines = ["| cl1 | cl2 |", "| --- | --- |", "| x | y |"];
 
   it("does not trigger when the cursor is before the first table pipe", () => {
     expect(shouldTriggerTableEnterForPosition(tableLines, 0, 0)).toBe(false);

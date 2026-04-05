@@ -16,17 +16,17 @@ export interface FileAttachmentViewProps {
   importStatus?: string | null;
   progressPercent?: number;
   progressMessage?: string | null;
-  
+
   // Conditional UI features
   variant: "creator" | "log";
   persona?: Persona | null;
-  
+
   // Interactivity (for creator mode)
   previewUrl?: string | null;
   isProcessing?: boolean;
   canOpenParsed?: boolean;
   displayMode?: "inline" | "download" | "external";
-  
+
   // Actions
   onPreviewFile?: () => void;
   onPreviewParsed?: () => void;
@@ -82,7 +82,12 @@ function FileAttachmentActions({
   const shouldShowPreviewFile = showPreviewButtons || !!onPreviewFile;
   const shouldShowPreviewParsed = showPreviewButtons || !!onPreviewParsed;
 
-  if (!shouldShowPreviewFile && !shouldShowPreviewParsed && !previewUrl && !onRemove)
+  if (
+    !shouldShowPreviewFile &&
+    !shouldShowPreviewParsed &&
+    !previewUrl &&
+    !onRemove
+  )
     return null;
 
   return (
@@ -97,12 +102,14 @@ function FileAttachmentActions({
           disabled={!onPreviewFile}
           className="p-1 text-text-muted hover:bg-surface-subtle hover:text-text-default"
           aria-label={`Preview ${title}`}
-          title={onPreviewFile ? "Open file preview" : "File preview unavailable"}
+          title={
+            onPreviewFile ? "Open file preview" : "File preview unavailable"
+          }
         >
           <Eye className="h-4 w-4" />
         </button>
       )}
-      
+
       {shouldShowPreviewParsed && (
         <button
           type="button"
@@ -124,7 +131,7 @@ function FileAttachmentActions({
           <FileText className="h-4 w-4" />
         </button>
       )}
-      
+
       {previewUrl && (
         <a
           href={previewUrl}
@@ -142,7 +149,7 @@ function FileAttachmentActions({
           )}
         </a>
       )}
-      
+
       {onRemove && (
         <button
           type="button"
@@ -241,7 +248,11 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
             disabled={!onPreviewFile}
             className="pointer-events-auto inline-flex h-7 items-center justify-center gap-1.5 border border-border-default bg-surface-default px-2 uppercase tracking-[0.14em] text-text-default transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-subtle"
             aria-label={`Preview ${title}`}
-            title={onPreviewFile ? "Open original file preview" : "File preview unavailable"}
+            title={
+              onPreviewFile
+                ? "Open original file preview"
+                : "File preview unavailable"
+            }
           >
             <Eye className="h-4 w-4" />
             <span>Original</span>
@@ -315,16 +326,10 @@ export function FileAttachmentItem(props: FileAttachmentViewProps) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <div className="text-text-default">
-                {title}
-              </div>
+              <div className="text-text-default">{title}</div>
             </div>
             <div className="flex flex-col gap-0.5">
-              {subtitle && (
-                <div className="text-text-muted">
-                  {subtitle}
-                </div>
-              )}
+              {subtitle && <div className="text-text-muted">{subtitle}</div>}
               {isProcessing && (
                 <div className="flex items-center gap-1.5">
                   <span className="log-pane__accent-label">

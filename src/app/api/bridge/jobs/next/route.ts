@@ -22,7 +22,10 @@ export async function GET(request: Request) {
 
   if (!parsed.success) {
     return NextResponse.json(
-      { error: "Invalid bridge claim request", details: parsed.error.flatten() },
+      {
+        error: "Invalid bridge claim request",
+        details: parsed.error.flatten(),
+      },
       { status: 400 },
     );
   }

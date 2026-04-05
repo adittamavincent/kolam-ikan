@@ -57,6 +57,8 @@ describe("useCanvasDraft", () => {
     expect(
       useCanvasDraft.getState().starterBaselineByStream["stream-1"],
     ).toBeUndefined();
-    expect(useCanvasDraft.getState().liveContentByStream["stream-1"]).toBeUndefined();
+    expect(
+      useCanvasDraft.getState().liveContentByStream["stream-1"],
+    ).toBeUndefined();
   });
 });

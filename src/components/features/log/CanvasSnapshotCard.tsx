@@ -18,7 +18,10 @@ import { useCanvasDiff } from "@/lib/hooks/useCanvasDiff";
 import { CanvasCompareModal } from "@/components/shared/CanvasCompareModal";
 import { ThreadFrame } from "@/components/shared/SectionPreset";
 import { CANVAS_PREVIEW_OPEN_EVENT } from "@/lib/utils/canvasPreview";
-import { storedContentToBlocks, storedContentToMarkdown } from "@/lib/content-protocol";
+import {
+  storedContentToBlocks,
+  storedContentToMarkdown,
+} from "@/lib/content-protocol";
 
 interface CanvasSnapshotCardProps {
   version: CanvasVersion;
@@ -38,8 +41,12 @@ export function CanvasSnapshotCard({
   const [showConfirm, setShowConfirm] = useState(false);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const { canvas } = useCanvas(streamId);
-  const liveContent = useCanvasDraft((s) => s.liveContentByStream[streamId] ?? null);
-  const liveMarkdown = useCanvasDraft((s) => s.liveMarkdownByStream[streamId] ?? "");
+  const liveContent = useCanvasDraft(
+    (s) => s.liveContentByStream[streamId] ?? null,
+  );
+  const liveMarkdown = useCanvasDraft(
+    (s) => s.liveMarkdownByStream[streamId] ?? "",
+  );
   const canvasBlocks = useMemo(
     () => storedContentToBlocks(canvas ?? {}),
     [canvas],
@@ -53,7 +60,9 @@ export function CanvasSnapshotCard({
   const snapshotTitle = isAIGenerated
     ? aiModelLabel?.trim() || "AI"
     : version.name || "Untitled Snapshot";
-  const currentContent = (liveContent ?? canvasBlocks ?? null) as PartialBlock[] | null;
+  const currentContent = (liveContent ?? canvasBlocks ?? null) as
+    | PartialBlock[]
+    | null;
   const currentMarkdown = liveMarkdown || canvasMarkdown;
   const snapshotContent = storedContentToBlocks(version);
   const snapshotMarkdown = storedContentToMarkdown(version);
@@ -89,13 +98,13 @@ export function CanvasSnapshotCard({
         hideBody={isCollapsed}
         className="group"
         frameClassName={`overflow-hidden transition-colors ${
- isCollapsed ? "bg-surface-default" : "bg-surface-subtle"
- }`}
+          isCollapsed ? "bg-surface-default" : "bg-surface-subtle"
+        }`}
         headerClassName={`transition-colors ${
- isCollapsed
- ? "bg-surface-hover hover:bg-surface-subtle"
- : "bg-surface-elevated hover:bg-surface-hover"
- }`}
+          isCollapsed
+            ? "bg-surface-hover hover:bg-surface-subtle"
+            : "bg-surface-elevated hover:bg-surface-hover"
+        }`}
         bodyClassName="bg-surface-subtle"
         header={
           <div
@@ -155,7 +164,7 @@ export function CanvasSnapshotCard({
                 </div>
               ) : (
                 <div className="truncate text-text-default gap-2 flex">
-                  <div className="h-4 w-4"/>
+                  <div className="h-4 w-4" />
                   {snapshotTitle}
                 </div>
               )}

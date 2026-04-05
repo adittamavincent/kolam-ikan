@@ -148,9 +148,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const onGlobalSearchRequest = (
-      event: Event,
-    ) => {
+    const onGlobalSearchRequest = (event: Event) => {
       const detail = (
         event as CustomEvent<{
           term?: string;
@@ -400,9 +398,9 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         const { data: canvasData, error: canvasSearchError } = await (
           supabase as typeof supabase & CanvasSearchRpcClient
         ).rpc("search_canvases", {
-            p_limit: 15,
-            p_query: cleaned,
-          });
+          p_limit: 15,
+          p_query: cleaned,
+        });
 
         if (canvasSearchError) throw canvasSearchError;
 
@@ -423,7 +421,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
 
         const toTrigrams = (value: string) => {
           const normalized = value.toLowerCase();
-          const padded=` ${normalized} `;
+          const padded = ` ${normalized} `;
           const trigrams = new Set<string>();
           for (let i = 0; i < padded.length - 2; i += 1) {
             trigrams.add(padded.slice(i, i + 3));
@@ -552,10 +550,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
       {/* ====== RIBBON (DomainSwitcher) — always visible ====== */}
       <div
         className={`fixed inset-y-0 left-0 z-40 flex transform transition-transform md:relative md:translate-x-0 ${
- mobileMenuOpen
- ? "translate-x-0"
- : "-translate-x-full md:translate-x-0"
- }`}
+          mobileMenuOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:translate-x-0"
+        }`}
       >
         <DomainSwitcher
           userId={userId}
@@ -573,10 +571,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
         >
           <div
             className={`h-full min-w-0 flex-1 overflow-hidden transition-all duration-300 ease-in-out ${
- effectiveSidebarVisible
- ? "opacity-100 translate-x-0"
- : "opacity-0 -translate-x-2 pointer-events-none"
- }`}
+              effectiveSidebarVisible
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 -translate-x-2 pointer-events-none"
+            }`}
           >
             <Navigator userId={userId} />
           </div>
@@ -584,10 +582,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
           {/* Resize Handle */}
           <div
             className={`absolute top-0 right-0 z-50 h-full w-1 cursor-col-resize transition-colors ${
- effectiveSidebarVisible
- ? "hover:bg-accent-subtle active:bg-action-primary-bg"
- : "pointer-events-none"
- } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
+              effectiveSidebarVisible
+                ? "hover:bg-accent-subtle active:bg-action-primary-bg"
+                : "pointer-events-none"
+            } ${isResizing ? "bg-action-primary-bg w-1" : "bg-transparent"}`}
             onMouseDown={handleMouseDown}
           />
         </div>
@@ -615,10 +613,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             <button
               onClick={() => setMode("log-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
- isLogMaximized
- ? "bg-action-primary-bg text-action-primary-text"
- : "text-text-muted hover:bg-surface-hover hover:text-text-default"
- }`}
+                isLogMaximized
+                  ? "bg-action-primary-bg text-action-primary-text"
+                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+              }`}
               title="Maximize Log (⌘J)"
             >
               <PanelLeft className="h-4 w-4" />
@@ -627,10 +625,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             <button
               onClick={() => setMode("balanced")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
- isBalanced
- ? "bg-action-primary-bg text-action-primary-text"
- : "text-text-muted hover:bg-surface-hover hover:text-text-default"
- }`}
+                isBalanced
+                  ? "bg-action-primary-bg text-action-primary-text"
+                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+              }`}
               title="Reset Layout (⌘K)"
             >
               <Columns className="h-4 w-4" />
@@ -639,10 +637,10 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
             <button
               onClick={() => setMode("canvas-only")}
               className={`relative z-0 p-2 transition-all focus:z-40 ${
- isCanvasMaximized
- ? "bg-action-primary-bg text-action-primary-text"
- : "text-text-muted hover:bg-surface-hover hover:text-text-default"
- }`}
+                isCanvasMaximized
+                  ? "bg-action-primary-bg text-action-primary-text"
+                  : "text-text-muted hover:bg-surface-hover hover:text-text-default"
+              }`}
               title="Maximize Canvas (⌘L)"
             >
               <PanelRight className="h-4 w-4" />
@@ -708,9 +706,7 @@ export function ClientMainLayout({ children, userId }: ClientMainLayoutProps) {
                     <div className="text-text-muted">Searching...</div>
                   )}
                   {!searchLoading && searchResults.length === 0 && (
-                    <div className="text-text-muted">
-                      No results yet
-                    </div>
+                    <div className="text-text-muted">No results yet</div>
                   )}
                   {searchResults.map((result) => (
                     <button

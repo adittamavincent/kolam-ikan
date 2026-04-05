@@ -24,7 +24,10 @@ export async function GET(
     .maybeSingle();
 
   if (error || !job) {
-    return NextResponse.json({ error: "Bridge job not found" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Bridge job not found" },
+      { status: 404 },
+    );
   }
 
   return NextResponse.json({ job });

@@ -1,8 +1,4 @@
-export const BRIDGE_JOB_PROVIDERS = [
-  "chatgpt",
-  "gemini",
-  "claude",
-] as const;
+export const BRIDGE_JOB_PROVIDERS = ["chatgpt", "gemini", "claude"] as const;
 
 export type BridgeJobProvider = (typeof BRIDGE_JOB_PROVIDERS)[number];
 

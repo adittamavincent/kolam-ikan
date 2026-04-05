@@ -28,7 +28,11 @@ function isTextNode(value: unknown): value is PlainRecord {
 }
 
 function isBlockNode(value: unknown): value is PlainRecord {
-  return isPlainRecord(value) && typeof value.type === "string" && value.type !== "text";
+  return (
+    isPlainRecord(value) &&
+    typeof value.type === "string" &&
+    value.type !== "text"
+  );
 }
 
 function isEmptyParagraphBlock(value: unknown): boolean {
@@ -40,7 +44,11 @@ function isEmptyParagraphBlock(value: unknown): boolean {
   const children = Array.isArray(value.children) ? value.children : [];
   const props = isPlainRecord(value.props) ? value.props : null;
 
-  return content.length === 0 && children.length === 0 && (!props || Object.keys(props).length === 0);
+  return (
+    content.length === 0 &&
+    children.length === 0 &&
+    (!props || Object.keys(props).length === 0)
+  );
 }
 
 function canonicalizeCanvasNode(value: unknown): unknown {
@@ -58,7 +66,10 @@ function canonicalizeCanvasNode(value: unknown): unknown {
 
     if (canonicalized.every((item) => isBlockNode(item))) {
       const trimmed = [...canonicalized];
-      while (trimmed.length > 0 && isEmptyParagraphBlock(trimmed[trimmed.length - 1])) {
+      while (
+        trimmed.length > 0 &&
+        isEmptyParagraphBlock(trimmed[trimmed.length - 1])
+      ) {
         trimmed.pop();
       }
       return trimmed;

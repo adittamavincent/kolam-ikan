@@ -42,13 +42,19 @@ export async function POST(request: Request) {
 
   if (existingJobError) {
     return NextResponse.json(
-      { error: existingJobError.message ?? "Failed to inspect existing bridge jobs" },
+      {
+        error:
+          existingJobError.message ?? "Failed to inspect existing bridge jobs",
+      },
       { status: 400 },
     );
   }
 
   if (existingJob) {
-    return NextResponse.json({ job: existingJob, deduped: true }, { status: 200 });
+    return NextResponse.json(
+      { job: existingJob, deduped: true },
+      { status: 200 },
+    );
   }
 
   const { data, error } = await supabase
@@ -72,7 +78,7 @@ export async function POST(request: Request) {
       {
         error: providerConstraintError
           ? "Bridge provider is not enabled in the database yet. Run the latest bridge_jobs migration."
-          : error.message ?? "Failed to queue bridge job",
+          : (error.message ?? "Failed to queue bridge job"),
       },
       { status: 400 },
     );

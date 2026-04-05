@@ -156,10 +156,10 @@ export function DomainSwitcher({
         <button
           onClick={navigateToHome}
           className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
- pathname === "/" || pendingHome
- ? "bg-action-primary-bg text-action-primary-text"
- : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
- }`}
+            pathname === "/" || pendingHome
+              ? "bg-action-primary-bg text-action-primary-text"
+              : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
+          }`}
         >
           {pendingHome && isNavigating ? (
             <RefreshCw className="h-4 w-4 animate-spin" />
@@ -233,10 +233,10 @@ export function DomainSwitcher({
             title={`${domain.name} (double-click to edit)`}
             aria-label={domain.name}
             className={`group relative flex h-8 w-8 items-center justify-center transition-all duration-200 ${
- activeDomainId === domain.id
- ? "bg-action-primary-bg text-action-primary-text"
- : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
- }`}
+              activeDomainId === domain.id
+                ? "bg-action-primary-bg text-action-primary-text"
+                : "bg-surface-subtle text-text-muted hover:bg-surface-hover hover:text-text-default"
+            }`}
           >
             {pendingDomainId === domain.id && isNavigating ? (
               <RefreshCw className="h-4 w-4 animate-spin" />
@@ -441,7 +441,6 @@ export function DomainSwitcher({
             </div>
           </div>
         </div>
-
       </ModalShell>
 
       {/* PersonaManager is rendered at the layout level to keep global entries in sync */}

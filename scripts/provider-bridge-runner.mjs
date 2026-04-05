@@ -43,10 +43,7 @@ function normalizeOrigin(value) {
  * @param {Record<string, string | undefined>} [env=process.env]
  */
 export function resolveRunnerAppUrl(env = process.env) {
-  return (
-    normalizeOrigin(env.BRIDGE_RUNNER_APP_URL) ??
-    "http://localhost:3000"
-  );
+  return normalizeOrigin(env.BRIDGE_RUNNER_APP_URL) ?? "http://localhost:3000";
 }
 
 const APP_URL = resolveRunnerAppUrl();
@@ -60,7 +57,11 @@ const RUNNER_BROWSER_CHANNEL = "chrome";
 const RUNNER_BROWSER_PATH = "";
 const DEFAULT_HEALTH_PORT = 3001;
 const HEALTH_PORT = DEFAULT_HEALTH_PORT;
-const CHROME_SINGLETON_FILES = ["SingletonLock", "SingletonSocket", "SingletonCookie"];
+const CHROME_SINGLETON_FILES = [
+  "SingletonLock",
+  "SingletonSocket",
+  "SingletonCookie",
+];
 
 if (!RUNNER_SECRET) {
   throw new Error("BRIDGE_RUNNER_SECRET is required");
@@ -212,8 +213,10 @@ async function failJob(job, error, page, provider, requestedModel) {
 
 export function isPersistentContextLaunchFailure(error) {
   const message = error instanceof Error ? error.message : String(error);
-  return /launchPersistentContext/i.test(message) &&
-    /Target page, context or browser has been closed/i.test(message);
+  return (
+    /launchPersistentContext/i.test(message) &&
+    /Target page, context or browser has been closed/i.test(message)
+  );
 }
 
 export async function removeStaleChromeSingletons(userDataDir) {
@@ -403,10 +406,15 @@ export async function launchRunnerContext(userDataDir) {
       (RUNNER_BROWSER_PATH || (!HEADLESS && RUNNER_BROWSER_CHANNEL)) &&
       isConfiguredBrowserUnavailable(error)
     ) {
-      console.warn("[bridge-runner] configured browser unavailable; falling back", {
-        requestedChannel: RUNNER_BROWSER_PATH ? null : launchBrowserChannelLabel(),
-        requestedPath: RUNNER_BROWSER_PATH || null,
-      });
+      console.warn(
+        "[bridge-runner] configured browser unavailable; falling back",
+        {
+          requestedChannel: RUNNER_BROWSER_PATH
+            ? null
+            : launchBrowserChannelLabel(),
+          requestedPath: RUNNER_BROWSER_PATH || null,
+        },
+      );
       return chromium.launchPersistentContext(
         userDataDir,
         buildLaunchOptions({ useConfiguredBrowser: false }),
@@ -422,10 +430,13 @@ export async function launchRunnerContext(userDataDir) {
       throw error;
     }
 
-    console.warn("[bridge-runner] headed profile failed to launch; using a fresh profile", {
-      userDataDir,
-      backupDir,
-    });
+    console.warn(
+      "[bridge-runner] headed profile failed to launch; using a fresh profile",
+      {
+        userDataDir,
+        backupDir,
+      },
+    );
 
     return chromium.launchPersistentContext(userDataDir, buildLaunchOptions());
   }
@@ -456,8 +467,14 @@ async function ensureProviderPageReady(context, provider, pagesByProvider) {
   const page = await getProviderPage(context, provider, pagesByProvider);
   const { appUrl, origin } = PROVIDER_RUNNER_CONFIGS[provider];
 
-  if (!page.url() || page.url() === "about:blank" || !page.url().startsWith(origin)) {
-    await page.goto(appUrl, { waitUntil: "domcontentloaded" }).catch(() => undefined);
+  if (
+    !page.url() ||
+    page.url() === "about:blank" ||
+    !page.url().startsWith(origin)
+  ) {
+    await page
+      .goto(appUrl, { waitUntil: "domcontentloaded" })
+      .catch(() => undefined);
   }
 
   return page;
@@ -482,10 +499,13 @@ export async function main() {
       healthUrl: `http://127.0.0.1:${HEALTH_PORT}/health`,
     });
   } catch (error) {
-    console.warn("[bridge-runner] health server failed to start; continuing without it", {
-      port: HEALTH_PORT,
-      message: error instanceof Error ? error.message : String(error),
-    });
+    console.warn(
+      "[bridge-runner] health server failed to start; continuing without it",
+      {
+        port: HEALTH_PORT,
+        message: error instanceof Error ? error.message : String(error),
+      },
+    );
   }
 
   const context = await launchRunnerContext(USER_DATA_DIR);
@@ -508,7 +528,11 @@ export async function main() {
   );
 
   for (const provider of ENABLED_PROVIDERS) {
-    const page = await ensureProviderPageReady(context, provider, pagesByProvider);
+    const page = await ensureProviderPageReady(
+      context,
+      provider,
+      pagesByProvider,
+    );
     console.log("[bridge-runner] provider page ready", {
       provider,
       pageUrl: page.url(),
@@ -529,12 +553,15 @@ export async function main() {
 
       const provider = job.provider;
       const requestedModel = getRequestedModel(job, provider);
-      const page = await ensureProviderPageReady(context, provider, pagesByProvider);
-      const sessionState =
-        sessionStates.get(provider) ?? {
-          currentSessionKey: null,
-          currentModel: null,
-        };
+      const page = await ensureProviderPageReady(
+        context,
+        provider,
+        pagesByProvider,
+      );
+      const sessionState = sessionStates.get(provider) ?? {
+        currentSessionKey: null,
+        currentModel: null,
+      };
       sessionStates.set(provider, sessionState);
 
       console.log("[bridge-runner] claimed job", {
@@ -547,9 +574,9 @@ export async function main() {
 
       try {
         const response = await runBridgeJob(page, job, sessionState, {
-          shouldAbort: async () => !await isJobStillActive(job.id),
+          shouldAbort: async () => !(await isJobStillActive(job.id)),
         });
-        if (!await isJobStillActive(job.id)) {
+        if (!(await isJobStillActive(job.id))) {
           console.log("[bridge-runner] aborted job after reset", {
             id: job.id,
             provider,
@@ -597,7 +624,10 @@ function launchBrowserChannelLabel() {
   return RUNNER_BROWSER_CHANNEL;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   main().catch((error) => {
     console.error("[bridge-runner] fatal", error);
     process.exitCode = 1;

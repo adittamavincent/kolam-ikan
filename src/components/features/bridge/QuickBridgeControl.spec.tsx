@@ -71,7 +71,9 @@ vi.mock("./XMLGenerator", () => ({
       onPayloadReadyChange?.(true);
     }, [onPayloadReadyChange, onXMLGenerated]);
 
-    return <div data-testid="selected-entries">{selectedEntries.join(",")}</div>;
+    return (
+      <div data-testid="selected-entries">{selectedEntries.join(",")}</div>
+    );
   },
 }));
 
@@ -270,7 +272,8 @@ describe("QuickBridgeControl", () => {
       quickUiPhase: "manual-continue",
     });
     expect(
-      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.externalSessionLoadedAt,
+      useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]
+        ?.externalSessionLoadedAt,
     ).toBeTruthy();
   });
 
@@ -288,7 +291,9 @@ describe("QuickBridgeControl", () => {
     Object.defineProperty(navigator, "clipboard", {
       value: {
         writeText: vi.fn().mockResolvedValue(undefined),
-        readText: vi.fn().mockRejectedValue(new DOMException("Denied", "NotAllowedError")),
+        readText: vi
+          .fn()
+          .mockRejectedValue(new DOMException("Denied", "NotAllowedError")),
       },
       configurable: true,
     });
@@ -305,7 +310,9 @@ describe("QuickBridgeControl", () => {
       },
     });
 
-    expect(capture).toHaveValue("<response><log>manual fallback</log></response>");
+    expect(capture).toHaveValue(
+      "<response><log>manual fallback</log></response>",
+    );
 
     await user.click(screen.getByRole("button", { name: /paste/i }));
 
@@ -331,7 +338,8 @@ describe("QuickBridgeControl", () => {
 
     await waitFor(() => {
       expect(
-        useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.quickUiPhase,
+        useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]
+          ?.quickUiPhase,
       ).toBe("manual-paste");
     });
 
@@ -396,7 +404,9 @@ describe("QuickBridgeControl", () => {
       expect(screen.getByRole("button", { name: /continue/i })).toBeEnabled();
     });
 
-    expect(screen.queryByRole("button", { name: /waiting/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /waiting/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("targets the newest succeeded job response after a previous apply", async () => {
@@ -405,7 +415,8 @@ describe("QuickBridgeControl", () => {
     mockLatestBridgeJobData.current = {
       id: "job-1",
       status: "succeeded",
-      raw_response: "<response><log>first</log><canvas>+ first</canvas></response>",
+      raw_response:
+        "<response><log>first</log><canvas>+ first</canvas></response>",
     };
     mockQuickApply.mockResolvedValue(true);
 
@@ -417,14 +428,17 @@ describe("QuickBridgeControl", () => {
     await user.click(screen.getByRole("button", { name: /apply/i }));
 
     await waitFor(() => {
-      expect(useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.lastAppliedJobId)
-        .toBe("job-1");
+      expect(
+        useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]
+          ?.lastAppliedJobId,
+      ).toBe("job-1");
     });
 
     mockLatestBridgeJobData.current = {
       id: "job-2",
       status: "succeeded",
-      raw_response: "<response><log>second</log><canvas>- old\n+ new</canvas></response>",
+      raw_response:
+        "<response><log>second</log><canvas>- old\n+ new</canvas></response>",
     };
     rerender(<QuickBridgeControl streamId="stream-1" />);
 
@@ -436,8 +450,10 @@ describe("QuickBridgeControl", () => {
     await user.click(screen.getByRole("button", { name: /apply/i }));
 
     await waitFor(() => {
-      expect(useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]?.lastAppliedJobId)
-        .toBe("job-2");
+      expect(
+        useUiPreferencesStore.getState().bridgeSessionsByStream["stream-1"]
+          ?.lastAppliedJobId,
+      ).toBe("job-2");
     });
   });
 });

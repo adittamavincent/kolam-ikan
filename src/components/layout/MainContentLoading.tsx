@@ -1,10 +1,6 @@
 "use client";
 
-function SkeletonBlock({
-  className,
-}: {
-  className: string;
-}) {
+function SkeletonBlock({ className }: { className: string }) {
   return (
     <div
       aria-hidden="true"
@@ -41,9 +37,7 @@ export function MainContentLoading({
           <div className="border border-border-default bg-surface-default px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="font-semibold text-text-default">
-                  {title}
-                </p>
+                <p className="font-semibold text-text-default">{title}</p>
                 <p className="mt-1 text-text-muted">{hint}</p>
               </div>
               <div className="flex items-center gap-2 text-text-muted">

@@ -3,11 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import {
-  MarkdownBlock,
-  EntryWithSections,
-  STREAM_KIND,
-} from "@/lib/types";
+import { MarkdownBlock, EntryWithSections, STREAM_KIND } from "@/lib/types";
 import { blocksToStoredMarkdown } from "@/lib/content-protocol";
 import type { BridgePayloadVariant } from "./bridge-config";
 
@@ -105,7 +101,8 @@ export function useBridgePayload({
       includeGlobalStream,
     ],
     queryFn: async () => {
-      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0)
+        return [];
       const { data } = await supabase
         .from("entries")
         .select(
@@ -126,7 +123,8 @@ export function useBridgePayload({
       includeGlobalStream,
     ],
     queryFn: async () => {
-      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0) return [];
+      if (!includeGlobalStream || additionalGlobalStreamIds.length === 0)
+        return [];
       const { data } = await supabase
         .from("canvases")
         .select("*")
@@ -146,7 +144,14 @@ export function useBridgePayload({
         globalEntries,
         globalCanvases,
       }),
-    [canvas, entries, globalCanvases, globalEntries, payloadVariant, sessionLoadedAt],
+    [
+      canvas,
+      entries,
+      globalCanvases,
+      globalEntries,
+      payloadVariant,
+      sessionLoadedAt,
+    ],
   );
 
   const payload = useMemo(
@@ -239,7 +244,10 @@ ${trimmed}
 
   const latestEntry = [...(entries ?? [])].reverse().find((entry) =>
     entry.sections.some((section) => {
-      const raw = typeof section.raw_markdown === "string" ? section.raw_markdown.trim() : "";
+      const raw =
+        typeof section.raw_markdown === "string"
+          ? section.raw_markdown.trim()
+          : "";
       const content = canvasToMarkdown(
         (section.content_json as unknown as MarkdownBlock[] | undefined) || [],
       ).trim();
@@ -251,7 +259,9 @@ ${trimmed}
   const latestSectionText = latestSections
     .map((section) => {
       const raw =
-        typeof section.raw_markdown === "string" ? section.raw_markdown.trim() : "";
+        typeof section.raw_markdown === "string"
+          ? section.raw_markdown.trim()
+          : "";
       const content = canvasToMarkdown(
         (section.content_json as unknown as MarkdownBlock[] | undefined) || [],
       ).trim();
@@ -301,15 +311,20 @@ export function selectIncrementalBridgeContext({
     };
   }
 
-  const sessionLoadedAtMs = sessionLoadedAt ? Date.parse(sessionLoadedAt) : Number.NaN;
-  const thresholdMs = Number.isFinite(sessionLoadedAtMs) ? sessionLoadedAtMs : null;
+  const sessionLoadedAtMs = sessionLoadedAt
+    ? Date.parse(sessionLoadedAt)
+    : Number.NaN;
+  const thresholdMs = Number.isFinite(sessionLoadedAtMs)
+    ? sessionLoadedAtMs
+    : null;
 
   return {
     entries: (entries ?? []).filter((entry) =>
       hasTimestampAfter(entry.created_at, thresholdMs),
     ),
     canvas:
-      canvas && hasTimestampAfter(canvas.updated_at as string | undefined, thresholdMs)
+      canvas &&
+      hasTimestampAfter(canvas.updated_at as string | undefined, thresholdMs)
         ? canvas
         : null,
     globalEntries: (globalEntries ?? []).filter((entry) =>
@@ -353,7 +368,8 @@ export function buildBridgePayload({
     });
   }
 
-  const domainName = (stream?.domain as { name?: string } | undefined)?.name || "";
+  const domainName =
+    (stream?.domain as { name?: string } | undefined)?.name || "";
   const isGlobal = stream?.stream_kind === STREAM_KIND.GLOBAL;
   const streamNameById = new Map(
     (globalStreamsMeta ?? []).map((globalStream) => [
@@ -362,13 +378,15 @@ export function buildBridgePayload({
     ]),
   );
   const canvasUpdatedAt = canvas?.updated_at as string | undefined;
-  const canvasContent = (canvas?.content_json as MarkdownBlock[] | undefined) || [];
+  const canvasContent =
+    (canvas?.content_json as MarkdownBlock[] | undefined) || [];
   const canvasIsEmpty =
-    canvasContent.length === 0 || canvasContent.every((block) => !extractText(block).trim());
+    canvasContent.length === 0 ||
+    canvasContent.every((block) => !extractText(block).trim());
   const hasCanvasState = includeCanvas && !canvasIsEmpty;
   const nonEmptyGlobalCanvases = (globalCanvases ?? []).filter((canvasItem) =>
-    ((canvasItem.content_json as MarkdownBlock[] | undefined) || []).some((block) =>
-      extractText(block).trim(),
+    ((canvasItem.content_json as MarkdownBlock[] | undefined) || []).some(
+      (block) => extractText(block).trim(),
     ),
   );
   const hasGlobalContext =
@@ -388,11 +406,16 @@ export function buildBridgePayload({
     items.forEach((entry) => {
       entry.sections.forEach((section) => {
         section.section_attachments?.forEach((attachment) => {
-          if (attachment.document && !allFiles.some((file) => file.id === attachment.document!.id)) {
+          if (
+            attachment.document &&
+            !allFiles.some((file) => file.id === attachment.document!.id)
+          ) {
             allFiles.push({
               id: attachment.document.id,
               name: attachment.document.original_filename,
-              content: attachment.document.extracted_markdown || "[No content extracted]",
+              content:
+                attachment.document.extracted_markdown ||
+                "[No content extracted]",
             });
           }
         });
@@ -500,9 +523,11 @@ function buildBridgeFollowupPayload({
   | "globalStreamName"
   | "userInput"
 >) {
-  const domainName = (stream?.domain as { name?: string } | undefined)?.name || "";
+  const domainName =
+    (stream?.domain as { name?: string } | undefined)?.name || "";
   const isGlobal = stream?.stream_kind === STREAM_KIND.GLOBAL;
-  const canvasContent = (canvas?.content_json as MarkdownBlock[] | undefined) || [];
+  const canvasContent =
+    (canvas?.content_json as MarkdownBlock[] | undefined) || [];
   const hasCanvasChanges =
     Array.isArray(canvasContent) && canvasContent.length > 0;
   const hasEntryChanges = (entries?.length ?? 0) > 0;
@@ -529,7 +554,8 @@ ${globalStreamName || "Domain Global Streams"}
 <global_canvases>
 ${(globalCanvases ?? [])
   .map((canvasItem) => {
-    const streamLabel = (canvasItem.stream_id as string | undefined) || "unknown";
+    const streamLabel =
+      (canvasItem.stream_id as string | undefined) || "unknown";
     return `<global_canvas stream="${streamLabel}">
 ${canvasToMarkdown((canvasItem.content_json as MarkdownBlock[] | undefined) || [])}
 </global_canvas>`;
@@ -591,13 +617,16 @@ function extractText(block: MarkdownBlock): string {
 }
 
 export function entryToMarkdown(entry: EntryWithSections): string {
-  const dateStr = entry.created_at ? new Date(entry.created_at).toLocaleString() : "";
+  const dateStr = entry.created_at
+    ? new Date(entry.created_at).toLocaleString()
+    : "";
 
   let result = `<entry id="${entry.id}" date="${dateStr}">\n`;
   result += "<sections>\n";
 
   entry.sections.forEach((section) => {
-    const personaName = section.persona_name_snapshot || section.persona?.name || "User";
+    const personaName =
+      section.persona_name_snapshot || section.persona?.name || "User";
     const isLocal = section.persona?.is_shadow ? "true" : "false";
     const sectionType = section.section_type || "text";
 
@@ -610,7 +639,10 @@ export function entryToMarkdown(entry: EntryWithSections): string {
 
     if (section.section_attachments && section.section_attachments.length > 0) {
       const links = section.section_attachments
-        .map((attachment) => `[File: ${attachment.document?.original_filename}](#${attachment.document?.id})`)
+        .map(
+          (attachment) =>
+            `[File: ${attachment.document?.original_filename}](#${attachment.document?.id})`,
+        )
         .join("\n");
       content = content.trim() ? `${content}\n\n${links}` : links;
     }
@@ -662,9 +694,11 @@ ${canvasUpdatedAt ? `Also echo <base>${canvasUpdatedAt}</base> exactly.` : ""}
 Canvas is a whiteboard/artifact surface, not the conversation surface.
 Only put durable working content in <canvas>: plans, outlines, checklists, notes, drafts, specifications, or other reference material the user would want to revisit visually.
 Do NOT use <canvas> for session acknowledgements, boot/init messages, meta-instructions, status banners, "ready" messages, summaries of the protocol, or placeholder text like "awaiting further instructions".
-${allowCanvasOmission
+${
+  allowCanvasOmission
     ? "If the user has not asked for any actual whiteboard/artifact content yet, omit <canvas> entirely and respond only with <log> when the mode allows it."
-    : "In BOTH mode, <canvas> is mandatory. If the user did not explicitly ask for whiteboard content, create a minimal durable note that captures the answer in revisit-friendly form instead of omitting <canvas>."}
+    : "In BOTH mode, <canvas> is mandatory. If the user did not explicitly ask for whiteboard content, create a minimal durable note that captures the answer in revisit-friendly form instead of omitting <canvas>."
+}
 Do not write raw markdown lines outside the diff prefixes.`;
 
   const askDirective = `<response_format_ask>

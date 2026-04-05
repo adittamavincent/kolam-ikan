@@ -66,14 +66,14 @@ export function FileAttachmentsSection({
 
       <div
         className={`rounded-none border transition-colors ${
- canUpload
- ? isDragOver
- ? ""
- : hasItems
- ? "border-transparent"
- : "border-dashed border-border-default bg-surface-subtle"
- : "border-transparent"
- }`}
+          canUpload
+            ? isDragOver
+              ? ""
+              : hasItems
+                ? "border-transparent"
+                : "border-dashed border-border-default bg-surface-subtle"
+            : "border-transparent"
+        }`}
         style={
           canUpload && isDragOver
             ? {
@@ -109,9 +109,7 @@ export function FileAttachmentsSection({
         ) : (
           <div className="relative flex h-12 items-center justify-center gap-2 text-text-muted">
             {canUpload ? <Upload className="h-4 w-4" /> : null}
-            <span>
-              {emptyStateMessage}
-            </span>
+            <span>{emptyStateMessage}</span>
 
             {canUpload ? (
               <div

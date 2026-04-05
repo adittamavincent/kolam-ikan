@@ -93,7 +93,10 @@ export function dispatchKolamLogState(detail: KolamLogStateDetail) {
 }
 
 export function useLogBranchContext(streamId: string) {
-  const getSnapshot = useCallback(() => readCachedLogState(streamId), [streamId]);
+  const getSnapshot = useCallback(
+    () => readCachedLogState(streamId),
+    [streamId],
+  );
 
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
@@ -119,7 +122,10 @@ export function useLogBranchContext(streamId: string) {
 
       window.addEventListener("kolam_log_state", onLogState as EventListener);
       return () => {
-        window.removeEventListener("kolam_log_state", onLogState as EventListener);
+        window.removeEventListener(
+          "kolam_log_state",
+          onLogState as EventListener,
+        );
       };
     },
     [streamId],

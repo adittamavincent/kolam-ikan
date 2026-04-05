@@ -326,7 +326,9 @@ test.describe.serial("Canvas Writing", () => {
 // ===================================================================
 
 test.describe.serial("Bridge", () => {
-  test("opens detailed bridge and shows interaction modes", async ({ page }) => {
+  test("opens detailed bridge and shows interaction modes", async ({
+    page,
+  }) => {
     restoreCtx();
     await goToStream(page, ctx.domainId, ctx.streamId);
 

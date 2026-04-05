@@ -148,9 +148,7 @@ const textToBlocks = (text: string): PartialBlock[] => {
   }
   return normalized.split("\n").map((line) => ({
     type: "paragraph",
-    content: line
-      ? [{ type: "text", text: line, styles: {} }]
-      : [],
+    content: line ? [{ type: "text", text: line, styles: {} }] : [],
   }));
 };
 
@@ -305,9 +303,9 @@ export function useDraftSystem({
         const loaded: Record<string, DraftContent> = {};
         Object.entries(local.sections).forEach(([id, s]) => {
           const sectionType = s.sectionType ?? "PERSONA";
-        if (
-          sectionType === "PERSONA" &&
-          !s.personaId &&
+          if (
+            sectionType === "PERSONA" &&
+            !s.personaId &&
             !hasMeaningfulDraftContent(s.content)
           )
             return;
@@ -319,8 +317,8 @@ export function useDraftSystem({
               s.content && s.content.length > 0
                 ? s.content
                 : s.contentTextSnapshot
-                ? textToBlocks(s.contentTextSnapshot)
-                : [],
+                  ? textToBlocks(s.contentTextSnapshot)
+                  : [],
             rawMarkdown: s.rawMarkdown,
             contentTextSnapshot: s.contentTextSnapshot,
             fileDisplayMode: s.fileDisplayMode,
@@ -465,7 +463,8 @@ export function useDraftSystem({
       if (Array.isArray(content) && content.length > 0) {
         return deepClone(content);
       }
-      const snapshot = section?.contentTextSnapshot || fallback?.contentTextSnapshot;
+      const snapshot =
+        section?.contentTextSnapshot || fallback?.contentTextSnapshot;
       if (snapshot && snapshot.trim().length > 0) {
         return deepClone(textToBlocks(snapshot));
       }
@@ -604,7 +603,10 @@ export function useDraftSystem({
                 entry_id: newEntryId,
                 persona_id: draft.personaId,
                 persona_name_snapshot: draft.personaName,
-                ...buildStoredContentPayload(normalizedContent, normalizedMarkdown),
+                ...buildStoredContentPayload(
+                  normalizedContent,
+                  normalizedMarkdown,
+                ),
                 sort_order: index,
               })
               .select("id")
@@ -695,17 +697,14 @@ export function useDraftSystem({
   }, [parentEntryId, streamId, supabase, queryClient]);
 
   // Maintain API compatibility with current component implementation
-  const setActiveInstances = useCallback(
-    (instanceIds?: string[]) => {
-      if (!Array.isArray(instanceIds)) return;
-      const deduped = instanceIds.filter(
-        (id, idx) => instanceIds.indexOf(id) === idx,
-      );
-      draftStateRef.current.sectionOrder = deduped;
-      draftStateRef.current.updatedAt = Date.now();
-    },
-    [],
-  );
+  const setActiveInstances = useCallback((instanceIds?: string[]) => {
+    if (!Array.isArray(instanceIds)) return;
+    const deduped = instanceIds.filter(
+      (id, idx) => instanceIds.indexOf(id) === idx,
+    );
+    draftStateRef.current.sectionOrder = deduped;
+    draftStateRef.current.updatedAt = Date.now();
+  }, []);
   const flushPendingSaves = useCallback(async () => {
     snapshotLocalDraft();
   }, [snapshotLocalDraft]);

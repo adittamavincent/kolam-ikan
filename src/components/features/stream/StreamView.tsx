@@ -18,13 +18,7 @@ import { useLayout } from "@/lib/hooks/useLayout";
 import { useUiPreferencesStore } from "@/lib/hooks/useUiPreferencesStore";
 import { BRIDGE_PROVIDER_PRESETS } from "@/components/features/bridge/bridge-config";
 import { Fragment, useEffect, useState, useSyncExternalStore } from "react";
-import {
-  Check,
-  ChevronDown,
-  Globe,
-  RotateCcw,
-  Sparkles,
-} from "lucide-react";
+import { Check, ChevronDown, Globe, RotateCcw, Sparkles } from "lucide-react";
 import { useLatestBridgeJob } from "@/lib/hooks/useBridgeJobs";
 import { useResetBridgeSession } from "@/lib/hooks/useResetBridgeSession";
 
@@ -34,7 +28,8 @@ interface BridgeModalSeed {
 
 export function StreamView({ streamId }: { streamId: string }) {
   const [isBridgeOpen, setIsBridgeOpen] = useState(false);
-  const [bridgeModalSeed, setBridgeModalSeed] = useState<BridgeModalSeed | null>(null);
+  const [bridgeModalSeed, setBridgeModalSeed] =
+    useState<BridgeModalSeed | null>(null);
   const [isDocumentImportOpen, setIsDocumentImportOpen] = useState(false);
   const [incomingDocumentFiles, setIncomingDocumentFiles] = useState<Array<{
     file: File;
@@ -65,8 +60,9 @@ export function StreamView({ streamId }: { streamId: string }) {
   const selectedProviderId =
     effectiveBridgeSession?.providerId ?? defaultProviderId;
   const selectedProviderLabel =
-    BRIDGE_PROVIDER_PRESETS.find((provider) => provider.id === selectedProviderId)
-      ?.label ?? "Gemini";
+    BRIDGE_PROVIDER_PRESETS.find(
+      (provider) => provider.id === selectedProviderId,
+    )?.label ?? "Gemini";
   useLatestBridgeJob(streamId, selectedProviderId, 4_000);
   const resetBridgeSession = useResetBridgeSession(streamId);
   const hasActiveSession = !!effectiveBridgeSession?.isExternalSessionActive;
@@ -168,10 +164,10 @@ export function StreamView({ streamId }: { streamId: string }) {
                         }
                       }}
                       className={`${
- focus
- ? "bg-surface-subtle text-text-default"
- : "text-text-subtle"
- } flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
+                        focus
+                          ? "bg-surface-subtle text-text-default"
+                          : "text-text-subtle"
+                      } flex w-full items-center justify-between px-2 py-1.5 transition-all duration-200`}
                     >
                       <span className="flex items-center gap-1.5">
                         <Globe className="h-3 w-3" />

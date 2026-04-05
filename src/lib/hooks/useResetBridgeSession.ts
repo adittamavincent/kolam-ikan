@@ -21,9 +21,9 @@ export function useResetBridgeSession(streamId: string) {
         body: JSON.stringify({ streamId }),
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { error?: string }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
 
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to reset bridge session");
